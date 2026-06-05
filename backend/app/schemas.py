@@ -142,6 +142,11 @@ class IngestArticleIn(BaseModel):
     url: str
 
 
+class IngestTextIn(BaseModel):
+    title: str | None = None
+    text: str
+
+
 class CourseOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

@@ -17,15 +17,27 @@ from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ..content import ingest_article, ingest_pdf, ingest_youtube
+from ..content import (
+    ingest_article,
+    ingest_file,
+    ingest_pdf,
+    ingest_text,
+    ingest_youtube,
+)
 from ..courses import generate_course
 from ..db import get_session
 from ..models import ContentSource, Course
-from ..schemas import ContentSourceOut, CourseOut, IngestArticleIn
+from ..schemas import ContentSourceOut, CourseOut, IngestArticleIn, IngestTextIn
 
 router = APIRouter(prefix="/learn", tags=["learn"])
 
 MAX_PDF_BYTES = 25 * 1024 * 1024  # 25 MB
+MAX_FILE_BYTES = 25 * 1024 * 1024  # 25 MB
+# Universal file inbox — extensions we know how to extract text from.
+ALLOWED_FILE_EXTS = {
+    "txt", "text", "md", "markdown", "log", "csv", "json", "rst",
+    "html", "htm", "pdf", "docx",
+}
 
 
 @router.post("/article", response_model=ContentSourceOut)
@@ -69,6 +81,46 @@ async def add_pdf(
     src = await ingest_pdf(session, file.filename or "document.pdf", data)
     if src.status == "failed":
         raise HTTPException(status_code=422, detail=src.error or "extraction failed")
+    return src
+
+
+@router.post("/file", response_model=ContentSourceOut)
+async def add_file(
+    file: UploadFile = File(...),
+    session: AsyncSession = Depends(get_session),
+) -> ContentSource:
+    """Universal file inbox: txt/md/html/docx/pdf → extracted into memory."""
+    name = file.filename or "file.txt"
+    ext = name.rsplit(".", 1)[-1].lower() if "." in name else ""
+    if ext and ext not in ALLOWED_FILE_EXTS:
+        raise HTTPException(
+            status_code=415,
+            detail=f"unsupported type .{ext}; allowed: {sorted(ALLOWED_FILE_EXTS)}",
+        )
+    data = await file.read()
+    if not data:
+        raise HTTPException(status_code=400, detail="empty file")
+    if len(data) > MAX_FILE_BYTES:
+        raise HTTPException(status_code=413, detail="file too large (max 25 MB)")
+    src = await ingest_file(session, name, data)
+    if src.status == "failed":
+        raise HTTPException(status_code=422, detail=src.error or "extraction failed")
+    return src
+
+
+@router.post("/text", response_model=ContentSourceOut)
+async def add_text(
+    payload: IngestTextIn,
+    session: AsyncSession = Depends(get_session),
+) -> ContentSource:
+    """Paste raw text straight into memory."""
+    text = (payload.text or "").strip()
+    if not text:
+        raise HTTPException(status_code=400, detail="text is empty")
+    title = (payload.title or "").strip() or None
+    src = await ingest_text(session, title, text)
+    if src.status == "failed":
+        raise HTTPException(status_code=422, detail=src.error or "no text")
     return src
 
 

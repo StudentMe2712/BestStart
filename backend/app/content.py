@@ -117,6 +117,48 @@ def pdf_to_text(data: bytes) -> str:
     return "\n\n".join(p for p in pages if p).strip()
 
 
+def docx_to_text(data: bytes) -> str:
+    """Extract text from a .docx (Office Open XML) document (python-docx)."""
+    import docx  # python-docx
+
+    document = docx.Document(io.BytesIO(data))
+    parts: list[str] = [p.text for p in document.paragraphs if p.text.strip()]
+    for table in document.tables:  # flatten tables row-by-row
+        for row in table.rows:
+            cells = [c.text.strip() for c in row.cells if c.text.strip()]
+            if cells:
+                parts.append(" | ".join(cells))
+    return "\n\n".join(parts).strip()
+
+
+# Plain-text-ish extensions we can decode as UTF-8 directly (Markdown is stored
+# raw — fine for embeddings). HTML/PDF/DOCX go through their own extractors.
+_TEXT_EXTS = {"txt", "text", "md", "markdown", "log", "csv", "json", "rst"}
+
+
+def _ext_of(filename: str) -> str:
+    return filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
+
+
+def extract_file_text(filename: str, data: bytes) -> tuple[str | None, str]:
+    """Dispatch an uploaded file to the right extractor → (title, text).
+
+    Supports pdf / docx / html / and plain-text family (txt/md/…). Raises
+    ValueError on an unsupported type. The caller wraps the result as UNTRUSTED
+    data (anti-injection) just like article/PDF ingest.
+    """
+    ext = _ext_of(filename)
+    if ext == "pdf":
+        return None, pdf_to_text(data)
+    if ext == "docx":
+        return None, docx_to_text(data)
+    if ext in ("html", "htm"):
+        return html_to_text(data.decode("utf-8", errors="replace"))
+    if ext in _TEXT_EXTS or ext == "":
+        return None, data.decode("utf-8", errors="replace")
+    raise ValueError(f"unsupported file type: .{ext}")
+
+
 def youtube_video_id(url: str) -> str | None:
     """Extract the 11-char video id from common YouTube URL shapes."""
     u = urlparse(url.strip())
@@ -208,6 +250,32 @@ async def ingest_pdf(session: AsyncSession, filename: str, data: bytes) -> Conte
         await _finalize(session, src, title=filename, text=text)
     except Exception as e:  # noqa: BLE001
         await _fail(session, src, f"pdf extract failed: {e}")
+    await session.commit()
+    return src
+
+
+async def ingest_file(session: AsyncSession, filename: str, data: bytes) -> ContentSource:
+    """Extract text from an uploaded document (txt/md/html/docx/pdf)."""
+    src = ContentSource(kind="file", title=filename, status="pending")
+    session.add(src)
+    await session.flush()
+    try:
+        title, text = extract_file_text(filename, data)
+        await _finalize(session, src, title=title or filename, text=text)
+    except Exception as e:  # noqa: BLE001
+        await _fail(session, src, f"file extract failed: {type(e).__name__}: {e}")
+    await session.commit()
+    return src
+
+
+async def ingest_text(
+    session: AsyncSession, title: str | None, text: str
+) -> ContentSource:
+    """Store raw pasted text as a learning material (kind='text')."""
+    src = ContentSource(kind="text", title=title, status="pending")
+    session.add(src)
+    await session.flush()
+    await _finalize(session, src, title=title or "Текст", text=text)
     await session.commit()
     return src
 
