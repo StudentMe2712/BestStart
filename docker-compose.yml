@@ -76,18 +76,21 @@ services:
       - backend
 
   # ── Extension (Plasmo) ────────────────────────────────────────────────────
-  # Replaces the hidden `npm run dev` that dev.bat ran for the extension.
-  # `plasmo dev` watches and writes build/chrome-mv3-dev into the mounted host
-  # folder; load it once in Chrome (chrome://extensions → Load unpacked →
-  # extension/build/chrome-mv3-dev). Rebuilds happen automatically on edits.
+  # Produces a CLEAN production build (build/chrome-mv3-prod) and stays alive.
+  # We use `plasmo build`, not `plasmo dev`: the dev build embeds an HMR client
+  # that connects to ws://localhost:1815-1816 — that server lives inside this
+  # container, unreachable from the host browser, so it only spams console
+  # errors and never hot-reloads across the Docker boundary. The prod build has
+  # no HMR client = clean console. Load extension/build/chrome-mv3-prod in Chrome.
+  # After editing extension code, rebuild with:
+  #   docker compose restart extension   (or: docker compose exec extension npm run build)
+  # then click the extension's reload icon on chrome://extensions.
   extension:
     image: node:22-bookworm-slim
     container_name: pam-extension
     restart: unless-stopped
     working_dir: /app
-    command: sh -c "npm install && npm run dev"
-    environment:
-      CHOKIDAR_USEPOLLING: "true"
+    command: sh -c "npm install && npm run build && echo '[PAM] extension built -> extension/build/chrome-mv3-prod (Load unpacked)' && tail -f /dev/null"
     volumes:
       - ./extension:/app
       - ext_node_modules:/app/node_modules
