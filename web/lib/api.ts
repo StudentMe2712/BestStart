@@ -298,6 +298,35 @@ export async function uploadPdf(file: File): Promise<ContentSource> {
   return r.json()
 }
 
+// Универсальный инбокс: txt/md/html/docx/pdf → в память.
+export async function uploadFile(file: File): Promise<ContentSource> {
+  const fd = new FormData()
+  fd.append("file", file)
+  const r = await fetch(`${BACKEND_URL}/learn/file`, { method: "POST", body: fd })
+  if (!r.ok) {
+    const d = await r.json().catch(() => ({}))
+    throw new Error(d.detail || `file upload failed: ${r.status}`)
+  }
+  return r.json()
+}
+
+// Вставленный вручную текст → в память.
+export async function ingestText(
+  text: string,
+  title?: string
+): Promise<ContentSource> {
+  const r = await fetch(`${BACKEND_URL}/learn/text`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ text, title: title || null })
+  })
+  if (!r.ok) {
+    const d = await r.json().catch(() => ({}))
+    throw new Error(d.detail || `text ingest failed: ${r.status}`)
+  }
+  return r.json()
+}
+
 export async function deleteSource(id: string): Promise<void> {
   const r = await fetch(`${BACKEND_URL}/learn/sources/${id}`, { method: "DELETE" })
   if (!r.ok && r.status !== 204) throw new Error(`delete source failed: ${r.status}`)

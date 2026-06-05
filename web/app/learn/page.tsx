@@ -7,7 +7,8 @@ import {
   ingestArticle,
   ingestYoutube,
   isYoutubeUrl,
-  uploadPdf,
+  uploadFile,
+  ingestText,
   deleteSource,
   generateCourse,
   getCourse,
@@ -30,6 +31,7 @@ export default function LearnPage() {
   const [url, setUrl] = useState("")
   const [adding, setAdding] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
+  const [text, setText] = useState("")
 
   const [selected, setSelected] = useState<ContentSource | null>(null)
   const [course, setCourse] = useState<Course | null>(null)
@@ -62,19 +64,35 @@ export default function LearnPage() {
     }
   }
 
-  async function onPdf(e: React.ChangeEvent<HTMLInputElement>) {
+  async function onFile(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0]
     if (!f) return
     setAdding(true)
     setError(null)
     try {
-      await uploadPdf(f)
+      await uploadFile(f)
       setTick((t) => t + 1)
     } catch (err) {
       setError(String(err))
     } finally {
       setAdding(false)
       if (fileRef.current) fileRef.current.value = ""
+    }
+  }
+
+  async function addText() {
+    const t = text.trim()
+    if (!t) return
+    setAdding(true)
+    setError(null)
+    try {
+      await ingestText(t)
+      setText("")
+      setTick((n) => n + 1)
+    } catch (err) {
+      setError(String(err))
+    } finally {
+      setAdding(false)
     }
   }
 
@@ -126,8 +144,9 @@ export default function LearnPage() {
           <RefreshButton onClick={() => setTick((t) => t + 1)} busy={loading} />
         </div>
         <p className="text-neutral-400 mt-2 text-sm font-sans">
-          Добавь материал (статью, видео с YouTube или PDF) — PAM соберёт по
-          нему персональный мини-курс с уроками и тестом под твой уровень.
+          Добавь материал — ссылку на статью или YouTube, файл
+          (PDF/DOCX/TXT/MD/HTML) или вставь текст. PAM извлечёт его, добавит в
+          память и сможет собрать по нему персональный мини-курс с тестом.
         </p>
       </header>
 
@@ -153,15 +172,37 @@ export default function LearnPage() {
           </button>
         </div>
         <div className="flex items-center gap-3 text-sm font-sans text-neutral-400">
-          <span>или загрузи PDF:</span>
+          <span>или загрузи файл:</span>
           <input
             ref={fileRef}
             type="file"
-            accept="application/pdf,.pdf"
-            onChange={onPdf}
+            accept=".pdf,.docx,.txt,.md,.markdown,.html,.htm,.csv,.json,.log,.rst"
+            onChange={onFile}
             disabled={adding}
             className="text-xs file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border file:border-neutral-700 file:bg-transparent file:text-neutral-200 file:cursor-pointer hover:file:border-lime-400/50"
           />
+          <span className="text-[10px] text-neutral-600">
+            PDF · DOCX · TXT · MD · HTML
+          </span>
+        </div>
+
+        {/* Вставить текст напрямую */}
+        <div className="space-y-2">
+          <textarea
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            placeholder="…или вставь текст сюда, чтобы добавить его в память"
+            rows={3}
+            className="w-full bg-neutral-900 border border-neutral-800 rounded-md px-3 py-2 text-sm font-sans resize-y focus:outline-none focus:border-lime-400/50"
+          />
+          <div className="flex justify-end">
+            <button
+              onClick={addText}
+              disabled={adding || !text.trim()}
+              className="text-sm px-4 py-2 rounded-md border border-neutral-700 text-neutral-200 hover:text-lime-400 hover:border-lime-400/50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+              {adding ? "добавляю…" : "добавить текст"}
+            </button>
+          </div>
         </div>
       </section>
 
