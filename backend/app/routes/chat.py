@@ -12,6 +12,7 @@ import json
 import logging
 import uuid
 from collections.abc import AsyncIterator
+from types import SimpleNamespace
 
 from fastapi import APIRouter
 from fastapi.responses import StreamingResponse
@@ -24,7 +25,14 @@ from ..db import AsyncSessionLocal
 from ..extraction import extract_facts_for_conversation
 from ..indexing import chunk_text, embed_text
 from ..llm import model_for, route_provider, stream_chat
-from ..models import Chunk, Conversation, Message, ProfileFact
+from ..models import (
+    Chunk,
+    ContentChunk,
+    ContentSource,
+    Conversation,
+    Message,
+    ProfileFact,
+)
 
 log = logging.getLogger(__name__)
 
@@ -92,18 +100,18 @@ def _sse(obj: dict) -> bytes:
 # Каждый из трёх подготовительных запросов открывает свою сессию — чтобы их
 # можно было запускать конкурентно (одна AsyncSession не потокобезопасна для
 # параллельных запросов). Это сокращает время до первого токена.
-async def _retrieve(query: str, k: int = TOP_K):
-    """Vector-retrieve the most relevant chunks for the query (own session)."""
-    try:
-        qvec = await embed_text(query)
-    except Exception as e:  # noqa: BLE001 — degrade to no-context
-        log.warning("chat retrieve: embeddings unavailable: %s", e)
-        return []
+async def _retrieve_messages(qvec, k: int):
+    """Top-k conversation-message chunks (own session)."""
     dist = Chunk.embedding.cosine_distance(qvec)
     async with AsyncSessionLocal() as session:
         return (
             await session.execute(
-                select(Chunk.content, Conversation.title, Conversation.source)
+                select(
+                    Chunk.content,
+                    Conversation.title,
+                    Conversation.source,
+                    dist.label("d"),
+                )
                 .join(Message, Message.id == Chunk.message_id)
                 .join(Conversation, Conversation.id == Message.conversation_id)
                 .where(Chunk.embedding.is_not(None))
@@ -111,6 +119,58 @@ async def _retrieve(query: str, k: int = TOP_K):
                 .limit(k)
             )
         ).all()
+
+
+async def _retrieve_content(qvec, k: int):
+    """Top-k learning-material chunks — Лектор (own session).
+
+    Unified memory: материалы из Лектора (статьи/видео/файлы/текст) ищутся
+    наравне с разговорами, поэтому всё, что добавлено в Лектор, доступно чату.
+    """
+    dist = ContentChunk.embedding.cosine_distance(qvec)
+    async with AsyncSessionLocal() as session:
+        return (
+            await session.execute(
+                select(
+                    ContentChunk.content,
+                    ContentSource.title,
+                    ContentSource.kind,
+                    dist.label("d"),
+                )
+                .join(ContentSource, ContentSource.id == ContentChunk.source_id)
+                .where(ContentChunk.embedding.is_not(None))
+                .order_by(dist.asc())
+                .limit(k)
+            )
+        ).all()
+
+
+async def _retrieve(query: str, k: int = TOP_K):
+    """Vector-retrieve the most relevant chunks across BOTH memories.
+
+    Searches conversation messages (`chunks`) and learning material
+    (`content_chunks`) concurrently, then merges by cosine distance and keeps
+    the global top-k. Each row exposes `.content`, `.title`, `.source`.
+    """
+    try:
+        qvec = await embed_text(query)
+    except Exception as e:  # noqa: BLE001 — degrade to no-context
+        log.warning("chat retrieve: embeddings unavailable: %s", e)
+        return []
+    msg_rows, content_rows = await asyncio.gather(
+        _retrieve_messages(qvec, k),
+        _retrieve_content(qvec, k),
+    )
+    merged = [
+        SimpleNamespace(content=r.content, title=r.title, source=r.source, d=r.d)
+        for r in msg_rows
+    ]
+    merged += [
+        SimpleNamespace(content=r.content, title=r.title, source=r.kind, d=r.d)
+        for r in content_rows
+    ]
+    merged.sort(key=lambda x: x.d)
+    return merged[:k]
 
 
 async def _profile_facts(limit: int = MAX_PROFILE_FACTS) -> str:
