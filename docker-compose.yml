@@ -25,10 +25,20 @@ services:
     restart: unless-stopped
     ports:
       - "8000:8000"
+    # LLM keys (GROQ_API_KEY / OPENROUTER_API_KEY / LLM_PROVIDER / models) come
+    # from backend/.env. The explicit `environment:` block below overrides any
+    # DATABASE_URL/OLLAMA_URL in that file (compose env > env_file) so the
+    # container always uses the local pg container + host Ollama.
+    env_file:
+      - ./backend/.env
     environment:
       DATABASE_URL: postgresql+asyncpg://pam:pam@db:5432/pam
       CORS_ORIGINS: "chrome-extension://*,http://localhost:3000"
       LOG_LEVEL: INFO
+      # Reach the host's Ollama (embeddings) from inside the container.
+      OLLAMA_URL: "http://host.docker.internal:11434"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     depends_on:
       db:
         condition: service_healthy
