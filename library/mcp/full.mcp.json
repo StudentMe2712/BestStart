@@ -1,0 +1,46 @@
+{
+  "//": "Full MCP catalog (Windows). Copy to a project root as .mcp.json, then DELETE the servers you don't need. Running >5 active servers degrades tool selection. Servers needing a key won't start until you set the env var.",
+  "mcpServers": {
+    "context7": {
+      "//": "Up-to-date, version-specific library docs. No key. Highly recommended.",
+      "command": "cmd",
+      "args": ["/c", "npx", "-y", "@upstash/context7-mcp"]
+    },
+    "playwright": {
+      "//": "Browser automation + E2E testing via accessibility tree. No key.",
+      "command": "cmd",
+      "args": ["/c", "npx", "-y", "@playwright/mcp@latest"]
+    },
+    "sequential-thinking": {
+      "//": "Structured multi-step reasoning for hard problems. No key.",
+      "command": "cmd",
+      "args": ["/c", "npx", "-y", "@modelcontextprotocol/server-sequential-thinking"]
+    },
+    "github": {
+      "//": "GitHub API: PRs, issues, repos. Needs a Personal Access Token.",
+      "command": "cmd",
+      "args": ["/c", "npx", "-y", "@modelcontextprotocol/server-github"],
+      "env": { "GITHUB_PERSONAL_ACCESS_TOKEN": "${GITHUB_PERSONAL_ACCESS_TOKEN}" }
+    },
+    "memory": {
+      "//": "Knowledge-graph memory. Overlaps with claude-mem; pick ONE. No key.",
+      "command": "cmd",
+      "args": ["/c", "npx", "-y", "@modelcontextprotocol/server-memory"]
+    },
+    "filesystem": {
+      "//": "Extra filesystem access scoped to given roots. Edit the path. No key.",
+      "command": "cmd",
+      "args": ["/c", "npx", "-y", "@modelcontextprotocol/server-filesystem", "C:\\Users\\Mila\\Desktop\\start"]
+    },
+    "exa": {
+      "//": "Web/code search (hosted). May require an Exa account/key on their side.",
+      "type": "http",
+      "url": "https://mcp.exa.ai/mcp"
+    },
+    "deepwiki": {
+      "//": "Ask questions about any public GitHub repo's docs. No key.",
+      "command": "cmd",
+      "args": ["/c", "npx", "-y", "deepwiki-mcp"]
+    }
+  }
+}

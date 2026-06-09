@@ -1,0 +1,9 @@
+# Raw upstream clones — provenance only, re-cloneable. Remove this line to version them.
+_sources/
+
+# Deps / build artifacts that may appear in projects
+node_modules/
+dist/
+build/
+.env
+*.log
