@@ -22,7 +22,7 @@ Every new project also gets, automatically: the **core gate commands** (`/start-
 | Type | Buckets | Count |
 |------|---------|-------|
 | agents   | `ecc` (64), `gsd` (33), `awesome` (152) | **249** |
-| skills   | `ecc` (261), `superpowers` (14), `karpathy` (1) | **276** |
+| skills   | `ecc` (261), `alireza` (342), `superpowers` (14), `karpathy` (1) | **618** |
 | commands | `core` (3), `ecc` (84), `gsd` (67) | **154** |
 | hooks    | `ecc`, `gsd`, `superpowers` | per-source sets |
 | rules    | `ecc` (20 languages), `karpathy`, `best-practice` (docs) | — |

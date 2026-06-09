@@ -43,11 +43,16 @@ function Add-Items($type, $spec) {
             Write-Host "  + $type/* (all)"; continue
         }
         $src = Join-Path $srcType $item
-        if (-not (Test-Path $src)) { Write-Warning "  not found: $type/$item"; continue }
-        $dest = Join-Path $claude (Join-Path $type $item)
+        $rel = $item
+        if (-not (Test-Path $src)) {
+            # leaf items (agents/commands) are .md files; allow specifying them without the extension
+            if (Test-Path "$src.md") { $src = "$src.md"; $rel = "$item.md" }
+            else { Write-Warning "  not found: $type/$item"; continue }
+        }
+        $dest = Join-Path $claude (Join-Path $type $rel)
         New-Item -ItemType Directory -Path (Split-Path $dest -Parent) -Force | Out-Null
         Copy-Item $src $dest -Recurse -Force
-        Write-Host "  + $type/$item"
+        Write-Host "  + $type/$rel"
     }
 }
 

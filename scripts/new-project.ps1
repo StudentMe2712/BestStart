@@ -8,7 +8,7 @@
     ONLY the tools it needs, copied (not symlinked) into projects/<name>/.claude/.
     Tools are organised by source bucket so nothing collides:
         agents:   ecc, gsd, awesome
-        skills:   ecc, superpowers, karpathy
+        skills:   ecc, alireza, superpowers, karpathy
         commands: ecc, gsd
         rules:    ecc, karpathy, best-practice
         hooks:    ecc, gsd, superpowers
@@ -25,7 +25,7 @@
     "none"  -> empty .claude scaffold, pick buckets manually with the flags below.
 
 .PARAMETER Agents     Comma list of agent buckets to copy: ecc,gsd,awesome  (or "all")
-.PARAMETER Skills     Comma list of skill buckets:          ecc,superpowers,karpathy (or "all")
+.PARAMETER Skills     Comma list of skill buckets:          ecc,alireza,superpowers,karpathy (or "all")
 .PARAMETER Commands   Comma list of command buckets:        ecc,gsd (or "all")
 .PARAMETER Rules      Comma list of rule buckets:           ecc,karpathy,best-practice (or "all")
 .PARAMETER Hooks      Comma list of hook buckets:           ecc,gsd,superpowers (or "all")
