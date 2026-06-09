@@ -40,6 +40,21 @@ start/
 ./scripts/new-project.ps1 -Name shop -Template vibe -Mcp starter -Preset lean
 ```
 
+## 🤖 Autonomous workflow (the owner's standing instructions)
+The owner uses this repo as a launcher: they open the root, write a prompt (or drop a `.md`),
+and expect the whole task done with no manual steps. When given a task at the root:
+1. Scaffold a NEW project under `projects/<name>/` via `scripts/new-project.ps1` (never build
+   the app in the root itself). **Default `-Preset lean`.**
+2. Run the tool-selection gate below to add ~7 task-specific tools.
+3. Build it.
+4. **When done, commit and push to `origin` automatically** (this is durable authorization for
+   THIS repo — don't ask each time). Always `git pull` before starting in case another machine
+   pushed first.
+
+This is the portable copy of the owner's preferences so they apply on every clone / machine.
+Per-machine setup that git can't carry: GitHub auth, `.env` / MCP API keys, and `node_modules`
+(reinstall). See README → "Working across machines".
+
 ## ⛔ Tool-selection gate (MANDATORY before building anything)
 When I give you a new task or paste a prompt (mine or from another AI) inside a project,
 **do not start coding immediately.** First run the gate (also available as `/start-task`):

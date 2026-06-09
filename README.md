@@ -52,6 +52,25 @@ Two habits are baked into every project so Claude builds the right thing and lea
 - **claude-mem stays a plugin.** Memory is a self-contained app; the `-Memory` flag copies it
   in, then follow its upstream README to finish install.
 
+## Working across machines
+The repo is the source of truth, so the home/work loop is just normal git:
+```powershell
+git pull            # start of session — get what the other machine pushed
+# ... work: scaffold projects, build, etc. ...
+git add -A; git commit -m "..."; git push   # end of session
+```
+What travels via git: the whole `library/` catalog, `scripts/`, `projects/`, `CLAUDE.md`,
+`LESSONS.md`. What each machine needs set up once (git can't carry these):
+- **GitHub auth** — sign in on first clone/push (Git Credential Manager, `gh auth login`, or a PAT).
+- **Secrets** — `.env` and MCP API keys (github, exa, …) are gitignored; set them as env vars.
+- **Dependencies** — run `npm`/`bun install` inside any project that has them (`node_modules/` is ignored).
+- **PowerShell** — the `.ps1` scripts need Windows PowerShell or `pwsh` (on macOS/Linux).
+- **`_sources/`** is gitignored (re-cloneable provenance); you don't need it to use the catalog.
+
+> Heads-up: Claude Code's auto-memory lives in `~/.claude/`, **outside** this repo, so it does
+> not sync. Durable working preferences are kept in the committed `CLAUDE.md` instead, so they
+> apply on every clone.
+
 ## Sources & attribution
 Each upstream repo keeps its own license under `_sources/<repo>/`. Raw clones live in
 `_sources/` (provenance + future updates; safe to delete to reclaim space).
