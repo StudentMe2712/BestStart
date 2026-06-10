@@ -54,7 +54,7 @@ param(
     [string]$Commands,
     [string]$Rules,
     [string]$Hooks,
-    [ValidateSet('starter','full')] [string]$Mcp,
+    [ValidateSet('starter','vibe','full')] [string]$Mcp,
     [switch]$Memory,
     [switch]$List
 )

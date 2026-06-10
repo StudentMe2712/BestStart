@@ -1,0 +1,27 @@
+{
+  "//": "Vibecoding preset for full-stack web apps (the Bun/Hono/Prisma/React/Astro/Expo 'vibe' template). Copy to a project root as .mcp.json. context7 + playwright need no key; github + supabase need tokens set as env vars. Stays within the 3-5 active-server rule.",
+  "mcpServers": {
+    "context7": {
+      "//": "Current, version-specific library docs. No key.",
+      "command": "cmd",
+      "args": ["/c", "npx", "-y", "@upstash/context7-mcp"]
+    },
+    "playwright": {
+      "//": "Browser automation + E2E. No key.",
+      "command": "cmd",
+      "args": ["/c", "npx", "-y", "@playwright/mcp@latest"]
+    },
+    "github": {
+      "//": "[key] Official remote GitHub MCP. Needs GITHUB_PERSONAL_ACCESS_TOKEN.",
+      "type": "http",
+      "url": "https://api.githubcopilot.com/mcp/",
+      "headers": { "Authorization": "Bearer ${GITHUB_PERSONAL_ACCESS_TOKEN}" }
+    },
+    "supabase": {
+      "//": "[key] Supabase DB/config (read-only by default). Needs SUPABASE_ACCESS_TOKEN.",
+      "command": "cmd",
+      "args": ["/c", "npx", "-y", "@supabase/mcp-server-supabase@latest", "--read-only"],
+      "env": { "SUPABASE_ACCESS_TOKEN": "${SUPABASE_ACCESS_TOKEN}" }
+    }
+  }
+}

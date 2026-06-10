@@ -6,6 +6,13 @@ Add entries with `/lesson` (Scope: all-projects). Newest on top.
 
 ## Log
 
+### 2026-06-10 — Smart App Control silently blocks unsigned `.exe`s (ffmpeg) even after a clean install
+- **Problem:** `winget install Gyan.FFmpeg` succeeded and `ffmpeg.exe` was on PATH, but running it failed with *"An Application Control policy has blocked this file."* `bun` and `python` from the same winget batch ran fine.
+- **Root cause:** Windows 11 **Smart App Control** is ENFORCED on this machine (`HKLM\SYSTEM\CurrentControlSet\Control\CI\Policy\VerifiedAndReputablePolicyState = 1`). SAC blocks *unsigned / un-reputable* standalone executables; the GyanD ffmpeg build is `NotSigned`. Signed runtimes (node, python, git, bun) pass. Confirmed via `Microsoft-Windows-CodeIntegrity/Operational` event **3118** "Smart App Control Block" firing at the exact run time.
+- **Fix / options:** no clean per-app allow-list exists for SAC. Either (a) turn SAC off in Windows Security → App & browser control → Smart App Control — **IRREVERSIBLE** (can't re-enable without reinstalling Windows); (b) use a signed build (rare for ffmpeg); or (c) run ffmpeg-dependent skills (e.g. `transcribe`) on a machine without SAC. **npx/node/python-based MCP servers are unaffected** — the signed runtime executes the code.
+- **Rule:** on Windows 11, before relying on any unsigned native `.exe` (ffmpeg, gcomp, custom tools), check SAC state; if enforced, expect blocks. Never disable SAC silently — it's irreversible, so surface it as the user's call.
+- **Scope:** all-projects
+
 ### 2026-06-10 — Git for Windows ships a broken bundled ssh; point git at system OpenSSH with forward slashes
 - **Problem:** on a fresh machine `git clone git@github.com:…` failed with *"Could not read from remote repository … make sure you have the correct access rights and the repository exists"* — yet `ssh -T git@github.com` (system OpenSSH) authenticated fine (*"Hi StudentMe2712!"*). The wording points at a missing/no-access repo; it was neither. The repo existed and the key was valid.
 - **Root cause:** two layers. (1) Git's default ssh is the bundled MSYS `/usr/bin/ssh`, which on this box fails to even launch (exit 127), so git never reached GitHub. (2) Overriding with `GIT_SSH_COMMAND="C:\Windows\…\ssh.exe"` *also* failed: git runs that command through its bundled `sh`, which eats the backslashes (`C:\WINDOWS` → `C:WINDOWS` → "command not found").

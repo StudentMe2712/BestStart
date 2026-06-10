@@ -1,13 +1,13 @@
 {
-  "//": "Full MCP catalog (Windows). Copy to a project root as .mcp.json, then DELETE the servers you don't need. Running >5 active servers degrades tool selection. Servers needing a key won't start until you set the env var.",
+  "//": "Full MCP catalog (Windows, Claude Code). This is a CATALOG, not a live config. Copy to a project root as .mcp.json and DELETE everything that project doesn't need — running >5 active servers degrades tool selection. Servers tagged [key] won't start until you set the env var; keep secrets OUT of git (set them as environment variables). Package names verified June 2026.",
   "mcpServers": {
     "context7": {
-      "//": "Up-to-date, version-specific library docs. No key. Highly recommended.",
+      "//": "Up-to-date, version-specific library docs — kills hallucinated APIs. No key (optional CONTEXT7_API_KEY raises rate limits).",
       "command": "cmd",
       "args": ["/c", "npx", "-y", "@upstash/context7-mcp"]
     },
     "playwright": {
-      "//": "Browser automation + E2E testing via accessibility tree. No key.",
+      "//": "Browser automation + E2E testing via the accessibility tree. No key.",
       "command": "cmd",
       "args": ["/c", "npx", "-y", "@playwright/mcp@latest"]
     },
@@ -16,31 +16,54 @@
       "command": "cmd",
       "args": ["/c", "npx", "-y", "@modelcontextprotocol/server-sequential-thinking"]
     },
-    "github": {
-      "//": "GitHub API: PRs, issues, repos. Needs a Personal Access Token.",
-      "command": "cmd",
-      "args": ["/c", "npx", "-y", "@modelcontextprotocol/server-github"],
-      "env": { "GITHUB_PERSONAL_ACCESS_TOKEN": "${GITHUB_PERSONAL_ACCESS_TOKEN}" }
-    },
     "memory": {
-      "//": "Knowledge-graph memory. Overlaps with claude-mem; pick ONE. No key.",
+      "//": "Knowledge-graph memory across sessions. Overlaps claude-mem — pick ONE. No key.",
       "command": "cmd",
       "args": ["/c", "npx", "-y", "@modelcontextprotocol/server-memory"]
     },
     "filesystem": {
-      "//": "Extra filesystem access scoped to given roots. Edit the path. No key.",
+      "//": "Filesystem access scoped to the given root(s). EDIT the path to the project you copy this into. No key.",
       "command": "cmd",
-      "args": ["/c", "npx", "-y", "@modelcontextprotocol/server-filesystem", "C:\\Users\\Mila\\Desktop\\start"]
-    },
-    "exa": {
-      "//": "Web/code search (hosted). May require an Exa account/key on their side.",
-      "type": "http",
-      "url": "https://mcp.exa.ai/mcp"
+      "args": ["/c", "npx", "-y", "@modelcontextprotocol/server-filesystem", "C:\\Users\\Milla\\Desktop\\Project"]
     },
     "deepwiki": {
       "//": "Ask questions about any public GitHub repo's docs. No key.",
       "command": "cmd",
       "args": ["/c", "npx", "-y", "deepwiki-mcp"]
+    },
+    "github": {
+      "//": "[key] GitHub's OFFICIAL remote MCP (PRs, issues, repos, actions). NOTE: the old npm @modelcontextprotocol/server-github is deprecated. Needs a PAT in GITHUB_PERSONAL_ACCESS_TOKEN. Docker alternative: ghcr.io/github/github-mcp-server.",
+      "type": "http",
+      "url": "https://api.githubcopilot.com/mcp/",
+      "headers": { "Authorization": "Bearer ${GITHUB_PERSONAL_ACCESS_TOKEN}" }
+    },
+    "supabase": {
+      "//": "[key] Supabase: tables, config, SQL, edge functions. '--read-only' is a safety default — drop it to allow writes. Needs SUPABASE_ACCESS_TOKEN.",
+      "command": "cmd",
+      "args": ["/c", "npx", "-y", "@supabase/mcp-server-supabase@latest", "--read-only"],
+      "env": { "SUPABASE_ACCESS_TOKEN": "${SUPABASE_ACCESS_TOKEN}" }
+    },
+    "postgres": {
+      "//": "[key] Read-only Postgres: inspect schema + run SELECTs. Put your URL in DATABASE_URL. For writes / health checks / index tuning use 'Postgres MCP Pro' (uvx postgres-mcp).",
+      "command": "cmd",
+      "args": ["/c", "npx", "-y", "@modelcontextprotocol/server-postgres", "${DATABASE_URL}"]
+    },
+    "n8n": {
+      "//": "[key optional] Build/inspect n8n workflows. Works in docs-only mode with no key; set N8N_API_URL + N8N_API_KEY to manage a live instance.",
+      "command": "cmd",
+      "args": ["/c", "npx", "-y", "n8n-mcp"],
+      "env": { "N8N_API_URL": "${N8N_API_URL}", "N8N_API_KEY": "${N8N_API_KEY}" }
+    },
+    "exa": {
+      "//": "[key] Web/code search (hosted). Needs an Exa account/key on their side.",
+      "type": "http",
+      "url": "https://mcp.exa.ai/mcp"
+    },
+    "brave-search": {
+      "//": "[key] Privacy-friendly web search. Needs BRAVE_API_KEY (free tier available).",
+      "command": "cmd",
+      "args": ["/c", "npx", "-y", "@modelcontextprotocol/server-brave-search"],
+      "env": { "BRAVE_API_KEY": "${BRAVE_API_KEY}" }
     }
   }
 }
