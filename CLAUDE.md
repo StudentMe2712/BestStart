@@ -55,6 +55,19 @@ This is the portable copy of the owner's preferences so they apply on every clon
 Per-machine setup that git can't carry: GitHub auth, `.env` / MCP API keys, and `node_modules`
 (reinstall). See README → "Working across machines".
 
+## 🐳 Docker-first isolation (every project runs in its own containers)
+Projects must not pollute the host or collide with each other. `new-project.ps1` (default — pass
+`-NoDocker` to skip) scaffolds a per-project `docker-compose.yml` (app + its own Postgres), a
+`Dockerfile`, and a `.env` with **auto-allocated free host ports** (`APP_PORT`, `DB_PORT`) so two
+projects never clash. When building a project:
+- Write/adjust the project's `Dockerfile` for its actual stack, then run it with
+  `docker compose up --build` (the generated stub explains how). Never `npm/bun/pip install` on the
+  host or bind well-known ports directly.
+- Put every service the project needs (db, cache, queue) in **that project's** compose — scoped
+  container names `<project>-*`, named volumes, ports taken from `.env`.
+- Machine-level shared services (one n8n, a scratch Postgres) live in
+  `library/docker/local-services.yml` — don't duplicate those per project.
+
 ## ⛔ Tool-selection gate (MANDATORY before building anything)
 When I give you a new task or paste a prompt (mine or from another AI) inside a project,
 **do not start coding immediately.** First run the gate (also available as `/start-task`):

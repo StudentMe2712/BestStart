@@ -56,6 +56,7 @@ param(
     [string]$Hooks,
     [ValidateSet('starter','vibe','full')] [string]$Mcp,
     [switch]$Memory,
+    [switch]$NoDocker,
     [switch]$List
 )
 
@@ -67,6 +68,30 @@ $Projects= Join-Path $Root 'projects'
 function Get-Buckets($dir) {
     if (-not (Test-Path $dir)) { return @() }
     Get-ChildItem $dir -Directory | Select-Object -ExpandProperty Name
+}
+
+function Get-FreePort {
+    param([int]$Start, [int]$End, [int[]]$Exclude = @())
+    for ($p = $Start; $p -le $End; $p++) {
+        if ($Exclude -contains $p) { continue }
+        if (Get-NetTCPConnection -LocalPort $p -State Listen -ErrorAction SilentlyContinue) { continue }
+        try { $l = [System.Net.Sockets.TcpListener]::new([System.Net.IPAddress]::Loopback, $p); $l.Start(); $l.Stop(); return $p } catch { }
+    }
+    throw "No free host port found in range $Start-$End"
+}
+
+function Get-AllocatedPorts($projectsDir) {
+    # ports already written into other projects' .env (avoid conflicts even when those are stopped)
+    $used = @()
+    Get-ChildItem $projectsDir -Directory -ErrorAction SilentlyContinue | ForEach-Object {
+        $envFile = Join-Path $_.FullName '.env'
+        if (Test-Path $envFile) {
+            foreach ($line in Get-Content $envFile) {
+                if ($line -match '^\s*(?:APP_PORT|DB_PORT)\s*=\s*(\d+)') { $used += [int]$Matches[1] }
+            }
+        }
+    }
+    ,$used
 }
 
 function Show-Catalog {
@@ -160,6 +185,103 @@ if ($Mcp) {
     Write-Host "  + .mcp.json ($Mcp pack) — set any required API keys as env vars" -ForegroundColor DarkGray
 }
 
+# Per-project Docker isolation (default; -NoDocker to skip). Each project gets its own app+db
+# containers, scoped names, and auto-allocated FREE host ports so projects never collide.
+$dockerSection = ""
+if (-not $NoDocker) {
+    $excluded  = Get-AllocatedPorts $Projects
+    $appPort   = Get-FreePort -Start 3001 -End 3999 -Exclude $excluded
+    $dbPort    = Get-FreePort -Start 5433 -End 5999 -Exclude (@($excluded) + $appPort)
+    $utf8NoBom = New-Object System.Text.UTF8Encoding $false   # docker reads .env/compose; a BOM breaks them
+
+    $envContent = @"
+# Auto-allocated free host ports - avoids conflicts with other projects.
+APP_PORT=$appPort
+DB_PORT=$dbPort
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=postgres
+POSTGRES_DB=app
+# host-side URL (psql / the postgres MCP); inside compose the app uses db:5432
+DATABASE_URL=postgresql://postgres:postgres@localhost:$dbPort/app
+"@
+    [IO.File]::WriteAllText((Join-Path $projDir '.env'), $envContent, $utf8NoBom)
+
+    $compose = @'
+name: __NAME__
+services:
+  app:
+    build: .
+    container_name: __NAME__-app
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@db:5432/app
+    ports:
+      - "${APP_PORT}:3000"
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - .:/app
+  db:
+    image: postgres:17
+    container_name: __NAME__-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - "${DB_PORT}:5432"
+    volumes:
+      - __NAME___pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+volumes:
+  __NAME___pgdata:
+'@
+    [IO.File]::WriteAllText((Join-Path $projDir 'docker-compose.yml'), $compose.Replace('__NAME__', $Name), $utf8NoBom)
+
+    $dockerfile = @'
+# Placeholder - Claude fills this in for the project's real stack as part of building.
+# Example (Bun):
+#   FROM oven/bun:1
+#   WORKDIR /app
+#   COPY package.json bun.lock* ./
+#   RUN bun install
+#   COPY . .
+#   CMD ["bun", "run", "start"]
+# Example (Node):
+#   FROM node:22-slim
+#   WORKDIR /app
+#   COPY package*.json ./
+#   RUN npm ci
+#   COPY . .
+#   CMD ["npm", "start"]
+FROM alpine:3
+WORKDIR /app
+CMD ["sh","-c","echo 'TODO: write a real Dockerfile for this project stack'; sleep infinity"]
+'@
+    [IO.File]::WriteAllText((Join-Path $projDir 'Dockerfile'), $dockerfile, $utf8NoBom)
+    [IO.File]::WriteAllText((Join-Path $projDir '.dockerignore'), "node_modules`n.git`n.env`ndist`nbuild`n.claude`n", $utf8NoBom)
+
+    Write-Host "  + docker-compose.yml (app+db) + Dockerfile + .env  [app:$appPort db:$dbPort]" -ForegroundColor DarkGray
+
+    $dockerSection = @'
+## Run in Docker (isolated - do this, don't install on the host)
+This project is containerised so it never conflicts with other projects.
+- Ports: app **__APP__** (host) -> 3000, db **__DB__** (host) -> 5432. Defined in `.env`.
+- Bring it up: `docker compose up --build`   (stop: `docker compose down`).
+- First write a real `Dockerfile` for this project's stack (the stub explains how).
+- App reaches Postgres at `db:5432` inside the compose network; host tools use `localhost:__DB__`.
+
+'@
+    $dockerSection = $dockerSection.Replace('__APP__', "$appPort").Replace('__DB__', "$dbPort")
+}
+
 # Project LESSONS.md (from template) — paired with the /lesson command
 $projLessons = Join-Path $projDir 'LESSONS.md'
 if (-not (Test-Path $projLessons)) {
@@ -182,6 +304,7 @@ baseline philosophy in the root CLAUDE.md.
 ## Stack
 - (describe languages, frameworks, run commands here)
 
+$dockerSection
 ## Tools enabled (copied from root library into .claude/)
 - agents:   $Agents
 - skills:   $Skills
