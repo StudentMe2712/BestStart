@@ -52,11 +52,26 @@ claude mcp add context7 -- cmd /c npx -y @upstash/context7-mcp
 Verify with `claude mcp list` (or `/mcp` inside a session).
 
 ## Globally active on this machine
-The keyless starter trio (**context7 + playwright + sequential-thinking**) is registered at
-**user scope** (`claude mcp add --scope user`), so it's live in every project without copying a
-file. Remove with `claude mcp remove <name> -s user` for strict per-project control instead.
-User-scope config lives in `~/.claude.json`, which **does not sync via git** — re-add it on each
-machine (one-time, like the rest of `~/.claude/`).
+Registered at **user scope** (`claude mcp add -s user`), so they're live in every project without
+copying a file:
+- **context7, playwright, sequential-thinking** — keyless trio.
+- **github** — official remote server; token read from the `GITHUB_PERSONAL_ACCESS_TOKEN` env var.
+- **postgres** — points at the local dev DB below.
+
+Remove any with `claude mcp remove <name> -s user`. User-scope config lives in `~/.claude.json`,
+which **does not sync via git** — re-add on each machine (one-time, like the rest of `~/.claude/`).
+
+## Local services (Docker, this machine)
+Two machine-level containers back the DB / automation MCP servers. Recreate on any machine with
+`docker compose -f library/docker/local-services.yml up -d`:
+
+| Service | Container | Host port | Connect via |
+|---------|-----------|-----------|-------------|
+| Postgres 17 | `beststart-postgres` | **5433** (5432 is often a per-project DB) | `DATABASE_URL=postgresql://postgres:postgres@localhost:5433/app` |
+| n8n | `beststart-n8n` | **5678** | `N8N_API_URL=http://localhost:5678` |
+
+**n8n one-time:** open http://localhost:5678, create the owner account, then Settings → **n8n API**
+→ create an API key and set it as `N8N_API_KEY`. Until then the n8n MCP runs in docs-only mode.
 
 ## Windows notes
 - Every stdio config uses `"command": "cmd", "args": ["/c","npx",...]`. Bare `npx` frequently

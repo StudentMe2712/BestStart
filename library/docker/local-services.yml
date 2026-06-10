@@ -1,0 +1,42 @@
+# Machine-level dev services for the BestStart rig (shared across projects).
+# Recreate on any machine:   docker compose -f library/docker/local-services.yml up -d
+#
+# Postgres is published on host port 5433 on purpose — 5432 is frequently taken by a
+# per-project database container (the preferred isolation pattern; see this file's n8n note).
+# If you already created these containers by hand, `docker rm -f beststart-postgres beststart-n8n`
+# first (named volumes below keep the data).
+#
+# After `up`, set these env vars (user scope; they don't travel via git):
+#   DATABASE_URL = postgresql://postgres:postgres@localhost:5433/app
+#   N8N_API_URL  = http://localhost:5678
+#   N8N_API_KEY  = <create in the n8n UI: Settings -> n8n API>
+
+services:
+  postgres:
+    image: postgres:17
+    container_name: beststart-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres      # local-only throwaway creds
+      POSTGRES_DB: app
+    ports:
+      - "5433:5432"
+    volumes:
+      - beststart_pgdata:/var/lib/postgresql/data
+
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: beststart-n8n
+    restart: unless-stopped
+    environment:
+      N8N_SECURE_COOKIE: "false"        # allow login over plain http on localhost
+      GENERIC_TIMEZONE: Asia/Almaty
+    ports:
+      - "5678:5678"
+    volumes:
+      - beststart_n8ndata:/home/node/.n8n
+
+volumes:
+  beststart_pgdata:
+  beststart_n8ndata:
