@@ -36,7 +36,7 @@ MAX_FILE_BYTES = 25 * 1024 * 1024  # 25 MB
 # Universal file inbox — extensions we know how to extract text from.
 ALLOWED_FILE_EXTS = {
     "txt", "text", "md", "markdown", "log", "csv", "json", "rst",
-    "html", "htm", "pdf", "docx",
+    "html", "htm", "pdf", "docx", "pptx", "xlsx", "xls",
 }
 
 

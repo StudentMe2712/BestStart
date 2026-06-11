@@ -14,7 +14,6 @@ mirroring the anti-injection handling of chat <context>.
 from __future__ import annotations
 
 import asyncio
-import io
 import ipaddress
 import logging
 import socket
@@ -108,27 +107,40 @@ async def _extract_article(url: str, max_redirects: int = 5) -> tuple[str | None
     raise ValueError("too many redirects")
 
 
-def pdf_to_text(data: bytes) -> str:
-    """Extract text from PDF bytes (pure-python pypdf)."""
-    from pypdf import PdfReader
-
-    reader = PdfReader(io.BytesIO(data))
-    pages = [(page.extract_text() or "").strip() for page in reader.pages]
-    return "\n\n".join(p for p in pages if p).strip()
+# Office/PDF documents go through markitdown → Markdown (headings, tables and
+# lists are preserved), which embeds and reads far better than a flat text dump.
+# markitdown is imported lazily and the instance cached.
+_MARKITDOWN_EXTS = {"pdf", "docx", "pptx", "xlsx", "xls"}
+_md = None
 
 
-def docx_to_text(data: bytes) -> str:
-    """Extract text from a .docx (Office Open XML) document (python-docx)."""
-    import docx  # python-docx
+def _markitdown():
+    global _md
+    if _md is None:
+        from markitdown import MarkItDown
 
-    document = docx.Document(io.BytesIO(data))
-    parts: list[str] = [p.text for p in document.paragraphs if p.text.strip()]
-    for table in document.tables:  # flatten tables row-by-row
-        for row in table.rows:
-            cells = [c.text.strip() for c in row.cells if c.text.strip()]
-            if cells:
-                parts.append(" | ".join(cells))
-    return "\n\n".join(parts).strip()
+        _md = MarkItDown(enable_plugins=False)
+    return _md
+
+
+def document_to_text(filename: str, data: bytes) -> str:
+    """Convert a pdf/docx/pptx/xlsx document to text via markitdown.
+
+    markitdown reads from a path, so the upload bytes are written to a temp file
+    (with the right extension, which markitdown uses to pick the converter).
+    """
+    import os
+    import tempfile
+
+    suffix = f".{_ext_of(filename)}" if "." in filename else ""
+    fd, tmp_path = tempfile.mkstemp(suffix=suffix)
+    try:
+        with os.fdopen(fd, "wb") as f:
+            f.write(data)
+        result = _markitdown().convert(tmp_path)
+        return (getattr(result, "text_content", "") or "").strip()
+    finally:
+        os.remove(tmp_path)
 
 
 # Plain-text-ish extensions we can decode as UTF-8 directly (Markdown is stored
@@ -143,15 +155,14 @@ def _ext_of(filename: str) -> str:
 def extract_file_text(filename: str, data: bytes) -> tuple[str | None, str]:
     """Dispatch an uploaded file to the right extractor → (title, text).
 
-    Supports pdf / docx / html / and plain-text family (txt/md/…). Raises
-    ValueError on an unsupported type. The caller wraps the result as UNTRUSTED
-    data (anti-injection) just like article/PDF ingest.
+    Office/PDF (pdf/docx/pptx/xlsx) → markitdown; html → readable text;
+    plain-text family (txt/md/…) decoded as UTF-8. Raises ValueError on an
+    unsupported type. The caller wraps the result as UNTRUSTED data
+    (anti-injection) just like article/PDF ingest.
     """
     ext = _ext_of(filename)
-    if ext == "pdf":
-        return None, pdf_to_text(data)
-    if ext == "docx":
-        return None, docx_to_text(data)
+    if ext in _MARKITDOWN_EXTS:
+        return None, document_to_text(filename, data)
     if ext in ("html", "htm"):
         return html_to_text(data.decode("utf-8", errors="replace"))
     if ext in _TEXT_EXTS or ext == "":
@@ -246,7 +257,7 @@ async def ingest_pdf(session: AsyncSession, filename: str, data: bytes) -> Conte
     session.add(src)
     await session.flush()
     try:
-        text = pdf_to_text(data)
+        text = document_to_text(filename, data)
         await _finalize(session, src, title=filename, text=text)
     except Exception as e:  # noqa: BLE001
         await _fail(session, src, f"pdf extract failed: {e}")

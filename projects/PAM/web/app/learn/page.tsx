@@ -133,8 +133,9 @@ export default function LearnPage() {
         </div>
         <p className="text-neutral-400 mt-2 text-sm font-sans">
           Добавь материал — ссылку на статью или YouTube, файл
-          (PDF/DOCX/TXT/MD/HTML) или вставь текст. PAM извлечёт его, добавит в
-          память и сможет собрать по нему персональный мини-курс с тестом.
+          (PDF/DOCX/PPTX/XLSX/TXT/MD/HTML) или вставь текст. PAM извлечёт его,
+          добавит в память и сможет собрать по нему персональный мини-курс с
+          тестом.
         </p>
       </header>
 
@@ -178,13 +179,13 @@ export default function LearnPage() {
           <input
             ref={fileRef}
             type="file"
-            accept=".pdf,.docx,.txt,.md,.markdown,.html,.htm,.csv,.json,.log,.rst"
+            accept=".pdf,.docx,.pptx,.xlsx,.xls,.txt,.md,.markdown,.html,.htm,.csv,.json,.log,.rst"
             onChange={onFile}
             disabled={adding}
             className="text-xs file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border file:border-neutral-700 file:bg-transparent file:text-neutral-200 file:cursor-pointer hover:file:border-lime-400/50"
           />
           <span className="text-[10px] text-neutral-600">
-            PDF · DOCX · TXT · MD · HTML
+            PDF · DOCX · PPTX · XLSX · TXT · MD · HTML
           </span>
         </div>
       </section>
