@@ -300,8 +300,8 @@ export default function CourseReaderPage() {
                     Исходный материал
                   </h3>
                   {source?.text ? (
-                    <div className="text-sm font-sans text-neutral-300 whitespace-pre-wrap leading-relaxed max-h-[600px] overflow-y-auto rounded-lg border border-neutral-800 bg-neutral-900/40 p-4">
-                      {source.text}
+                    <div className="max-h-[600px] overflow-y-auto rounded-lg border border-neutral-800 bg-neutral-900/40 px-4 py-3">
+                      <Markdown>{source.text}</Markdown>
                     </div>
                   ) : (
                     <p className="text-neutral-500 text-sm font-sans">

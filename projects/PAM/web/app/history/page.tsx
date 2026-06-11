@@ -54,7 +54,7 @@ export default function HistoryPage() {
   }, [query, source, mode])
 
   return (
-    <main className="max-w-5xl mx-auto px-6 py-8">
+    <main className="max-w-[1700px] mx-auto px-6 py-8">
       <header className="border-b border-neutral-800 pb-6 mb-6">
         <div className="text-xs uppercase tracking-widest text-lime-400 mb-2">
           /// импорт_истории

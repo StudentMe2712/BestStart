@@ -22,7 +22,10 @@ from .models import Course, ContentSource, ProfileFact
 
 log = logging.getLogger(__name__)
 
-MAX_MATERIAL_CHARS = 12_000  # excerpt fed to the LLM (v1: head of the material)
+# Excerpt fed to the LLM (head of the material). Держим ~9k, чтобы под Groq
+# free-tier лимитом (~8000 токенов/мин) оставался запас на РАЗВЁРНУТЫЙ конспект
+# в ответе (иначе JSON обрежется → json_validate_failed).
+MAX_MATERIAL_CHARS = 9_000
 MAX_PROFILE_FACTS = 30
 
 COURSE_SYSTEM = (
@@ -39,7 +42,12 @@ COURSE_SYSTEM = (
     '"modules": [{"title": str, "lessons": [{"title": str, "content": str}]}], '
     '"quiz": [{"question": str, "options": [str, ...], "answer_index": int, "explanation": str}]}. '
     "Правила:\n"
-    "1) Всё по-русски. 3–5 модулей, в каждом 1–3 урока; урок — связный абзац(ы) объяснения ПО МАТЕРИАЛУ.\n"
+    "1) Всё по-русски. Сделай 4–5 модулей, в каждом 2–3 урока. Каждый урок — "
+    "РАЗВЁРНУТЫЙ конспект на 3–4 абзаца (ориентир ~600–1000 знаков): подробно "
+    "раскрой понятие, поясни детали и приведи конкретный пример — строго ПО "
+    "МАТЕРИАЛУ. Используй markdown: маркированные списки (- …) и **выделение** "
+    "ключевых терминов. Это материал для изучения — пиши содержательно и связно, "
+    "НЕ тезисом в одну строку и без воды.\n"
     "2) title и темы модулей должны отражать содержание <material>, а не профиль.\n"
     "3) level — на какой уровень рассчитан курс (учитывая профиль ученика).\n"
     "4) quiz — 3–5 вопросов СТРОГО по материалу, 3–4 варианта; answer_index — индекс правильного (с нуля).\n"

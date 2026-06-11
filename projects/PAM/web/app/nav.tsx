@@ -15,7 +15,7 @@ export default function Nav() {
 
   return (
     <header className="sticky top-0 z-20 border-b border-neutral-800 bg-neutral-950/80 backdrop-blur">
-      <div className="max-w-5xl mx-auto px-6 h-14 flex items-center justify-between">
+      <div className="max-w-[1700px] mx-auto px-6 h-14 flex items-center justify-between">
         <Link href="/" className="flex items-center gap-2">
           <Logo />
           <span className="text-sm font-semibold tracking-wide">PAM</span>
