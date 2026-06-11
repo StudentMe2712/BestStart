@@ -22,6 +22,11 @@ class Settings(BaseSettings):
     # поле, в content не течёт), быстрая и многоязычная. Можно вернуть
     # llama-3.3-70b-versatile / meta-llama/llama-4-scout-17b-16e-instruct.
     GROQ_MODEL: str = "openai/gpt-oss-120b"
+    # JSON-mode completions (курсы, извлечение фактов) НЕЛЬЗЯ гонять на reasoning-
+    # моделях: gpt-oss держит chain-of-thought в ответе и обрезает JSON → Groq
+    # отдаёт 400 json_validate_failed (плюс free-tier лимит ~8000 токенов/мин).
+    # Для структурированного JSON берём обычную (не-reasoning) модель.
+    GROQ_JSON_MODEL: str = "llama-3.3-70b-versatile"
     # OpenRouter — один ключ на десятки моделей (OpenAI-совместимо). Ключ:
     # https://openrouter.ai/keys (бесплатно, без карты). Сильные free-модели:
     # deepseek/deepseek-r1:free, deepseek/deepseek-chat:free, qwen/qwen3-235b-a22b:free.

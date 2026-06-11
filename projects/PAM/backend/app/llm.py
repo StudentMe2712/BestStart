@@ -146,8 +146,10 @@ async def complete(messages: list[dict], json_mode: bool = False) -> str:
             messages, OPENROUTER_URL, settings.OPENROUTER_API_KEY,
             settings.OPENROUTER_MODEL, "OPENROUTER_API_KEY", json_mode, OPENROUTER_HEADERS,
         )
+    # Non-streaming completions (курсы/факты, обычно json_mode) — не-reasoning
+    # модель, иначе JSON обрезается (см. GROQ_JSON_MODEL в config).
     return await _complete_openai_compatible(
-        messages, GROQ_URL, settings.GROQ_API_KEY, settings.GROQ_MODEL,
+        messages, GROQ_URL, settings.GROQ_API_KEY, settings.GROQ_JSON_MODEL,
         "GROQ_API_KEY", json_mode,
     )
 
