@@ -365,6 +365,43 @@ export const TOOLS: CatalogTool[] = [
   }
 ]
 
+// GitHub-звёзды (приблизительно, на снимок каталога) — для сортировки и
+// отображения. 0 = нет публичного репозитория (продукт/хостед-сервис).
+export const STARS: Record<string, number> = {
+  autogpt: 182000, n8n: 170000, ollama: 164000, langchain: 100000,
+  "browser-use": 92000, openhands: 70000, aider: 62000, cline: 61000,
+  context7: 56000, crewai: 46000, continue: 38000, "playwright-mcp": 30000,
+  "github-mcp": 29000, composio: 15000, litellm: 15000, "figma-context": 14000,
+  "google-genai-toolbox": 14000, "vercel-ai-sdk": 14000, pgvector: 13000,
+  "chrome-devtools-mcp": 11000, "aws-mcp": 9000, "filesystem-mcp": 8000,
+  "postgres-mcp": 8000, firecrawl: 6000, "sentry-mcp": 5000, "slack-mcp": 5000,
+  "notion-mcp": 4400, "supabase-mcp": 2700, "exa-search": 1800, "stripe-mcp": 1500,
+  "pinecone-mcp": 1200, "openapi-mcp": 900, "elastic-mcp": 700, "deepl-mcp": 600,
+  "zapier-mcp": 0, "github-copilot": 0, "claude-code": 0
+}
+
+// GitHub-аккаунт для иконки, когда url ведёт не на github.com.
+const ICON_ORG: Record<string, string> = {
+  n8n: "n8n-io",
+  crewai: "crewAIInc",
+  "claude-code": "anthropics",
+  composio: "ComposioHQ",
+  "pinecone-mcp": "pinecone-io",
+  "exa-search": "exa-labs"
+}
+
+export const starsOf = (t: CatalogTool) => STARS[t.slug] ?? 0
+export const byStars = (a: CatalogTool, b: CatalogTool) => starsOf(b) - starsOf(a)
+
+export const fmtStars = (n: number) =>
+  n >= 1000 ? (n / 1000).toFixed(n >= 10000 ? 0 : 1).replace(/\.0$/, "") + "k" : String(n)
+
+/** Иконка инструмента: аватар GitHub-аккаунта (если есть репозиторий), иначе null. */
+export function iconUrl(t: CatalogTool): string | null {
+  const org = ICON_ORG[t.slug] ?? t.url.match(/github\.com\/([^/]+)/)?.[1]
+  return org ? `https://github.com/${org}.png?size=80` : null
+}
+
 export const getTool = (slug: string) => TOOLS.find((t) => t.slug === slug)
 export const featuredTools = () => TOOLS.filter((t) => t.featured)
 export const popularMcp = () => TOOLS.filter((t) => t.category === "mcp" && t.popular)

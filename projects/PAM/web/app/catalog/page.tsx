@@ -13,7 +13,10 @@ import {
   toolsList,
   newTools,
   updatedTools,
-  countByCategory,
+  starsOf,
+  byStars,
+  fmtStars,
+  iconUrl,
   type CatalogTool,
   type CatalogCategory
 } from "../../lib/catalog"
@@ -73,10 +76,8 @@ export default function CatalogPage() {
           .includes(q)
       )
     }
-    return base
+    return [...base].sort(byStars)
   }, [view, q])
-
-  const showSections = view === "all" && !q
 
   return (
     <div className="max-w-[1700px] mx-auto px-6 py-8">
@@ -149,26 +150,6 @@ export default function CatalogPage() {
             </div>
           </div>
 
-          {/* CTA */}
-          <div className="rounded-xl border border-neutral-800 bg-neutral-950 p-5 text-center">
-            <div className="mx-auto w-12 h-12 rounded-xl bg-lime-400/10 border border-lime-400/30 grid place-items-center text-lime-400 mb-3">
-              <CubeGlyph />
-            </div>
-            <div className="text-sm font-semibold font-sans">
-              Не нашли нужный инструмент?
-            </div>
-            <p className="text-neutral-500 text-xs font-sans mt-1 mb-3">
-              Предложите ресурс для каталога и помогите сообществу PAM.
-            </p>
-            <a
-              href="https://github.com/StudentMe2712/PAM/issues/new"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-block w-full px-4 py-2 rounded-lg bg-lime-400 text-neutral-950 font-medium text-sm hover:bg-lime-300 transition-colors">
-              Предложить инструмент
-            </a>
-          </div>
-
           <p className="text-[11px] text-neutral-600 font-sans px-1">
             Каталог обновляется сообществом. Подробнее в{" "}
             <code className="text-neutral-500">docs/ai-ecosystem-catalog.md</code>.
@@ -223,96 +204,56 @@ export default function CatalogPage() {
             </div>
           </div>
 
-          {showSections ? (
-            <div className="space-y-10">
-              <Section
-                icon={<span className="text-lime-400"><SparkGlyph /></span>}
-                title="Рекомендуемое"
-                subtitle="Подборка инструментов, которые стоит попробовать"
-                onSeeAll={() => setView("featured")}>
-                <Carousel>
-                  {featuredTools().map((t) => (
-                    <FeaturedCard key={t.slug} tool={t} />
-                  ))}
-                </Carousel>
-              </Section>
-
-              <Section
-                icon={<RocketGlyph />}
-                title="Популярные MCP-серверы"
-                subtitle="Самые используемые и высокооценённые"
-                onSeeAll={() => setView("popular")}>
-                <Carousel>
-                  {popularMcp().map((t) => (
-                    <ToolCard key={t.slug} tool={t} />
-                  ))}
-                </Carousel>
-              </Section>
-
-              <Section
-                icon={<WrenchGlyph />}
-                title="Инструменты"
-                subtitle="Полезные утилиты и сервисы для работы и автоматизации"
-                onSeeAll={() => setView("tools")}>
-                <Carousel>
-                  {toolsList().map((t) => (
-                    <ToolCard key={t.slug} tool={t} />
-                  ))}
-                </Carousel>
-              </Section>
-
-              <Section
-                icon={<GiftGlyph />}
-                title="Новые поступления"
-                subtitle="Недавно добавленные в каталог"
-                onSeeAll={() => setView("new")}>
-                <Carousel>
-                  {newTools().map((t) => (
-                    <ToolCard key={t.slug} tool={t} />
-                  ))}
-                </Carousel>
-              </Section>
-
-              <Section
-                icon={<ClockGlyph />}
-                title="Недавно обновлённые"
-                subtitle="Свежие версии популярных инструментов"
-                onSeeAll={() => setView("updated")}>
-                <Carousel>
-                  {updatedTools().map((t) => (
-                    <ToolCard key={t.slug} tool={t} />
-                  ))}
-                </Carousel>
-              </Section>
-            </div>
-          ) : (
-            <div>
-              <div className="flex items-baseline justify-between mb-4">
-                <h3 className="text-lg font-semibold">
-                  {q
-                    ? `Результаты: «${query.trim()}»`
-                    : viewTitle(view)}
+          {view === "all" && !q && (
+            <section className="mb-10">
+              <div className="mb-4">
+                <h3 className="text-lg font-semibold flex items-center gap-2">
+                  <span className="text-lime-400">
+                    <SparkGlyph />
+                  </span>
+                  Топ · Рекомендуемое
                 </h3>
-                <span className="text-sm text-neutral-500 font-sans">
-                  {results.length}{" "}
-                  {plural(results.length, "инструмент", "инструмента", "инструментов")}
-                </span>
+                <p className="text-neutral-500 text-sm font-sans mt-0.5">
+                  Подборка инструментов, которые стоит попробовать
+                </p>
               </div>
-              {results.length === 0 ? (
-                <div className="text-neutral-500 text-sm py-16 border border-dashed border-neutral-800 rounded-xl text-center font-sans">
-                  Ничего не найдено. Попробуй другой запрос или фильтр.
-                </div>
-              ) : (
-                <div
-                  className="grid gap-4"
-                  style={{ gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))" }}>
-                  {results.map((t) => (
-                    <ToolCard key={t.slug} tool={t} />
-                  ))}
-                </div>
-              )}
-            </div>
+              <Carousel>
+                {[...featuredTools()].sort(byStars).map((t) => (
+                  <FeaturedCard key={t.slug} tool={t} />
+                ))}
+              </Carousel>
+            </section>
           )}
+
+          <div>
+            <div className="flex items-baseline justify-between gap-3 mb-4 flex-wrap">
+              <h3 className="text-lg font-semibold">
+                {q
+                  ? `Результаты: «${query.trim()}»`
+                  : view === "all"
+                    ? "Все инструменты"
+                    : viewTitle(view)}
+              </h3>
+              <span className="text-sm text-neutral-500 font-sans">
+                {results.length}{" "}
+                {plural(results.length, "инструмент", "инструмента", "инструментов")} · по
+                звёздам GitHub ★
+              </span>
+            </div>
+            {results.length === 0 ? (
+              <div className="text-neutral-500 text-sm py-16 border border-dashed border-neutral-800 rounded-xl text-center font-sans">
+                Ничего не найдено. Попробуй другой запрос или фильтр.
+              </div>
+            ) : (
+              <div
+                className="grid gap-4"
+                style={{ gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))" }}>
+                {results.map((t) => (
+                  <ToolCard key={t.slug} tool={t} />
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>
@@ -393,6 +334,29 @@ function Carousel({ children }: { children: React.ReactNode }) {
 
 // ── Карточки ────────────────────────────────────────────────────────────
 
+function Logo({ tool, big = false }: { tool: CatalogTool; big?: boolean }) {
+  const a = ACCENTS[tool.accent]
+  const url = iconUrl(tool)
+  const [ok, setOk] = useState(!!url)
+  const box = big ? "w-16 h-16 rounded-2xl text-2xl" : "w-11 h-11 rounded-xl text-base"
+  if (url && ok) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={url}
+        alt={tool.name}
+        onError={() => setOk(false)}
+        className={`${box} object-cover border border-neutral-700 bg-neutral-900 shrink-0`}
+      />
+    )
+  }
+  return (
+    <div className={`${box} border grid place-items-center font-bold shrink-0 ${a.tile}`}>
+      {tool.logo}
+    </div>
+  )
+}
+
 function FeaturedCard({ tool }: { tool: CatalogTool }) {
   const a = ACCENTS[tool.accent]
   return (
@@ -401,10 +365,7 @@ function FeaturedCard({ tool }: { tool: CatalogTool }) {
       className="snap-start shrink-0 w-[360px] rounded-xl border border-neutral-800 hover:border-lime-400/40 transition-all overflow-hidden group/card">
       <div
         className={`relative h-[150px] bg-gradient-to-br ${a.grad} to-neutral-950 p-4 flex items-start justify-between`}>
-        <div
-          className={`w-16 h-16 rounded-2xl border grid place-items-center text-2xl font-bold ${a.tile}`}>
-          {tool.logo}
-        </div>
+        <Logo tool={tool} big />
         <span className="text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-md bg-black/40 border border-white/10 text-neutral-200">
           {tool.typeLabel}
         </span>
@@ -426,11 +387,13 @@ function FeaturedCard({ tool }: { tool: CatalogTool }) {
         <div className="flex items-center justify-between mt-3">
           <div className="flex items-center gap-3 text-[12px] text-neutral-400 font-sans">
             <span className="inline-flex items-center gap-1 text-amber-400">
-              <StarIcon /> {tool.rating}
+              <StarIcon /> {starsOf(tool) > 0 ? fmtStars(starsOf(tool)) : tool.rating}
             </span>
-            <span className="inline-flex items-center gap-1">
-              <UsersIcon /> {tool.users}
-            </span>
+            {tool.users !== "—" && (
+              <span className="inline-flex items-center gap-1">
+                <UsersIcon /> {tool.users}
+              </span>
+            )}
           </div>
           <span className="text-sm px-3 py-1.5 rounded-lg border border-neutral-700 text-neutral-200 group-hover/card:text-lime-400 group-hover/card:border-lime-400/50 transition-colors">
             Подробнее
@@ -442,16 +405,12 @@ function FeaturedCard({ tool }: { tool: CatalogTool }) {
 }
 
 function ToolCard({ tool }: { tool: CatalogTool }) {
-  const a = ACCENTS[tool.accent]
   return (
     <Link
       href={`/catalog/${tool.slug}`}
       className="snap-start shrink-0 w-[300px] max-w-full rounded-xl border border-neutral-800 bg-neutral-900/40 hover:border-lime-400/40 hover:bg-neutral-900 transition-all p-4 flex flex-col">
       <div className="flex items-start gap-3">
-        <div
-          className={`w-11 h-11 rounded-xl border grid place-items-center text-base font-bold shrink-0 ${a.tile}`}>
-          {tool.logo}
-        </div>
+        <Logo tool={tool} />
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <span className="text-sm font-semibold truncate">{tool.name}</span>
@@ -466,7 +425,7 @@ function ToolCard({ tool }: { tool: CatalogTool }) {
       </div>
       <div className="flex items-center gap-3 text-[12px] text-neutral-500 font-sans mt-3 pt-3 border-t border-neutral-800/70">
         <span className="inline-flex items-center gap-1 text-amber-400">
-          <StarIcon /> {tool.rating}
+          <StarIcon /> {starsOf(tool) > 0 ? fmtStars(starsOf(tool)) : tool.rating}
         </span>
         {tool.users !== "—" && (
           <span className="inline-flex items-center gap-1">

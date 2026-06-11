@@ -1,9 +1,18 @@
 "use client"
 
+import { useState } from "react"
 import Link from "next/link"
 import { useParams } from "next/navigation"
 
-import { getTool, ACCENTS, CATEGORY_LABEL } from "../../../lib/catalog"
+import {
+  getTool,
+  ACCENTS,
+  CATEGORY_LABEL,
+  starsOf,
+  fmtStars,
+  iconUrl,
+  type CatalogTool
+} from "../../../lib/catalog"
 
 export default function ToolDetailPage() {
   const { slug } = useParams<{ slug: string }>()
@@ -36,10 +45,7 @@ export default function ToolDetailPage() {
 
       {/* Шапка */}
       <header className="mt-5 flex flex-col sm:flex-row sm:items-center gap-5">
-        <div
-          className={`w-20 h-20 rounded-2xl border grid place-items-center text-3xl font-bold shrink-0 ${a.tile}`}>
-          {tool.logo}
-        </div>
+        <BigLogo tool={tool} />
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2.5 flex-wrap">
             <h1 className="text-2xl font-semibold">{tool.name}</h1>
@@ -53,10 +59,15 @@ export default function ToolDetailPage() {
           <p className="text-neutral-400 font-sans text-sm mt-1.5 max-w-2xl">
             {tool.short}
           </p>
-          <div className="flex items-center gap-4 text-[13px] font-sans mt-2.5">
+          <div className="flex items-center gap-4 text-[13px] font-sans mt-2.5 flex-wrap">
             <span className="inline-flex items-center gap-1 text-amber-400">
               <StarIcon /> {tool.rating}
             </span>
+            {starsOf(tool) > 0 && (
+              <span className="inline-flex items-center gap-1 text-neutral-400">
+                <StarIcon /> {fmtStars(starsOf(tool))} на GitHub
+              </span>
+            )}
             {tool.users !== "—" && (
               <span className="inline-flex items-center gap-1 text-neutral-400">
                 <UsersIcon /> {tool.users} пользователей
@@ -158,6 +169,9 @@ export default function ToolDetailPage() {
             <InfoRow label="Тип" value={tool.typeLabel} />
             <InfoRow label="Категория" value={CATEGORY_LABEL[tool.category]} />
             <InfoRow label="Рейтинг" value={`★ ${tool.rating}`} />
+            {starsOf(tool) > 0 && (
+              <InfoRow label="GitHub" value={`★ ${fmtStars(starsOf(tool))}`} />
+            )}
             {tool.users !== "—" && (
               <InfoRow label="Пользователи" value={tool.users} />
             )}
@@ -202,6 +216,29 @@ export default function ToolDetailPage() {
         </aside>
       </div>
     </main>
+  )
+}
+
+function BigLogo({ tool }: { tool: CatalogTool }) {
+  const a = ACCENTS[tool.accent]
+  const url = iconUrl(tool)
+  const [ok, setOk] = useState(!!url)
+  if (url && ok) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={url}
+        alt={tool.name}
+        onError={() => setOk(false)}
+        className="w-20 h-20 rounded-2xl object-cover border border-neutral-700 bg-neutral-900 shrink-0"
+      />
+    )
+  }
+  return (
+    <div
+      className={`w-20 h-20 rounded-2xl border grid place-items-center text-3xl font-bold shrink-0 ${a.tile}`}>
+      {tool.logo}
+    </div>
   )
 }
 
