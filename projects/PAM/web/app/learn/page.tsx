@@ -1,19 +1,19 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
+import { useRouter } from "next/navigation"
 
 import {
   listSources,
   ingestArticle,
   ingestYoutube,
+  ingestText,
   isYoutubeUrl,
   uploadFile,
-  ingestText,
   deleteSource,
   generateCourse,
   getCourse,
-  type ContentSource,
-  type Course
+  type ContentSource
 } from "../../lib/api"
 import { getCache, setCache } from "../../lib/cache"
 import RefreshButton from "../refresh-button"
@@ -21,7 +21,64 @@ import RefreshButton from "../refresh-button"
 // Ссылка (http/https одним токеном) → статья/видео; всё остальное — простой текст.
 const looksLikeUrl = (s: string) => /^https?:\/\/\S+$/i.test(s.trim())
 
+// kind в рантайме шире TS-типа из api.ts (бэкенд отдаёт ещё file/text).
+type Kind = "youtube" | "article" | "pdf" | "file" | "text"
+type ViewMode = "grid" | "list"
+type SortMode = "new" | "old" | "title"
+
+const KIND_LABEL: Record<Kind, string> = {
+  youtube: "YouTube",
+  article: "Статья",
+  pdf: "PDF",
+  file: "Файл",
+  text: "Текст"
+}
+
+const KIND_BADGE: Record<Kind, string> = {
+  youtube: "bg-red-600 text-white",
+  pdf: "bg-red-600 text-white",
+  article: "bg-sky-600 text-white",
+  file: "bg-amber-500 text-neutral-950",
+  text: "bg-indigo-500 text-white"
+}
+
+const FILTERS: { key: Kind | "all"; label: string }[] = [
+  { key: "all", label: "Все" },
+  { key: "youtube", label: "YouTube" },
+  { key: "pdf", label: "PDF" },
+  { key: "article", label: "Статьи" },
+  { key: "text", label: "Текст" }
+]
+
+function kindOf(s: ContentSource): Kind {
+  return s.kind as Kind
+}
+
+function youtubeId(url: string | null): string | null {
+  if (!url) return null
+  try {
+    const u = new URL(url)
+    const h = u.hostname.toLowerCase().replace(/^www\./, "")
+    if (h === "youtu.be") return u.pathname.slice(1).split("/")[0] || null
+    if (h.endsWith("youtube.com")) {
+      if (u.pathname === "/watch") return u.searchParams.get("v")
+      const m = u.pathname.match(/^\/(?:shorts|embed|v|live)\/([^/]+)/)
+      if (m) return m[1]
+    }
+  } catch {
+    /* ignore */
+  }
+  return null
+}
+
+const fmtDate = (iso: string) => {
+  const d = new Date(iso)
+  return isNaN(d.getTime()) ? "" : d.toLocaleDateString("ru-RU")
+}
+
 export default function LearnPage() {
+  const router = useRouter()
+
   const [sources, setSources] = useState<ContentSource[]>(
     () => getCache<ContentSource[]>("sources") ?? []
   )
@@ -35,9 +92,13 @@ export default function LearnPage() {
   const [adding, setAdding] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
 
-  const [selected, setSelected] = useState<ContentSource | null>(null)
-  const [course, setCourse] = useState<Course | null>(null)
-  const [courseBusy, setCourseBusy] = useState(false)
+  // sourceId → курс уже сгенерирован (определяется фоном через getCourse).
+  const [coursed, setCoursed] = useState<Set<string>>(new Set())
+  const [busyId, setBusyId] = useState<string | null>(null)
+
+  const [filter, setFilter] = useState<Kind | "all">("all")
+  const [sort, setSort] = useState<SortMode>("new")
+  const [view, setView] = useState<ViewMode>("grid")
 
   useEffect(() => {
     setLoading(true)
@@ -49,6 +110,24 @@ export default function LearnPage() {
       .catch((e) => setError(String(e)))
       .finally(() => setLoading(false))
   }, [tick])
+
+  // Фоновая проверка: у каких материалов уже есть курс (только у извлечённых).
+  useEffect(() => {
+    const extracted = sources.filter((s) => s.status === "extracted")
+    if (extracted.length === 0) return
+    let cancelled = false
+    Promise.allSettled(extracted.map((s) => getCourse(s.id))).then((res) => {
+      if (cancelled) return
+      const set = new Set<string>()
+      res.forEach((r, i) => {
+        if (r.status === "fulfilled" && r.value) set.add(extracted[i].id)
+      })
+      setCoursed(set)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [sources])
 
   async function addMaterial() {
     const v = material.trim()
@@ -84,46 +163,64 @@ export default function LearnPage() {
     }
   }
 
-  async function remove(id: string) {
+  async function handleDelete(id: string) {
     try {
       await deleteSource(id)
-      if (selected?.id === id) {
-        setSelected(null)
-        setCourse(null)
-      }
       setSources((prev) => prev.filter((s) => s.id !== id))
+      setCoursed((prev) => {
+        const n = new Set(prev)
+        n.delete(id)
+        return n
+      })
     } catch (e) {
       setError(String(e))
     }
   }
 
-  async function open(src: ContentSource) {
-    setSelected(src)
-    setCourse(null)
+  async function handleCreate(id: string) {
+    setBusyId(id)
     setError(null)
     try {
-      setCourse(await getCourse(src.id))
-    } catch (e) {
-      setError(String(e))
-    }
-  }
-
-  async function generate() {
-    if (!selected) return
-    setCourseBusy(true)
-    setError(null)
-    try {
-      setCourse(await generateCourse(selected.id))
+      await generateCourse(id)
+      setCoursed((prev) => new Set(prev).add(id))
     } catch (e) {
       setError(String(e))
     } finally {
-      setCourseBusy(false)
+      setBusyId(null)
     }
   }
 
+  function handleOpen(id: string) {
+    router.push(`/learn/${id}/course`)
+  }
+
+  const counts = useMemo(() => {
+    const c: Record<string, number> = { all: sources.length }
+    for (const s of sources) c[kindOf(s)] = (c[kindOf(s)] || 0) + 1
+    return c
+  }, [sources])
+
+  const filters = useMemo(() => {
+    const base = [...FILTERS]
+    if ((counts["file"] || 0) > 0) base.push({ key: "file", label: "Файлы" })
+    return base
+  }, [counts])
+
+  const visible = useMemo(() => {
+    const list =
+      filter === "all" ? sources : sources.filter((s) => kindOf(s) === filter)
+    return [...list].sort((a, b) => {
+      if (sort === "title") return (a.title || "").localeCompare(b.title || "", "ru")
+      const ta = new Date(a.created_at).getTime()
+      const tb = new Date(b.created_at).getTime()
+      return sort === "old" ? ta - tb : tb - ta
+    })
+  }, [sources, filter, sort])
+
   return (
-    <main className="max-w-5xl mx-auto px-6 py-8">
-      <header className="border-b border-neutral-800 pb-6 mb-6">
+    <main className="max-w-[1700px] mx-auto px-6 py-8">
+      {/* ── Блок добавления (карточка) ─────────────────────────────────────── */}
+      <section className="border border-neutral-800 rounded-xl p-6 bg-neutral-950 mb-8">
         <div className="text-xs uppercase tracking-widest text-lime-400 mb-2">
           /// лектор
         </div>
@@ -131,304 +228,618 @@ export default function LearnPage() {
           <h1 className="text-3xl font-semibold">Личный лектор</h1>
           <RefreshButton onClick={() => setTick((t) => t + 1)} busy={loading} />
         </div>
-        <p className="text-neutral-400 mt-2 text-sm font-sans">
-          Добавь материал — ссылку на статью или YouTube, файл
-          (PDF/DOCX/PPTX/XLSX/TXT/MD/HTML) или вставь текст. PAM извлечёт его,
+        <p className="text-neutral-400 mt-2 text-sm font-sans max-w-3xl">
+          Добавляй материалы — ссылки на статьи или YouTube, файлы
+          (PDF/DOCX/PPTX/XLSX/TXT/MD/HTML) или вставляй текст. PAM извлечёт его,
           добавит в память и сможет собрать по нему персональный мини-курс с
           тестом.
         </p>
-      </header>
 
-      {/* Добавление материала — одно поле: ссылка ИЛИ текст */}
-      <section className="mb-8 space-y-3">
-        <div className="space-y-2">
-          <textarea
-            value={material}
-            onChange={(e) => setMaterial(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
-                e.preventDefault()
-                addMaterial()
-              }
-            }}
-            placeholder="Вставь ссылку на статью или YouTube — или просто текст…"
-            rows={3}
-            className="w-full bg-neutral-900 border border-neutral-800 rounded-md px-3 py-2 text-sm font-sans resize-y focus:outline-none focus:border-lime-400/50"
-          />
-          <div className="flex items-center justify-between gap-3">
-            <span className="text-[10px] text-neutral-600 font-sans">
-              ссылка → статья/видео, иначе сохраню как текст · ⌘/Ctrl+Enter
+        <div className="mt-5 flex flex-col sm:flex-row gap-3">
+          <div className="relative flex-1">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-600">
+              <LinkIcon />
             </span>
-            <button
-              onClick={addMaterial}
-              disabled={adding || !material.trim()}
-              className="text-sm px-4 py-2 rounded-md border border-neutral-700 text-neutral-200 hover:text-lime-400 hover:border-lime-400/50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
-              {adding
-                ? "добавляю…"
-                : isYoutubeUrl(material.trim())
-                  ? "добавить видео"
-                  : looksLikeUrl(material)
-                    ? "добавить статью"
-                    : "добавить текст"}
-            </button>
+            <input
+              value={material}
+              onChange={(e) => setMaterial(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && addMaterial()}
+              placeholder="Вставь ссылку на YouTube или статью..."
+              className="w-full bg-neutral-900 border border-neutral-800 rounded-lg pl-10 pr-3 py-3 text-sm font-sans focus:outline-none focus:border-lime-400/50"
+            />
           </div>
+          <button
+            onClick={addMaterial}
+            disabled={adding || !material.trim()}
+            className="shrink-0 px-6 py-3 rounded-lg bg-lime-400 text-neutral-950 font-medium text-sm hover:bg-lime-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+            {adding ? "Добавляю…" : "Добавить материал"}
+          </button>
         </div>
 
-        <div className="flex items-center gap-3 text-sm font-sans text-neutral-400">
-          <span>или прикрепи файл:</span>
-          <input
-            ref={fileRef}
-            type="file"
-            accept=".pdf,.docx,.pptx,.xlsx,.xls,.txt,.md,.markdown,.html,.htm,.csv,.json,.log,.rst"
-            onChange={onFile}
-            disabled={adding}
-            className="text-xs file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border file:border-neutral-700 file:bg-transparent file:text-neutral-200 file:cursor-pointer hover:file:border-lime-400/50"
-          />
+        <div className="mt-3 flex items-center gap-3 text-sm font-sans text-neutral-400 flex-wrap">
+          <span>или загрузите файл:</span>
+          <label className="inline-flex items-center gap-2 cursor-pointer text-sm px-4 py-2 rounded-lg border border-neutral-700 text-neutral-200 hover:border-lime-400/50 hover:text-lime-400 transition-colors">
+            <UploadIcon />
+            Выбрать файл
+            <input
+              ref={fileRef}
+              type="file"
+              accept=".pdf,.docx,.pptx,.xlsx,.xls,.txt,.md,.markdown,.html,.htm,.csv,.json,.log,.rst"
+              onChange={onFile}
+              disabled={adding}
+              className="hidden"
+            />
+          </label>
           <span className="text-[10px] text-neutral-600">
             PDF · DOCX · PPTX · XLSX · TXT · MD · HTML
           </span>
         </div>
       </section>
 
-      {error && (
-        <div className="text-red-400 text-sm font-sans mb-4">Ошибка: {error}</div>
-      )}
+      {/* ── Материалы ──────────────────────────────────────────────────────── */}
+      <section>
+        <h2 className="text-2xl font-semibold mb-4">Материалы</h2>
 
-      <div className="grid md:grid-cols-[320px_1fr] gap-6">
-        {/* Список материалов */}
-        <section>
-          <h2 className="text-xs uppercase tracking-widest text-neutral-500 mb-3">
-            материалы
-          </h2>
-          {loading && sources.length === 0 ? (
-            <div className="text-neutral-500 text-sm py-8">// загрузка…</div>
-          ) : sources.length === 0 ? (
-            <div className="text-neutral-500 text-sm py-8 border border-dashed border-neutral-800 text-center font-sans">
-              Пусто. Добавь первую статью или PDF выше.
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {sources.map((s) => (
+        <div className="flex items-center justify-between gap-3 flex-wrap mb-6">
+          <div className="flex items-center gap-2 flex-wrap">
+            {filters.map((f) => {
+              const active = filter === f.key
+              return (
                 <button
-                  key={s.id}
-                  onClick={() => open(s)}
-                  className={`w-full text-left border rounded-sm p-3 transition-colors ${
-                    selected?.id === s.id
-                      ? "border-lime-400/50 bg-neutral-900"
-                      : "border-neutral-800 hover:border-neutral-700"
+                  key={f.key}
+                  onClick={() => setFilter(f.key)}
+                  className={`flex items-center gap-2 text-sm font-sans px-3 py-1.5 rounded-lg border transition-colors ${
+                    active
+                      ? "border-lime-400/50 text-lime-400 bg-lime-400/5"
+                      : "border-neutral-800 text-neutral-400 hover:border-neutral-700 hover:text-neutral-200"
                   }`}>
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="text-[10px] uppercase tracking-wider px-1.5 py-0.5 border border-neutral-700 rounded text-neutral-400">
-                      {s.kind}
-                    </span>
-                    <StatusBadge status={s.status} />
-                  </div>
-                  <div className="text-sm font-sans truncate">
-                    {s.title || s.url || "(без названия)"}
-                  </div>
-                  <div className="flex items-center justify-between mt-1">
-                    <span className="text-[10px] text-neutral-600 tabular-nums">
-                      {s.char_count.toLocaleString("ru")} симв.
-                    </span>
-                    <span
-                      role="button"
-                      tabIndex={0}
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        remove(s.id)
-                      }}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          e.stopPropagation()
-                          remove(s.id)
-                        }
-                      }}
-                      className="text-[10px] uppercase tracking-wider text-neutral-500 hover:text-red-400 cursor-pointer">
-                      удалить
-                    </span>
-                  </div>
+                  {f.label}
+                  <span
+                    className={`text-[11px] tabular-nums ${
+                      active ? "text-lime-400/80" : "text-neutral-600"
+                    }`}>
+                    {counts[f.key] || 0}
+                  </span>
                 </button>
-              ))}
-            </div>
-          )}
-        </section>
+              )
+            })}
+          </div>
 
-        {/* Курс */}
-        <section>
-          {!selected ? (
-            <div className="text-neutral-500 text-sm py-12 border border-dashed border-neutral-800 text-center font-sans">
-              Выбери материал слева, чтобы открыть или сгенерировать курс.
+          <div className="flex items-center gap-2">
+            <select
+              value={sort}
+              onChange={(e) => setSort(e.target.value as SortMode)}
+              className="text-sm font-sans bg-neutral-900 border border-neutral-800 rounded-lg px-3 py-1.5 text-neutral-300 focus:outline-none focus:border-lime-400/50 cursor-pointer">
+              <option value="new">По дате добавления</option>
+              <option value="old">Сначала старые</option>
+              <option value="title">По названию</option>
+            </select>
+            <div className="flex border border-neutral-800 rounded-lg overflow-hidden">
+              <button
+                onClick={() => setView("grid")}
+                title="Сетка"
+                className={`p-2 transition-colors ${
+                  view === "grid"
+                    ? "bg-lime-400/10 text-lime-400"
+                    : "text-neutral-500 hover:text-neutral-200"
+                }`}>
+                <GridIcon />
+              </button>
+              <button
+                onClick={() => setView("list")}
+                title="Список"
+                className={`p-2 transition-colors border-l border-neutral-800 ${
+                  view === "list"
+                    ? "bg-lime-400/10 text-lime-400"
+                    : "text-neutral-500 hover:text-neutral-200"
+                }`}>
+                <ListIcon />
+              </button>
             </div>
-          ) : (
-            <CoursePanel
-              source={selected}
-              course={course}
-              busy={courseBusy}
-              onGenerate={generate}
-            />
-          )}
-        </section>
-      </div>
+          </div>
+        </div>
+
+        {error && (
+          <div className="text-red-400 text-sm font-sans mb-4">Ошибка: {error}</div>
+        )}
+
+        {loading && sources.length === 0 ? (
+          <div
+            className="grid gap-5"
+            style={{ gridTemplateColumns: "repeat(auto-fill, minmax(440px, 1fr))" }}>
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div
+                key={i}
+                className="h-[360px] rounded-xl border border-neutral-800 bg-neutral-900/40 animate-pulse"
+              />
+            ))}
+          </div>
+        ) : visible.length === 0 ? (
+          <div className="text-neutral-500 text-sm py-16 border border-dashed border-neutral-800 rounded-xl text-center font-sans">
+            {sources.length === 0
+              ? "Пусто. Добавь первую ссылку, файл или текст выше."
+              : "Нет материалов в этом фильтре."}
+          </div>
+        ) : view === "grid" ? (
+          <div
+            className="grid gap-5"
+            style={{ gridTemplateColumns: "repeat(auto-fill, minmax(440px, 1fr))" }}>
+            {visible.map((s) => (
+              <MaterialCard
+                key={s.id}
+                source={s}
+                hasCourse={coursed.has(s.id)}
+                busy={busyId === s.id}
+                onOpen={() => handleOpen(s.id)}
+                onCreate={() => handleCreate(s.id)}
+                onDelete={() => handleDelete(s.id)}
+              />
+            ))}
+          </div>
+        ) : (
+          <div className="flex flex-col gap-2">
+            {visible.map((s) => (
+              <MaterialRow
+                key={s.id}
+                source={s}
+                hasCourse={coursed.has(s.id)}
+                busy={busyId === s.id}
+                onOpen={() => handleOpen(s.id)}
+                onCreate={() => handleCreate(s.id)}
+                onDelete={() => handleDelete(s.id)}
+              />
+            ))}
+          </div>
+        )}
+      </section>
     </main>
   )
 }
 
-function StatusBadge({ status }: { status: ContentSource["status"] }) {
-  const map: Record<string, string> = {
-    extracted: "text-lime-400 border-lime-400/40",
-    pending: "text-yellow-400 border-yellow-400/40",
-    failed: "text-red-400 border-red-400/40"
+// ── Карточка материала (grid) ─────────────────────────────────────────────
+
+interface CardProps {
+  source: ContentSource
+  hasCourse: boolean
+  busy: boolean
+  onOpen: () => void
+  onCreate: () => void
+  onDelete: () => void
+}
+
+function MaterialCard({
+  source,
+  hasCourse,
+  busy,
+  onOpen,
+  onCreate,
+  onDelete
+}: CardProps) {
+  const kind = kindOf(source)
+  const canCreate = source.status === "extracted"
+  const size =
+    kind !== "youtube" && source.char_count > 0
+      ? `${source.char_count.toLocaleString("ru")} симв.`
+      : null
+
+  return (
+    <div className="group relative flex flex-col rounded-xl border border-neutral-800 bg-neutral-900/40 hover:border-neutral-700 transition-colors">
+      <div className="relative h-[230px] overflow-hidden rounded-t-xl">
+        <Preview source={source} />
+        <div className="absolute top-3 left-3">
+          <KindBadge kind={kind} />
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-3 p-4 flex-1">
+        <h3 className="text-sm font-sans font-semibold leading-snug line-clamp-2">
+          {source.title || source.url || "(без названия)"}
+        </h3>
+
+        <div className="text-[11px] text-neutral-500 font-sans flex items-center gap-1.5 flex-wrap">
+          <span>{KIND_LABEL[kind]}</span>
+          {size && <span>· {size}</span>}
+          <span>· {fmtDate(source.created_at)}</span>
+        </div>
+
+        <div className="mt-auto flex items-center justify-between gap-2 pt-1">
+          <StatusPill source={source} hasCourse={hasCourse} busy={busy} />
+          <div className="flex items-center gap-1.5">
+            <ActionButton
+              hasCourse={hasCourse}
+              busy={busy}
+              canCreate={canCreate}
+              onOpen={onOpen}
+              onCreate={onCreate}
+            />
+            <CardMenu
+              hasCourse={hasCourse}
+              canCreate={canCreate}
+              onOpen={onOpen}
+              onCreate={onCreate}
+              onDelete={onDelete}
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Строка материала (list) ───────────────────────────────────────────────
+
+function MaterialRow({
+  source,
+  hasCourse,
+  busy,
+  onOpen,
+  onCreate,
+  onDelete
+}: CardProps) {
+  const kind = kindOf(source)
+  const canCreate = source.status === "extracted"
+  const size =
+    kind !== "youtube" && source.char_count > 0
+      ? `${source.char_count.toLocaleString("ru")} симв.`
+      : null
+
+  return (
+    <div className="flex items-center gap-4 rounded-xl border border-neutral-800 bg-neutral-900/40 hover:border-neutral-700 transition-colors p-3">
+      <div className="relative w-40 h-24 shrink-0 overflow-hidden rounded-lg">
+        <Preview source={source} compact />
+        <div className="absolute top-1.5 left-1.5">
+          <KindBadge kind={kind} small />
+        </div>
+      </div>
+
+      <div className="min-w-0 flex-1">
+        <h3 className="text-sm font-sans font-semibold leading-snug line-clamp-1">
+          {source.title || source.url || "(без названия)"}
+        </h3>
+        <div className="mt-1 text-[11px] text-neutral-500 font-sans flex items-center gap-1.5 flex-wrap">
+          <span>{KIND_LABEL[kind]}</span>
+          {size && <span>· {size}</span>}
+          <span>· {fmtDate(source.created_at)}</span>
+        </div>
+        <div className="mt-2">
+          <StatusPill source={source} hasCourse={hasCourse} busy={busy} />
+        </div>
+      </div>
+
+      <div className="flex items-center gap-1.5 shrink-0">
+        <ActionButton
+          hasCourse={hasCourse}
+          busy={busy}
+          canCreate={canCreate}
+          onOpen={onOpen}
+          onCreate={onCreate}
+        />
+        <CardMenu
+          hasCourse={hasCourse}
+          canCreate={canCreate}
+          onOpen={onOpen}
+          onCreate={onCreate}
+          onDelete={onDelete}
+        />
+      </div>
+    </div>
+  )
+}
+
+// ── Превью по типам ───────────────────────────────────────────────────────
+
+function Preview({
+  source,
+  compact = false
+}: {
+  source: ContentSource
+  compact?: boolean
+}) {
+  const kind = kindOf(source)
+  const ytId = kind === "youtube" ? youtubeId(source.url) : null
+  const [imgOk, setImgOk] = useState(true)
+
+  if (ytId && imgOk) {
+    return (
+      <>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={`https://i.ytimg.com/vi/${ytId}/hqdefault.jpg`}
+          alt=""
+          className="h-full w-full object-cover"
+          onError={() => setImgOk(false)}
+        />
+        {!compact && (
+          <div className="absolute inset-0 flex items-center justify-center">
+            <span className="grid place-items-center w-12 h-12 rounded-full bg-black/55 text-white">
+              <PlayIcon />
+            </span>
+          </div>
+        )}
+      </>
+    )
   }
-  const label: Record<string, string> = {
-    extracted: "готов",
-    pending: "обработка",
-    failed: "ошибка"
+
+  if (kind === "text") {
+    return (
+      <div className="h-full w-full bg-gradient-to-br from-neutral-800 to-neutral-950 p-5 flex flex-col justify-center gap-2.5">
+        {[92, 78, 88, 64, 84, 56].map((w, i) => (
+          <div
+            key={i}
+            className="h-2.5 rounded bg-neutral-700/60"
+            style={{ width: `${w}%` }}
+          />
+        ))}
+      </div>
+    )
   }
+
+  if (kind === "pdf" || kind === "file") {
+    return (
+      <div className="h-full w-full bg-gradient-to-br from-neutral-800 to-neutral-950 grid place-items-center text-neutral-600">
+        <DocIcon />
+      </div>
+    )
+  }
+
+  // article + youtube-fallback
+  return (
+    <div className="h-full w-full bg-gradient-to-br from-neutral-800 via-neutral-900 to-neutral-950 grid place-items-center text-neutral-600">
+      <GlobeIcon />
+    </div>
+  )
+}
+
+function KindBadge({ kind, small = false }: { kind: Kind; small?: boolean }) {
   return (
     <span
-      className={`text-[9px] uppercase tracking-wider border rounded px-1 py-px ${
-        map[status] || "text-neutral-500 border-neutral-700"
-      }`}>
-      {label[status] || status}
+      className={`inline-flex items-center gap-1 rounded-md font-semibold uppercase tracking-wide ${
+        small ? "text-[8px] px-1.5 py-0.5" : "text-[10px] px-2 py-1"
+      } ${KIND_BADGE[kind]}`}>
+      {kind === "youtube" && <PlayIcon small />}
+      {KIND_LABEL[kind]}
     </span>
   )
 }
 
-function CoursePanel({
+function StatusPill({
   source,
-  course,
-  busy,
-  onGenerate
+  hasCourse,
+  busy
 }: {
   source: ContentSource
-  course: Course | null
+  hasCourse: boolean
   busy: boolean
-  onGenerate: () => void
 }) {
-  const canGenerate = source.status === "extracted"
+  let label = "Ошибка"
+  let dot = "bg-red-400"
+  let text = "text-red-400"
+  if (busy || source.status === "pending") {
+    label = "Обрабатывается"
+    dot = "bg-sky-400"
+    text = "text-sky-400"
+  } else if (hasCourse) {
+    label = "Курс создан"
+    dot = "bg-lime-400"
+    text = "text-lime-400"
+  } else if (source.status === "extracted") {
+    label = "Готов к обработке"
+    dot = "bg-yellow-400"
+    text = "text-yellow-400"
+  }
   return (
-    <div>
-      <div className="flex items-center justify-between gap-3 mb-4">
-        <h2 className="text-lg font-semibold truncate">
-          {course?.title || source.title || source.url || "Материал"}
-        </h2>
-        <button
-          onClick={onGenerate}
-          disabled={busy || !canGenerate}
-          title={canGenerate ? "" : "у материала нет извлечённого текста"}
-          className="shrink-0 text-sm px-4 py-2 rounded-md border border-neutral-700 text-neutral-200 hover:text-lime-400 hover:border-lime-400/50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
-          {busy
-            ? "генерирую курс…"
-            : course
-              ? "перегенерировать"
-              : "сгенерировать курс"}
-        </button>
-      </div>
+    <span className={`inline-flex items-center gap-2 text-[12px] font-sans ${text}`}>
+      <span className={`w-2 h-2 rounded-full ${dot}`} />
+      {label}
+    </span>
+  )
+}
 
-      {busy && (
-        <div className="text-neutral-500 text-sm py-8 font-sans">
-          // собираю курс под твой уровень, это может занять несколько секунд…
+function ActionButton({
+  hasCourse,
+  busy,
+  canCreate,
+  onOpen,
+  onCreate
+}: {
+  hasCourse: boolean
+  busy: boolean
+  canCreate: boolean
+  onOpen: () => void
+  onCreate: () => void
+}) {
+  if (hasCourse) {
+    return (
+      <button
+        onClick={onOpen}
+        className="text-sm px-4 py-2 rounded-lg border border-neutral-700 text-neutral-200 hover:text-lime-400 hover:border-lime-400/50 transition-colors">
+        Открыть курс
+      </button>
+    )
+  }
+  return (
+    <button
+      onClick={onCreate}
+      disabled={busy || !canCreate}
+      title={canCreate ? "" : "у материала нет извлечённого текста"}
+      className="text-sm px-4 py-2 rounded-lg border border-neutral-700 text-neutral-200 hover:text-lime-400 hover:border-lime-400/50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+      {busy ? "Создаю…" : "Создать курс"}
+    </button>
+  )
+}
+
+function CardMenu({
+  hasCourse,
+  canCreate,
+  onOpen,
+  onCreate,
+  onDelete
+}: {
+  hasCourse: boolean
+  canCreate: boolean
+  onOpen: () => void
+  onCreate: () => void
+  onDelete: () => void
+}) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!open) return
+    const h = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener("mousedown", h)
+    return () => document.removeEventListener("mousedown", h)
+  }, [open])
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        onClick={() => setOpen((o) => !o)}
+        title="Меню"
+        className="grid place-items-center w-9 h-9 rounded-lg border border-neutral-800 text-neutral-400 hover:text-neutral-100 hover:border-neutral-700 transition-colors">
+        <DotsIcon />
+      </button>
+      {open && (
+        <div className="absolute right-0 bottom-full mb-1 w-44 bg-neutral-900 border border-neutral-800 rounded-lg shadow-xl py-1 z-30 text-sm font-sans">
+          {hasCourse ? (
+            <MenuItem
+              onClick={() => {
+                setOpen(false)
+                onOpen()
+              }}>
+              Открыть курс
+            </MenuItem>
+          ) : (
+            <MenuItem
+              disabled={!canCreate}
+              onClick={() => {
+                setOpen(false)
+                onCreate()
+              }}>
+              Создать курс
+            </MenuItem>
+          )}
+          <MenuItem
+            danger
+            onClick={() => {
+              setOpen(false)
+              onDelete()
+            }}>
+            Удалить
+          </MenuItem>
         </div>
       )}
-
-      {!busy && !course && (
-        <div className="text-neutral-500 text-sm py-8 border border-dashed border-neutral-800 text-center font-sans">
-          Курса ещё нет. Нажми «сгенерировать курс».
-        </div>
-      )}
-
-      {!busy && course && <CourseView course={course} />}
     </div>
   )
 }
 
-function CourseView({ course }: { course: Course }) {
-  const d = course.data
+function MenuItem({
+  children,
+  onClick,
+  danger = false,
+  disabled = false
+}: {
+  children: React.ReactNode
+  onClick: () => void
+  danger?: boolean
+  disabled?: boolean
+}) {
   return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-2 flex-wrap">
-        {course.level && (
-          <span className="text-[10px] uppercase tracking-wider px-2 py-0.5 border border-lime-400/40 text-lime-400 rounded">
-            уровень: {course.level}
-          </span>
-        )}
-      </div>
-      {d.summary && (
-        <p className="text-sm font-sans text-neutral-300">{d.summary}</p>
-      )}
-
-      {d.modules?.map((m, mi) => (
-        <div key={mi} className="border border-neutral-800 rounded-sm p-4">
-          <h3 className="text-sm uppercase tracking-wider text-lime-400 mb-3">
-            Модуль {mi + 1}. {m.title}
-          </h3>
-          <div className="space-y-4">
-            {m.lessons?.map((l, li) => (
-              <div key={li}>
-                <div className="text-sm font-semibold font-sans mb-1">
-                  {l.title}
-                </div>
-                <p className="text-sm font-sans text-neutral-300 whitespace-pre-wrap">
-                  {l.content}
-                </p>
-              </div>
-            ))}
-          </div>
-        </div>
-      ))}
-
-      {d.quiz?.length > 0 && <Quiz questions={d.quiz} />}
-    </div>
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      className={`w-full text-left px-3 py-2 transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
+        danger
+          ? "text-red-400 hover:bg-red-400/10"
+          : "text-neutral-200 hover:bg-neutral-800"
+      }`}>
+      {children}
+    </button>
   )
 }
 
-function Quiz({ questions }: { questions: Course["data"]["quiz"] }) {
-  const [answers, setAnswers] = useState<Record<number, number>>({})
+// ── Иконки (inline SVG) ───────────────────────────────────────────────────
+
+function LinkIcon() {
   return (
-    <div className="border border-neutral-800 rounded-sm p-4">
-      <h3 className="text-sm uppercase tracking-wider text-lime-400 mb-3">
-        Тест
-      </h3>
-      <div className="space-y-5">
-        {questions.map((q, qi) => {
-          const chosen = answers[qi]
-          const answered = chosen !== undefined
-          return (
-            <div key={qi}>
-              <div className="text-sm font-sans font-semibold mb-2">
-                {qi + 1}. {q.question}
-              </div>
-              <div className="space-y-1.5">
-                {q.options.map((opt, oi) => {
-                  const isCorrect = oi === q.answer_index
-                  const isChosen = oi === chosen
-                  let cls = "border-neutral-800 hover:border-neutral-700"
-                  if (answered && isCorrect)
-                    cls = "border-lime-400/60 bg-lime-400/10 text-lime-300"
-                  else if (answered && isChosen && !isCorrect)
-                    cls = "border-red-400/60 bg-red-400/10 text-red-300"
-                  return (
-                    <button
-                      key={oi}
-                      disabled={answered}
-                      onClick={() =>
-                        setAnswers((p) => ({ ...p, [qi]: oi }))
-                      }
-                      className={`w-full text-left text-sm font-sans px-3 py-2 rounded-md border transition-colors disabled:cursor-default ${cls}`}>
-                      {opt}
-                    </button>
-                  )
-                })}
-              </div>
-              {answered && q.explanation && (
-                <p className="mt-2 text-xs font-sans text-neutral-400 border-l-2 border-neutral-800 pl-2">
-                  {q.explanation}
-                </p>
-              )}
-            </div>
-          )
-        })}
-      </div>
-    </div>
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+      <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+    </svg>
+  )
+}
+
+function UploadIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+      <polyline points="17 8 12 3 7 8" />
+      <line x1="12" y1="3" x2="12" y2="15" />
+    </svg>
+  )
+}
+
+function PlayIcon({ small = false }: { small?: boolean }) {
+  const s = small ? 8 : 18
+  return (
+    <svg width={s} height={s} viewBox="0 0 24 24" fill="currentColor">
+      <path d="M8 5v14l11-7z" />
+    </svg>
+  )
+}
+
+function DotsIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+      <circle cx="12" cy="5" r="1.6" />
+      <circle cx="12" cy="12" r="1.6" />
+      <circle cx="12" cy="19" r="1.6" />
+    </svg>
+  )
+}
+
+function GridIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="3" width="7" height="7" rx="1" />
+      <rect x="14" y="3" width="7" height="7" rx="1" />
+      <rect x="3" y="14" width="7" height="7" rx="1" />
+      <rect x="14" y="14" width="7" height="7" rx="1" />
+    </svg>
+  )
+}
+
+function ListIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="8" y1="6" x2="21" y2="6" />
+      <line x1="8" y1="12" x2="21" y2="12" />
+      <line x1="8" y1="18" x2="21" y2="18" />
+      <line x1="3" y1="6" x2="3.01" y2="6" />
+      <line x1="3" y1="12" x2="3.01" y2="12" />
+      <line x1="3" y1="18" x2="3.01" y2="18" />
+    </svg>
+  )
+}
+
+function DocIcon() {
+  return (
+    <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+      <polyline points="14 2 14 8 20 8" />
+      <line x1="8" y1="13" x2="16" y2="13" />
+      <line x1="8" y1="17" x2="13" y2="17" />
+    </svg>
+  )
+}
+
+function GlobeIcon() {
+  return (
+    <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="9" />
+      <line x1="3" y1="12" x2="21" y2="12" />
+      <path d="M12 3a14 14 0 0 1 0 18 14 14 0 0 1 0-18z" />
+    </svg>
   )
 }
