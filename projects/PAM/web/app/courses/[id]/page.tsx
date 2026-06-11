@@ -88,10 +88,15 @@ export default function CourseReaderPage() {
   }
 
   async function removeCourse() {
-    if (!window.confirm("Удалить курс и его материал? Действие необратимо.")) return
+    if (
+      !window.confirm(
+        "Удалить материал и курс? Материал будет удалён целиком вместе с курсом. Действие необратимо."
+      )
+    )
+      return
     try {
       await deleteSource(id)
-      router.push("/courses")
+      router.push("/learn")
     } catch (e) {
       setError(String(e))
     }
@@ -127,9 +132,9 @@ export default function CourseReaderPage() {
     return (
       <main className="max-w-2xl mx-auto px-6 py-16 text-center">
         <Link
-          href="/courses"
+          href="/learn"
           className="text-sm text-neutral-400 hover:text-lime-400 transition-colors">
-          ← Назад к курсам
+          ← Назад
         </Link>
         <div className="mt-8 border border-dashed border-neutral-800 rounded-xl p-10">
           <p className="text-neutral-300 font-sans">
@@ -157,9 +162,9 @@ export default function CourseReaderPage() {
         {/* ── ЛЕВАЯ: содержание ────────────────────────────────────────── */}
         <aside className="w-full lg:w-[340px] shrink-0 lg:sticky lg:top-20 space-y-4">
           <Link
-            href="/courses"
+            href="/learn"
             className="inline-flex items-center gap-2 text-sm text-neutral-400 hover:text-lime-400 transition-colors">
-            ← Назад к курсам
+            ← Назад
           </Link>
 
           <div>
@@ -369,7 +374,7 @@ export default function CourseReaderPage() {
                 Пройти тест
               </ActionRow>
               <ActionRow onClick={removeCourse} danger>
-                Удалить курс
+                Удалить материал и курс
               </ActionRow>
             </div>
           </Card>
