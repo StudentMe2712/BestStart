@@ -1,0 +1,30 @@
+# Data
+data/
+*.db
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+.env
+
+# Node
+node_modules/
+.next/
+build/
+dist/
+.plasmo/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+.DS_Store
+
+# Claude Code
+.claude/settings.local.json
+
+# Logs
+*.log

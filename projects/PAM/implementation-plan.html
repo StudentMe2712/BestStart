@@ -1,0 +1,1192 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Personal AI Memory // Implementation Plan</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg: #0a0a0a;
+    --surface: #131312;
+    --surface-2: #1a1a18;
+    --surface-3: #201f1c;
+    --line: #262624;
+    --line-soft: #1f1f1d;
+    --text: #ededeb;
+    --text-mute: #76766f;
+    --text-soft: #a3a39a;
+    --lime: #a3e635;
+    --red: #f4524a;
+    --amber: #f5a623;
+    --cyan: #5ee9d0;
+    --violet: #a78bfa;
+    --gold: #fbbf24;
+    --mono: "IBM Plex Mono", ui-monospace, monospace;
+    --sans: "IBM Plex Sans", -apple-system, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 15px;
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+    background-image:
+      linear-gradient(rgba(255,255,255,0.012) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.012) 1px, transparent 1px);
+    background-size: 32px 32px;
+  }
+  .layout { display: grid; grid-template-columns: 260px 1fr; min-height: 100vh; }
+  @media (max-width: 900px) { .layout { grid-template-columns: 1fr; } }
+  .sidebar {
+    border-right: 1px solid var(--line);
+    padding: 24px 20px 40px;
+    position: sticky; top: 0; height: 100vh;
+    overflow-y: auto; background: var(--bg);
+    font-family: var(--mono);
+  }
+  @media (max-width: 900px) {
+    .sidebar { position: static; height: auto; border-right: none; border-bottom: 1px solid var(--line); }
+  }
+  .brand { padding-bottom: 18px; margin-bottom: 18px; border-bottom: 1px solid var(--line); }
+  .brand .logo {
+    font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase;
+    color: var(--text-mute); margin-bottom: 4px;
+  }
+  .brand .logo .blink {
+    display: inline-block; width: 8px; height: 8px;
+    background: var(--lime); margin-right: 8px;
+    animation: blink 1.6s infinite;
+  }
+  @keyframes blink { 0%,50% { opacity: 1; } 51%,100% { opacity: 0.3; } }
+  .brand .name { font-size: 18px; font-weight: 600; letter-spacing: -0.01em; color: var(--text); margin: 4px 0 0; }
+  .brand .meta { font-size: 11px; color: var(--text-mute); margin-top: 4px; }
+
+  .nav-section { margin-bottom: 24px; }
+  .nav-section h4 {
+    font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase;
+    color: var(--text-mute); margin: 0 0 10px; font-weight: 500;
+  }
+  .nav-list { list-style: none; padding: 0; margin: 0; }
+  .nav-list li { margin-bottom: 2px; }
+  .nav-list a {
+    display: block;
+    color: var(--text-soft); padding: 6px 10px;
+    font-size: 12.5px; text-decoration: none;
+    border-radius: 2px; border-left: 2px solid transparent;
+    transition: all 0.12s;
+  }
+  .nav-list a:hover { background: var(--surface); color: var(--text); }
+  .nav-list a.active { background: var(--surface); color: var(--lime); border-left-color: var(--lime); }
+  .nav-list .phase-num { color: var(--text-mute); margin-right: 6px; font-size: 11px; }
+  .nav-list a:hover .phase-num, .nav-list a.active .phase-num { color: inherit; }
+
+  .legend {
+    font-size: 11px; color: var(--text-mute);
+    line-height: 1.9;
+  }
+  .legend .marker { display: inline-block; width: 10px; height: 10px; margin-right: 6px; vertical-align: middle; border-radius: 2px; }
+
+  .main { padding: 40px 56px 100px; max-width: 920px; }
+  @media (max-width: 900px) { .main { padding: 28px 24px 60px; } }
+
+  /* hero */
+  .hero {
+    padding-bottom: 36px; margin-bottom: 36px;
+    border-bottom: 1px solid var(--line);
+  }
+  .hero .eyebrow {
+    font-family: var(--mono);
+    font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase;
+    color: var(--lime); margin-bottom: 14px;
+  }
+  .hero h1 {
+    font-family: var(--mono); font-weight: 600;
+    font-size: clamp(28px, 4vw, 42px); line-height: 1.1;
+    letter-spacing: -0.02em; margin: 0 0 18px;
+  }
+  .hero h1 .dim { color: var(--text-mute); }
+  .hero h1 .lime { color: var(--lime); }
+  .hero .lede {
+    font-size: 17px; line-height: 1.6;
+    color: var(--text-soft); max-width: 720px;
+  }
+  .hero .lede em { color: var(--text); font-style: normal; font-weight: 600; }
+
+  .stats {
+    display: grid; grid-template-columns: repeat(4, 1fr);
+    border: 1px solid var(--line);
+    margin-top: 28px;
+    font-family: var(--mono);
+  }
+  @media (max-width: 700px) { .stats { grid-template-columns: repeat(2, 1fr); } }
+  .stats .cell {
+    padding: 14px 16px; border-right: 1px solid var(--line);
+  }
+  .stats .cell:last-child { border-right: none; }
+  @media (max-width: 700px) {
+    .stats .cell:nth-child(2n) { border-right: none; }
+    .stats .cell:nth-child(-n+2) { border-bottom: 1px solid var(--line); }
+  }
+  .stats .k { font-size: 10px; color: var(--text-mute); letter-spacing: 0.14em; text-transform: uppercase; margin-bottom: 4px; }
+  .stats .v { font-size: 18px; font-weight: 600; color: var(--text); }
+  .stats .v.acc { color: var(--lime); }
+
+  /* Architecture diagram */
+  .arch {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    padding: 28px;
+    margin: 32px 0;
+    overflow-x: auto;
+  }
+  .arch h3 {
+    font-family: var(--mono); font-weight: 600;
+    font-size: 13px; letter-spacing: 0.16em; text-transform: uppercase;
+    color: var(--lime); margin: 0 0 20px;
+  }
+  .arch pre {
+    font-family: var(--mono);
+    font-size: 12px; line-height: 1.5;
+    color: var(--text-soft); margin: 0;
+    white-space: pre;
+  }
+  .arch pre .accent { color: var(--lime); font-weight: 600; }
+  .arch pre .data { color: var(--cyan); }
+  .arch pre .ai { color: var(--violet); }
+  .arch pre .ext { color: var(--amber); }
+
+  /* Section / Phase */
+  .phase {
+    margin-top: 56px;
+    padding-top: 4px;
+    scroll-margin-top: 20px;
+  }
+  .phase-head {
+    display: flex; gap: 24px; align-items: baseline;
+    padding-bottom: 12px;
+    border-bottom: 2px solid var(--lime);
+  }
+  .phase-head .num {
+    font-family: var(--mono);
+    font-size: 12px; color: var(--lime);
+    letter-spacing: 0.2em; text-transform: uppercase;
+    white-space: nowrap;
+  }
+  .phase-head h2 {
+    font-family: var(--mono); font-weight: 600;
+    font-size: 26px; margin: 0;
+    letter-spacing: -0.01em; flex: 1;
+  }
+  .phase-head .duration {
+    font-family: var(--mono);
+    font-size: 11px; color: var(--text-mute);
+    letter-spacing: 0.12em; text-transform: uppercase;
+  }
+  .phase-goal {
+    font-style: italic;
+    font-size: 17px;
+    color: var(--text-soft);
+    padding: 20px 0 8px;
+    border-bottom: 1px solid var(--line-soft);
+    margin-bottom: 24px;
+    max-width: 760px;
+  }
+  .phase-goal::before {
+    content: 'Goal // ';
+    font-style: normal;
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.16em;
+    color: var(--lime);
+    text-transform: uppercase;
+    font-weight: 500;
+    display: block;
+    margin-bottom: 8px;
+  }
+
+  /* Sections within phase */
+  .sub {
+    margin-top: 28px;
+  }
+  .sub h3 {
+    font-family: var(--mono); font-weight: 600;
+    font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase;
+    color: var(--lime); margin: 0 0 12px;
+  }
+  .sub p {
+    margin: 0 0 12px;
+    color: var(--text-soft);
+  }
+
+  /* Steps */
+  .step {
+    display: grid;
+    grid-template-columns: 36px 1fr;
+    gap: 16px;
+    padding: 16px 0;
+    border-top: 1px solid var(--line-soft);
+  }
+  .step:last-child { border-bottom: 1px solid var(--line-soft); }
+  .step .step-num {
+    font-family: var(--mono);
+    font-size: 18px; color: var(--lime);
+    font-weight: 600; line-height: 1;
+    padding-top: 2px;
+  }
+  .step .step-body { min-width: 0; }
+  .step h4 {
+    font-family: var(--mono); font-weight: 600;
+    font-size: 14px; margin: 0 0 4px;
+    color: var(--text);
+  }
+  .step .step-time {
+    font-family: var(--mono);
+    font-size: 11px; color: var(--text-mute);
+    margin-bottom: 8px;
+  }
+  .step p { margin: 0 0 8px; font-size: 14.5px; color: var(--text-soft); }
+  .step ul { margin: 4px 0 8px; padding-left: 20px; color: var(--text-soft); font-size: 14.5px; }
+  .step ul li { margin-bottom: 3px; }
+  .step code, .inline-code {
+    font-family: var(--mono);
+    font-size: 12.5px;
+    background: var(--surface-3);
+    color: var(--cyan);
+    padding: 1px 5px;
+    border-radius: 2px;
+  }
+
+  .codeblock {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    padding: 12px 14px;
+    margin: 10px 0 12px;
+    overflow-x: auto;
+  }
+  .codeblock pre {
+    font-family: var(--mono);
+    font-size: 12px;
+    line-height: 1.5;
+    margin: 0;
+    color: var(--text);
+  }
+  .codeblock .comment { color: var(--text-mute); }
+  .codeblock .kw { color: var(--violet); }
+  .codeblock .str { color: var(--amber); }
+  .codeblock .fn { color: var(--cyan); }
+
+  /* Callouts */
+  .callout {
+    border-left: 3px solid;
+    padding: 12px 16px;
+    margin: 16px 0;
+    background: var(--surface);
+    border-radius: 0 3px 3px 0;
+  }
+  .callout.pitfall { border-color: var(--red); }
+  .callout.tip { border-color: var(--cyan); }
+  .callout.accept { border-color: var(--lime); }
+  .callout-head {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+    font-weight: 600;
+  }
+  .callout.pitfall .callout-head { color: var(--red); }
+  .callout.tip .callout-head { color: var(--cyan); }
+  .callout.accept .callout-head { color: var(--lime); }
+  .callout p { margin: 0 0 6px; font-size: 14px; color: var(--text-soft); }
+  .callout p:last-child { margin-bottom: 0; }
+  .callout ul { margin: 0; padding-left: 18px; font-size: 14px; color: var(--text-soft); }
+
+  /* Tech stack pills */
+  .tech-row {
+    display: flex; flex-wrap: wrap; gap: 6px;
+    margin: 10px 0 14px;
+  }
+  .tech {
+    font-family: var(--mono);
+    font-size: 11px;
+    padding: 3px 8px;
+    background: var(--surface-2);
+    border: 1px solid var(--line);
+    color: var(--text);
+    border-radius: 2px;
+  }
+  .tech.new { background: rgba(163, 230, 53, 0.08); border-color: rgba(163, 230, 53, 0.3); color: var(--lime); }
+
+  /* Output preview */
+  .deliverable {
+    background: var(--surface);
+    border: 1px dashed var(--line);
+    padding: 16px 18px;
+    margin: 16px 0;
+    border-radius: 3px;
+  }
+  .deliverable .lbl {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--gold);
+    margin-bottom: 8px;
+  }
+  .deliverable ul {
+    margin: 0; padding-left: 18px; font-size: 14px; color: var(--text-soft);
+  }
+
+  /* Footer */
+  .footer {
+    margin-top: 80px;
+    padding-top: 28px;
+    border-top: 1px solid var(--line);
+    display: flex; justify-content: space-between; align-items: baseline;
+    font-family: var(--mono);
+    font-size: 11px; color: var(--text-mute);
+    letter-spacing: 0.12em; text-transform: uppercase;
+    flex-wrap: wrap; gap: 12px;
+  }
+  .footer .quote {
+    text-transform: none; letter-spacing: 0;
+    color: var(--text-soft); font-size: 14px; font-style: italic;
+    font-family: var(--sans); max-width: 460px;
+  }
+
+  @keyframes rise {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .hero, .phase, .arch { animation: rise 0.4s ease both; }
+
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--line); border-radius: 4px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--text-mute); }
+</style>
+</head>
+<body>
+<div class="layout">
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="logo"><span class="blink"></span>IMPL_PLAN_v1</div>
+      <div class="name">Personal AI Memory</div>
+      <div class="meta">4 phases · ~6-9 нед total</div>
+    </div>
+
+    <div class="nav-section">
+      <h4>Навигация</h4>
+      <ul class="nav-list" id="nav">
+        <li><a href="#overview" class="active">Overview</a></li>
+        <li><a href="#architecture">Архитектура</a></li>
+        <li><a href="#stack">Финальный стек</a></li>
+        <li><a href="#phase-1"><span class="phase-num">01</span>AI-history hub</a></li>
+        <li><a href="#phase-2"><span class="phase-num">02</span>RAG слой</a></li>
+        <li><a href="#phase-3"><span class="phase-num">03</span>Memory Layer</a></li>
+        <li><a href="#phase-4"><span class="phase-num">04</span>Chat with your AI</a></li>
+        <li><a href="#risks">Главные риски</a></li>
+      </ul>
+    </div>
+
+    <div class="nav-section">
+      <h4>Легенда</h4>
+      <div class="legend">
+        <div><span class="marker" style="background:var(--lime)"></span>цель / acceptance</div>
+        <div><span class="marker" style="background:var(--red)"></span>подводный камень</div>
+        <div><span class="marker" style="background:var(--cyan)"></span>tip / совет</div>
+        <div><span class="marker" style="background:var(--gold)"></span>что появилось</div>
+      </div>
+    </div>
+  </aside>
+
+  <main class="main">
+
+    <header class="hero" id="overview">
+      <div class="eyebrow">/// implementation plan · 4 phases</div>
+      <h1>Personal AI Memory.<br><span class="dim">План реализации.</span> <span class="lime">Подробно.</span></h1>
+      <p class="lede">
+        Объединение <em>AI-history hub</em> + <em>AI с долгой памятью</em> + <em>RAG</em> в один проект. Local-first архитектура, постепенный путь от бесплатного стека к платным API, ~6-9 недель до полноценного MVP при темпе вайб-кода 2-3 ч/день.
+      </p>
+
+      <div class="stats">
+        <div class="cell"><div class="k">Фаз</div><div class="v acc">04</div></div>
+        <div class="stat cell"><div class="k">Total</div><div class="v">6-9 нед</div></div>
+        <div class="cell"><div class="k">Stack</div><div class="v">Hybrid</div></div>
+        <div class="cell"><div class="k">Storage</div><div class="v">Local-first</div></div>
+      </div>
+    </header>
+
+    <!-- === ARCHITECTURE === -->
+    <section id="architecture">
+      <div class="arch">
+        <h3>// Архитектура (упрощённо)</h3>
+        <pre>
+<span class="ext">┌─── Browser Extension (TS / Plasmo) ───┐</span>
+<span class="ext">│  content scripts:                      │</span>
+<span class="ext">│   ├─ chatgpt.com    (fetch interceptor)│</span>
+<span class="ext">│   ├─ claude.ai      (fetch interceptor)│</span>
+<span class="ext">│   └─ gemini.google  (fetch interceptor)│</span>
+<span class="ext">│  background worker → POST к backend     │</span>
+<span class="ext">└────────────┬────────────────────────────┘</span>
+             │  JSON discussions
+             ▼
+<span class="accent">┌─── Backend (Python / FastAPI) ─────────┐</span>
+<span class="accent">│  • REST API                             │</span>
+<span class="accent">│  • Extraction workers (Phase 3)         │</span>
+<span class="accent">│  • Embedding pipeline (Phase 2)         │</span>
+<span class="accent">│  • RAG chat endpoint (Phase 4)          │</span>
+<span class="accent">└──┬────────────┬────────────────┬────────┘</span>
+   │            │                │
+   ▼            ▼                ▼
+<span class="data">┌────────────┐</span>  <span class="ai">┌──────────┐</span>     <span class="ai">┌──────────────┐</span>
+<span class="data">│ Postgres   │</span>  <span class="ai">│ Ollama   │</span>     <span class="ai">│ LLM API      │</span>
+<span class="data">│ + pgvector │</span>  <span class="ai">│ (local)  │</span>     <span class="ai">│ Gemini/Claude│</span>
+<span class="data">└────────────┘</span>  <span class="ai">└──────────┘</span>     <span class="ai">└──────────────┘</span>
+   conversations    embeddings        extraction, chat
+   messages         (nomic-embed)     (cloud, paid/free)
+   chunks
+   profile_facts
+                                       <span class="accent">┌────────────────────┐</span>
+                                       <span class="accent">│ Next.js Frontend   │</span>
+                                       <span class="accent">│ /search /chat /me  │</span>
+                                       <span class="accent">└────────────────────┘</span>
+        </pre>
+      </div>
+    </section>
+
+    <!-- === FINAL STACK === -->
+    <section id="stack" class="phase">
+      <header class="phase-head">
+        <div class="num">// stack</div>
+        <h2>Финальный технологический стек</h2>
+      </header>
+
+      <div class="sub">
+        <h3>// Backend</h3>
+        <div class="tech-row">
+          <span class="tech">Python 3.11+</span>
+          <span class="tech">FastAPI</span>
+          <span class="tech">SQLAlchemy 2.0</span>
+          <span class="tech">Alembic</span>
+          <span class="tech">psycopg[binary]</span>
+          <span class="tech">httpx</span>
+          <span class="tech">arq / Celery</span>
+        </div>
+      </div>
+
+      <div class="sub">
+        <h3>// Database</h3>
+        <div class="tech-row">
+          <span class="tech">PostgreSQL 16</span>
+          <span class="tech">pgvector</span>
+          <span class="tech">Docker Compose</span>
+        </div>
+      </div>
+
+      <div class="sub">
+        <h3>// Extension</h3>
+        <div class="tech-row">
+          <span class="tech">TypeScript</span>
+          <span class="tech">Plasmo</span>
+          <span class="tech">Manifest V3</span>
+          <span class="tech">chrome.webRequest API</span>
+        </div>
+      </div>
+
+      <div class="sub">
+        <h3>// Frontend</h3>
+        <div class="tech-row">
+          <span class="tech">Next.js 14+</span>
+          <span class="tech">TypeScript</span>
+          <span class="tech">TailwindCSS</span>
+          <span class="tech">shadcn/ui</span>
+          <span class="tech">react-markdown</span>
+        </div>
+      </div>
+
+      <div class="sub">
+        <h3>// AI / LLM</h3>
+        <div class="tech-row">
+          <span class="tech">Ollama (nomic-embed-text)</span>
+          <span class="tech">Gemini API (free → paid)</span>
+          <span class="tech">Groq (chat free tier)</span>
+          <span class="tech">Claude API (production)</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- === PHASE 1 === -->
+    <section class="phase" id="phase-1">
+      <header class="phase-head">
+        <div class="num">PHASE 01</div>
+        <h2>AI-history hub MVP</h2>
+        <div class="duration">~1-2 недели</div>
+      </header>
+      <p class="phase-goal">Все твои разговоры с ChatGPT / Claude / Gemini автоматически собираются в локальную базу. Есть веб-интерфейс с базовым текстовым поиском. Никаких внешних API ещё не нужно.</p>
+
+      <div class="sub">
+        <h3>// Что нового в этой фазе</h3>
+        <div class="tech-row">
+          <span class="tech new">Plasmo extension</span>
+          <span class="tech new">FastAPI backend</span>
+          <span class="tech new">Postgres схема</span>
+          <span class="tech new">Базовый Next.js UI</span>
+        </div>
+      </div>
+
+      <div class="sub">
+        <h3>// Шаги</h3>
+
+        <div class="step">
+          <div class="step-num">1</div>
+          <div class="step-body">
+            <h4>Setup инфраструктуры</h4>
+            <div class="step-time">~½ дня</div>
+            <p>Подготовка локальной среды. Никакого кода ещё, только tooling.</p>
+            <ul>
+              <li>Установить Docker Desktop, Node.js 20+, Python 3.11+</li>
+              <li>Создать структуру: <code>pam/backend</code>, <code>pam/extension</code>, <code>pam/web</code></li>
+              <li>Поднять Postgres + pgvector через <code>docker-compose.yml</code></li>
+              <li>Python venv в <code>backend/</code>, установить FastAPI и uvicorn</li>
+            </ul>
+            <div class="codeblock"><pre><span class="comment"># docker-compose.yml — минимальный конфиг</span>
+<span class="kw">services</span>:
+  <span class="kw">db</span>:
+    <span class="kw">image</span>: pgvector/pgvector:pg16
+    <span class="kw">ports</span>: [<span class="str">"5432:5432"</span>]
+    <span class="kw">environment</span>:
+      POSTGRES_PASSWORD: pam
+      POSTGRES_DB: pam
+    <span class="kw">volumes</span>: [<span class="str">"./data:/var/lib/postgresql/data"</span>]</pre></div>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="step-num">2</div>
+          <div class="step-body">
+            <h4>Backend skeleton</h4>
+            <div class="step-time">~1 день</div>
+            <p>FastAPI приложение с базовыми эндпоинтами. Минимум — UPSERT разговора и его получение.</p>
+            <ul>
+              <li>SQLAlchemy модели: <code>Conversation</code>, <code>Message</code></li>
+              <li>Миграции через Alembic</li>
+              <li>CORS-middleware для разрешения запросов от <code>chrome-extension://*</code></li>
+              <li>Endpoints: <code>POST /conversations</code> (UPSERT), <code>GET /conversations</code>, <code>GET /conversations/{id}</code>, <code>GET /search?q=</code></li>
+              <li>Поиск через PostgreSQL <code>tsvector</code> + <code>websearch_to_tsquery</code> (быстрее чем ILIKE и поддерживает русский)</li>
+            </ul>
+            <div class="codeblock"><pre><span class="comment"># Минимальная схема таблиц</span>
+<span class="kw">CREATE TABLE</span> conversations (
+  id          UUID PRIMARY KEY,
+  source      TEXT NOT NULL,           <span class="comment">-- 'chatgpt' | 'claude' | 'gemini'</span>
+  external_id TEXT NOT NULL,           <span class="comment">-- id с того сервиса</span>
+  title       TEXT,
+  started_at  TIMESTAMPTZ,
+  updated_at  TIMESTAMPTZ DEFAULT NOW(),
+  raw_json    JSONB,
+  UNIQUE(source, external_id)
+);
+<span class="kw">CREATE TABLE</span> messages (
+  id              UUID PRIMARY KEY,
+  conversation_id UUID REFERENCES conversations(id) ON DELETE CASCADE,
+  role            TEXT,                <span class="comment">-- 'user' | 'assistant' | 'system'</span>
+  content         TEXT,
+  position        INT,
+  sent_at         TIMESTAMPTZ,
+  content_tsv     TSVECTOR
+);
+<span class="kw">CREATE INDEX</span> ON messages USING GIN(content_tsv);</pre></div>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="step-num">3</div>
+          <div class="step-body">
+            <h4>Extension skeleton (Plasmo)</h4>
+            <div class="step-time">~1 день</div>
+            <ul>
+              <li><code>npm create plasmo</code> в папке <code>extension/</code></li>
+              <li>В <code>manifest.json</code> добавить permissions: <code>"webRequest"</code>, <code>"storage"</code>, и host_permissions для трёх сайтов</li>
+              <li>Создать <code>background.ts</code> service worker с очередью отправки</li>
+              <li>Создать content-scripts для каждого сайта</li>
+              <li>UI «popup» с тумблером on/off и статистикой «N разговоров сохранено»</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="step-num">4</div>
+          <div class="step-body">
+            <h4>Перехватчики для трёх AI-сайтов</h4>
+            <div class="step-time">~2-3 дня (самая нетривиальная часть)</div>
+            <p>Главный подход — перехватывать <strong>fetch-ответы</strong> через <code>chrome.webRequest.onCompleted</code> или через injected script, патчащий <code>window.fetch</code>. Это надёжнее парсинга DOM.</p>
+            <ul>
+              <li><strong>Claude.ai</strong>: следить за <code>GET /api/organizations/{org}/chat_conversations/{convo}</code> — там полный разговор в JSON</li>
+              <li><strong>ChatGPT</strong>: <code>GET /backend-api/conversation/{id}</code></li>
+              <li><strong>Gemini</strong>: самый сложный, ответы идут стримом, нужно собирать по chunks</li>
+              <li>Для каждого источника — отдельный нормализатор в backend, приводящий JSON к единому формату</li>
+            </ul>
+            <div class="callout tip">
+              <div class="callout-head">// tip</div>
+              <p>Не парси DOM. Любое изменение фронтенда сайта сломает твой экстеншн. Перехват fetch стабильнее на порядок.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="step-num">5</div>
+          <div class="step-body">
+            <h4>Минимальный Next.js UI</h4>
+            <div class="step-time">~1-2 дня</div>
+            <ul>
+              <li>Страница <code>/</code> — список разговоров с пагинацией, фильтр по источнику</li>
+              <li>Страница <code>/c/[id]</code> — рендер conversation, markdown поддержка</li>
+              <li>Search bar сверху — текстовый поиск через <code>GET /search</code></li>
+              <li>Подсветка совпадений в результатах</li>
+              <li>Tailwind + shadcn/ui для быстрого UI без дизайна</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="step-num">6</div>
+          <div class="step-body">
+            <h4>Дедупликация и стабилизация</h4>
+            <div class="step-time">~½ дня</div>
+            <p>UPSERT по <code>(source, external_id)</code> — один и тот же разговор может приходить много раз при перезагрузке страниц. Также — обработка обновлений (новые сообщения в существующем чате).</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="callout pitfall">
+        <div class="callout-head">// pitfalls</div>
+        <ul>
+          <li>Manifest V3 запретил persistent background scripts — используй service workers и offscreen documents для долгих задач</li>
+          <li>CORS: extension не может ходить в <code>localhost:8000</code> без явного указания в manifest <code>host_permissions</code></li>
+          <li>ChatGPT требует <code>Authorization Bearer</code> токен — он есть в куках, но обновляется; обновляй парсер каждые пару недель</li>
+          <li>Gemini обновляется чаще всех — самый хрупкий источник</li>
+        </ul>
+      </div>
+
+      <div class="callout accept">
+        <div class="callout-head">// acceptance criteria</div>
+        <p>Открываешь chatgpt.com, ведёшь короткий разговор, закрываешь вкладку. Через 5 секунд в web-UI на <code>localhost:3000</code> появляется этот разговор, его можно открыть, видны все сообщения, поиск находит его по словам из переписки.</p>
+      </div>
+
+      <div class="deliverable">
+        <div class="lbl">// что появилось после Phase 1</div>
+        <ul>
+          <li>Работающий extension в Chrome (загружается «unpacked» из папки)</li>
+          <li>FastAPI backend на <code>localhost:8000</code></li>
+          <li>Postgres БД с твоей реальной историей AI-разговоров</li>
+          <li>Web-UI на <code>localhost:3000</code> для просмотра и текстового поиска</li>
+          <li>Никаких внешних API, нулевые траты</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- === PHASE 2 === -->
+    <section class="phase" id="phase-2">
+      <header class="phase-head">
+        <div class="num">PHASE 02</div>
+        <h2>RAG слой — семантический поиск</h2>
+        <div class="duration">~1-2 недели</div>
+      </header>
+      <p class="phase-goal">Поиск становится умным. «Найди где я разбирал auth в Next.js» работает, даже если в разговорах не было слова "auth" — было "аутентификация" или "logging in".</p>
+
+      <div class="sub">
+        <h3>// Что нового</h3>
+        <div class="tech-row">
+          <span class="tech new">Ollama (локально)</span>
+          <span class="tech new">nomic-embed-text</span>
+          <span class="tech new">pgvector embeddings</span>
+          <span class="tech new">Chunking pipeline</span>
+        </div>
+      </div>
+
+      <div class="sub">
+        <h3>// Шаги</h3>
+
+        <div class="step">
+          <div class="step-num">1</div>
+          <div class="step-body">
+            <h4>Установка Ollama</h4>
+            <div class="step-time">~½ дня</div>
+            <ul>
+              <li>Download с <code>ollama.com</code></li>
+              <li><code>ollama pull nomic-embed-text</code> (274 MB, идёт на 8GB RAM)</li>
+              <li>Альтернатива для лучшего качества на русском: <code>ollama pull bge-m3</code> (хотя 1.2GB)</li>
+              <li>Проверка: <code>curl http://localhost:11434/api/embeddings -d '{"model": "nomic-embed-text", "prompt": "test"}'</code></li>
+              <li>Ollama-клиент для Python: <code>pip install ollama</code></li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="step-num">2</div>
+          <div class="step-body">
+            <h4>Chunking strategy</h4>
+            <div class="step-time">~1 день</div>
+            <p>Длинные сообщения нужно резать. Стратегия:</p>
+            <ul>
+              <li>Каждое сообщение — отдельный chunk (часто этого достаточно)</li>
+              <li>Если сообщение > 2000 символов — режем на 1500-символьные куски с 200-символьным overlap</li>
+              <li>Отдельная таблица <code>chunks</code>: <code>id, message_id, position, content, embedding vector(768)</code></li>
+              <li>Никогда не теряем связь chunk → message → conversation</li>
+            </ul>
+            <div class="codeblock"><pre><span class="kw">CREATE TABLE</span> chunks (
+  id          UUID PRIMARY KEY,
+  message_id  UUID REFERENCES messages(id) ON DELETE CASCADE,
+  position    INT,
+  content     TEXT NOT NULL,
+  embedding   <span class="fn">vector(768)</span>,   <span class="comment">-- размерность nomic-embed-text</span>
+  created_at  TIMESTAMPTZ DEFAULT NOW()
+);
+<span class="comment">-- не индексируем embedding пока кусков мало (&lt; 50k)</span></pre></div>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="step-num">3</div>
+          <div class="step-body">
+            <h4>Embedding pipeline</h4>
+            <div class="step-time">~1 день</div>
+            <p>Background worker, который берёт неэмбедженные chunks и обрабатывает их.</p>
+            <ul>
+              <li>После UPSERT нового сообщения — задача в очередь (arq или просто asyncio task)</li>
+              <li>Worker берёт чанки без embedding, шлёт в Ollama, сохраняет</li>
+              <li>Batch размером 32 для производительности</li>
+              <li>Также — задача «переэмбедь всё» для случая когда меняешь модель</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="step-num">4</div>
+          <div class="step-body">
+            <h4>Vector search endpoint</h4>
+            <div class="step-time">~1 день</div>
+            <p>Новый endpoint <code>POST /search/semantic</code>:</p>
+            <ul>
+              <li>Принимает <code>query</code> текстом</li>
+              <li>Эмбедит query через Ollama</li>
+              <li>SQL: <code>SELECT * FROM chunks ORDER BY embedding &lt;-&gt; $1 LIMIT 20</code></li>
+              <li>Возвращает chunks с контекстом (id message, conversation, дата, source)</li>
+            </ul>
+            <div class="callout tip">
+              <div class="callout-head">// tip — hybrid search</div>
+              <p>Лучшие результаты даёт <strong>гибрид</strong> текстового и семантического поиска. Считаешь оба, ранжируешь через RRF (Reciprocal Rank Fusion). Реализуется в 10 строк SQL и заметно поднимает качество.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="step-num">5</div>
+          <div class="step-body">
+            <h4>Frontend update</h4>
+            <div class="step-time">~1 день</div>
+            <ul>
+              <li>Search box с переключателем режимов: текст / семантика / гибрид</li>
+              <li>Карточки результатов с подсветкой найденного фрагмента</li>
+              <li>Кнопка «найти похожие» на каждом сообщении (через embedding текущего message)</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div class="callout pitfall">
+        <div class="callout-head">// pitfalls</div>
+        <ul>
+          <li><strong>Размер chunks</strong>: слишком маленькие — теряется контекст; слишком большие — ухудшается поиск. Начни с message-as-chunk и уменьшай при необходимости.</li>
+          <li><strong>pgvector index</strong>: для маленьких БД (до ~50k chunks) <em>не индексируй</em> — full scan быстрее. Индекс HNSW тратит память.</li>
+          <li><strong>Языки</strong>: <code>nomic-embed-text</code> неплохо понимает русский, но если разговоры в основном на нём — попробуй <code>bge-m3</code> или <code>multilingual-e5</code></li>
+          <li><strong>Переэмбеддинг при смене модели</strong>: предусмотри сразу, иначе будешь думать «почему всё сломалось»</li>
+        </ul>
+      </div>
+
+      <div class="callout accept">
+        <div class="callout-head">// acceptance criteria</div>
+        <p>В поиске вводишь «как защитить эндпоинт от чужих запросов» — находит твой разговор, где ты обсуждал middleware и JWT, хотя слов из запроса там не было.</p>
+      </div>
+
+      <div class="deliverable">
+        <div class="lbl">// что появилось после Phase 2</div>
+        <ul>
+          <li>Локальная Ollama с embedding-моделью</li>
+          <li>Pipeline эмбеддинга всей твоей истории</li>
+          <li>Семантический поиск по смыслу, не по словам</li>
+          <li>Никаких новых внешних API, всё ещё нулевые траты</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- === PHASE 3 === -->
+    <section class="phase" id="phase-3">
+      <header class="phase-head">
+        <div class="num">PHASE 03</div>
+        <h2>Memory Layer — извлечение фактов</h2>
+        <div class="duration">~2-3 недели</div>
+      </header>
+      <p class="phase-goal">AI начинает извлекать структурированные факты о тебе из разговоров. Через 2-3 недели использования у тебя есть профиль с десятками фактов — что ты знаешь, чем интересуешься, над чем работаешь, с кем общаешься.</p>
+
+      <div class="sub">
+        <h3>// Что нового</h3>
+        <div class="tech-row">
+          <span class="tech new">Gemini API (free tier)</span>
+          <span class="tech new">Extraction worker</span>
+          <span class="tech new">profile_facts таблица</span>
+          <span class="tech new">Profile UI</span>
+        </div>
+      </div>
+
+      <div class="sub">
+        <h3>// Шаги</h3>
+
+        <div class="step">
+          <div class="step-num">1</div>
+          <div class="step-body">
+            <h4>Gemini API setup</h4>
+            <div class="step-time">~½ дня</div>
+            <ul>
+              <li>Аккаунт на Google AI Studio (бесплатно, без карты)</li>
+              <li>API ключ → в <code>.env</code> файл</li>
+              <li><code>pip install google-genai</code></li>
+              <li>Минимальная обёртка с retry, rate limiting (15 RPM для Flash-Lite)</li>
+              <li>Лучшая модель для extraction: <code>gemini-2.5-flash</code> (10 RPM, 250 RPD бесплатно) или <code>gemini-flash-lite</code> (15 RPM, 1500 RPD)</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="step-num">2</div>
+          <div class="step-body">
+            <h4>Extraction prompt</h4>
+            <div class="step-time">~2-3 дня (итеративно)</div>
+            <p>Самая нетривиальная часть. Промпт нужно итерировать на реальных данных. Output — strict JSON schema.</p>
+            <div class="codeblock"><pre><span class="comment"># Output schema</span>
+{
+  <span class="str">"skills"</span>: [{name, level, source_message_id}],
+  <span class="str">"preferences"</span>: [{topic, opinion, source_message_id}],
+  <span class="str">"projects"</span>: [{name, description, status, source_message_id}],
+  <span class="str">"people"</span>: [{name, relation, source_message_id}],
+  <span class="str">"facts"</span>: [{statement, category, source_message_id}]
+}</pre></div>
+            <ul>
+              <li>System prompt пишется на английском (модели лучше его понимают), контент в нём может быть на русском</li>
+              <li>Использовать Gemini structured output (JSON mode) для надёжности</li>
+              <li>Тестировать на 20-30 реальных разговорах, итерировать промпт</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="step-num">3</div>
+          <div class="step-body">
+            <h4>Schema для фактов</h4>
+            <div class="step-time">~1 день</div>
+            <div class="codeblock"><pre><span class="kw">CREATE TABLE</span> profile_facts (
+  id                UUID PRIMARY KEY,
+  category          TEXT,           <span class="comment">-- skills, preferences, projects, people, facts</span>
+  content           TEXT NOT NULL,
+  source_message_id UUID REFERENCES messages(id),
+  extracted_at      TIMESTAMPTZ DEFAULT NOW(),
+  confidence        REAL,           <span class="comment">-- 0..1</span>
+  manually_edited   BOOLEAN DEFAULT FALSE,
+  deleted           BOOLEAN DEFAULT FALSE,
+  embedding         <span class="fn">vector(768)</span>     <span class="comment">-- для семантического поиска фактов</span>
+);
+<span class="kw">CREATE INDEX</span> ON profile_facts(category) WHERE NOT deleted;</pre></div>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="step-num">4</div>
+          <div class="step-body">
+            <h4>Extraction worker</h4>
+            <div class="step-time">~1-2 дня</div>
+            <ul>
+              <li>При appearance нового разговора → задача в очередь</li>
+              <li>Worker берёт разговор, формирует промпт, шлёт в Gemini</li>
+              <li>Парсит JSON, сохраняет факты в <code>profile_facts</code></li>
+              <li>Дедупликация: перед вставкой ищет похожий факт через embedding similarity (> 0.85 = дубль, обновляем существующий)</li>
+              <li>Очередь работает в фоне, без блокировок основного flow</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="step-num">5</div>
+          <div class="step-body">
+            <h4>Conflict resolution</h4>
+            <div class="step-time">~1-2 дня</div>
+            <p>Что если в марте «я люблю TypeScript», а в августе «я устал от TypeScript»? Логика:</p>
+            <ul>
+              <li>Не удаляем старый факт — храним оба с метками времени</li>
+              <li>UI показывает «текущее мнение» (последнее по дате)</li>
+              <li>В hover/expand видна история: «было — стало»</li>
+              <li>Это исторический архив тебя, а не текущее состояние</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="step-num">6</div>
+          <div class="step-body">
+            <h4>Profile UI</h4>
+            <div class="step-time">~1 день</div>
+            <ul>
+              <li>Страница <code>/me</code> с категориями (Skills / Preferences / Projects / People / Facts)</li>
+              <li>В каждой категории — список фактов</li>
+              <li>На каждом факте: edit, delete, «не верно» (помечает как deleted, но AI больше не извлекает аналогичный)</li>
+              <li>Клик на факт → переход к оригинальному сообщению (где он был извлечён)</li>
+              <li>Сверху — статистика «N фактов о вас, последний добавлен X дней назад»</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div class="callout pitfall">
+        <div class="callout-head">// pitfalls</div>
+        <ul>
+          <li><strong>Hallucination</strong>: модель может извлечь факт, которого не было. Поэтому всегда нужен <code>source_message_id</code> для проверки</li>
+          <li><strong>Prompt injection</strong>: твои разговоры могут содержать «ignore previous instructions» — оборачивай user-content в чёткие разделители, не доверяй вложенным инструкциям</li>
+          <li><strong>Rate limits Gemini</strong>: 15 RPM = 1 запрос в 4 секунды. Реализуй очередь с задержками</li>
+          <li><strong>Russian language</strong>: качество extraction на русском хуже. Можно перевести контент на английский перед extraction, но это лишний API call — пробуй сначала на русском</li>
+          <li><strong>Privacy для уязвимых фактов</strong>: добавь категорию «sensitive» и не показывай её в общем UI без специального тумблера</li>
+        </ul>
+      </div>
+
+      <div class="callout accept">
+        <div class="callout-head">// acceptance criteria</div>
+        <p>Использовал систему 2 недели → открыл <code>/me</code> → видишь 30-50+ корректных фактов о себе, разнесённых по 5 категориям. На каждом факте кликаешь — попадаешь на оригинал в разговоре.</p>
+      </div>
+
+      <div class="deliverable">
+        <div class="lbl">// что появилось после Phase 3</div>
+        <ul>
+          <li>Локальный сервис с твоим профилем (структурированная база фактов о тебе)</li>
+          <li>Автоматическое наращивание профиля без твоего участия</li>
+          <li>UI редактирования профиля</li>
+          <li>Внешний API: Gemini Free Tier ($0/мес при умеренном использовании)</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- === PHASE 4 === -->
+    <section class="phase" id="phase-4">
+      <header class="phase-head">
+        <div class="num">PHASE 04</div>
+        <h2>Chat with your AI — финальный продукт</h2>
+        <div class="duration">~1-2 недели</div>
+      </header>
+      <p class="phase-goal">Чат-интерфейс, в котором AI знает твою историю и факты о тебе. На любой вопрос он подтягивает релевантный контекст и отвечает с цитатами из реальных твоих разговоров.</p>
+
+      <div class="sub">
+        <h3>// Что нового</h3>
+        <div class="tech-row">
+          <span class="tech new">Chat endpoint (SSE streaming)</span>
+          <span class="tech new">RAG retrieval pipeline</span>
+          <span class="tech new">Claude / Groq для chat</span>
+          <span class="tech new">Chat UI с подсветкой источников</span>
+        </div>
+      </div>
+
+      <div class="sub">
+        <h3>// Шаги</h3>
+
+        <div class="step">
+          <div class="step-num">1</div>
+          <div class="step-body">
+            <h4>Chat backend endpoint</h4>
+            <div class="step-time">~2-3 дня</div>
+            <p><code>POST /chat</code> со streaming-ответом через Server-Sent Events. На каждый запрос pipeline:</p>
+            <ol style="padding-left: 20px; margin: 4px 0; font-size: 14.5px; color: var(--text-soft);">
+              <li>Эмбедим query пользователя через Ollama</li>
+              <li>Top-K (10-15) релевантных chunks из истории через pgvector</li>
+              <li>Top-K (5-10) релевантных facts из профиля через embedding similarity</li>
+              <li>Конструируем system prompt с этим контекстом</li>
+              <li>Шлём в LLM, стримим обратно</li>
+              <li>Возвращаем вместе с ответом — список использованных источников (chunk_ids)</li>
+            </ol>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="step-num">2</div>
+          <div class="step-body">
+            <h4>Выбор LLM</h4>
+            <div class="step-time">~½ дня</div>
+            <p>Стратегия от бесплатного к платному:</p>
+            <ul>
+              <li><strong>Free start</strong>: Groq с Llama 3.3 70B — быстро, бесплатно, лимиты щадящие</li>
+              <li><strong>Cheap</strong>: Claude Haiku ($0.25/M input) — качество ощутимо выше, копейки</li>
+              <li><strong>Production</strong>: Claude Sonnet ($3/M) — если станет основным инструментом</li>
+              <li>Конфиг переключается одной переменной в <code>.env</code></li>
+              <li>Anthropic prompt caching для system prompt — резко снижает стоимость при многократных запросах</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="step-num">3</div>
+          <div class="step-body">
+            <h4>Conversation memory внутри чата</h4>
+            <div class="step-time">~1 день</div>
+            <ul>
+              <li>Текущий разговор с твоим AI хранится в отдельной таблице <code>pam_sessions</code></li>
+              <li>Не путать с <code>conversations</code> (это твоя история с другими AI)</li>
+              <li>В каждом запросе передаём последние N сообщений из текущей сессии</li>
+              <li>Длинные сессии — checkpoint и суммаризация для экономии токенов</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="step-num">4</div>
+          <div class="step-body">
+            <h4>Chat UI</h4>
+            <div class="step-time">~2-3 дня</div>
+            <ul>
+              <li>Страница <code>/chat</code> в Next.js</li>
+              <li>Streaming markdown через <code>react-markdown</code> + Server-Sent Events</li>
+              <li>Под каждым ответом — chips «использовано: разговор с Claude от 12 марта, факт из профиля»</li>
+              <li>Кнопка «почему так?» открывает sidebar с подробностями retrieval'a</li>
+              <li>Возможность копировать, заиметь shareable link на сессию</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="step-num">5</div>
+          <div class="step-body">
+            <h4>Refinement и tuning</h4>
+            <div class="step-time">~2-3 дня</div>
+            <ul>
+              <li>Промпт-инжиниринг для финального chat'a</li>
+              <li>Тестирование на real questions — где retrieval хороший, где плохой</li>
+              <li>Logging каждого retrieval'a для дебага</li>
+              <li>Контроль temperature, max_tokens</li>
+              <li>Edge cases: «что если ничего не нашлось» — честно говорим, не выдумываем</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div class="callout pitfall">
+        <div class="callout-head">// pitfalls</div>
+        <ul>
+          <li><strong>Context window</strong>: даже у Sonnet 200k, но это не значит что туда нужно пихать всё. Лучше 10 хорошо ранжированных chunks, чем 100 случайных</li>
+          <li><strong>Retrieval quality</strong>: если retrieval плохой — AI отвечает мусором. Логируй каждый запрос и руками проверяй на проблемных кейсах</li>
+          <li><strong>Cost при активном использовании</strong>: chat — самая дорогая операция. Без prompt caching можешь спалить $20-50/мес</li>
+          <li><strong>Latency</strong>: streaming решает UX, но первый токен всё равно важен. Кэшируй embeddings query, переиспользуй открытые соединения</li>
+          <li><strong>Hallucination в финальном ответе</strong>: если AI выдумал «вы говорили X» — нужна явная проверка по source_ids в pipeline</li>
+        </ul>
+      </div>
+
+      <div class="callout accept">
+        <div class="callout-head">// acceptance criteria</div>
+        <p>Спросил «что ты помнишь про мой проект Y» — AI пересказывает с цитатами из старых разговоров на эту тему. Спросил «какие у меня были основные проблемы с auth в проектах в этом году» — AI агрегирует фрагменты из нескольких разных разговоров.</p>
+      </div>
+
+      <div class="deliverable">
+        <div class="lbl">// что появилось после Phase 4 — финальный продукт</div>
+        <ul>
+          <li>Полнофункциональный AI-ассистент, который реально тебя знает</li>
+          <li>Local-first архитектура, твои данные у тебя</li>
+          <li>Расходы $0-15/мес при активном использовании</li>
+          <li>Это инструмент, который растёт со временем — чем дольше используешь, тем умнее</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- === RISKS === -->
+    <section class="phase" id="risks">
+      <header class="phase-head">
+        <div class="num">// risks</div>
+        <h2>Главные риски и митигации</h2>
+      </header>
+
+      <div class="sub">
+        <h3>// Технические</h3>
+        <div class="callout pitfall">
+          <div class="callout-head">// extension хрупкий</div>
+          <p><strong>Что случится</strong>: рано или поздно один из AI-сайтов поменяет своё API. Твой перехватчик сломается на 1-3 дня, пока ты не починишь.</p>
+          <p><strong>Митигация</strong>: 1) логи всего извлечения с алертом «N часов нет новых разговоров»; 2) три источника изолированы — отвалится один, остальные работают; 3) добавь возможность manual import через JSON-экспорт ChatGPT/Claude (они отдают export по запросу).</p>
+        </div>
+        <div class="callout pitfall">
+          <div class="callout-head">// extraction quality</div>
+          <p><strong>Что случится</strong>: на ранних разговорах AI извлечёт много ерунды или повторяющихся фактов.</p>
+          <p><strong>Митигация</strong>: 1) первую неделю активно чистишь профиль вручную, AI учится на твоих edit'ах через few-shot prompt; 2) confidence-фильтр (не показывай факты ниже 0.6); 3) regular re-extraction по обновлённому промпту.</p>
+        </div>
+      </div>
+
+      <div class="sub">
+        <h3>// Архитектурные</h3>
+        <div class="callout pitfall">
+          <div class="callout-head">// миграции БД</div>
+          <p><strong>Что случится</strong>: в Phase 3 и 4 ты неминуемо будешь менять схему. Если делать без Alembic — потеряешь данные.</p>
+          <p><strong>Митигация</strong>: с самого Phase 1 ставь Alembic, даже если кажется overkill. Каждое изменение схемы — миграция. Бэкап БД (просто <code>pg_dump</code> в файл) делай еженедельно.</p>
+        </div>
+        <div class="callout pitfall">
+          <div class="callout-head">// vendor lock-in на LLM</div>
+          <p><strong>Что случится</strong>: завязался на Gemini Flash, потом он подорожал в 5 раз / у тебя забанили / Google убрал бесплатный tier.</p>
+          <p><strong>Митигация</strong>: с самого начала — абстракция <code>LLMClient</code> с провайдерами. Переключение через ENV. Тестируй pipeline на 2 провайдерах сразу.</p>
+        </div>
+      </div>
+
+      <div class="sub">
+        <h3>// Психологические</h3>
+        <div class="callout pitfall">
+          <div class="callout-head">// уязвимый профиль</div>
+          <p><strong>Что случится</strong>: через месяц у AI набирается такой профиль тебя, что становится неприятно видеть это в одном месте. «AI знает что я ленивый», «AI помнит, что я с этим человеком в ссоре».</p>
+          <p><strong>Митигация</strong>: возможность пометить категорию как «sensitive» и спрятать. Возможность массово удалить факты по фильтру. <strong>Эта часть продукта про эмоциональный комфорт, не только про функциональность.</strong></p>
+        </div>
+        <div class="callout pitfall">
+          <div class="callout-head">// scope creep</div>
+          <p><strong>Что случится</strong>: на Phase 3 ты захочешь подключить ещё email, Notion, calendar — и Phase 4 не наступит никогда.</p>
+          <p><strong>Митигация</strong>: жёстко идти по плану. Сначала закрыть все 4 фазы только с AI-чатами как источником. Подключение других источников — Phase 5, после полностью рабочего MVP.</p>
+        </div>
+      </div>
+    </section>
+
+    <footer class="footer">
+      <span>// end of plan</span>
+      <span class="quote">План — это не закон. Это рамка, чтобы не потеряться и понимать «где я сейчас».</span>
+      <span>v1.0</span>
+    </footer>
+  </main>
+</div>
+
+<script>
+// Highlight active section in nav
+const navLinks = document.querySelectorAll('#nav a');
+const sections = document.querySelectorAll('section[id], header[id]');
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      const id = entry.target.id;
+      navLinks.forEach(l => l.classList.toggle('active', l.getAttribute('href') === '#' + id));
+    }
+  });
+}, { rootMargin: '-30% 0px -50% 0px' });
+sections.forEach(s => observer.observe(s));
+
+// Smooth scroll
+navLinks.forEach(link => {
+  link.addEventListener('click', (e) => {
+    e.preventDefault();
+    const target = document.querySelector(link.getAttribute('href'));
+    if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
+});
+</script>
+</body>
+</html>

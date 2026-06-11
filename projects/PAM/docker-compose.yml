@@ -1,0 +1,100 @@
+services:
+  db:
+    image: pgvector/pgvector:pg17
+    container_name: pam-db
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: pam
+      POSTGRES_PASSWORD: pam
+      POSTGRES_DB: pam
+    volumes:
+      - ./data/postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pam"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: pam-backend
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    # LLM keys (GROQ_API_KEY / OPENROUTER_API_KEY / LLM_PROVIDER / models) come
+    # from backend/.env. The explicit `environment:` block below overrides any
+    # DATABASE_URL/OLLAMA_URL in that file (compose env > env_file) so the
+    # container always uses the local pg container + host Ollama.
+    env_file:
+      - ./backend/.env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://pam:pam@db:5432/pam
+      CORS_ORIGINS: "chrome-extension://*,http://localhost:3000"
+      LOG_LEVEL: INFO
+      # Reach the host's Ollama (embeddings) from inside the container.
+      OLLAMA_URL: "http://host.docker.internal:11434"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./backend/app:/app/app
+      - ./backend/alembic:/app/alembic
+      - ./backend/alembic.ini:/app/alembic.ini
+    command: >
+      sh -c "alembic upgrade head &&
+             uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
+
+  # ── Web UI (Next.js) ──────────────────────────────────────────────────────
+  # Replaces the `web` window that dev.bat used to open. `npm install` runs on
+  # start (cached in the named volume after the first time); next dev serves on
+  # :3000. The browser (host) still talks to the backend via the published
+  # localhost:8000 port. Bind-mount file watching on Windows needs polling for
+  # hot-reload (Turbopack picks up most changes; a manual refresh is the
+  # fallback if HMR misses one).
+  web:
+    image: node:22-bookworm-slim
+    container_name: pam-web
+    restart: unless-stopped
+    working_dir: /app
+    command: sh -c "npm install && npm run dev -- -H 0.0.0.0 -p 3000"
+    ports:
+      - "3000:3000"
+    environment:
+      NEXT_PUBLIC_BACKEND_URL: "http://localhost:8000"
+      WATCHPACK_POLLING: "true"
+      CHOKIDAR_USEPOLLING: "true"
+    volumes:
+      - ./web:/app
+      - web_node_modules:/app/node_modules
+    depends_on:
+      - backend
+
+  # ── Extension (Plasmo) ────────────────────────────────────────────────────
+  # Produces a CLEAN production build (build/chrome-mv3-prod) and stays alive.
+  # We use `plasmo build`, not `plasmo dev`: the dev build embeds an HMR client
+  # that connects to ws://localhost:1815-1816 — that server lives inside this
+  # container, unreachable from the host browser, so it only spams console
+  # errors and never hot-reloads across the Docker boundary. The prod build has
+  # no HMR client = clean console. Load extension/build/chrome-mv3-prod in Chrome.
+  # After editing extension code, rebuild with:
+  #   docker compose restart extension   (or: docker compose exec extension npm run build)
+  # then click the extension's reload icon on chrome://extensions.
+  extension:
+    image: node:22-bookworm-slim
+    container_name: pam-extension
+    restart: unless-stopped
+    working_dir: /app
+    command: sh -c "npm install && npm run build && echo '[PAM] extension built -> extension/build/chrome-mv3-prod (Load unpacked)' && tail -f /dev/null"
+    volumes:
+      - ./extension:/app
+      - ext_node_modules:/app/node_modules
+
+volumes:
+  web_node_modules:
+  ext_node_modules:
