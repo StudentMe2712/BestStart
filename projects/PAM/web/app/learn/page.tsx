@@ -191,7 +191,7 @@ export default function LearnPage() {
   }
 
   function handleOpen(id: string) {
-    router.push(`/learn/${id}/course`)
+    router.push(`/courses/${id}`)
   }
 
   const counts = useMemo(() => {

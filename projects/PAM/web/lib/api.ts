@@ -246,6 +246,17 @@ export async function listSources(): Promise<ContentSource[]> {
   return r.json()
 }
 
+export interface ContentSourceDetail extends ContentSource {
+  text: string | null
+}
+
+/** GET /learn/sources/{id} — one source incl. its extracted text. */
+export async function getSource(id: string): Promise<ContentSourceDetail> {
+  const r = await fetch(`${BACKEND_URL}/learn/sources/${id}`, { cache: "no-store" })
+  if (!r.ok) throw new Error(`get source failed: ${r.status}`)
+  return r.json()
+}
+
 export async function ingestArticle(url: string): Promise<ContentSource> {
   const r = await fetch(`${BACKEND_URL}/learn/article`, {
     method: "POST",
