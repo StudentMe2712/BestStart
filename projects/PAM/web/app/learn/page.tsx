@@ -18,6 +18,9 @@ import {
 import { getCache, setCache } from "../../lib/cache"
 import RefreshButton from "../refresh-button"
 
+// Ссылка (http/https одним токеном) → статья/видео; всё остальное — простой текст.
+const looksLikeUrl = (s: string) => /^https?:\/\/\S+$/i.test(s.trim())
+
 export default function LearnPage() {
   const [sources, setSources] = useState<ContentSource[]>(
     () => getCache<ContentSource[]>("sources") ?? []
@@ -28,10 +31,9 @@ export default function LearnPage() {
   const [error, setError] = useState<string | null>(null)
   const [tick, setTick] = useState(0)
 
-  const [url, setUrl] = useState("")
+  const [material, setMaterial] = useState("")
   const [adding, setAdding] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
-  const [text, setText] = useState("")
 
   const [selected, setSelected] = useState<ContentSource | null>(null)
   const [course, setCourse] = useState<Course | null>(null)
@@ -48,14 +50,16 @@ export default function LearnPage() {
       .finally(() => setLoading(false))
   }, [tick])
 
-  async function addUrl() {
-    const u = url.trim()
-    if (!u) return
+  async function addMaterial() {
+    const v = material.trim()
+    if (!v) return
     setAdding(true)
     setError(null)
     try {
-      await (isYoutubeUrl(u) ? ingestYoutube(u) : ingestArticle(u))
-      setUrl("")
+      if (isYoutubeUrl(v)) await ingestYoutube(v)
+      else if (looksLikeUrl(v)) await ingestArticle(v)
+      else await ingestText(v)
+      setMaterial("")
       setTick((t) => t + 1)
     } catch (e) {
       setError(String(e))
@@ -77,22 +81,6 @@ export default function LearnPage() {
     } finally {
       setAdding(false)
       if (fileRef.current) fileRef.current.value = ""
-    }
-  }
-
-  async function addText() {
-    const t = text.trim()
-    if (!t) return
-    setAdding(true)
-    setError(null)
-    try {
-      await ingestText(t)
-      setText("")
-      setTick((n) => n + 1)
-    } catch (err) {
-      setError(String(err))
-    } finally {
-      setAdding(false)
     }
   }
 
@@ -150,29 +138,43 @@ export default function LearnPage() {
         </p>
       </header>
 
-      {/* Добавление материала */}
+      {/* Добавление материала — одно поле: ссылка ИЛИ текст */}
       <section className="mb-8 space-y-3">
-        <div className="flex gap-2">
-          <input
-            value={url}
-            onChange={(e) => setUrl(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && addUrl()}
-            placeholder="https://… статья или ссылка на YouTube"
-            className="flex-1 bg-neutral-900 border border-neutral-800 rounded-md px-3 py-2 text-sm font-sans focus:outline-none focus:border-lime-400/50"
+        <div className="space-y-2">
+          <textarea
+            value={material}
+            onChange={(e) => setMaterial(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+                e.preventDefault()
+                addMaterial()
+              }
+            }}
+            placeholder="Вставь ссылку на статью или YouTube — или просто текст…"
+            rows={3}
+            className="w-full bg-neutral-900 border border-neutral-800 rounded-md px-3 py-2 text-sm font-sans resize-y focus:outline-none focus:border-lime-400/50"
           />
-          <button
-            onClick={addUrl}
-            disabled={adding || !url.trim()}
-            className="text-sm px-4 py-2 rounded-md border border-neutral-700 text-neutral-200 hover:text-lime-400 hover:border-lime-400/50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
-            {adding
-              ? "добавляю…"
-              : url.trim() && isYoutubeUrl(url)
-                ? "добавить видео"
-                : "добавить статью"}
-          </button>
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-[10px] text-neutral-600 font-sans">
+              ссылка → статья/видео, иначе сохраню как текст · ⌘/Ctrl+Enter
+            </span>
+            <button
+              onClick={addMaterial}
+              disabled={adding || !material.trim()}
+              className="text-sm px-4 py-2 rounded-md border border-neutral-700 text-neutral-200 hover:text-lime-400 hover:border-lime-400/50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+              {adding
+                ? "добавляю…"
+                : isYoutubeUrl(material.trim())
+                  ? "добавить видео"
+                  : looksLikeUrl(material)
+                    ? "добавить статью"
+                    : "добавить текст"}
+            </button>
+          </div>
         </div>
+
         <div className="flex items-center gap-3 text-sm font-sans text-neutral-400">
-          <span>или загрузи файл:</span>
+          <span>или прикрепи файл:</span>
           <input
             ref={fileRef}
             type="file"
@@ -184,25 +186,6 @@ export default function LearnPage() {
           <span className="text-[10px] text-neutral-600">
             PDF · DOCX · TXT · MD · HTML
           </span>
-        </div>
-
-        {/* Вставить текст напрямую */}
-        <div className="space-y-2">
-          <textarea
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            placeholder="…или вставь текст сюда, чтобы добавить его в память"
-            rows={3}
-            className="w-full bg-neutral-900 border border-neutral-800 rounded-md px-3 py-2 text-sm font-sans resize-y focus:outline-none focus:border-lime-400/50"
-          />
-          <div className="flex justify-end">
-            <button
-              onClick={addText}
-              disabled={adding || !text.trim()}
-              className="text-sm px-4 py-2 rounded-md border border-neutral-700 text-neutral-200 hover:text-lime-400 hover:border-lime-400/50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
-              {adding ? "добавляю…" : "добавить текст"}
-            </button>
-          </div>
         </div>
       </section>
 
