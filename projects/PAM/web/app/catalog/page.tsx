@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link"
 
 import {
@@ -49,6 +49,47 @@ function viewBase(v: View): CatalogTool[] {
   return TOOLS.filter((t) => t.category === v)
 }
 
+// ── Живой источник: GitHub Search (topic:mcp), ~40k репозиториев ───────────
+const PER_PAGE = 30
+
+interface GhRepo {
+  id: number
+  name: string
+  full_name: string
+  description: string | null
+  html_url: string
+  stargazers_count: number
+  language: string | null
+  owner: { login: string; avatar_url: string }
+}
+
+// Фильтр/поиск → запрос к GitHub. База — topic:mcp; категории уточняют ключевым
+// словом; «Новинки/Недавно обновлённые» сортируют по дате обновления.
+function buildGhQuery(view: View, q: string): { query: string; sort: "stars" | "updated" } {
+  const KW: Partial<Record<View, string>> = {
+    agents: "agent",
+    connectors: "connector",
+    tools: "tool",
+    plugins: "plugin",
+    pam: "rag"
+  }
+  const kw = KW[view] ? KW[view] + " " : ""
+  const search = q ? q + " " : ""
+  const sort = view === "new" || view === "updated" ? "updated" : "stars"
+  return { query: `${search}${kw}topic:mcp`, sort }
+}
+
+async function fetchRepos(query: string, sort: string, page: number) {
+  const url =
+    `https://api.github.com/search/repositories?q=${encodeURIComponent(query)}` +
+    `&sort=${sort}&order=desc&per_page=${PER_PAGE}&page=${page}`
+  const r = await fetch(url, { headers: { Accept: "application/vnd.github+json" } })
+  if (r.status === 403) throw new Error("rate")
+  if (!r.ok) throw new Error("fail")
+  const d = await r.json()
+  return { items: (d.items ?? []) as GhRepo[], total: (d.total_count ?? 0) as number }
+}
+
 export default function CatalogPage() {
   const [query, setQuery] = useState("")
   const [view, setView] = useState<View>("all")
@@ -78,6 +119,99 @@ export default function CatalogPage() {
     }
     return [...base].sort(byStars)
   }, [view, q])
+
+  // ── Живой список с GitHub (бесконечный скролл, по звёздам) ──────────────
+  const [debouncedQ, setDebouncedQ] = useState("")
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedQ(query.trim()), 450)
+    return () => clearTimeout(t)
+  }, [query])
+
+  const ghq = useMemo(() => buildGhQuery(view, debouncedQ), [view, debouncedQ])
+  const [repos, setRepos] = useState<GhRepo[]>([])
+  const [ghLoading, setGhLoading] = useState(false)
+  const [ghError, setGhError] = useState<"rate" | "fail" | null>(null)
+  const [ghHasMore, setGhHasMore] = useState(true)
+  const [ghTotal, setGhTotal] = useState(0)
+  const pageRef = useRef(1)
+  const loadingRef = useRef(false)
+  const queryRef = useRef("")
+
+  const loadPage = useCallback(
+    async (gq: string, sort: string, page: number, replace: boolean) => {
+      if (loadingRef.current) return
+      loadingRef.current = true
+      setGhLoading(true)
+      setGhError(null)
+      try {
+        const { items, total } = await fetchRepos(gq, sort, page)
+        if (gq !== queryRef.current) return // запрос успел смениться
+        pageRef.current = page
+        setGhTotal(total)
+        setRepos((prev) =>
+          replace
+            ? items
+            : [...prev, ...items.filter((i) => !prev.some((p) => p.id === i.id))]
+        )
+        setGhHasMore(items.length === PER_PAGE && page * PER_PAGE < Math.min(total, 1000))
+      } catch (e) {
+        setGhError((e as Error).message === "rate" ? "rate" : "fail")
+        setGhHasMore(false)
+      } finally {
+        loadingRef.current = false
+        setGhLoading(false)
+      }
+    },
+    []
+  )
+
+  useEffect(() => {
+    queryRef.current = ghq.query
+    pageRef.current = 1
+    setRepos([])
+    setGhHasMore(true)
+    setGhError(null)
+    loadPage(ghq.query, ghq.sort, 1, true)
+  }, [ghq.query, ghq.sort, loadPage])
+
+  // Зеркалим состояние в ref'ы, чтобы колбэк observer'а не устаревал.
+  const hasMoreRef = useRef(true)
+  const errorRef = useRef<"rate" | "fail" | null>(null)
+  const sortRef = useRef("stars")
+  useEffect(() => {
+    hasMoreRef.current = ghHasMore
+  }, [ghHasMore])
+  useEffect(() => {
+    errorRef.current = ghError
+  }, [ghError])
+  useEffect(() => {
+    sortRef.current = ghq.sort
+  }, [ghq.sort])
+
+  // Callback-ref: подключаем observer ровно когда sentinel появляется в DOM.
+  const obsRef = useRef<IntersectionObserver | null>(null)
+  const sentinelRef = useCallback(
+    (node: HTMLDivElement | null) => {
+      obsRef.current?.disconnect()
+      if (!node) return
+      const io = new IntersectionObserver(
+        (entries) => {
+          if (
+            entries[0].isIntersecting &&
+            hasMoreRef.current &&
+            !errorRef.current &&
+            !loadingRef.current
+          ) {
+            loadPage(queryRef.current, sortRef.current, pageRef.current + 1, false)
+          }
+        },
+        { rootMargin: "600px" }
+      )
+      io.observe(node)
+      obsRef.current = io
+    },
+    [loadPage]
+  )
 
   return (
     <div className="max-w-[1700px] mx-auto px-6 py-8">
@@ -228,29 +362,75 @@ export default function CatalogPage() {
           <div>
             <div className="flex items-baseline justify-between gap-3 mb-4 flex-wrap">
               <h3 className="text-lg font-semibold">
-                {q
-                  ? `Результаты: «${query.trim()}»`
+                {debouncedQ
+                  ? `Результаты: «${debouncedQ}»`
                   : view === "all"
                     ? "Все инструменты"
                     : viewTitle(view)}
               </h3>
               <span className="text-sm text-neutral-500 font-sans">
-                {results.length}{" "}
-                {plural(results.length, "инструмент", "инструмента", "инструментов")} · по
-                звёздам GitHub ★
+                {ghTotal > 0
+                  ? `~${fmtStars(ghTotal)} на GitHub · по звёздам ★`
+                  : "живой список с GitHub · по звёздам ★"}
               </span>
             </div>
-            {results.length === 0 ? (
-              <div className="text-neutral-500 text-sm py-16 border border-dashed border-neutral-800 rounded-xl text-center font-sans">
-                Ничего не найдено. Попробуй другой запрос или фильтр.
-              </div>
-            ) : (
+
+            {repos.length > 0 ? (
+              <>
+                <div
+                  className="grid gap-4"
+                  style={{ gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))" }}>
+                  {repos.map((r) => (
+                    <RepoCard key={r.id} repo={r} />
+                  ))}
+                </div>
+                {ghError && (
+                  <p className="text-neutral-500 text-sm font-sans text-center mt-5">
+                    {ghError === "rate"
+                      ? "GitHub ограничил запросы — подожди минуту и прокрути снова."
+                      : "Не удалось подгрузить ещё."}
+                  </p>
+                )}
+                {!ghError && ghHasMore && <div ref={sentinelRef} className="h-12" />}
+                {ghLoading && (
+                  <div className="text-neutral-600 text-sm font-sans text-center py-4">
+                    // загружаю ещё…
+                  </div>
+                )}
+                {!ghHasMore && !ghError && (
+                  <p className="text-neutral-600 text-xs font-sans text-center mt-6">
+                    Это все результаты по запросу.
+                  </p>
+                )}
+              </>
+            ) : ghLoading ? (
               <div
                 className="grid gap-4"
-                style={{ gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))" }}>
-                {results.map((t) => (
-                  <ToolCard key={t.slug} tool={t} />
+                style={{ gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))" }}>
+                {Array.from({ length: 9 }).map((_, i) => (
+                  <div
+                    key={i}
+                    className="h-[150px] rounded-xl border border-neutral-800 bg-neutral-900/40 animate-pulse"
+                  />
                 ))}
+              </div>
+            ) : ghError ? (
+              <>
+                <p className="text-neutral-500 text-sm font-sans mb-3">
+                  GitHub недоступен ({ghError === "rate" ? "лимит запросов" : "ошибка сети"})
+                  — показываю кураторский список.
+                </p>
+                <div
+                  className="grid gap-4"
+                  style={{ gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))" }}>
+                  {results.map((t) => (
+                    <ToolCard key={t.slug} tool={t} />
+                  ))}
+                </div>
+              </>
+            ) : (
+              <div className="text-neutral-500 text-sm py-16 border border-dashed border-neutral-800 rounded-xl text-center font-sans">
+                Ничего не найдено. Попробуй другой запрос.
               </div>
             )}
           </div>
@@ -408,7 +588,7 @@ function ToolCard({ tool }: { tool: CatalogTool }) {
   return (
     <Link
       href={`/catalog/${tool.slug}`}
-      className="snap-start shrink-0 w-[300px] max-w-full rounded-xl border border-neutral-800 bg-neutral-900/40 hover:border-lime-400/40 hover:bg-neutral-900 transition-all p-4 flex flex-col">
+      className="w-full rounded-xl border border-neutral-800 bg-neutral-900/40 hover:border-lime-400/40 hover:bg-neutral-900 transition-all p-4 flex flex-col">
       <div className="flex items-start gap-3">
         <Logo tool={tool} />
         <div className="min-w-0 flex-1">
@@ -435,6 +615,42 @@ function ToolCard({ tool }: { tool: CatalogTool }) {
         <span className="ml-auto text-neutral-500 group-hover:text-lime-400">›</span>
       </div>
     </Link>
+  )
+}
+
+function RepoCard({ repo }: { repo: GhRepo }) {
+  return (
+    <a
+      href={repo.html_url}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="w-full rounded-xl border border-neutral-800 bg-neutral-900/40 hover:border-lime-400/40 hover:bg-neutral-900 transition-all p-4 flex flex-col">
+      <div className="flex items-start gap-3">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={repo.owner.avatar_url}
+          alt=""
+          loading="lazy"
+          className="w-11 h-11 rounded-xl object-cover border border-neutral-700 bg-neutral-900 shrink-0"
+        />
+        <div className="min-w-0 flex-1">
+          <div className="text-sm font-semibold truncate">{repo.name}</div>
+          <div className="text-[11px] text-neutral-500 truncate font-sans">
+            {repo.owner.login}
+          </div>
+        </div>
+      </div>
+      <p className="text-[13px] text-neutral-400 font-sans mt-2 line-clamp-2 flex-1 min-h-[2.5rem]">
+        {repo.description || "Без описания"}
+      </p>
+      <div className="flex items-center gap-3 text-[12px] text-neutral-500 font-sans mt-3 pt-3 border-t border-neutral-800/70">
+        <span className="inline-flex items-center gap-1 text-amber-400">
+          <StarIcon /> {fmtStars(repo.stargazers_count)}
+        </span>
+        {repo.language && <span>{repo.language}</span>}
+        <span className="ml-auto text-neutral-500">GitHub ↗</span>
+      </div>
+    </a>
   )
 }
 
