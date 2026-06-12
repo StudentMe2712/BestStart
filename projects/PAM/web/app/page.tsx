@@ -32,6 +32,11 @@ export default function ChatPage() {
   const [error, setError] = useState<string | null>(null)
   const endRef = useRef<HTMLDivElement>(null)
   const taRef = useRef<HTMLTextAreaElement>(null)
+  // Контекстные переключатели ввода (UI-уровень; на бэкенд пока не уходят).
+  const [useMemory, setUseMemory] = useState(true)
+  const [ctxMaterials, setCtxMaterials] = useState(false)
+  const [ctxCourses, setCtxCourses] = useState(false)
+  const [ctxSaved, setCtxSaved] = useState(false)
 
   const loadChats = () =>
     listConversations({ source: "pam", limit: 50 })
@@ -132,14 +137,14 @@ export default function ChatPage() {
         <div className="flex-1 overflow-y-auto">
           <div className="max-w-3xl mx-auto px-4 md:px-6 py-4 space-y-6">
             {messages.length === 0 ? (
-              <div className="h-[60vh] flex flex-col items-center justify-center text-center px-6">
-                <div className="w-10 h-10 rounded-xl bg-lime-400/10 border border-lime-400/30 text-lime-400 flex items-center justify-center font-semibold mb-4">
+              <div className="h-[62vh] flex flex-col items-center justify-center text-center px-6">
+                <div className="w-12 h-12 rounded-xl bg-lime-400/10 border border-lime-400/30 text-lime-400 flex items-center justify-center text-lg font-semibold mb-4">
                   P
                 </div>
-                <div className="text-lg font-semibold mb-1">Чат с твоей памятью</div>
+                <div className="text-xl font-semibold mb-1.5">Чат с твоей памятью</div>
                 <p className="text-neutral-400 text-sm font-sans max-w-md">
-                  Спроси что угодно — я помню твои прошлые разговоры (ChatGPT,
-                  Claude, Gemini) и отвечаю с опорой на них.
+                  Спроси что угодно — я помню твои прошлые разговоры, материалы и
+                  знания.
                 </p>
               </div>
             ) : (
@@ -206,14 +211,14 @@ export default function ChatPage() {
         )}
 
         {/* input bar */}
-        <div className="border-t border-neutral-800 pt-3 pb-4">
+        <div className="pt-2 pb-5">
           <div className="max-w-3xl mx-auto px-4 md:px-6">
             <form
               onSubmit={(e) => {
                 e.preventDefault()
                 send()
               }}
-              className="flex items-end gap-2 bg-neutral-900 border border-neutral-800 rounded-2xl px-3 py-2 focus-within:border-lime-400/50 transition-colors">
+              className="rounded-[26px] border border-neutral-800 bg-neutral-900 px-4 pt-3 pb-2 shadow-lg shadow-black/20 focus-within:border-lime-400/50 transition-colors">
               <textarea
                 ref={taRef}
                 value={input}
@@ -229,19 +234,46 @@ export default function ChatPage() {
                 }}
                 rows={1}
                 placeholder="Напиши сообщение…"
-                className="flex-1 resize-none bg-transparent outline-none text-sm font-sans py-1.5 placeholder:text-neutral-600 max-h-40"
+                className="w-full resize-none bg-transparent outline-none text-sm font-sans leading-relaxed placeholder:text-neutral-600 max-h-40"
               />
-              <button
-                type="submit"
-                disabled={busy || !input.trim()}
-                aria-label="Отправить"
-                className="shrink-0 w-8 h-8 rounded-full bg-lime-400 text-neutral-950 font-bold flex items-center justify-center transition-colors disabled:bg-neutral-700 disabled:text-neutral-500">
-                ↑
-              </button>
+              <div className="flex items-center justify-between gap-2 mt-1.5">
+                <div className="flex items-center gap-0.5 min-w-0 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                  <CtxToggle
+                    icon={<MemoryIcon />}
+                    label="Использовать память"
+                    active={useMemory}
+                    chevron
+                    onClick={() => setUseMemory((v) => !v)}
+                  />
+                  <span className="text-neutral-700 px-0.5 select-none">|</span>
+                  <CtxToggle
+                    icon={<DocIcon />}
+                    label="Материалы"
+                    active={ctxMaterials}
+                    onClick={() => setCtxMaterials((v) => !v)}
+                  />
+                  <CtxToggle
+                    icon={<CapIcon />}
+                    label="Курсы"
+                    active={ctxCourses}
+                    onClick={() => setCtxCourses((v) => !v)}
+                  />
+                  <CtxToggle
+                    icon={<StarIcon />}
+                    label="Избранное"
+                    active={ctxSaved}
+                    onClick={() => setCtxSaved((v) => !v)}
+                  />
+                </div>
+                <button
+                  type="submit"
+                  disabled={busy || !input.trim()}
+                  aria-label="Отправить"
+                  className="shrink-0 w-9 h-9 rounded-full bg-lime-400 text-neutral-950 flex items-center justify-center transition-colors disabled:bg-neutral-700 disabled:text-neutral-500">
+                  <ArrowUpIcon />
+                </button>
+              </div>
             </form>
-            <div className="text-[10px] text-neutral-600 text-center mt-1.5">
-              PAM помнит твои разговоры · Enter — отправить, Shift+Enter — перенос
-            </div>
           </div>
         </div>
       </main>
@@ -260,5 +292,82 @@ function TypingDots() {
         />
       ))}
     </div>
+  )
+}
+
+function CtxToggle({
+  icon,
+  label,
+  active,
+  chevron,
+  onClick
+}: {
+  icon: React.ReactNode
+  label: string
+  active?: boolean
+  chevron?: boolean
+  onClick: () => void
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[12px] font-sans transition-colors whitespace-nowrap ${
+        active
+          ? "text-lime-400 bg-lime-400/10"
+          : "text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800"
+      }`}>
+      {icon}
+      <span>{label}</span>
+      {chevron && <ChevronDownIcon />}
+    </button>
+  )
+}
+
+function MemoryIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="4" y="4" width="16" height="16" rx="2" />
+      <path d="M9 2v2M15 2v2M9 20v2M15 20v2M2 9h2M2 15h2M20 9h2M20 15h2" />
+      <rect x="9" y="9" width="6" height="6" rx="1" />
+    </svg>
+  )
+}
+function DocIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+      <polyline points="14 2 14 8 20 8" />
+    </svg>
+  )
+}
+function CapIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M22 10L12 5 2 10l10 5 10-5z" />
+      <path d="M6 12v5c3 2 9 2 12 0v-5" />
+    </svg>
+  )
+}
+function StarIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+    </svg>
+  )
+}
+function ChevronDownIcon() {
+  return (
+    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M6 9l6 6 6-6" />
+    </svg>
+  )
+}
+function ArrowUpIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 19V5M5 12l7-7 7 7" />
+    </svg>
   )
 }

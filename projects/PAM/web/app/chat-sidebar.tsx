@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 
 import {
   patchConversation,
@@ -13,11 +13,26 @@ interface Props {
   activeId: string | null
   onSelect: (id: string) => void
   onNewChat: () => void
-  onChanged: () => void // перезагрузить список после pin/archive/delete
-  onDeletedActive: () => void // если удалили открытый чат — сбросить
+  onChanged: () => void
+  onDeletedActive: () => void
 }
 
 type Menu = { id: string; x: number; y: number } | null
+
+const DATE_ORDER = ["Сегодня", "Вчера", "Эта неделя", "Этот месяц", "Старше"]
+
+function bucketOf(iso: string): string {
+  const t = new Date(iso).getTime()
+  if (isNaN(t)) return "Старше"
+  const now = new Date()
+  const startToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()
+  const day = 86400000
+  if (t >= startToday) return "Сегодня"
+  if (t >= startToday - day) return "Вчера"
+  if (t >= startToday - 7 * day) return "Эта неделя"
+  if (t >= startToday - 30 * day) return "Этот месяц"
+  return "Старше"
+}
 
 export default function ChatSidebar({
   chats,
@@ -27,19 +42,31 @@ export default function ChatSidebar({
   onChanged,
   onDeletedActive
 }: Props) {
+  const [menu, setMenu] = useState<Menu>(null)
+  const [searchOpen, setSearchOpen] = useState(false)
+  const [query, setQuery] = useState("")
+
   const pinned = chats.filter((c) => c.pinned)
   const recent = chats.filter((c) => !c.pinned)
-  const [recentOpen, setRecentOpen] = useState(true)
-  const [menu, setMenu] = useState<Menu>(null)
+  const q = query.trim().toLowerCase()
+
+  const filtered = useMemo(
+    () => (q ? chats.filter((c) => (c.title || "").toLowerCase().includes(q)) : []),
+    [chats, q]
+  )
+
+  const groups = useMemo(() => {
+    const m: Record<string, ConversationSummary[]> = {}
+    for (const c of recent) (m[bucketOf(c.updated_at)] ||= []).push(c)
+    return DATE_ORDER.filter((b) => m[b]?.length).map((b) => [b, m[b]] as const)
+  }, [recent])
 
   function openMenu(id: string, e: React.MouseEvent) {
     e.stopPropagation()
     const r = (e.currentTarget as HTMLElement).getBoundingClientRect()
     const MENU_W = 220
     const MENU_H = 150
-    // Открываем СПРАВА от кнопки (в область чата), чтобы не перекрывать список чатов.
     const x = Math.min(r.right + 6, window.innerWidth - MENU_W - 8)
-    // У нижних чатов разворачиваем вверх, чтобы не уходило за низ экрана.
     const y =
       r.bottom + 4 + MENU_H > window.innerHeight ? Math.max(8, r.top - MENU_H) : r.bottom + 4
     setMenu({ id, x, y })
@@ -80,60 +107,73 @@ export default function ChatSidebar({
 
   const menuChat = menu ? chats.find((c) => c.id === menu.id) : null
 
+  const row = (c: ConversationSummary, showPin?: boolean) => (
+    <ChatRow
+      key={c.id}
+      chat={c}
+      active={c.id === activeId}
+      showPin={showPin}
+      menuOpen={menu?.id === c.id}
+      onSelect={() => onSelect(c.id)}
+      onTogglePin={() => togglePin(c)}
+      onMore={(e) => openMenu(c.id, e)}
+    />
+  )
+
   return (
     <aside
       className="hidden md:flex w-[260px] shrink-0 flex-col bg-[#0D0D0D] border-r border-neutral-900 py-3"
       style={{ color: "#ECECEC" }}>
-      <div className="px-2">
-        <button
-          onClick={onNewChat}
-          className="w-full flex items-center gap-2 rounded-[10px] px-3 py-2.5 text-sm text-[#ECECEC] hover:bg-[#1F1F1F] transition-colors duration-150">
-          <PlusIcon />
-          <span>Новый чат</span>
-        </button>
+      <div className="px-2 space-y-0.5">
+        <NavItem icon={<ComposeIcon />} label="Новый чат" onClick={onNewChat} />
+        <NavItem
+          icon={<SearchIcon />}
+          label="Искать чаты"
+          active={searchOpen}
+          onClick={() => {
+            setSearchOpen((s) => {
+              if (s) setQuery("")
+              return !s
+            })
+          }}
+        />
+        <NavItem icon={<FolderIcon />} label="Проекты" title="скоро" onClick={() => {}} />
       </div>
 
-      <div className="mt-2 flex-1 overflow-y-auto px-2">
-        {pinned.length > 0 && (
-          <Section label="Закреплённые">
-            {pinned.map((c) => (
-              <ChatRow
-                key={c.id}
-                chat={c}
-                active={c.id === activeId}
-                showPin
-                menuOpen={menu?.id === c.id}
-                onSelect={() => onSelect(c.id)}
-                onTogglePin={() => togglePin(c)}
-                onMore={(e) => openMenu(c.id, e)}
-              />
-            ))}
-          </Section>
-        )}
+      {searchOpen && (
+        <div className="px-2 mt-1.5">
+          <input
+            autoFocus
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Поиск по чатам…"
+            className="w-full bg-[#1A1A1A] border border-neutral-800 rounded-[10px] px-3 py-2 text-sm outline-none focus:border-neutral-700 placeholder:text-neutral-600"
+          />
+        </div>
+      )}
 
-        <Section
-          label="Недавнее"
-          collapsible
-          open={recentOpen}
-          onToggle={() => setRecentOpen((v) => !v)}>
-          {recentOpen &&
-            recent.map((c) => (
-              <ChatRow
-                key={c.id}
-                chat={c}
-                active={c.id === activeId}
-                menuOpen={menu?.id === c.id}
-                onSelect={() => onSelect(c.id)}
-                onTogglePin={() => togglePin(c)}
-                onMore={(e) => openMenu(c.id, e)}
-              />
+      <div className="mt-3 flex-1 overflow-y-auto px-2">
+        {q ? (
+          <Section label={`Результаты (${filtered.length})`}>
+            {filtered.length === 0 ? (
+              <Empty text="Ничего не найдено" />
+            ) : (
+              filtered.map((c) => row(c))
+            )}
+          </Section>
+        ) : (
+          <>
+            {pinned.length > 0 && (
+              <Section label="Закреплённые">{pinned.map((c) => row(c, true))}</Section>
+            )}
+            {groups.length === 0 && pinned.length === 0 && <Empty text="пока пусто" />}
+            {groups.map(([label, items]) => (
+              <Section key={label} label={label}>
+                {items.map((c) => row(c))}
+              </Section>
             ))}
-          {recentOpen && recent.length === 0 && pinned.length === 0 && (
-            <div className="px-2.5 py-2 text-xs" style={{ color: "#A3A3A3" }}>
-              пока пусто
-            </div>
-          )}
-        </Section>
+          </>
+        )}
       </div>
 
       {menu && menuChat && (
@@ -151,34 +191,49 @@ export default function ChatSidebar({
   )
 }
 
-function Section({
+function NavItem({
+  icon,
   label,
-  collapsible,
-  open,
-  onToggle,
-  children
+  onClick,
+  active,
+  title
 }: {
+  icon: React.ReactNode
   label: string
-  collapsible?: boolean
-  open?: boolean
-  onToggle?: () => void
-  children: React.ReactNode
+  onClick: () => void
+  active?: boolean
+  title?: string
 }) {
   return (
+    <button
+      onClick={onClick}
+      title={title}
+      className={`w-full flex items-center gap-2.5 rounded-[10px] px-3 py-2 text-sm transition-colors duration-150 ${
+        active ? "bg-[#1F1F1F]" : "hover:bg-[#1F1F1F]"
+      }`}>
+      <span className="text-[#B4B4B4]">{icon}</span>
+      <span>{label}</span>
+    </button>
+  )
+}
+
+function Section({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
     <div className="mb-3">
-      <button
-        onClick={onToggle}
-        disabled={!collapsible}
-        className="w-full flex items-center gap-1 px-2.5 py-1 text-[11px] uppercase tracking-wider disabled:cursor-default"
-        style={{ color: "#A3A3A3" }}>
-        {collapsible && (
-          <ChevronIcon
-            className={`transition-transform duration-150 ${open ? "" : "-rotate-90"}`}
-          />
-        )}
+      <div
+        className="px-2.5 py-1 text-[11px] uppercase tracking-wider"
+        style={{ color: "#8A8A8A" }}>
         {label}
-      </button>
+      </div>
       <div className="mt-0.5 flex flex-col gap-[2px]">{children}</div>
+    </div>
+  )
+}
+
+function Empty({ text }: { text: string }) {
+  return (
+    <div className="px-2.5 py-2 text-xs" style={{ color: "#A3A3A3" }}>
+      {text}
     </div>
   )
 }
@@ -209,9 +264,7 @@ function ChatRow({
       className={`group relative flex items-center h-9 px-2.5 rounded-[10px] cursor-pointer transition-colors duration-150 outline-none focus-visible:ring-1 focus-visible:ring-neutral-600 ${
         active ? "bg-[#2A2A2A]" : "hover:bg-[#1F1F1F]"
       }`}>
-      <span className="flex-1 truncate text-sm pr-1">
-        {chat.title || "Новый чат"}
-      </span>
+      <span className="flex-1 truncate text-sm pr-1">{chat.title || "Новый чат"}</span>
       <div className="flex items-center gap-0.5 shrink-0">
         <IconButton
           title={chat.pinned ? "Открепить" : "Закрепить"}
@@ -219,11 +272,7 @@ function ChatRow({
             e.stopPropagation()
             onTogglePin()
           }}
-          className={
-            showPin || chat.pinned
-              ? "opacity-100"
-              : "opacity-0 group-hover:opacity-100"
-          }>
+          className={showPin || chat.pinned ? "opacity-100" : "opacity-0 group-hover:opacity-100"}>
           <PinIcon filled={chat.pinned} />
         </IconButton>
         <IconButton
@@ -287,22 +336,9 @@ function ContextMenu({
     }
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose()
-      if (e.key === "ArrowDown" || e.key === "ArrowUp") {
-        e.preventDefault()
-        const items = Array.from(
-          ref.current?.querySelectorAll<HTMLButtonElement>("button") || []
-        )
-        const i = items.indexOf(document.activeElement as HTMLButtonElement)
-        const next =
-          e.key === "ArrowDown"
-            ? items[(i + 1) % items.length]
-            : items[(i - 1 + items.length) % items.length]
-        next?.focus()
-      }
     }
     document.addEventListener("mousedown", onDoc)
     document.addEventListener("keydown", onKey)
-    ref.current?.querySelector("button")?.focus()
     return () => {
       cancelAnimationFrame(raf)
       document.removeEventListener("mousedown", onDoc)
@@ -350,17 +386,9 @@ function MenuItem({
       className="w-full h-10 flex items-center gap-2.5 px-3 rounded-[10px] text-sm text-left transition-colors duration-150 outline-none"
       style={{ color: danger ? "#FF5F57" : "#F5F5F5" }}
       onMouseEnter={(e) =>
-        (e.currentTarget.style.background = danger
-          ? "rgba(255,95,87,.12)"
-          : "#3A3A3A")
+        (e.currentTarget.style.background = danger ? "rgba(255,95,87,.12)" : "#3A3A3A")
       }
-      onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
-      onFocus={(e) =>
-        (e.currentTarget.style.background = danger
-          ? "rgba(255,95,87,.12)"
-          : "#3A3A3A")
-      }
-      onBlur={(e) => (e.currentTarget.style.background = "transparent")}>
+      onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}>
       <span className="text-[15px] leading-none">{icon}</span>
       {label}
     </button>
@@ -368,17 +396,26 @@ function MenuItem({
 }
 
 /* ---- icons ---- */
-function PlusIcon() {
+function ComposeIcon() {
   return (
-    <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round">
-      <path d="M12 5v14M5 12h14" />
+    <svg viewBox="0 0 24 24" className="w-[18px] h-[18px]" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 20h9" />
+      <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z" />
     </svg>
   )
 }
-function ChevronIcon({ className = "" }: { className?: string }) {
+function SearchIcon() {
   return (
-    <svg viewBox="0 0 24 24" className={`w-3 h-3 ${className}`} fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
-      <path d="M6 9l6 6 6-6" />
+    <svg viewBox="0 0 24 24" className="w-[18px] h-[18px]" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="11" cy="11" r="7" />
+      <path d="M21 21l-4.3-4.3" />
+    </svg>
+  )
+}
+function FolderIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="w-[18px] h-[18px]" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z" />
     </svg>
   )
 }

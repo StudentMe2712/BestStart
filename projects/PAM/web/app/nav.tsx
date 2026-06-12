@@ -9,7 +9,6 @@ export default function Nav() {
   const onChat = pathname === "/"
   const onHistory = pathname === "/history" || pathname.startsWith("/c/")
   const onSaved = pathname === "/saved"
-  const onMe = pathname === "/me"
   const onLearn = pathname === "/learn"
   const onCatalog = pathname === "/catalog"
 
@@ -20,12 +19,12 @@ export default function Nav() {
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src="/pam-logo.png"
-            alt="PAM — Personal AI Memory"
+            alt=""
             className="h-8 w-auto object-contain select-none"
             draggable={false}
           />
           <span className="hidden md:inline text-[10px] uppercase tracking-widest text-neutral-600">
-            personal_ai_memory
+            
           </span>
         </Link>
 
@@ -38,9 +37,6 @@ export default function Nav() {
           </Tab>
           <Tab href="/saved" active={onSaved}>
             Избранное
-          </Tab>
-          <Tab href="/me" active={onMe}>
-            Профиль
           </Tab>
           <Tab href="/learn" active={onLearn}>
             Лектор
