@@ -9,6 +9,8 @@ import {
   getSource,
   generateCourse,
   deleteSource,
+  reformatSource,
+  sourceFileUrl,
   type Course,
   type ContentSourceDetail
 } from "../../../lib/api"
@@ -18,7 +20,14 @@ import {
   setCourseStatus,
   type CourseStatus
 } from "../../../lib/course-status"
-import { youtubeId, kindOf, KIND_LABEL, fmtDate, PlayIcon } from "../../../lib/material-ui"
+import {
+  youtubeId,
+  kindOf,
+  KIND_LABEL,
+  fmtDate,
+  cleanSourceMarkdown,
+  PlayIcon
+} from "../../../lib/material-ui"
 import Markdown from "../../markdown"
 
 type Tab = "summary" | "extra" | "quiz"
@@ -46,6 +55,11 @@ export default function CourseReaderPage() {
   const [status, setStatus] = useState<CourseStatus>("new")
   const [regen, setRegen] = useState(false)
 
+  // «Исходный материал»: AI-причёсанная версия + переключатель оригинал/форматировано.
+  const [formatted, setFormatted] = useState<string | null>(null)
+  const [showFormatted, setShowFormatted] = useState(false)
+  const [reformatting, setReformatting] = useState(false)
+
   useEffect(() => {
     let cancelled = false
     setLoading(true)
@@ -66,6 +80,30 @@ export default function CourseReaderPage() {
   useEffect(() => {
     setStatus(getCourseStatus(id))
   }, [id])
+
+  // Подхватываем уже сгенерированную ранее «причёсанную» версию (кэш на бэке).
+  useEffect(() => {
+    setFormatted(source?.formatted_text ?? null)
+    setShowFormatted(!!source?.formatted_text)
+  }, [source])
+
+  async function improveReadability() {
+    if (formatted) {
+      setShowFormatted((s) => !s) // уже есть — просто переключаем вид
+      return
+    }
+    setReformatting(true)
+    setError(null)
+    try {
+      const t = await reformatSource(id)
+      setFormatted(t)
+      setShowFormatted(true)
+    } catch (e) {
+      setError(String(e))
+    } finally {
+      setReformatting(false)
+    }
+  }
 
   function pickStatus(s: CourseStatus) {
     setStatus(s)
@@ -108,6 +146,8 @@ export default function CourseReaderPage() {
   const mod = modules[chapter]
   const kind = source ? kindOf(source) : "text"
   const ytId = kind === "youtube" ? youtubeId(source?.url ?? null) : null
+  // Нативный предпросмотр оригинала — пока только PDF (браузер рендерит сам).
+  const hasPdfPreview = !!source?.has_file && !!source?.mime?.includes("pdf")
 
   const brief = useMemo(() => {
     const raw = mod?.lessons?.find((l) => l.content?.trim())?.content || ""
@@ -220,7 +260,14 @@ export default function CourseReaderPage() {
 
         {/* ── ЦЕНТР: контент ───────────────────────────────────────────── */}
         <section className="flex-1 min-w-0">
-          {ytId && <YoutubeHero ytId={ytId} url={source?.url ?? null} />}
+          {ytId ? (
+            <YoutubeHero ytId={ytId} url={source?.url ?? null} />
+          ) : hasPdfPreview ? (
+            <PdfHero
+              src={sourceFileUrl(id)}
+              title={source?.title ?? null}
+            />
+          ) : null}
 
           <div className="mb-5">
             <div className="text-xs uppercase tracking-widest text-lime-400 mb-1">
@@ -296,12 +343,33 @@ export default function CourseReaderPage() {
                   </div>
                 )}
                 <section>
-                  <h3 className="text-sm uppercase tracking-wider text-neutral-500 mb-2">
-                    Исходный материал
-                  </h3>
+                  <div className="flex items-center justify-between gap-3 mb-2">
+                    <h3 className="text-sm uppercase tracking-wider text-neutral-500">
+                      Исходный материал
+                    </h3>
+                    {source?.text && (
+                      <button
+                        onClick={improveReadability}
+                        disabled={reformatting}
+                        title="Разбить по смыслу на главы и абзацы (ИИ)"
+                        className="shrink-0 text-xs font-sans px-3 py-1.5 rounded-lg border border-neutral-700 text-neutral-300 hover:text-lime-400 hover:border-lime-400/50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+                        {reformatting
+                          ? "Улучшаю…"
+                          : formatted
+                            ? showFormatted
+                              ? "Показать оригинал"
+                              : "Показать форматированное"
+                            : "Улучшить читаемость ✨"}
+                      </button>
+                    )}
+                  </div>
                   {source?.text ? (
-                    <div className="max-h-[600px] overflow-y-auto rounded-lg border border-neutral-800 bg-neutral-900/40 px-4 py-3">
-                      <Markdown>{source.text}</Markdown>
+                    <div className="max-h-[600px] overflow-y-auto rounded-lg border border-neutral-800 bg-neutral-900/40 px-5 py-4">
+                      <Markdown variant="reader">
+                        {showFormatted && formatted
+                          ? formatted
+                          : cleanSourceMarkdown(source.text)}
+                      </Markdown>
                     </div>
                   ) : (
                     <p className="text-neutral-500 text-sm font-sans">
@@ -386,9 +454,30 @@ export default function CourseReaderPage() {
 
 function YoutubeHero({ ytId, url }: { ytId: string; url: string | null }) {
   const [src, setSrc] = useState(`https://i.ytimg.com/vi/${ytId}/maxresdefault.jpg`)
+  const [playing, setPlaying] = useState(false)
+
+  // Лениво грузим плеер только по клику (приватность youtube-nocookie + не
+  // тянем iframe, пока пользователь не захотел смотреть).
+  if (playing) {
+    return (
+      <div
+        className="relative w-full rounded-xl overflow-hidden mb-6 bg-black"
+        style={{ height: 420 }}>
+        <iframe
+          className="h-full w-full"
+          src={`https://www.youtube-nocookie.com/embed/${ytId}?autoplay=1&rel=0`}
+          title="YouTube"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+          allowFullScreen
+        />
+      </div>
+    )
+  }
+
   return (
     <div
-      className="relative w-full rounded-xl overflow-hidden mb-6 bg-neutral-900"
+      onClick={() => setPlaying(true)}
+      className="group relative w-full rounded-xl overflow-hidden mb-6 bg-neutral-900 cursor-pointer"
       style={{ height: 420 }}>
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
@@ -399,7 +488,7 @@ function YoutubeHero({ ytId, url }: { ytId: string; url: string | null }) {
       />
       <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
       <span className="absolute inset-0 grid place-items-center">
-        <span className="grid place-items-center w-16 h-16 rounded-full bg-black/55 text-white">
+        <span className="grid place-items-center w-16 h-16 rounded-full bg-black/55 text-white group-hover:bg-red-600 transition-colors">
           <PlayIcon />
         </span>
       </span>
@@ -408,10 +497,36 @@ function YoutubeHero({ ytId, url }: { ytId: string; url: string | null }) {
           href={url}
           target="_blank"
           rel="noopener noreferrer"
+          onClick={(e) => e.stopPropagation()}
           className="absolute bottom-3 right-3 text-xs font-sans px-3 py-1.5 rounded-lg bg-black/60 text-white hover:bg-black/80 transition-colors">
           Смотреть на YouTube ↗
         </a>
       )}
+    </div>
+  )
+}
+
+function PdfHero({ src, title }: { src: string; title: string | null }) {
+  return (
+    <div className="w-full rounded-xl overflow-hidden mb-6 border border-neutral-800 bg-neutral-900">
+      <div className="flex items-center justify-between gap-3 px-4 py-2 border-b border-neutral-800">
+        <span className="text-xs uppercase tracking-widest text-neutral-500">
+          Предпросмотр · PDF
+        </span>
+        <a
+          href={src}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-xs font-sans text-neutral-400 hover:text-lime-400 transition-colors">
+          Открыть в новой вкладке ↗
+        </a>
+      </div>
+      <iframe
+        src={src}
+        title={title || "PDF"}
+        className="w-full bg-neutral-950"
+        style={{ height: 600 }}
+      />
     </div>
   )
 }

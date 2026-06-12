@@ -37,6 +37,22 @@ export const fmtDate = (iso: string) => {
   return isNaN(d.getTime()) ? "" : d.toLocaleDateString("ru-RU")
 }
 
+/**
+ * Детерминированная чистка сырого текста markitdown (Word/PDF) для показа:
+ * нормализуем переносы, убираем пустые ссылки на картинки и висящие пробелы,
+ * схлопываем простыни пустых строк. Контент не меняем — только причёсываем шум.
+ * (AI-разбивка по смыслу — отдельная кнопка «Улучшить читаемость».)
+ */
+export function cleanSourceMarkdown(text: string | null | undefined): string {
+  if (!text) return ""
+  return text
+    .replace(/\r\n?/g, "\n") // CRLF → LF
+    .replace(/!\[[^\]]*\]\(\s*\)/g, "") // пустые ссылки на картинки ![]()
+    .replace(/[ \t]+$/gm, "") // висящие пробелы в конце строк
+    .replace(/\n{3,}/g, "\n\n") // 3+ пустых строк → одна
+    .trim()
+}
+
 export function PlayIcon({ small = false }: { small?: boolean }) {
   const s = small ? 8 : 18
   return (

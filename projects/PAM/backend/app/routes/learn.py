@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import uuid
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, Response, UploadFile
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -26,6 +26,7 @@ from ..content import (
 )
 from ..courses import generate_course
 from ..db import get_session
+from ..formatting import reformat_source_text
 from ..models import ContentSource, Course
 from ..schemas import ContentSourceOut, CourseOut, IngestArticleIn, IngestTextIn
 
@@ -157,8 +158,62 @@ async def get_source(
         "char_count": src.char_count,
         "error": src.error,
         "text": src.text,
+        "formatted_text": src.formatted_text,
+        # has_file/mime — флаг нативного предпросмотра (сейчас только PDF).
+        # original_mime НЕ deferred, так что байты файла мы тут не тянем.
+        "has_file": src.original_mime is not None,
+        "mime": src.original_mime,
         "created_at": src.created_at.isoformat() if src.created_at else None,
     }
+
+
+@router.get("/sources/{source_id}/file")
+async def get_source_file(
+    source_id: uuid.UUID,
+    session: AsyncSession = Depends(get_session),
+) -> Response:
+    """Serve the stored original file bytes (PDF) for inline preview.
+
+    Selects the (deferred) blob column directly so it's never pulled elsewhere.
+    """
+    row = (
+        await session.execute(
+            select(ContentSource.original_data, ContentSource.original_mime).where(
+                ContentSource.id == source_id
+            )
+        )
+    ).first()
+    if not row or row.original_data is None:
+        raise HTTPException(status_code=404, detail="no original file for this source")
+    return Response(
+        content=row.original_data,
+        media_type=row.original_mime or "application/octet-stream",
+        headers={"Content-Disposition": "inline"},
+    )
+
+
+@router.post("/sources/{source_id}/reformat")
+async def reformat_source(
+    source_id: uuid.UUID,
+    session: AsyncSession = Depends(get_session),
+) -> dict:
+    """AI-«причесать» исходный текст в читаемый markdown (кэшируется)."""
+    src = (
+        await session.execute(
+            select(ContentSource).where(ContentSource.id == source_id)
+        )
+    ).scalar_one_or_none()
+    if not src:
+        raise HTTPException(status_code=404, detail="source not found")
+    if not src.text:
+        raise HTTPException(status_code=409, detail="source has no text")
+    try:
+        formatted = await reformat_source_text(session, src)
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    except Exception as e:  # noqa: BLE001
+        raise HTTPException(status_code=502, detail=f"reformat failed: {e}")
+    return {"formatted_text": formatted}
 
 
 @router.delete("/sources/{source_id}", status_code=204)

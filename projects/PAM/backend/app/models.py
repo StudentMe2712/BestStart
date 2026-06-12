@@ -13,6 +13,7 @@ from sqlalchemy import (
     ForeignKey,
     Index,
     Integer,
+    LargeBinary,
     String,
     Text,
     UniqueConstraint,
@@ -174,8 +175,17 @@ class ContentSource(Base):
         String(16), nullable=False, default="pending"
     )  # pending|extracted|failed
     text: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # AI-причёсанная версия `text` (главы/абзацы) — заполняется по кнопке
+    # «Улучшить читаемость», кэшируется здесь, чтобы не гонять LLM повторно.
+    formatted_text: Mapped[str | None] = mapped_column(Text, nullable=True)
     char_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     error: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Оригинальные байты загруженного файла (только для PDF — для нативного
+    # предпросмотра в <iframe>). Deferred: большие блобы НЕ тянем в списках.
+    original_data: Mapped[bytes | None] = mapped_column(
+        LargeBinary, nullable=True, deferred=True
+    )
+    original_mime: Mapped[str | None] = mapped_column(String(128), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )

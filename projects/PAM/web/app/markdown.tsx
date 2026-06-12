@@ -61,16 +61,30 @@ function CodeBlock({ language, code }: { language: string; code: string }) {
   )
 }
 
-/** ChatGPT-подобный рендер ответа: markdown + код-блоки с подсветкой и копированием. */
-export default function Markdown({ children }: { children: string }) {
+/** ChatGPT-подобный рендер ответа: markdown + код-блоки с подсветкой и копированием.
+ *
+ * variant="reader" — книжная типографика для длинного исходного материала:
+ * отступ первой строки абзаца, больше воздуха между абзацами. */
+export default function Markdown({
+  children,
+  variant = "default"
+}: {
+  children: string
+  variant?: "default" | "reader"
+}) {
+  const readerType =
+    variant === "reader"
+      ? "prose-p:[text-indent:1.25rem] prose-p:my-3.5 prose-p:leading-7 " +
+        "prose-headings:mt-6 prose-li:my-1"
+      : "prose-p:leading-relaxed prose-li:my-0.5"
   return (
     <div
-      className="prose prose-invert prose-sm max-w-none font-sans
-                 prose-p:leading-relaxed prose-li:my-0.5 prose-headings:font-semibold
+      className={`prose prose-invert prose-sm max-w-none font-sans
+                 prose-headings:font-semibold
                  prose-pre:bg-transparent prose-pre:p-0 prose-pre:my-0
                  prose-code:before:content-none prose-code:after:content-none
                  prose-a:text-lime-400 prose-a:no-underline hover:prose-a:underline
-                 prose-strong:text-neutral-100 prose-th:text-neutral-300">
+                 prose-strong:text-neutral-100 prose-th:text-neutral-300 ${readerType}`}>
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         components={{
@@ -99,6 +113,24 @@ export default function Markdown({ children }: { children: string }) {
               <a href={href} target="_blank" rel="noopener noreferrer">
                 {children}
               </a>
+            )
+          },
+          // markitdown (Word/PDF) часто отдаёт картинки с пустым src —
+          // именно это роняло консоль предупреждением React про пустой src.
+          // Пустые не рендерим вовсе; реальные — аккуратно стилизуем и прячем
+          // битые по onError.
+          img({ src, alt }) {
+            if (typeof src !== "string" || !src.trim()) return null
+            return (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={src}
+                alt={alt || ""}
+                className="rounded-lg max-w-full h-auto my-3 border border-neutral-800"
+                onError={(e) => {
+                  e.currentTarget.style.display = "none"
+                }}
+              />
             )
           },
           table({ children }) {

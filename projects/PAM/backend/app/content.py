@@ -259,6 +259,9 @@ async def ingest_pdf(session: AsyncSession, filename: str, data: bytes) -> Conte
     try:
         text = document_to_text(filename, data)
         await _finalize(session, src, title=filename, text=text)
+        if src.status == "extracted":  # keep the original bytes for native preview
+            src.original_data = data
+            src.original_mime = "application/pdf"
     except Exception as e:  # noqa: BLE001
         await _fail(session, src, f"pdf extract failed: {e}")
     await session.commit()
@@ -273,6 +276,10 @@ async def ingest_file(session: AsyncSession, filename: str, data: bytes) -> Cont
     try:
         title, text = extract_file_text(filename, data)
         await _finalize(session, src, title=title or filename, text=text)
+        # PDFs uploaded via the universal inbox also get a native preview.
+        if src.status == "extracted" and _ext_of(filename) == "pdf":
+            src.original_data = data
+            src.original_mime = "application/pdf"
     except Exception as e:  # noqa: BLE001
         await _fail(session, src, f"file extract failed: {type(e).__name__}: {e}")
     await session.commit()

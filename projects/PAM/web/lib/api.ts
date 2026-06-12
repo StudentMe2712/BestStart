@@ -248,6 +248,12 @@ export async function listSources(): Promise<ContentSource[]> {
 
 export interface ContentSourceDetail extends ContentSource {
   text: string | null
+  /** AI-причёсанная версия text (если уже сгенерирована), иначе null. */
+  formatted_text: string | null
+  /** true, если у источника сохранён оригинал файла для предпросмотра (PDF). */
+  has_file: boolean
+  /** MIME оригинала, если has_file. */
+  mime: string | null
 }
 
 /** GET /learn/sources/{id} — one source incl. its extracted text. */
@@ -255,6 +261,24 @@ export async function getSource(id: string): Promise<ContentSourceDetail> {
   const r = await fetch(`${BACKEND_URL}/learn/sources/${id}`, { cache: "no-store" })
   if (!r.ok) throw new Error(`get source failed: ${r.status}`)
   return r.json()
+}
+
+/** URL для нативного предпросмотра оригинала файла (PDF) в <iframe>. */
+export function sourceFileUrl(id: string): string {
+  return `${BACKEND_URL}/learn/sources/${id}/file`
+}
+
+/** POST /learn/sources/{id}/reformat — AI-«причесать» исходный текст. */
+export async function reformatSource(id: string): Promise<string> {
+  const r = await fetch(`${BACKEND_URL}/learn/sources/${id}/reformat`, {
+    method: "POST"
+  })
+  if (!r.ok) {
+    const d = await r.json().catch(() => ({}))
+    throw new Error(d.detail || `reformat failed: ${r.status}`)
+  }
+  const data = await r.json()
+  return data.formatted_text as string
 }
 
 export async function ingestArticle(url: string): Promise<ContentSource> {
