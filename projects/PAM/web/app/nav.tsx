@@ -16,10 +16,15 @@ export default function Nav() {
   return (
     <header className="sticky top-0 z-20 border-b border-neutral-800 bg-neutral-950/80 backdrop-blur">
       <div className="max-w-[1700px] mx-auto px-6 h-14 flex items-center justify-between">
-        <Link href="/" className="flex items-center gap-2">
-          <Logo />
-          <span className="text-sm font-semibold tracking-wide">PAM</span>
-          <span className="hidden sm:inline text-[10px] uppercase tracking-widest text-neutral-600">
+        <Link href="/" className="flex items-center gap-2.5 shrink-0">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/pam-logo.png"
+            alt="PAM — Personal AI Memory"
+            className="h-8 w-auto object-contain select-none"
+            draggable={false}
+          />
+          <span className="hidden md:inline text-[10px] uppercase tracking-widest text-neutral-600">
             personal_ai_memory
           </span>
         </Link>
@@ -69,33 +74,5 @@ function Tab({
       }`}>
       {children}
     </Link>
-  )
-}
-
-// Бренд-глиф PAM — узлы «памяти» (тот же мотив, что и favicon app/icon.svg).
-function Logo() {
-  return (
-    <svg
-      viewBox="0 0 32 32"
-      className="w-5 h-5"
-      fill="none"
-      aria-hidden="true">
-      <rect width="32" height="32" rx="7" fill="#0d0d0d" />
-      <g
-        stroke="#a3e635"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round">
-        <path d="M10 11 L16 20 L22 11" />
-        <path d="M10 11 L22 11" />
-        <path d="M16 20 L16 25" />
-      </g>
-      <g fill="#a3e635">
-        <circle cx="10" cy="11" r="3" />
-        <circle cx="22" cy="11" r="3" />
-        <circle cx="16" cy="20" r="3" />
-        <circle cx="16" cy="25" r="1.7" />
-      </g>
-    </svg>
   )
 }
