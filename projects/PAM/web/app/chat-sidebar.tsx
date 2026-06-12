@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 
 import {
   patchConversation,
@@ -19,21 +19,6 @@ interface Props {
 
 type Menu = { id: string; x: number; y: number } | null
 
-const DATE_ORDER = ["Сегодня", "Вчера", "Эта неделя", "Этот месяц", "Старше"]
-
-function bucketOf(iso: string): string {
-  const t = new Date(iso).getTime()
-  if (isNaN(t)) return "Старше"
-  const now = new Date()
-  const startToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()
-  const day = 86400000
-  if (t >= startToday) return "Сегодня"
-  if (t >= startToday - day) return "Вчера"
-  if (t >= startToday - 7 * day) return "Эта неделя"
-  if (t >= startToday - 30 * day) return "Этот месяц"
-  return "Старше"
-}
-
 export default function ChatSidebar({
   chats,
   activeId,
@@ -47,7 +32,6 @@ export default function ChatSidebar({
 
   const pinned = chats.filter((c) => c.pinned)
   const recent = chats.filter((c) => !c.pinned)
-  const groups = useMemo(() => groupByDate(recent), [recent])
 
   function openMenu(id: string, e: React.MouseEvent) {
     e.stopPropagation()
@@ -125,12 +109,13 @@ export default function ChatSidebar({
         {pinned.length > 0 && (
           <Section label="Закреплённые">{pinned.map((c) => row(c, true))}</Section>
         )}
-        {groups.length === 0 && pinned.length === 0 && <Empty text="пока пусто" />}
-        {groups.map(([label, items]) => (
-          <Section key={label} label={label}>
-            {items.map((c) => row(c))}
-          </Section>
-        ))}
+        <Section label="Недавнее">
+          {recent.length === 0 && pinned.length === 0 ? (
+            <Empty text="пока пусто" />
+          ) : (
+            recent.map((c) => row(c))
+          )}
+        </Section>
       </div>
 
       {menu && menuChat && (
@@ -163,12 +148,6 @@ export default function ChatSidebar({
   )
 }
 
-function groupByDate(list: ConversationSummary[]) {
-  const m: Record<string, ConversationSummary[]> = {}
-  for (const c of list) (m[bucketOf(c.updated_at)] ||= []).push(c)
-  return DATE_ORDER.filter((b) => m[b]?.length).map((b) => [b, m[b]] as const)
-}
-
 function SearchModal({
   chats,
   onSelect,
@@ -185,7 +164,6 @@ function SearchModal({
   const filtered = ql
     ? chats.filter((c) => (c.title || "").toLowerCase().includes(ql))
     : chats
-  const groups = useMemo(() => groupByDate(filtered), [filtered])
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose()
@@ -209,9 +187,14 @@ function SearchModal({
             placeholder="Поиск в чатах"
             className="flex-1 bg-transparent outline-none text-sm font-sans text-neutral-100 placeholder:text-neutral-500"
           />
-          <kbd className="text-[10px] text-neutral-500 border border-neutral-700 rounded px-1.5 py-0.5">
-            Esc
-          </kbd>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Закрыть"
+            title="Закрыть (Esc)"
+            className="shrink-0 w-7 h-7 grid place-items-center rounded-md text-neutral-400 hover:text-neutral-100 hover:bg-neutral-800 transition-colors">
+            <CloseIcon />
+          </button>
         </div>
 
         <div className="max-h-[60vh] overflow-y-auto p-2">
@@ -229,21 +212,16 @@ function SearchModal({
               Ничего не найдено
             </div>
           ) : (
-            groups.map(([label, items]) => (
-              <div key={label} className="mt-2">
-                <div className="px-3 py-1 text-[11px] uppercase tracking-wider text-neutral-500">
-                  {label}
-                </div>
-                {items.map((c) => (
-                  <button
-                    key={c.id}
-                    onClick={() => onSelect(c.id)}
-                    className="w-full flex items-center rounded-[10px] px-3 py-2 text-sm text-left text-neutral-200 hover:bg-neutral-800 transition-colors">
-                    <span className="truncate">{c.title || "Новый чат"}</span>
-                  </button>
-                ))}
-              </div>
-            ))
+            <div className="mt-1">
+              {filtered.map((c) => (
+                <button
+                  key={c.id}
+                  onClick={() => onSelect(c.id)}
+                  className="w-full flex items-center rounded-[10px] px-3 py-2 text-sm text-left text-neutral-200 hover:bg-neutral-800 transition-colors">
+                  <span className="truncate">{c.title || "Новый чат"}</span>
+                </button>
+              ))}
+            </div>
           )}
         </div>
       </div>
@@ -469,6 +447,13 @@ function SearchIcon() {
     <svg viewBox="0 0 24 24" className="w-[18px] h-[18px]" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
       <circle cx="11" cy="11" r="7" />
       <path d="M21 21l-4.3-4.3" />
+    </svg>
+  )
+}
+function CloseIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="w-[18px] h-[18px]" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M18 6L6 18M6 6l12 12" />
     </svg>
   )
 }
