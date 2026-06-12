@@ -119,7 +119,6 @@ export default function ChatSidebar({
           label="Искать чаты"
           onClick={() => setSearchOpen(true)}
         />
-        <NavItem icon={<FolderIcon />} label="Проекты" title="скоро" onClick={() => {}} />
       </div>
 
       <div className="mt-3 flex-1 overflow-y-auto px-2">
@@ -470,13 +469,6 @@ function SearchIcon() {
     <svg viewBox="0 0 24 24" className="w-[18px] h-[18px]" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
       <circle cx="11" cy="11" r="7" />
       <path d="M21 21l-4.3-4.3" />
-    </svg>
-  )
-}
-function FolderIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="w-[18px] h-[18px]" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
-      <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z" />
     </svg>
   )
 }
