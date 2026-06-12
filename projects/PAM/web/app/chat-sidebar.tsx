@@ -121,7 +121,7 @@ export default function ChatSidebar({
         {/* Новый чат — Glass Card Button */}
         <button
           onClick={onNewChat}
-          className="group w-full flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm bg-white/[0.04] border border-white/[0.06] backdrop-blur-[20px] hover:border-lime-400/25 hover:bg-white/[0.06] transition-all duration-[180ms]">
+          className="group w-full flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm bg-white/[0.07] border border-white/[0.12] backdrop-blur-[20px] shadow-lg shadow-black/30 hover:border-lime-400/30 hover:bg-white/[0.09] transition-all duration-[180ms]">
           <span className="text-lime-400">
             <ComposeIcon />
           </span>

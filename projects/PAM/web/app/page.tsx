@@ -196,8 +196,17 @@ export default function ChatPage() {
       />
 
       {/* chat column */}
-      <main className="flex-1 flex flex-col min-w-0">
-        <div className="flex-1 overflow-y-auto">
+      <main className="relative flex-1 flex flex-col min-w-0 overflow-hidden">
+        {/* Мягкий lime-glow по центру секции чата (как на референсе). */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 z-0"
+          style={{
+            background:
+              "radial-gradient(58% 52% at 50% 42%, rgba(163,230,53,0.09) 0%, rgba(163,230,53,0.04) 30%, transparent 65%)"
+          }}
+        />
+        <div className="relative z-10 flex-1 overflow-y-auto">
           <div className="max-w-3xl mx-auto px-4 md:px-6 py-4 space-y-6">
             {messages.length === 0 ? (
               <div className="h-[62vh] flex flex-col items-center justify-center text-center px-6">
@@ -284,20 +293,20 @@ export default function ChatPage() {
         </div>
 
         {error && (
-          <div className="max-w-3xl mx-auto w-full px-4 md:px-6 text-red-400 text-sm font-sans py-2">
+          <div className="relative z-10 max-w-3xl mx-auto w-full px-4 md:px-6 text-red-400 text-sm font-sans py-2">
             Ошибка: {error}
           </div>
         )}
 
         {/* input bar — Glass Panel (главный визуальный акцент) */}
-        <div className="pt-2 pb-6">
+        <div className="relative z-10 pt-2 pb-6">
           <div className="max-w-[1100px] mx-auto px-4 md:px-6">
             <form
               onSubmit={(e) => {
                 e.preventDefault()
                 send()
               }}
-              className="rounded-[28px] border border-white/[0.08] bg-white/[0.04] backdrop-blur-[24px] px-4 pt-3 pb-2.5 shadow-xl shadow-black/30 focus-within:border-lime-400/40 transition-all duration-[180ms]">
+              className="rounded-[28px] border border-white/[0.12] bg-white/[0.06] backdrop-blur-[24px] px-4 pt-3 pb-2.5 shadow-2xl shadow-black/40 focus-within:border-lime-400/40 transition-all duration-[180ms]">
               {attachments.length > 0 && (
                 <div className="flex flex-wrap gap-2 mb-2.5">
                   {attachments.map((a) => (
@@ -426,7 +435,7 @@ function CtxToggle({
       className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[12px] font-sans transition-all duration-[180ms] whitespace-nowrap border backdrop-blur-[12px] ${
         active
           ? "text-lime-400 bg-lime-400/10 border-lime-400/30"
-          : "text-neutral-400 bg-white/[0.03] border-white/[0.06] hover:text-neutral-200 hover:border-lime-400/30"
+          : "text-neutral-300 bg-white/[0.05] border-white/[0.08] hover:text-neutral-100 hover:border-lime-400/30"
       }`}>
       {icon}
       <span>{label}</span>
