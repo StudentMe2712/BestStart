@@ -1,9 +1,24 @@
 @import "tailwindcss";
 @plugin "@tailwindcss/typography";
 
-/* Тему задаёт layout.tsx (bg-neutral-950 / text-neutral-100 / font-mono).
-   Здесь — подключение Tailwind v4 + плагина typography и минималистичный
+/* Тему задаёт layout.tsx (text-neutral-100 / font-mono).
+   Здесь — подключение Tailwind v4 + плагина typography, фон страницы
+   (тёмный + едва заметный lime-glow по центру) и минималистичный
    скроллбар (тонкий, сливается с тёмной темой — как в ChatGPT). */
+
+/* Фон НЕ стеклянный: тёмный #0a0a0a + очень слабое радиальное lime-свечение
+   по центру (Glass Panels Edition). Свечение зафиксировано на вьюпорте. */
+body {
+  background:
+    radial-gradient(
+      circle at center,
+      rgba(163, 230, 53, 0.08) 0%,
+      rgba(163, 230, 53, 0.03) 25%,
+      transparent 60%
+    ),
+    #0a0a0a;
+  background-attachment: fixed;
+}
 
 /* Firefox */
 * {

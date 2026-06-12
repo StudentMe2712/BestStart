@@ -154,6 +154,51 @@ async def complete(messages: list[dict], json_mode: bool = False) -> str:
     )
 
 
+VISION_SYSTEM = (
+    "Ты — модуль распознавания изображений. Тебе дают изображение, вложенное "
+    "пользователем в чат. Верни по-русски:\n"
+    "1) ДОСЛОВНУЮ расшифровку всего видимого текста (если он есть) — сохрани "
+    "структуру: заголовки, списки, код, таблицы, сообщения об ошибках.\n"
+    "2) Краткое описание, что на изображении (скриншот/схема/фото/диаграмма и "
+    "т.п.) и что важного на нём видно.\n"
+    "Пиши только распознанное содержимое, без вступлений вроде «на изображении». "
+    "Если текста нет — опиши изображение."
+)
+
+
+async def describe_image(data: bytes, mime: str) -> str:
+    """Recognize an attached image → text (transcription + description).
+
+    Uses an OpenAI-compatible multimodal model (Groq vision by default, or
+    OpenRouter when LLM_PROVIDER=openrouter). Ollama is not used for vision here.
+    """
+    import base64
+
+    b64 = base64.b64encode(data).decode("ascii")
+    data_url = f"data:{mime or 'image/png'};base64,{b64}"
+    messages = [
+        {"role": "system", "content": VISION_SYSTEM},
+        {
+            "role": "user",
+            "content": [
+                {"type": "text", "text": "Распознай это изображение."},
+                {"type": "image_url", "image_url": {"url": data_url}},
+            ],
+        },
+    ]
+    provider = settings.LLM_PROVIDER.lower()
+    if provider == "openrouter" and settings.OPENROUTER_API_KEY:
+        return await _complete_openai_compatible(
+            messages, OPENROUTER_URL, settings.OPENROUTER_API_KEY,
+            settings.OPENROUTER_MODEL, "OPENROUTER_API_KEY", False, OPENROUTER_HEADERS,
+        )
+    # По умолчанию (в т.ч. provider=ollama/hybrid) распознаём через Groq vision.
+    return await _complete_openai_compatible(
+        messages, GROQ_URL, settings.GROQ_API_KEY, settings.GROQ_VISION_MODEL,
+        "GROQ_API_KEY", False,
+    )
+
+
 async def _complete_ollama(messages: list[dict], json_mode: bool) -> str:
     payload: dict = {"model": settings.OLLAMA_CHAT_MODEL, "messages": messages, "stream": False}
     if json_mode:

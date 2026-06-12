@@ -69,12 +69,15 @@ function Tab({
     <Link
       href={href}
       aria-current={active ? "page" : undefined}
-      className={`px-3 py-1.5 rounded-md transition-colors ${
+      className={`relative px-3 py-1.5 transition-colors duration-[180ms] ${
         active
-          ? "bg-neutral-800 text-lime-400"
-          : "text-neutral-400 hover:text-neutral-100 hover:bg-neutral-900"
+          ? "text-lime-400"
+          : "text-neutral-400 hover:text-neutral-100"
       }`}>
       {children}
+      {active && (
+        <span className="absolute left-3 right-3 -bottom-px h-px bg-lime-400 rounded-full" />
+      )}
     </Link>
   )
 }

@@ -79,6 +79,18 @@ export default function ChatSidebar({
 
   const menuChat = menu ? chats.find((c) => c.id === menu.id) : null
 
+  // ⌘K / Ctrl+K — новый чат (как на референсе у кнопки «Новый чат»).
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault()
+        onNewChat()
+      }
+    }
+    document.addEventListener("keydown", onKey)
+    return () => document.removeEventListener("keydown", onKey)
+  }, [onNewChat])
+
   const row = (c: ConversationSummary, showPin?: boolean) => (
     <ChatRow
       key={c.id}
@@ -92,16 +104,43 @@ export default function ChatSidebar({
     />
   )
 
+  const groups = bucketChats(recent)
+  const groupDefs: [string, ConversationSummary[]][] = [
+    ["Сегодня", groups.today],
+    ["Вчера", groups.yesterday],
+    ["На этой неделе", groups.week],
+    ["Ранее", groups.earlier]
+  ]
+  const hasAny = pinned.length + recent.length > 0
+
   return (
     <aside
-      className="hidden md:flex w-[260px] shrink-0 flex-col bg-[#0D0D0D] border-r border-neutral-900 py-3"
+      className="hidden md:flex w-[280px] shrink-0 flex-col bg-[#0b0b0b] border-r border-white/[0.05] py-3"
       style={{ color: "#ECECEC" }}>
-      <div className="px-2 space-y-0.5">
-        <NavItem icon={<ComposeIcon />} label="Новый чат" onClick={onNewChat} />
+      <div className="px-3 space-y-1">
+        {/* Новый чат — Glass Card Button */}
+        <button
+          onClick={onNewChat}
+          className="group w-full flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm bg-white/[0.04] border border-white/[0.06] backdrop-blur-[20px] hover:border-lime-400/25 hover:bg-white/[0.06] transition-all duration-[180ms]">
+          <span className="text-lime-400">
+            <ComposeIcon />
+          </span>
+          <span className="flex-1 text-left">Новый чат</span>
+          <kbd className="text-[10px] text-neutral-500 font-sans border border-white/[0.08] rounded px-1.5 py-0.5">
+            ⌘K
+          </kbd>
+        </button>
         <NavItem
           icon={<SearchIcon />}
           label="Искать чаты"
           onClick={() => setSearchOpen(true)}
+        />
+        <NavItem
+          icon={<FolderIcon />}
+          label="Проекты"
+          onClick={() => {}}
+          title="Скоро"
+          dim
         />
       </div>
 
@@ -109,13 +148,20 @@ export default function ChatSidebar({
         {pinned.length > 0 && (
           <Section label="Закреплённые">{pinned.map((c) => row(c, true))}</Section>
         )}
-        <Section label="Недавнее">
-          {recent.length === 0 && pinned.length === 0 ? (
+        {!hasAny ? (
+          <Section label="Недавнее">
             <Empty text="пока пусто" />
-          ) : (
-            recent.map((c) => row(c))
-          )}
-        </Section>
+          </Section>
+        ) : (
+          groupDefs.map(
+            ([label, items]) =>
+              items.length > 0 && (
+                <Section key={label} label={label}>
+                  {items.map((c) => row(c))}
+                </Section>
+              )
+          )
+        )}
       </div>
 
       {menu && menuChat && (
@@ -234,25 +280,51 @@ function NavItem({
   label,
   onClick,
   active,
-  title
+  title,
+  dim
 }: {
   icon: React.ReactNode
   label: string
   onClick: () => void
   active?: boolean
   title?: string
+  dim?: boolean
 }) {
   return (
     <button
       onClick={onClick}
       title={title}
       className={`w-full flex items-center gap-2.5 rounded-[10px] px-3 py-2 text-sm transition-colors duration-150 ${
-        active ? "bg-[#1F1F1F]" : "hover:bg-[#1F1F1F]"
-      }`}>
+        active ? "bg-white/[0.06]" : "hover:bg-white/[0.04]"
+      } ${dim ? "opacity-60 hover:opacity-100" : ""}`}>
       <span className="text-[#B4B4B4]">{icon}</span>
       <span>{label}</span>
     </button>
   )
+}
+
+/** Группировка недавних чатов по дате (как в ChatGPT). */
+function bucketChats(chats: ConversationSummary[]) {
+  const now = new Date()
+  const startToday = new Date(
+    now.getFullYear(),
+    now.getMonth(),
+    now.getDate()
+  ).getTime()
+  const startYesterday = startToday - 86_400_000
+  const start7 = startToday - 6 * 86_400_000 // последние 7 дней (включая сегодня)
+  const today: ConversationSummary[] = []
+  const yesterday: ConversationSummary[] = []
+  const week: ConversationSummary[] = []
+  const earlier: ConversationSummary[] = []
+  for (const c of chats) {
+    const t = new Date(c.updated_at).getTime()
+    if (isNaN(t) || t >= startToday) today.push(c)
+    else if (t >= startYesterday) yesterday.push(c)
+    else if (t >= start7) week.push(c)
+    else earlier.push(c)
+  }
+  return { today, yesterday, week, earlier }
 }
 
 function Section({ label, children }: { label: string; children: React.ReactNode }) {
@@ -300,7 +372,7 @@ function ChatRow({
       onClick={onSelect}
       onKeyDown={(e) => e.key === "Enter" && onSelect()}
       className={`group relative flex items-center h-9 px-2.5 rounded-[10px] cursor-pointer transition-colors duration-150 outline-none focus-visible:ring-1 focus-visible:ring-neutral-600 ${
-        active ? "bg-[#2A2A2A]" : "hover:bg-[#1F1F1F]"
+        active ? "bg-white/[0.08]" : "hover:bg-white/[0.04]"
       }`}>
       <span className="flex-1 truncate text-sm pr-1">{chat.title || "Новый чат"}</span>
       <div className="flex items-center gap-0.5 shrink-0">
@@ -447,6 +519,13 @@ function SearchIcon() {
     <svg viewBox="0 0 24 24" className="w-[18px] h-[18px]" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
       <circle cx="11" cy="11" r="7" />
       <path d="M21 21l-4.3-4.3" />
+    </svg>
+  )
+}
+function FolderIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="w-[18px] h-[18px]" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z" />
     </svg>
   )
 }

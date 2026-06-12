@@ -27,6 +27,9 @@ class Settings(BaseSettings):
     # отдаёт 400 json_validate_failed (плюс free-tier лимит ~8000 токенов/мин).
     # Для структурированного JSON берём обычную (не-reasoning) модель.
     GROQ_JSON_MODEL: str = "llama-3.3-70b-versatile"
+    # Vision-модель для распознавания вложенных изображений в чате (multimodal,
+    # OpenAI-совместимо). llama-4-scout — мультимодальная и быстрая на Groq.
+    GROQ_VISION_MODEL: str = "meta-llama/llama-4-scout-17b-16e-instruct"
     # OpenRouter — один ключ на десятки моделей (OpenAI-совместимо). Ключ:
     # https://openrouter.ai/keys (бесплатно, без карты). Сильные free-модели:
     # deepseek/deepseek-r1:free, deepseek/deepseek-chat:free, qwen/qwen3-235b-a22b:free.

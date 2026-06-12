@@ -16,7 +16,8 @@ export default function RootLayout({
 }) {
   return (
     <html lang="ru">
-      <body className="bg-neutral-950 text-neutral-100 font-mono">
+      {/* Фон (тёмный + lime-glow) задаётся в globals.css на body. */}
+      <body className="text-neutral-100 font-mono">
         <Nav />
         {/* Ширину/отступы задаёт каждая страница сама: контентные — через
             max-w-5xl, чат — на всю ширину (скроллбар у правого края). */}

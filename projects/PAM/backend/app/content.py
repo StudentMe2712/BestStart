@@ -170,6 +170,30 @@ def extract_file_text(filename: str, data: bytes) -> tuple[str | None, str]:
     raise ValueError(f"unsupported file type: .{ext}")
 
 
+# Изображения распознаём vision-моделью; всё остальное — markitdown/текст.
+_IMAGE_EXTS = {"png", "jpg", "jpeg", "webp", "gif", "bmp"}
+_IMAGE_MIME = {
+    "png": "image/png", "jpg": "image/jpeg", "jpeg": "image/jpeg",
+    "webp": "image/webp", "gif": "image/gif", "bmp": "image/bmp",
+}
+
+
+async def recognize_attachment(filename: str, data: bytes) -> tuple[str, str]:
+    """Распознать вложение чата → (kind, text).
+
+    Изображение (png/jpg/webp/…) → vision-модель (транскрипция + описание);
+    документ (pdf/docx/xlsx/txt/…) → markitdown/текст. kind ∈ {image, document}.
+    """
+    ext = _ext_of(filename)
+    if ext in _IMAGE_EXTS:
+        from .llm import describe_image
+
+        text = (await describe_image(data, _IMAGE_MIME.get(ext, "image/png"))).strip()
+        return "image", text
+    _title, text = extract_file_text(filename, data)
+    return "document", (text or "").strip()
+
+
 def youtube_video_id(url: str) -> str | None:
     """Extract the 11-char video id from common YouTube URL shapes."""
     u = urlparse(url.strip())

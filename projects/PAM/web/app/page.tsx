@@ -6,6 +6,7 @@ import {
   getConversation,
   listConversations,
   streamChat,
+  uploadChatAttachment,
   type ChatMeta,
   type ConversationSummary,
   type SourceRef
@@ -14,9 +15,19 @@ import { getCache, setCache } from "../lib/cache"
 import ChatSidebar from "./chat-sidebar"
 import Markdown from "./markdown"
 
+interface Attach {
+  id: string
+  name: string
+  kind: string
+  text: string
+  status: "loading" | "done" | "error"
+  error?: string
+}
+
 interface Msg {
   role: "user" | "assistant"
   content: string
+  attachments?: { name: string }[]
 }
 
 export default function ChatPage() {
@@ -32,6 +43,10 @@ export default function ChatPage() {
   const [error, setError] = useState<string | null>(null)
   const endRef = useRef<HTMLDivElement>(null)
   const taRef = useRef<HTMLTextAreaElement>(null)
+  const fileRef = useRef<HTMLInputElement>(null)
+  // Вложения текущего сообщения (распознаются на бэке: изображения → vision,
+  // документы → markitdown).
+  const [attachments, setAttachments] = useState<Attach[]>([])
   // Контекстные переключатели ввода (UI-уровень; на бэкенд пока не уходят).
   const [useMemory, setUseMemory] = useState(true)
   const [ctxMaterials, setCtxMaterials] = useState(false)
@@ -82,40 +97,88 @@ export default function ChatPage() {
     setMessages([])
     setConvId(null)
     setSources([])
+    setAttachments([])
     setError(null)
+  }
+
+  async function onAttach(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files || [])
+    e.target.value = "" // позволяем повторно выбрать тот же файл
+    for (const f of files) {
+      const id =
+        (globalThis.crypto?.randomUUID?.() as string) || `${Date.now()}-${f.name}`
+      setAttachments((prev) => [
+        ...prev,
+        { id, name: f.name, kind: "", text: "", status: "loading" }
+      ])
+      try {
+        const res = await uploadChatAttachment(f)
+        setAttachments((prev) =>
+          prev.map((a) =>
+            a.id === id
+              ? { ...a, kind: res.kind, text: res.text, status: "done" }
+              : a
+          )
+        )
+      } catch (err) {
+        setAttachments((prev) =>
+          prev.map((a) =>
+            a.id === id ? { ...a, status: "error", error: String(err) } : a
+          )
+        )
+      }
+    }
+  }
+
+  function removeAttach(id: string) {
+    setAttachments((prev) => prev.filter((a) => a.id !== id))
   }
 
   async function send() {
     const text = input.trim()
-    if (!text || busy) return
+    const ready = attachments.filter((a) => a.status === "done")
+    const loading = attachments.some((a) => a.status === "loading")
+    if (busy || loading || (!text && ready.length === 0)) return
     setInput("")
     requestAnimationFrame(growTextarea)
     setError(null)
     setSources([])
     setMeta(null)
     setBusy(true)
+    const atts = ready.map((a) => ({ name: a.name, text: a.text }))
     setMessages((prev) => [
       ...prev,
-      { role: "user", content: text },
+      {
+        role: "user",
+        content: text,
+        attachments: ready.length ? ready.map((a) => ({ name: a.name })) : undefined
+      },
       { role: "assistant", content: "" }
     ])
+    setAttachments([])
     try {
-      await streamChat(text, convId, {
-        onMeta: setMeta,
-        onSources: setSources,
-        onToken: (t) =>
-          setMessages((prev) => {
-            const copy = prev.slice()
-            const last = copy[copy.length - 1]
-            copy[copy.length - 1] = { ...last, content: last.content + t }
-            return copy
-          }),
-        onError: (e) => setError(e),
-        onDone: (id) => {
-          if (id) setConvId(id)
-          loadChats()
-        }
-      })
+      await streamChat(
+        text,
+        convId,
+        {
+          onMeta: setMeta,
+          onSources: setSources,
+          onToken: (t) =>
+            setMessages((prev) => {
+              const copy = prev.slice()
+              const last = copy[copy.length - 1]
+              copy[copy.length - 1] = { ...last, content: last.content + t }
+              return copy
+            }),
+          onError: (e) => setError(e),
+          onDone: (id) => {
+            if (id) setConvId(id)
+            loadChats()
+          }
+        },
+        undefined,
+        atts
+      )
     } finally {
       setBusy(false)
     }
@@ -143,7 +206,7 @@ export default function ChatPage() {
                 </div>
                 <div className="text-xl font-semibold mb-1.5">Чат с твоей памятью</div>
                 <p className="text-neutral-400 text-sm font-sans max-w-md">
-                  Спроси что угодно — я помню твои прошлые разговоры, материалы и
+                  Спроси что угодно — я помню прошлые разговоры, материалы и
                   знания.
                 </p>
               </div>
@@ -151,8 +214,24 @@ export default function ChatPage() {
               messages.map((m, i) =>
                 m.role === "user" ? (
                   <div key={i} className="flex justify-end">
-                    <div className="bg-neutral-800 text-neutral-100 rounded-2xl rounded-br-md px-4 py-2.5 max-w-[80%] text-sm font-sans whitespace-pre-wrap">
-                      {m.content}
+                    <div className="flex flex-col items-end gap-1.5 max-w-[80%]">
+                      {m.attachments?.length ? (
+                        <div className="flex flex-wrap justify-end gap-1.5">
+                          {m.attachments.map((a, j) => (
+                            <span
+                              key={j}
+                              className="inline-flex items-center gap-1.5 text-[11px] font-sans px-2 py-1 rounded-lg bg-neutral-800/70 border border-neutral-700 text-neutral-300">
+                              <PaperclipIcon small />
+                              <span className="truncate max-w-[160px]">{a.name}</span>
+                            </span>
+                          ))}
+                        </div>
+                      ) : null}
+                      {m.content && (
+                        <div className="bg-neutral-800 text-neutral-100 rounded-2xl rounded-br-md px-4 py-2.5 text-sm font-sans whitespace-pre-wrap">
+                          {m.content}
+                        </div>
+                      )}
                     </div>
                   </div>
                 ) : (
@@ -210,15 +289,26 @@ export default function ChatPage() {
           </div>
         )}
 
-        {/* input bar */}
-        <div className="pt-2 pb-5">
-          <div className="max-w-3xl mx-auto px-4 md:px-6">
+        {/* input bar — Glass Panel (главный визуальный акцент) */}
+        <div className="pt-2 pb-6">
+          <div className="max-w-[1100px] mx-auto px-4 md:px-6">
             <form
               onSubmit={(e) => {
                 e.preventDefault()
                 send()
               }}
-              className="rounded-[26px] border border-neutral-800 bg-neutral-900 px-4 pt-3 pb-2 shadow-lg shadow-black/20 focus-within:border-lime-400/50 transition-colors">
+              className="rounded-[28px] border border-white/[0.08] bg-white/[0.04] backdrop-blur-[24px] px-4 pt-3 pb-2.5 shadow-xl shadow-black/30 focus-within:border-lime-400/40 transition-all duration-[180ms]">
+              {attachments.length > 0 && (
+                <div className="flex flex-wrap gap-2 mb-2.5">
+                  {attachments.map((a) => (
+                    <AttachChip
+                      key={a.id}
+                      a={a}
+                      onRemove={() => removeAttach(a.id)}
+                    />
+                  ))}
+                </div>
+              )}
               <textarea
                 ref={taRef}
                 value={input}
@@ -233,11 +323,28 @@ export default function ChatPage() {
                   }
                 }}
                 rows={1}
-                placeholder="Напиши сообщение…"
-                className="w-full resize-none bg-transparent outline-none text-sm font-sans leading-relaxed placeholder:text-neutral-600 max-h-40"
+                placeholder="Напиши сообщение..."
+                className="w-full resize-none bg-transparent outline-none text-sm font-sans leading-relaxed placeholder:text-neutral-500 max-h-40"
               />
-              <div className="flex items-center justify-between gap-2 mt-1.5">
-                <div className="flex items-center gap-0.5 min-w-0 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              <div className="flex items-center justify-between gap-2 mt-2">
+                <div className="flex items-center gap-1 min-w-0 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                  <button
+                    type="button"
+                    onClick={() => fileRef.current?.click()}
+                    title="Прикрепить файл или изображение"
+                    aria-label="Прикрепить"
+                    className="shrink-0 w-8 h-8 grid place-items-center rounded-full text-neutral-400 hover:text-lime-400 hover:bg-white/[0.05] transition-colors">
+                    <PaperclipIcon />
+                  </button>
+                  <input
+                    ref={fileRef}
+                    type="file"
+                    multiple
+                    accept="image/*,.pdf,.docx,.pptx,.xlsx,.xls,.txt,.md,.markdown,.html,.htm,.csv,.json,.log,.rst"
+                    onChange={onAttach}
+                    className="hidden"
+                  />
+                  <span className="text-white/10 px-0.5 select-none">|</span>
                   <CtxToggle
                     icon={<MemoryIcon />}
                     label="Использовать память"
@@ -245,7 +352,6 @@ export default function ChatPage() {
                     chevron
                     onClick={() => setUseMemory((v) => !v)}
                   />
-                  <span className="text-neutral-700 px-0.5 select-none">|</span>
                   <CtxToggle
                     icon={<DocIcon />}
                     label="Материалы"
@@ -267,9 +373,13 @@ export default function ChatPage() {
                 </div>
                 <button
                   type="submit"
-                  disabled={busy || !input.trim()}
+                  disabled={
+                    busy ||
+                    (!input.trim() &&
+                      attachments.filter((a) => a.status === "done").length === 0)
+                  }
                   aria-label="Отправить"
-                  className="shrink-0 w-9 h-9 rounded-full bg-lime-400 text-neutral-950 flex items-center justify-center transition-colors disabled:bg-neutral-700 disabled:text-neutral-500">
+                  className="shrink-0 w-12 h-12 rounded-full bg-lime-400 text-neutral-950 flex items-center justify-center transition-all duration-[180ms] hover:shadow-[0_0_20px_rgba(163,230,53,0.45)] disabled:bg-neutral-700 disabled:text-neutral-500 disabled:shadow-none">
                   <ArrowUpIcon />
                 </button>
               </div>
@@ -313,15 +423,50 @@ function CtxToggle({
       type="button"
       onClick={onClick}
       aria-pressed={active}
-      className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[12px] font-sans transition-colors whitespace-nowrap ${
+      className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[12px] font-sans transition-all duration-[180ms] whitespace-nowrap border backdrop-blur-[12px] ${
         active
-          ? "text-lime-400 bg-lime-400/10"
-          : "text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800"
+          ? "text-lime-400 bg-lime-400/10 border-lime-400/30"
+          : "text-neutral-400 bg-white/[0.03] border-white/[0.06] hover:text-neutral-200 hover:border-lime-400/30"
       }`}>
       {icon}
       <span>{label}</span>
       {chevron && <ChevronDownIcon />}
     </button>
+  )
+}
+
+function AttachChip({ a, onRemove }: { a: Attach; onRemove: () => void }) {
+  const err = a.status === "error"
+  return (
+    <span
+      title={err ? a.error : a.name}
+      className={`inline-flex items-center gap-1.5 text-[12px] font-sans px-2.5 py-1.5 rounded-xl border backdrop-blur-[12px] max-w-[260px] ${
+        err
+          ? "border-red-500/40 bg-red-500/10 text-red-300"
+          : "border-white/[0.08] bg-white/[0.05] text-neutral-200"
+      }`}>
+      <span className="shrink-0 text-neutral-400">
+        {a.status === "loading" ? (
+          <Spinner />
+        ) : a.kind === "image" ? (
+          <ImageIcon />
+        ) : (
+          <FileIcon />
+        )}
+      </span>
+      <span className="truncate">{a.name}</span>
+      {a.status === "loading" && (
+        <span className="shrink-0 text-neutral-500">распознаю…</span>
+      )}
+      {err && <span className="shrink-0 text-red-400">ошибка</span>}
+      <button
+        type="button"
+        onClick={onRemove}
+        aria-label="Убрать вложение"
+        className="shrink-0 ml-0.5 text-neutral-500 hover:text-neutral-100 transition-colors">
+        <CloseTinyIcon />
+      </button>
+    </span>
   )
 }
 
@@ -368,6 +513,46 @@ function ArrowUpIcon() {
   return (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M12 19V5M5 12l7-7 7 7" />
+    </svg>
+  )
+}
+function PaperclipIcon({ small = false }: { small?: boolean }) {
+  const s = small ? 12 : 17
+  return (
+    <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21.44 11.05l-9.19 9.19a5 5 0 0 1-7.07-7.07l8.49-8.49a3 3 0 1 1 4.24 4.24l-8.49 8.49a1 1 0 0 1-1.41-1.41l7.78-7.78" />
+    </svg>
+  )
+}
+function ImageIcon() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="3" width="18" height="18" rx="2" />
+      <circle cx="8.5" cy="8.5" r="1.5" />
+      <path d="M21 15l-5-5L5 21" />
+    </svg>
+  )
+}
+function FileIcon() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+      <polyline points="14 2 14 8 20 8" />
+    </svg>
+  )
+}
+function Spinner() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" className="animate-spin">
+      <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2.5" opacity="0.25" />
+      <path d="M21 12a9 9 0 0 0-9-9" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
+    </svg>
+  )
+}
+function CloseTinyIcon() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M18 6L6 18M6 6l12 12" />
     </svg>
   )
 }

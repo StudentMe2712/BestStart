@@ -406,17 +406,56 @@ export interface ChatHandlers {
   onError?: (e: string) => void
 }
 
+/** Вложение чата с уже распознанным текстом (передаётся в /chat как контекст). */
+export interface ChatAttachment {
+  name: string
+  text: string
+}
+
+export interface ChatAttachmentResult {
+  name: string
+  kind: "image" | "document"
+  text: string
+  char_count: number
+}
+
+/**
+ * POST /chat/attachment — распознать загруженный файл:
+ * изображение → vision-модель, документ → markitdown. Возвращает извлечённый
+ * текст, который потом уходит в /chat как контекст сообщения.
+ */
+export async function uploadChatAttachment(
+  file: File
+): Promise<ChatAttachmentResult> {
+  const fd = new FormData()
+  fd.append("file", file)
+  const r = await fetch(`${BACKEND_URL}/chat/attachment`, {
+    method: "POST",
+    body: fd
+  })
+  if (!r.ok) {
+    const d = await r.json().catch(() => ({}))
+    throw new Error(d.detail || `attachment failed: ${r.status}`)
+  }
+  return r.json()
+}
+
 /** POST /chat and consume the SSE stream (data: {...}\n\n). */
 export async function streamChat(
   message: string,
   conversationId: string | null,
   h: ChatHandlers,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  attachments?: ChatAttachment[]
 ): Promise<void> {
   const r = await fetch(`${BACKEND_URL}/chat`, {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ message, conversation_id: conversationId }),
+    body: JSON.stringify({
+      message,
+      conversation_id: conversationId,
+      attachments: attachments && attachments.length ? attachments : undefined
+    }),
     signal
   })
   if (!r.ok || !r.body) {
