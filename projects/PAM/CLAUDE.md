@@ -6,23 +6,32 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this project is
 
-**Personal AI Memory (PAM)** — local-first service that:
-1. Captures the user's conversations from ChatGPT / Claude / Gemini via a browser extension.
-2. Stores them in a local Postgres + pgvector DB.
-3. Exposes search and (later phases) a RAG chat over them.
+**Personal AI Memory (PAM)** — a local-first personal-knowledge app. It started as a
+capture-and-search tool for AI conversations and has grown into two connected products:
 
-The project follows a **4-phase plan** documented in `implementation-plan.html` and `VIBE_PROMPT.md`:
+1. **Memory + chat** — capture conversations from ChatGPT / Claude (Gemini = stub) via a
+   browser extension into local Postgres+pgvector; a RAG **chat with memory**
+   (`POST /chat`, SSE streaming) that retrieves across past conversations **and** learning
+   material, supports **file/image attachments** (documents → markitdown, images → Groq
+   vision; `POST /chat/attachment`), and auto-extracts `profile_facts` about the user.
+2. **Лектор (learning)** — ingest material (article URL / YouTube transcript / uploaded
+   file / pasted text) → extract text → generate a structured **mini-course**
+   (modules→lessons + quiz) tailored to the user's level. The reader has YouTube/PDF
+   preview and an AI "улучшить читаемость" reformat of the raw source text.
 
-| Phase | Goal | External APIs |
-|---|---|---|
-| 1 (current skeleton in place) | Capture + full-text search | none |
-| 2 | RAG: chunks, embeddings via local Ollama, hybrid (text+vector) search | none |
-| 3 | Memory layer: Gemini extracts structured `profile_facts` | Gemini Free Tier |
-| 4 | Chat: SSE streaming `POST /chat`, RAG retrieval, Claude/Groq | Claude / Groq |
+Everything stays **local-first**: conversations and material live in the local DB; only the
+LLM calls (Groq / OpenRouter) and embeddings (local Ollama) reach out.
 
-Each phase is shippable on its own. Don't pull Phase N+1 work into Phase N.
+> **Historical phase plan (context only):** the build followed a 4-phase plan
+> (`implementation-plan.html`, `VIBE_PROMPT.md`): (1) capture + full-text search, (2) RAG
+> chunks/embeddings, (3) profile-fact extraction, (4) streaming chat. A later "Phase 5 —
+> личный лектор" added the learning/course features. Those docs are historical and partly
+> inaccurate (e.g. extraction/chat run on Groq/OpenRouter, not Gemini/Claude as the old
+> table said) — **this file is the current source of truth.**
 
-The Gemini content script is intentionally a **stub** (`extension/contents/gemini.ts`) — Claude.ai and ChatGPT capture is wired up; Gemini is left to be implemented after observing the real streaming format in DevTools.
+The Gemini content script is intentionally a **stub** (`extension/contents/gemini.ts`) —
+Claude.ai and ChatGPT capture is wired up; Gemini is left to be implemented after observing
+the real streaming format in DevTools.
 
 ## Common commands
 
@@ -72,7 +81,17 @@ Then in Chrome: `chrome://extensions` → Developer mode → Load unpacked → `
 
 ### Tests
 
-No test harness exists yet. When adding tests, prefer `pytest` for the backend and Jest/Vitest only if/when justified for extension or web.
+A minimal **pytest** suite lives in `backend/tests/` — pure-function units (attachment
+recognition dispatch, reformat chunking, filename sanitization, SSRF guard). Run it:
+
+```bash
+docker compose exec backend pytest -q
+```
+
+pytest deps live in `pyproject.toml` `[project.optional-dependencies] dev` (baked into the
+image; `backend/tests` is also bind-mounted for live editing). There's no DB-backed/route
+test yet and no web test runner — `npm run build` (in `web/`) is the type/compile gate for
+the frontend. See `TODO.md` #12 for the planned expansion.
 
 ## Architecture — what requires reading multiple files to grasp
 
@@ -142,10 +161,26 @@ Manual import via the AI sites' official export feature is the documented fallba
 ```
 backend/app/
   main.py            FastAPI app + CORS wildcard regex assembly
-  normalizers.py     server-side fallback normalizers (NOT currently invoked from routes)
+  config.py          settings: LLM provider/models (incl. GROQ_VISION_MODEL), Ollama, DB
+  llm.py             provider-agnostic chat (Groq/OpenRouter/Ollama): stream/complete,
+                     hybrid router, describe_image (vision for attachments)
+  indexing.py        chunk_text + local Ollama embeddings (nomic-embed-text, 768-dim)
+  content.py         Лектор ingest + extraction (markitdown pdf/docx/xlsx/pptx), article/
+                     YouTube fetch, SSRF guard, recognize_attachment (image→vision/doc→md)
+  courses.py         generate a mini-course (modules/lessons/quiz) from a ContentSource
+  formatting.py      AI «улучшить читаемость» reformat of raw source text (chunked)
+  extraction.py      extract profile_facts ABOUT THE USER from conversations
+  normalizers.py     server-side fallback normalizers (NOT currently invoked — see TODO #9)
+  models.py          SQLAlchemy models (Conversation/Message/Chunk, ContentSource/
+                     ContentChunk, Course, ProfileFact, SavedMessage)
   routes/
     conversations.py UPSERT + wipe-and-reinsert messages + tsvector UPDATE
     search.py        websearch_to_tsquery, ts_headline snippets, ts_rank ordering
+    chat.py          POST /chat (SSE RAG chat) + POST /chat/attachment (recognition)
+    learn.py         Лектор: ingest sources, course gen, PDF file preview, reformat
+    facts.py         profile_facts CRUD + /facts/extract
+    saved.py         starred («Избранное») messages
+  tests/             pytest units (recognize dispatch, reformat split, _safe_name, SSRF)
 
 extension/
   background.ts      retry queue (4s × attempts, MAX_ATTEMPTS=5); stats in chrome.storage.local
@@ -154,12 +189,19 @@ extension/
   contents/gemini.ts STUB — implement after observing real streaming format in DevTools
 
 web/app/
-  page.tsx           list + 300ms debounced search
-  c/[id]/page.tsx    conversation detail with markdown
+  page.tsx           CHAT page (RAG chat + attachments, glass UI, центр-glow)
+  chat-sidebar.tsx   chat sidebar (date-grouped «Недавнее», search modal, glass «Новый чат»)
+  c/[id]/page.tsx    conversation detail with markdown (opened from History)
+  learn/page.tsx     Лектор: add material + materials grid/list
+  courses/[id]/page.tsx  course reader (содержание/конспект/тест, YouTube/PDF hero, reformat)
+  markdown.tsx       ReactMarkdown (code blocks, reader variant, empty-img guard)
+web/lib/
+  api.ts             backend client (fetch wrappers + streamChat SSE)
+  material-ui.tsx    shared helpers: Kind/KIND_LABEL/kindOf/youtubeId/fmtDate/PlayIcon/cleanSourceMarkdown
 
-implementation-plan.html   The 4-phase plan (open in a browser, not Read)
-VIBE_PROMPT.md             Session-starter prompt with full project context
-docs/VIBE_PROMPT.md        Duplicate copy of the above
+implementation-plan.html   The 4-phase plan (open in a browser, not Read) — historical
+VIBE_PROMPT.md             Session-starter prompt — historical
+TODO.md                    prioritized roadmap / backlog
 ```
 
 ## Conventions

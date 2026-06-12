@@ -16,23 +16,23 @@ import {
   type ContentSource
 } from "../../lib/api"
 import { getCache, setCache } from "../../lib/cache"
+import {
+  KIND_LABEL,
+  kindOf,
+  youtubeId,
+  fmtDate,
+  PlayIcon,
+  type Kind
+} from "../../lib/material-ui"
 import RefreshButton from "../refresh-button"
 
 // Ссылка (http/https одним токеном) → статья/видео; всё остальное — простой текст.
 const looksLikeUrl = (s: string) => /^https?:\/\/\S+$/i.test(s.trim())
 
-// kind в рантайме шире TS-типа из api.ts (бэкенд отдаёт ещё file/text).
-type Kind = "youtube" | "article" | "pdf" | "file" | "text"
+// Kind / KIND_LABEL / kindOf / youtubeId / fmtDate / PlayIcon — общие хелперы
+// из lib/material-ui (раньше дублировались здесь).
 type ViewMode = "grid" | "list"
 type SortMode = "new" | "old" | "title"
-
-const KIND_LABEL: Record<Kind, string> = {
-  youtube: "YouTube",
-  article: "Статья",
-  pdf: "PDF",
-  file: "Файл",
-  text: "Текст"
-}
 
 const KIND_BADGE: Record<Kind, string> = {
   youtube: "bg-red-600 text-white",
@@ -49,32 +49,6 @@ const FILTERS: { key: Kind | "all"; label: string }[] = [
   { key: "article", label: "Статьи" },
   { key: "text", label: "Текст" }
 ]
-
-function kindOf(s: ContentSource): Kind {
-  return s.kind as Kind
-}
-
-function youtubeId(url: string | null): string | null {
-  if (!url) return null
-  try {
-    const u = new URL(url)
-    const h = u.hostname.toLowerCase().replace(/^www\./, "")
-    if (h === "youtu.be") return u.pathname.slice(1).split("/")[0] || null
-    if (h.endsWith("youtube.com")) {
-      if (u.pathname === "/watch") return u.searchParams.get("v")
-      const m = u.pathname.match(/^\/(?:shorts|embed|v|live)\/([^/]+)/)
-      if (m) return m[1]
-    }
-  } catch {
-    /* ignore */
-  }
-  return null
-}
-
-const fmtDate = (iso: string) => {
-  const d = new Date(iso)
-  return isNaN(d.getTime()) ? "" : d.toLocaleDateString("ru-RU")
-}
 
 export default function LearnPage() {
   const router = useRouter()
@@ -776,15 +750,6 @@ function UploadIcon() {
       <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
       <polyline points="17 8 12 3 7 8" />
       <line x1="12" y1="3" x2="12" y2="15" />
-    </svg>
-  )
-}
-
-function PlayIcon({ small = false }: { small?: boolean }) {
-  const s = small ? 8 : 18
-  return (
-    <svg width={s} height={s} viewBox="0 0 24 24" fill="currentColor">
-      <path d="M8 5v14l11-7z" />
     </svg>
   )
 }
