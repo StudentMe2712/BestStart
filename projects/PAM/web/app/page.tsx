@@ -7,6 +7,7 @@ import {
   listConversations,
   streamChat,
   uploadChatAttachment,
+  rememberAttachment,
   type ChatMeta,
   type ConversationSummary,
   type SourceRef
@@ -22,6 +23,8 @@ interface Attach {
   text: string
   status: "loading" | "done" | "error"
   error?: string
+  remembered?: boolean
+  remembering?: boolean
 }
 
 interface Msg {
@@ -134,6 +137,27 @@ export default function ChatPage() {
     setAttachments((prev) => prev.filter((a) => a.id !== id))
   }
 
+  async function rememberAttach(id: string) {
+    const a = attachments.find((x) => x.id === id)
+    if (!a || a.status !== "done" || a.remembered || a.remembering) return
+    setAttachments((prev) =>
+      prev.map((x) => (x.id === id ? { ...x, remembering: true } : x))
+    )
+    try {
+      await rememberAttachment({ title: a.name, text: a.text, kind: "file" })
+      setAttachments((prev) =>
+        prev.map((x) =>
+          x.id === id ? { ...x, remembered: true, remembering: false } : x
+        )
+      )
+    } catch (e) {
+      setAttachments((prev) =>
+        prev.map((x) => (x.id === id ? { ...x, remembering: false } : x))
+      )
+      setError(String(e))
+    }
+  }
+
   async function send() {
     const text = input.trim()
     const ready = attachments.filter((a) => a.status === "done")
@@ -177,7 +201,13 @@ export default function ChatPage() {
           }
         },
         undefined,
-        atts
+        atts,
+        {
+          memory: useMemory,
+          materials: ctxMaterials,
+          courses: ctxCourses,
+          saved: ctxSaved
+        }
       )
     } finally {
       setBusy(false)
@@ -314,6 +344,7 @@ export default function ChatPage() {
                       key={a.id}
                       a={a}
                       onRemove={() => removeAttach(a.id)}
+                      onRemember={() => rememberAttach(a.id)}
                     />
                   ))}
                 </div>
@@ -444,12 +475,20 @@ function CtxToggle({
   )
 }
 
-function AttachChip({ a, onRemove }: { a: Attach; onRemove: () => void }) {
+function AttachChip({
+  a,
+  onRemove,
+  onRemember
+}: {
+  a: Attach
+  onRemove: () => void
+  onRemember: () => void
+}) {
   const err = a.status === "error"
   return (
     <span
       title={err ? a.error : a.name}
-      className={`inline-flex items-center gap-1.5 text-[12px] font-sans px-2.5 py-1.5 rounded-xl border backdrop-blur-[12px] max-w-[260px] ${
+      className={`inline-flex items-center gap-1.5 text-[12px] font-sans px-2.5 py-1.5 rounded-xl border backdrop-blur-[12px] max-w-[300px] ${
         err
           ? "border-red-500/40 bg-red-500/10 text-red-300"
           : "border-white/[0.08] bg-white/[0.05] text-neutral-200"
@@ -468,6 +507,24 @@ function AttachChip({ a, onRemove }: { a: Attach; onRemove: () => void }) {
         <span className="shrink-0 text-neutral-500">распознаю…</span>
       )}
       {err && <span className="shrink-0 text-red-400">ошибка</span>}
+      {a.status === "done" &&
+        (a.remembered ? (
+          <span
+            className="shrink-0 text-lime-400 inline-flex items-center gap-1"
+            title="Сохранено в память / Лектор">
+            <BookmarkIcon filled /> в памяти
+          </span>
+        ) : (
+          <button
+            type="button"
+            onClick={onRemember}
+            disabled={a.remembering}
+            aria-label="Запомнить файл"
+            title="Запомнить — сохранить в память (доступно Лектору и поиску)"
+            className="shrink-0 text-neutral-400 hover:text-lime-400 disabled:opacity-50 transition-colors">
+            {a.remembering ? <Spinner /> : <BookmarkIcon />}
+          </button>
+        ))}
       <button
         type="button"
         onClick={onRemove}
@@ -562,6 +619,13 @@ function CloseTinyIcon() {
   return (
     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
       <path d="M18 6L6 18M6 6l12 12" />
+    </svg>
+  )
+}
+function BookmarkIcon({ filled = false }: { filled?: boolean }) {
+  return (
+    <svg width="13" height="13" viewBox="0 0 24 24" fill={filled ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
     </svg>
   )
 }

@@ -21,6 +21,7 @@ from ..content import (
     ingest_article,
     ingest_file,
     ingest_pdf,
+    ingest_recognized,
     ingest_text,
     ingest_youtube,
 )
@@ -28,7 +29,13 @@ from ..courses import generate_course
 from ..db import get_session
 from ..formatting import reformat_source_text
 from ..models import ContentSource, Course
-from ..schemas import ContentSourceOut, CourseOut, IngestArticleIn, IngestTextIn
+from ..schemas import (
+    ContentSourceOut,
+    CourseOut,
+    IngestArticleIn,
+    IngestTextIn,
+    RememberIn,
+)
 
 router = APIRouter(prefix="/learn", tags=["learn"])
 
@@ -120,6 +127,22 @@ async def add_text(
         raise HTTPException(status_code=400, detail="text is empty")
     title = (payload.title or "").strip() or None
     src = await ingest_text(session, title, text)
+    if src.status == "failed":
+        raise HTTPException(status_code=422, detail=src.error or "no text")
+    return src
+
+
+@router.post("/remember", response_model=ContentSourceOut)
+async def remember(
+    payload: RememberIn,
+    session: AsyncSession = Depends(get_session),
+) -> ContentSource:
+    """«Запомнить файл»: распознанный текст вложения чата → ContentSource."""
+    text = (payload.text or "").strip()
+    if not text:
+        raise HTTPException(status_code=400, detail="text is empty")
+    title = (payload.title or "").strip() or None
+    src = await ingest_recognized(session, title, text, kind=payload.kind)
     if src.status == "failed":
         raise HTTPException(status_code=422, detail=src.error or "no text")
     return src

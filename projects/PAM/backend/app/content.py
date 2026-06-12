@@ -323,6 +323,24 @@ async def ingest_text(
     return src
 
 
+async def ingest_recognized(
+    session: AsyncSession, title: str | None, text: str, *, kind: str = "file"
+) -> ContentSource:
+    """Store an already-recognized chat attachment as a learning ContentSource.
+
+    Текст вложения уже распознан (vision/markitdown) на стороне чата — здесь его
+    только кладём в память: chunked + (фоном) embedded → ищется и доступен Лектору.
+    """
+    if kind not in ("file", "text"):
+        kind = "file"
+    src = ContentSource(kind=kind, title=title, status="pending")
+    session.add(src)
+    await session.flush()
+    await _finalize(session, src, title=title or "Файл", text=text)
+    await session.commit()
+    return src
+
+
 async def _finalize(
     session: AsyncSession, src: ContentSource, *, title: str | None, text: str
 ) -> None:

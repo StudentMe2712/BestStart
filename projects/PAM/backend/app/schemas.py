@@ -147,6 +147,13 @@ class IngestTextIn(BaseModel):
     text: str
 
 
+class RememberIn(BaseModel):
+    """«Запомнить файл» — распознанный текст вложения чата → ContentSource."""
+    title: str | None = None
+    text: str
+    kind: str = "file"
+
+
 class CourseOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

@@ -412,6 +412,36 @@ export interface ChatAttachment {
   text: string
 }
 
+/** Контекст-чипы: какие источники подмешивать в ретрив чата. */
+export interface ChatCtx {
+  memory: boolean
+  materials: boolean
+  courses: boolean
+  saved: boolean
+}
+
+/** POST /learn/remember — сохранить распознанный текст вложения как материал. */
+export async function rememberAttachment(input: {
+  title: string
+  text: string
+  kind?: string
+}): Promise<ContentSource> {
+  const r = await fetch(`${BACKEND_URL}/learn/remember`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      title: input.title,
+      text: input.text,
+      kind: input.kind || "file"
+    })
+  })
+  if (!r.ok) {
+    const d = await r.json().catch(() => ({}))
+    throw new Error(d.detail || `remember failed: ${r.status}`)
+  }
+  return r.json()
+}
+
 export interface ChatAttachmentResult {
   name: string
   kind: "image" | "document"
@@ -446,7 +476,8 @@ export async function streamChat(
   conversationId: string | null,
   h: ChatHandlers,
   signal?: AbortSignal,
-  attachments?: ChatAttachment[]
+  attachments?: ChatAttachment[],
+  ctx?: ChatCtx
 ): Promise<void> {
   const r = await fetch(`${BACKEND_URL}/chat`, {
     method: "POST",
@@ -454,7 +485,11 @@ export async function streamChat(
     body: JSON.stringify({
       message,
       conversation_id: conversationId,
-      attachments: attachments && attachments.length ? attachments : undefined
+      attachments: attachments && attachments.length ? attachments : undefined,
+      use_memory: ctx ? ctx.memory : true,
+      use_materials: ctx ? ctx.materials : false,
+      use_courses: ctx ? ctx.courses : false,
+      use_saved: ctx ? ctx.saved : false
     }),
     signal
   })

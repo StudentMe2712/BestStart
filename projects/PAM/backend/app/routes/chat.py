@@ -31,8 +31,10 @@ from ..models import (
     ContentChunk,
     ContentSource,
     Conversation,
+    Course,
     Message,
     ProfileFact,
+    SavedMessage,
 )
 
 log = logging.getLogger(__name__)
@@ -113,6 +115,11 @@ class ChatIn(BaseModel):
     message: str = Field(default="", max_length=20_000)
     conversation_id: uuid.UUID | None = None
     attachments: list[Attachment] = Field(default_factory=list, max_length=MAX_ATTACHMENTS)
+    # Контекст-чипы из UI — какие источники подмешивать в ретрив.
+    use_memory: bool = True       # разговоры + профиль пользователя
+    use_materials: bool = False   # материалы Лектора (content_chunks)
+    use_courses: bool = False     # сгенерированные курсы (полнотекст)
+    use_saved: bool = False        # избранное (полнотекст)
 
 
 def _safe_name(name: str) -> str:
@@ -129,18 +136,19 @@ def _sse(obj: dict) -> bytes:
 # Каждый из трёх подготовительных запросов открывает свою сессию — чтобы их
 # можно было запускать конкурентно (одна AsyncSession не потокобезопасна для
 # параллельных запросов). Это сокращает время до первого токена.
+# Все retriever'ы возвращают list[SimpleNamespace(content, title, source, d)],
+# d меньше = релевантнее. Память/Материалы — векторно (эмбеддинги); Избранное/
+# Курсы — полнотекст (эмбеддингов нет; таблицы маленькие, высокосигнальные).
+TEXT_HIT_LIMIT = 3
+
+
 async def _retrieve_messages(qvec, k: int):
-    """Top-k conversation-message chunks (own session)."""
+    """Top-k chunks из прошлых разговоров (векторно)."""
     dist = Chunk.embedding.cosine_distance(qvec)
     async with AsyncSessionLocal() as session:
-        return (
+        rows = (
             await session.execute(
-                select(
-                    Chunk.content,
-                    Conversation.title,
-                    Conversation.source,
-                    dist.label("d"),
-                )
+                select(Chunk.content, Conversation.title, Conversation.source, dist.label("d"))
                 .join(Message, Message.id == Chunk.message_id)
                 .join(Conversation, Conversation.id == Message.conversation_id)
                 .where(Chunk.embedding.is_not(None))
@@ -148,56 +156,116 @@ async def _retrieve_messages(qvec, k: int):
                 .limit(k)
             )
         ).all()
+    return [
+        SimpleNamespace(content=r.content, title=r.title, source=r.source, d=float(r.d))
+        for r in rows
+    ]
 
 
 async def _retrieve_content(qvec, k: int):
-    """Top-k learning-material chunks — Лектор (own session).
-
-    Unified memory: материалы из Лектора (статьи/видео/файлы/текст) ищутся
-    наравне с разговорами, поэтому всё, что добавлено в Лектор, доступно чату.
-    """
+    """Top-k chunks материалов Лектора (векторно)."""
     dist = ContentChunk.embedding.cosine_distance(qvec)
     async with AsyncSessionLocal() as session:
-        return (
+        rows = (
             await session.execute(
-                select(
-                    ContentChunk.content,
-                    ContentSource.title,
-                    ContentSource.kind,
-                    dist.label("d"),
-                )
+                select(ContentChunk.content, ContentSource.title, ContentSource.kind, dist.label("d"))
                 .join(ContentSource, ContentSource.id == ContentChunk.source_id)
                 .where(ContentChunk.embedding.is_not(None))
                 .order_by(dist.asc())
                 .limit(k)
             )
         ).all()
+    return [
+        SimpleNamespace(content=r.content, title=r.title, source=r.kind, d=float(r.d))
+        for r in rows
+    ]
 
 
-async def _retrieve(query: str, k: int = TOP_K):
-    """Vector-retrieve the most relevant chunks across BOTH memories.
+async def _retrieve_saved(query: str, k: int):
+    """Избранное (saved_messages) — полнотекстовый матч (без эмбеддингов)."""
+    tsv = func.to_tsvector("simple", SavedMessage.content)
+    tsq = func.plainto_tsquery("simple", query)
+    rank = func.ts_rank(tsv, tsq)
+    async with AsyncSessionLocal() as session:
+        rows = (
+            await session.execute(
+                select(SavedMessage.content, SavedMessage.title, rank.label("r"))
+                .where(tsv.op("@@")(tsq))
+                .order_by(rank.desc())
+                .limit(TEXT_HIT_LIMIT)
+            )
+        ).all()
+    return [
+        SimpleNamespace(
+            content=r.content, title=r.title or "из избранного", source="избранное",
+            d=1.0 - float(r.r),
+        )
+        for r in rows
+    ]
 
-    Searches conversation messages (`chunks`) and learning material
-    (`content_chunks`) concurrently, then merges by cosine distance and keeps
-    the global top-k. Each row exposes `.content`, `.title`, `.source`.
+
+async def _retrieve_courses(query: str, k: int):
+    """Курсы — полнотекстовый матч по названию + summary (без эмбеддингов)."""
+    summary = Course.data["summary"].astext
+    tsv = func.to_tsvector("simple", func.concat_ws(" ", Course.title, summary))
+    tsq = func.plainto_tsquery("simple", query)
+    rank = func.ts_rank(tsv, tsq)
+    async with AsyncSessionLocal() as session:
+        rows = (
+            await session.execute(
+                select(Course.title, summary.label("summary"), rank.label("r"))
+                .where(tsv.op("@@")(tsq))
+                .order_by(rank.desc())
+                .limit(TEXT_HIT_LIMIT)
+            )
+        ).all()
+    return [
+        SimpleNamespace(
+            content=f"{r.title or 'Курс'}: {r.summary or ''}"[:1500],
+            title=r.title or "курс", source="курс", d=1.0 - float(r.r),
+        )
+        for r in rows
+    ]
+
+
+async def _retrieve(
+    query: str,
+    *,
+    memory: bool,
+    materials: bool,
+    courses: bool,
+    saved: bool,
+    k: int = TOP_K,
+):
+    """Достать релевантный контекст из ВЫБРАННЫХ источников (контекст-чипы UI).
+
+    Память/Материалы — векторный поиск; Избранное/Курсы — полнотекст. Сливаем по
+    `d` (меньше = релевантнее), берём глобальный top-k. Если ничего не выбрано
+    или запрос пуст — пустой контекст (модель отвечает из своих знаний).
     """
-    try:
-        qvec = await embed_text(query)
-    except Exception as e:  # noqa: BLE001 — degrade to no-context
-        log.warning("chat retrieve: embeddings unavailable: %s", e)
+    query = (query or "").strip()
+    if not query:
         return []
-    msg_rows, content_rows = await asyncio.gather(
-        _retrieve_messages(qvec, k),
-        _retrieve_content(qvec, k),
-    )
-    merged = [
-        SimpleNamespace(content=r.content, title=r.title, source=r.source, d=r.d)
-        for r in msg_rows
-    ]
-    merged += [
-        SimpleNamespace(content=r.content, title=r.title, source=r.kind, d=r.d)
-        for r in content_rows
-    ]
+    tasks = []
+    if memory or materials:
+        try:
+            qvec = await embed_text(query)
+        except Exception as e:  # noqa: BLE001 — деградируем без контекста
+            log.warning("chat retrieve: embeddings unavailable: %s", e)
+            qvec = None
+        if qvec is not None:
+            if memory:
+                tasks.append(_retrieve_messages(qvec, k))
+            if materials:
+                tasks.append(_retrieve_content(qvec, k))
+    if saved:
+        tasks.append(_retrieve_saved(query, k))
+    if courses:
+        tasks.append(_retrieve_courses(query, k))
+    if not tasks:
+        return []
+    results = await asyncio.gather(*tasks)
+    merged = [row for rows in results for row in rows]
     merged.sort(key=lambda x: x.d)
     return merged[:k]
 
@@ -325,10 +393,17 @@ async def chat(payload: ChatIn):
         else ""
     )
 
-    # Параллельно: ретрив (эмбеддинг+вектор-поиск), факты профиля, история чата.
+    # Параллельно: ретрив по выбранным чипам, факты профиля (если включена
+    # «память»), история чата.
     ctx_rows, profile, history = await asyncio.gather(
-        _retrieve(query),
-        _profile_facts(),
+        _retrieve(
+            query,
+            memory=payload.use_memory,
+            materials=payload.use_materials,
+            courses=payload.use_courses,
+            saved=payload.use_saved,
+        ),
+        _profile_facts() if payload.use_memory else asyncio.sleep(0, result=""),
         _recent_history(payload.conversation_id),
     )
     ctx = "\n\n".join(
