@@ -44,22 +44,10 @@ export default function ChatSidebar({
 }: Props) {
   const [menu, setMenu] = useState<Menu>(null)
   const [searchOpen, setSearchOpen] = useState(false)
-  const [query, setQuery] = useState("")
 
   const pinned = chats.filter((c) => c.pinned)
   const recent = chats.filter((c) => !c.pinned)
-  const q = query.trim().toLowerCase()
-
-  const filtered = useMemo(
-    () => (q ? chats.filter((c) => (c.title || "").toLowerCase().includes(q)) : []),
-    [chats, q]
-  )
-
-  const groups = useMemo(() => {
-    const m: Record<string, ConversationSummary[]> = {}
-    for (const c of recent) (m[bucketOf(c.updated_at)] ||= []).push(c)
-    return DATE_ORDER.filter((b) => m[b]?.length).map((b) => [b, m[b]] as const)
-  }, [recent])
+  const groups = useMemo(() => groupByDate(recent), [recent])
 
   function openMenu(id: string, e: React.MouseEvent) {
     e.stopPropagation()
@@ -129,51 +117,21 @@ export default function ChatSidebar({
         <NavItem
           icon={<SearchIcon />}
           label="Искать чаты"
-          active={searchOpen}
-          onClick={() => {
-            setSearchOpen((s) => {
-              if (s) setQuery("")
-              return !s
-            })
-          }}
+          onClick={() => setSearchOpen(true)}
         />
         <NavItem icon={<FolderIcon />} label="Проекты" title="скоро" onClick={() => {}} />
       </div>
 
-      {searchOpen && (
-        <div className="px-2 mt-1.5">
-          <input
-            autoFocus
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Поиск по чатам…"
-            className="w-full bg-[#1A1A1A] border border-neutral-800 rounded-[10px] px-3 py-2 text-sm outline-none focus:border-neutral-700 placeholder:text-neutral-600"
-          />
-        </div>
-      )}
-
       <div className="mt-3 flex-1 overflow-y-auto px-2">
-        {q ? (
-          <Section label={`Результаты (${filtered.length})`}>
-            {filtered.length === 0 ? (
-              <Empty text="Ничего не найдено" />
-            ) : (
-              filtered.map((c) => row(c))
-            )}
-          </Section>
-        ) : (
-          <>
-            {pinned.length > 0 && (
-              <Section label="Закреплённые">{pinned.map((c) => row(c, true))}</Section>
-            )}
-            {groups.length === 0 && pinned.length === 0 && <Empty text="пока пусто" />}
-            {groups.map(([label, items]) => (
-              <Section key={label} label={label}>
-                {items.map((c) => row(c))}
-              </Section>
-            ))}
-          </>
+        {pinned.length > 0 && (
+          <Section label="Закреплённые">{pinned.map((c) => row(c, true))}</Section>
         )}
+        {groups.length === 0 && pinned.length === 0 && <Empty text="пока пусто" />}
+        {groups.map(([label, items]) => (
+          <Section key={label} label={label}>
+            {items.map((c) => row(c))}
+          </Section>
+        ))}
       </div>
 
       {menu && menuChat && (
@@ -187,7 +145,110 @@ export default function ChatSidebar({
           onDelete={() => remove(menuChat.id)}
         />
       )}
+
+      {searchOpen && (
+        <SearchModal
+          chats={chats}
+          onSelect={(id) => {
+            onSelect(id)
+            setSearchOpen(false)
+          }}
+          onNewChat={() => {
+            onNewChat()
+            setSearchOpen(false)
+          }}
+          onClose={() => setSearchOpen(false)}
+        />
+      )}
     </aside>
+  )
+}
+
+function groupByDate(list: ConversationSummary[]) {
+  const m: Record<string, ConversationSummary[]> = {}
+  for (const c of list) (m[bucketOf(c.updated_at)] ||= []).push(c)
+  return DATE_ORDER.filter((b) => m[b]?.length).map((b) => [b, m[b]] as const)
+}
+
+function SearchModal({
+  chats,
+  onSelect,
+  onNewChat,
+  onClose
+}: {
+  chats: ConversationSummary[]
+  onSelect: (id: string) => void
+  onNewChat: () => void
+  onClose: () => void
+}) {
+  const [q, setQ] = useState("")
+  const ql = q.trim().toLowerCase()
+  const filtered = ql
+    ? chats.filter((c) => (c.title || "").toLowerCase().includes(ql))
+    : chats
+  const groups = useMemo(() => groupByDate(filtered), [filtered])
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose()
+    document.addEventListener("keydown", onKey)
+    return () => document.removeEventListener("keydown", onKey)
+  }, [onClose])
+
+  return (
+    <div
+      className="fixed inset-0 z-[60] flex items-start justify-center pt-[12vh] px-4 bg-black/60 backdrop-blur-sm"
+      onClick={onClose}>
+      <div
+        className="w-full max-w-[640px] rounded-2xl border border-neutral-800 bg-neutral-900 shadow-2xl shadow-black/50 overflow-hidden"
+        onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center gap-3 px-4 h-14 border-b border-neutral-800 text-neutral-300">
+          <SearchIcon />
+          <input
+            autoFocus
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Поиск в чатах"
+            className="flex-1 bg-transparent outline-none text-sm font-sans text-neutral-100 placeholder:text-neutral-500"
+          />
+          <kbd className="text-[10px] text-neutral-500 border border-neutral-700 rounded px-1.5 py-0.5">
+            Esc
+          </kbd>
+        </div>
+
+        <div className="max-h-[60vh] overflow-y-auto p-2">
+          <button
+            onClick={onNewChat}
+            className="w-full flex items-center gap-2.5 rounded-[10px] px-3 py-2.5 text-sm text-neutral-100 hover:bg-neutral-800 transition-colors">
+            <span className="text-neutral-400">
+              <ComposeIcon />
+            </span>
+            Новый чат
+          </button>
+
+          {filtered.length === 0 ? (
+            <div className="px-3 py-8 text-center text-sm text-neutral-500 font-sans">
+              Ничего не найдено
+            </div>
+          ) : (
+            groups.map(([label, items]) => (
+              <div key={label} className="mt-2">
+                <div className="px-3 py-1 text-[11px] uppercase tracking-wider text-neutral-500">
+                  {label}
+                </div>
+                {items.map((c) => (
+                  <button
+                    key={c.id}
+                    onClick={() => onSelect(c.id)}
+                    className="w-full flex items-center rounded-[10px] px-3 py-2 text-sm text-left text-neutral-200 hover:bg-neutral-800 transition-colors">
+                    <span className="truncate">{c.title || "Новый чат"}</span>
+                  </button>
+                ))}
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+    </div>
   )
 }
 
