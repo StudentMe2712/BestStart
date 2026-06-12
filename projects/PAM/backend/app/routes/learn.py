@@ -188,7 +188,11 @@ async def get_source_file(
     return Response(
         content=row.original_data,
         media_type=row.original_mime or "application/octet-stream",
-        headers={"Content-Disposition": "inline"},
+        headers={
+            "Content-Disposition": "inline",
+            "X-Content-Type-Options": "nosniff",
+            "X-Frame-Options": "SAMEORIGIN",
+        },
     )
 
 
@@ -207,6 +211,8 @@ async def reformat_source(
         raise HTTPException(status_code=404, detail="source not found")
     if not src.text:
         raise HTTPException(status_code=409, detail="source has no text")
+    if src.formatted_text:  # уже причёсано — отдаём кэш, не гоняем LLM повторно
+        return {"formatted_text": src.formatted_text}
     try:
         formatted = await reformat_source_text(session, src)
     except ValueError as e:

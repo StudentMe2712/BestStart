@@ -16,7 +16,7 @@ from types import SimpleNamespace
 
 from fastapi import APIRouter, File, HTTPException, UploadFile
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy import func, select, update
 from sqlalchemy.orm import selectinload
 
@@ -101,15 +101,25 @@ ATTACH_EXTS = {
 }
 
 
+MAX_ATTACHMENTS = 8  # сколько вложений принимаем за одно сообщение
+
+
 class Attachment(BaseModel):
-    name: str
-    text: str
+    name: str = Field(max_length=300)
+    text: str = Field(max_length=MAX_ATTACH_TEXT)
 
 
 class ChatIn(BaseModel):
-    message: str
+    message: str = Field(default="", max_length=20_000)
     conversation_id: uuid.UUID | None = None
-    attachments: list[Attachment] = []
+    attachments: list[Attachment] = Field(default_factory=list, max_length=MAX_ATTACHMENTS)
+
+
+def _safe_name(name: str) -> str:
+    """Имя файла идёт в промпт — чистим от символов, ломающих <attachments>-фенс."""
+    return (
+        name.replace("<", "").replace(">", "").replace("\n", " ").replace("\r", " ")
+    ).strip()[:120] or "файл"
 
 
 def _sse(obj: dict) -> bytes:
@@ -298,11 +308,13 @@ async def chat_attachment(file: UploadFile = File(...)) -> dict:
 @router.post("")
 async def chat(payload: ChatIn):
     user_msg = payload.message.strip()
+    if not user_msg and not payload.attachments:
+        raise HTTPException(status_code=400, detail="пустой запрос")
     # Вложения уходят в запрос как данные (анти-инъекция в SYSTEM_PROMPT).
     att_block = ""
     if payload.attachments:
         parts = [
-            f"[файл: {a.name}]\n{(a.text or '').strip()[:MAX_ATTACH_TEXT]}"
+            f"[файл: {_safe_name(a.name)}]\n{(a.text or '').strip()[:MAX_ATTACH_TEXT]}"
             for a in payload.attachments
         ]
         att_block = "<attachments>\n" + "\n\n".join(parts) + "\n</attachments>\n\n"
@@ -353,7 +365,7 @@ async def chat(payload: ChatIn):
     # контекст ответа). Так в истории видно, что были вложения.
     persisted_user = user_msg
     if payload.attachments:
-        marker = "📎 " + ", ".join(a.name for a in payload.attachments)
+        marker = "📎 " + ", ".join(_safe_name(a.name) for a in payload.attachments)
         persisted_user = f"{marker}\n{user_msg}" if user_msg else marker
 
     # Гибрид-роутер: на «тяжёлый» запрос берём мощную модель, иначе быструю.

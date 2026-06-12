@@ -106,7 +106,7 @@ export default function ChatPage() {
     e.target.value = "" // позволяем повторно выбрать тот же файл
     for (const f of files) {
       const id =
-        (globalThis.crypto?.randomUUID?.() as string) || `${Date.now()}-${f.name}`
+        globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${f.name}`
       setAttachments((prev) => [
         ...prev,
         { id, name: f.name, kind: "", text: "", status: "loading" }

@@ -171,11 +171,12 @@ def extract_file_text(filename: str, data: bytes) -> tuple[str | None, str]:
 
 
 # Изображения распознаём vision-моделью; всё остальное — markitdown/текст.
-_IMAGE_EXTS = {"png", "jpg", "jpeg", "webp", "gif", "bmp"}
+# _IMAGE_EXTS выводится из _IMAGE_MIME — один источник правды.
 _IMAGE_MIME = {
     "png": "image/png", "jpg": "image/jpeg", "jpeg": "image/jpeg",
     "webp": "image/webp", "gif": "image/gif", "bmp": "image/bmp",
 }
+_IMAGE_EXTS = set(_IMAGE_MIME)
 
 
 async def recognize_attachment(filename: str, data: bytes) -> tuple[str, str]:

@@ -14,6 +14,7 @@ markitdown отдаёт текст Word/PDF почти без структуры
 """
 from __future__ import annotations
 
+import asyncio
 import logging
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -76,7 +77,9 @@ async def reformat_source_text(session: AsyncSession, source: ContentSource) -> 
     head = raw[:REFORMAT_MAX_CHARS]
     tail = raw[REFORMAT_MAX_CHARS:]
     out: list[str] = []
-    for chunk in _split_for_reformat(head):
+    for i, chunk in enumerate(_split_for_reformat(head)):
+        if i > 0:
+            await asyncio.sleep(0.8)  # разносим вызовы — мягче к rate-limit Groq
         messages = [
             {"role": "system", "content": REFORMAT_SYSTEM},
             {
