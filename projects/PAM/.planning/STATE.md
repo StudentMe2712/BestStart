@@ -3,6 +3,42 @@
 > Короткий «где мы сейчас». История — в `../handoff.md`. План — в `ROADMAP.md`.
 > Обновлять при каждом значимом сдвиге.
 
+## 🧊 СТАБИЛИЗАЦИОННАЯ ФАЗА (объявлена 2026-06-14)
+
+После волны P0/P1-систем (Fact Review Queue, Observability `/diag`, Capture
+Reliability + Memory Health Score, Learning Progress, Home Dashboard) — **короткая
+стабилизация перед P2 (Project Memory)**. Цель: не новые фичи, а довести
+отгруженное до «проще/стабильнее/понятнее/полезнее».
+
+**Сделано в этой фазе (2026-06-14):**
+- **Closed provider attribution в observability.** Каждое событие `events` теперь
+  несёт *реальный* провайдер (`groq`/`openrouter`/`ollama`), не литерал `hybrid`.
+  Добавлен `llm.completion_provider()`; `extraction.py`/`courses.py` перестали
+  логировать `settings.LLM_PROVIDER`. Закрыты 2 ранее не-атрибутированных LLM-границы:
+  **reformat** (`formatting.py`, новый kind `reformat`) и **распознавание картинок**
+  (`content.py`, новый kind `vision`). Сверка: 0 утечек `hybrid`, N/N границ покрыты.
+- **Финальный аудит новых систем — чисто.** Fact-гейт цел (ретрив фильтрует
+  approved+edited, только при `use_memory`); review-API корректен; health-математика
+  устойчива (веса Σ=1.0, компоненты 0..100, stability≥0); capture-reliability →100 при
+  пустом; extension репортит сброс после `MAX_ATTEMPTS` (best-effort); learning-progress
+  выводит статус/процент; Home Dashboard — устойчивая UI-агрегация. Цепочка миграций
+  линейна, один head `f5a6b7c8d9e0`.
+
+**Стабилизационный чеклист (приёмка на реальных данных — за пользователем):**
+- [ ] `docker compose exec backend pytest -q` зелёный (на машине с Docker; здесь
+      Docker на паузе, deps только в образе — прогнать при возврате Docker).
+- [ ] `/diag` на реальных данных: проверить, что плашки провайдеров показывают
+      `groq/openrouter/ollama` (не `hybrid`), а reformat/vision дают свои строки.
+- [ ] `web/` `npm run build` зелёный.
+- [ ] Прогнать сквозной сценарий: импорт → факт в очередь → approve → виден в чате;
+      материал → reformat → курс → прогресс; вложение-картинка → событие `vision`.
+
+**Project Memory (P2): только спроектировано, НЕ реализовано** —
+`docs/project-memory-design.md` (ADR + схема данных + UX). Реализацию начинать
+отдельной фазой после закрытия чеклиста выше и ревью дизайна.
+
+---
+
 ## 🟢 ТЕКУЩЕЕ (2026-06-04) — всё в `main`, запушено
 
 **Фазы 1–5 завершены.** Продукт: чат с долгой памятью (главный экран) + лектор + импорт истории.

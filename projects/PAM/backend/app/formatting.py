@@ -16,12 +16,14 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import time
 import uuid
 
 from sqlalchemy import select
 
 from .db import AsyncSessionLocal
-from .llm import complete
+from .llm import complete, completion_provider
+from .metrics import record_event
 from .models import ContentSource
 
 log = logging.getLogger(__name__)
@@ -119,6 +121,7 @@ async def _reformat_background(source_id: uuid.UUID) -> None:
         chunks = _split_for_reformat(raw)
         total = len(chunks)
         out: list[str] = []
+        t0 = time.monotonic()
         try:
             for i, chunk in enumerate(chunks):
                 if i > 0:
@@ -131,7 +134,16 @@ async def _reformat_background(source_id: uuid.UUID) -> None:
             src.reformat_progress = 100
             await session.commit()
             log.info("reformat done for %s (%d chunks)", source_id, total)
+            await record_event(
+                "reformat", provider=completion_provider(), status="ok",
+                duration_ms=int((time.monotonic() - t0) * 1000),
+                detail=f"{total} chunks",
+            )
         except Exception as e:  # noqa: BLE001 — фон не должен валить процесс
             log.warning("reformat background failed for %s: %s", source_id, e)
             src.reformat_status = "failed"
             await session.commit()
+            await record_event(
+                "reformat", provider=completion_provider(), status="error",
+                duration_ms=int((time.monotonic() - t0) * 1000), detail=str(e),
+            )

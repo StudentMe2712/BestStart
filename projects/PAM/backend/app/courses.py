@@ -18,8 +18,7 @@ import time
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from .config import settings
-from .llm import complete
+from .llm import complete, completion_provider
 from .metrics import record_event
 from .models import Course, ContentSource, ProfileFact
 
@@ -117,7 +116,7 @@ async def generate_course(session: AsyncSession, source: ContentSource) -> Cours
     raw = await complete(messages, json_mode=True)
     await record_event(
         "lecturer",
-        provider=settings.LLM_PROVIDER,
+        provider=completion_provider(),
         status="ok",
         duration_ms=int((time.monotonic() - t0) * 1000),
     )

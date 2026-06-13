@@ -17,8 +17,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from .config import settings
-from .llm import complete
+from .llm import complete, completion_provider
 from .metrics import record_event
 from .models import FACT_PENDING, Conversation, ProfileFact
 
@@ -83,7 +82,7 @@ async def extract_facts_for_conversation(session: AsyncSession, conv: Conversati
         raw = await complete(messages, json_mode=True)
         await record_event(
             "extraction",
-            provider=settings.LLM_PROVIDER,
+            provider=completion_provider(),
             status="ok",
             duration_ms=int((time.monotonic() - t0) * 1000),
         )
@@ -91,7 +90,7 @@ async def extract_facts_for_conversation(session: AsyncSession, conv: Conversati
         log.warning("extract: LLM call failed for %s: %s", conv.id, e)
         await record_event(
             "extraction",
-            provider=settings.LLM_PROVIDER,
+            provider=completion_provider(),
             status="error",
             duration_ms=int((time.monotonic() - t0) * 1000),
             detail=str(e),

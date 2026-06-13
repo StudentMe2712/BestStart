@@ -198,9 +198,25 @@ async def recognize_attachment(filename: str, data: bytes) -> tuple[str, str]:
     """
     ext = _ext_of(filename)
     if ext in _IMAGE_EXTS:
-        from .llm import describe_image
+        import time
 
-        text = (await describe_image(data, _IMAGE_MIME.get(ext, "image/png"))).strip()
+        from .llm import describe_image, vision_target
+        from .metrics import record_event
+
+        provider = vision_target()[0]
+        t0 = time.monotonic()
+        try:
+            text = (await describe_image(data, _IMAGE_MIME.get(ext, "image/png"))).strip()
+        except Exception as e:  # noqa: BLE001 — атрибутируем сбой vision и пробрасываем
+            await record_event(
+                "vision", provider=provider, status="error",
+                duration_ms=int((time.monotonic() - t0) * 1000), detail=str(e),
+            )
+            raise
+        await record_event(
+            "vision", provider=provider, status="ok",
+            duration_ms=int((time.monotonic() - t0) * 1000),
+        )
         return "image", text
     _title, text = extract_file_text(filename, data)
     return "document", (text or "").strip()

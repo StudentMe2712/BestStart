@@ -53,6 +53,21 @@ def model_for(provider: str) -> str:
     return settings.GROQ_MODEL
 
 
+def completion_provider() -> str:
+    """Реальный провайдер, которым отвечает `complete()` (non-streaming).
+
+    В отличие от `stream_chat`, у `complete()` нет per-text роутинга: hybrid
+    всегда резолвится в Groq (см. ниже). Возвращаем фактический провайдер, чтобы
+    в логе `events` оседало реальное имя эндпойнта, а не литерал 'hybrid',
+    которого нет среди провайдеров — иначе атрибуция в /diag врёт."""
+    p = settings.LLM_PROVIDER.lower()
+    if p == "ollama":
+        return "ollama"
+    if p == "openrouter":
+        return "openrouter"
+    return "groq"
+
+
 async def stream_chat(
     messages: list[dict], provider: str | None = None
 ) -> AsyncIterator[str]:

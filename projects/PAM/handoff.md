@@ -16,6 +16,55 @@
 
 ---
 
+## 🗓️ Сессия 2026-06-14 — closed provider attribution + аудит + стабилизация; Project Memory спроектирован
+
+**Сделано:**
+- **Closed provider attribution в observability.** Корень: `extraction.py`/`courses.py`
+  логировали `provider=settings.LLM_PROVIDER` — при `LLM_PROVIDER=hybrid` в `events`
+  оседал фантомный провайдер `hybrid` (у `complete()` нет per-text роутинга, hybrid
+  всегда → Groq), а реальный Groq недосчитывался. Фикс: новый `llm.completion_provider()`
+  (резолвит реальный провайдер non-streaming пути), использован в extraction/courses.
+  Доинструментированы 2 ранее «слепые» LLM-границы: **reformat** (`formatting.py`,
+  событие на завершение job, новый kind `reformat`) и **распознавание картинок**
+  (`content.py::recognize_attachment`, vision-граница, новый kind `vision`). Панель
+  `/diag` data-driven — новые kinds/провайдеры появляются сами, UI не трогал.
+  Сверка (reconciliation): `grep provider=settings` → 0; все провайдер-границы несут
+  реальный провайдер. Compile-clean (6 файлов). `CLAUDE.md` обновлён (инвариант
+  «provider attribution is closed»).
+- **Финальный аудит новых систем — чисто.** Fact Review Queue: ретрив-гейт
+  `_profile_facts` фильтрует `ACCEPTED_FACT_STATUSES` (approved+edited) и только при
+  `use_memory`; review-API (approve/reject/edit→edited/delete) корректен. Observability:
+  health-математика устойчива (веса .35/.25/.20/.20=1.0; компоненты 0..100; stability =
+  100−error_rate, а errors+fallbacks ≤ total → ≥0). Capture-reliability →100 при пустом,
+  extension репортит сброс после `MAX_ATTEMPTS` (best-effort, line 84 — валидный `//`).
+  Learning-progress выводит статус/процент (не хранит), 1 строка/курс. Home Dashboard —
+  `Promise.allSettled`, чистая UI-агрегация. Миграции: один линейный head `f5a6b7c8d9e0`,
+  без веток.
+- **Объявлена стабилизационная фаза** (`.planning/STATE.md`): не новые фичи, а приёмка
+  отгруженного на реальных данных (чеклист: pytest в Docker, `/diag` провайдеры,
+  web build, сквозной сценарий) перед стартом P2.
+- **Project Memory (P2) — спроектирован, НЕ реализован.** `docs/project-memory-design.md`:
+  ADR (scoping поверх существующей памяти vs параллельное хранилище — выбран scoping),
+  схема данных (`projects` + `project_items` + nullable `project_id` на
+  conversations/content_sources; review-гейт и провенанс переиспользованы у фактов;
+  показатели вычисляются, не денормализуются), UX (3 экрана + проектный чат + review-очередь).
+
+**Решения:**
+- Provider attribution: атрибутировать **реальный** эндпойнт, не литерал настройки;
+  reformat/vision получили свои kinds, чтобы не смешивать тайминги с chat/lecturer.
+- Project Memory строим **переиспользованием**, минимум новых сущностей (2 таблицы +
+  2 nullable-FK) — по принципам ORCHESTRATOR (не плодить сущности, простота, local-first).
+- Реализацию Project Memory НЕ начинаем (явная просьба «только спроектировать»).
+
+**Ограничение проверки:** на этой машине Docker на паузе, venv нет, `pgvector` в системном
+Python отсутствует → pytest-сьют (импортит `app.models`→pgvector) здесь не гоняется.
+Гейт — `py_compile` (зелёный). Прогон pytest и приёмка на реальных данных — при возврате Docker.
+
+**Дальше:** закрыть стабилизационный чеклист (`STATE.md`); затем — ревью дизайна Project
+Memory и реализация отдельной фазой.
+
+---
+
 ## 🗓️ Сессия 2026-06-04 — качество чата, сайдбар, гибрид-LLM, каталог (всё в `main`)
 
 **Сделано (по фичам, каждая — отдельная ветка → мерж):**

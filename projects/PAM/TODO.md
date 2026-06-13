@@ -38,6 +38,13 @@ ROI, основное · `P2` — ценно, не срочно · `P3` — по
       бэклог индексации, очередь фактов, вызовы провайдеров, фолбэки/ошибки,
       avg/p95 таймингов, недавние ошибки. Проверено: миграция, pytest,
       идемпотентный импорт, chat SSE, агрегаты.
+- [x] **+ Closed provider attribution** ✅ (стабилизация 2026-06-14)
+      Каждое событие `events` несёт реальный провайдер (`groq`/`openrouter`/`ollama`),
+      не литерал `hybrid`: `llm.completion_provider()` для non-streaming путей
+      (extraction/courses/reformat), `prov_used` для chat, `vision_target()` для
+      распознавания картинок. Доинструментированы 2 «слепые» LLM-границы — reformat
+      (kind `reformat`) и vision-распознавание (kind `vision`). Сверка: 0 утечек
+      `hybrid`, все провайдер-границы атрибутированы. Compile-clean (pytest — в Docker).
 - [x] **+ Capture Reliability & Memory Health Score** ✅ (gap захвата закрыт)
       Расширение репортит перманентный сброс захвата (`background.ts` →
       `POST /stats/capture-failed` → событие `capture_failure`). `/stats` считает
@@ -65,7 +72,12 @@ ROI, основное · `P2` — ценно, не срочно · `P3` — по
       `listSources`, `listProgress`, `factCounts`) — без бэкенда, новых сущностей,
       смены роутов/навигации. Врезка в `page.tsx` — только замена плейсхолдера.
       Проверено: tsc, smoke всех роутов 200.
-- [ ] **P2 · Project Memory** — память о проектах (документы/решения/задачи/знания).
+- [~] **P2 · Project Memory** — память о проектах (документы/решения/задачи/знания).
+      **Спроектировано (design-only), НЕ реализовано:** `docs/project-memory-design.md`
+      (ADR + схема данных + UX). Замысел: тонкий слой scoping поверх существующей
+      памяти — `projects` + `project_items` + nullable `project_id` на
+      `conversations`/`content_sources`, переиспользование ингеста/RAG/review-queue.
+      Реализацию начинать отдельной фазой после стабилизации и ревью дизайна.
 
 ---
 

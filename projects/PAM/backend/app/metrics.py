@@ -20,6 +20,8 @@ EVENT_KINDS = (
     "embed",
     "import",
     "lecturer",
+    "reformat",  # фоновое «причесать текст» Лектора (своя строка таймингов)
+    "vision",  # распознавание вложенной картинки (vision-провайдер)
     "vision_fallback",
     "capture_failure",
 )
