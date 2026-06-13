@@ -215,3 +215,110 @@ class CaptureFailedIn(BaseModel):
 
     source: str
     reason: str | None = None
+
+
+# ---- Project Memory (P2) ----
+
+class ProjectIn(BaseModel):
+    name: str = Field(min_length=1, max_length=200)
+    description: str | None = None
+
+
+class ProjectPatch(BaseModel):
+    name: str | None = Field(default=None, max_length=200)
+    description: str | None = None
+    status: str | None = None  # active | archived
+
+
+class ProjectOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    name: str
+    description: str | None
+    status: str
+    created_at: datetime
+    updated_at: datetime
+    # Производные счётчики (вычисляются в роуте, не хранятся).
+    items_count: int = 0
+    conversations_count: int = 0
+    materials_count: int = 0
+
+
+class MemoryItemIn(BaseModel):
+    """Создание элемента памяти (из Telegram / чата / вручную).
+
+    AI-теггер дозаполнит summary/tags/item_type/importance, если не заданы явно.
+    """
+
+    content: str = Field(min_length=1, max_length=200_000)
+    title: str | None = Field(default=None, max_length=500)
+    source: str = Field(default="manual", max_length=32)
+    source_ref: str | None = Field(default=None, max_length=255)
+    project_id: uuid.UUID | None = None
+    item_type: str | None = None  # переопределить авто-классификацию
+    tags: list[str] | None = None  # переопределить авто-теги
+
+
+class MemoryItemPatch(BaseModel):
+    title: str | None = None
+    content: str | None = None
+    summary: str | None = None
+    item_type: str | None = None
+    importance: int | None = Field(default=None, ge=1, le=5)
+    tags: list[str] | None = None
+    project_id: uuid.UUID | None = None
+    status: str | None = None  # active | archived
+
+
+class MemoryItemOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    project_id: uuid.UUID | None
+    source: str
+    source_ref: str | None
+    title: str | None
+    content: str
+    summary: str | None
+    item_type: str
+    importance: int
+    tags: list[str]
+    status: str
+    created_at: datetime
+    updated_at: datetime
+
+
+class MemoryLinkIn(BaseModel):
+    source_id: uuid.UUID
+    target_id: uuid.UUID
+    relation: str = Field(min_length=1, max_length=32)
+    source_kind: str = "memory_item"
+    target_kind: str = "memory_item"
+    confidence: float = Field(default=1.0, ge=0.0, le=1.0)
+
+
+class MemoryLinkOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    source_kind: str
+    source_id: uuid.UUID
+    target_kind: str
+    target_id: uuid.UUID
+    relation: str
+    confidence: float
+    created_at: datetime
+
+
+class RecallIn(BaseModel):
+    query: str = Field(min_length=1, max_length=2_000)
+    project_id: uuid.UUID | None = None
+    limit: int = Field(default=8, ge=1, le=30)
+    synthesize: bool = True  # собрать LLM-ответ поверх найденных элементов
+
+
+class RecallOut(BaseModel):
+    query: str
+    answer: str | None  # синтез LLM (None, если synthesize=false или нет элементов)
+    items: list[MemoryItemOut]

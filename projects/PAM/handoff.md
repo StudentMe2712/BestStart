@@ -9,10 +9,61 @@
 
 ## 🔴 Активные ограничения (читать первым делом)
 
-- **Docker на ПАУЗЕ** — НЕ запускать `docker compose ...` пока пользователь явно не разрешит. Backend гоняем локально: `backend/.venv` (Python 3.11) против Neon.
+- **Docker СНОВА ПОДНЯТ** (обновл. 2026-06-14): контейнеры `pam-db`(healthy)/`pam-backend`/`pam-web`/`pam-extension` работают; данные в локальном Postgres (`./data/postgres`), не Neon. `backend/app`+`alembic` bind-mounted, uvicorn `--reload`. Миграции/тесты — через `docker compose exec backend alembic upgrade head` / `pytest -q`. (Старое ограничение «Docker на паузе, Neon» — снято.)
 - **Neon — ТОЛЬКО dev/тесты, НЕ реальные разговоры** (local-first). Реальные данные — в локальный Postgres, когда вернётся Docker. (Кредиты Neon были в чате — при экспорте чата стоит ротировать.)
 - **Git:** ветка `main` на GitHub `https://github.com/StudentMe2712/PAM.git`. Правило пользователя: значимые фичи → **отдельная ветка с понятным именем + понятные коммиты**; мелочь → в `main`. Перед коммитом — preflight `git check-ignore` (секреты/`node_modules`/билды уже в `.gitignore`).
 - **Запуск:** `dev.bat` (backend+extension скрыто в фоне, web — в окне) + `stop-dev.bat`. Миграции alembic: `DATABASE_URL="$(grep ^DATABASE_URL= backend/.env|cut -d= -f2-)" backend/.venv/Scripts/python.exe -m alembic ...`.
+
+---
+
+## 🗓️ Сессия 2026-06-14 (P2) — Project Memory + Telegram Capture V1 (реализовано + проверено живьём)
+
+**Сделано (всё аддитивно; чат/RAG/Fact-Review/Лектор/Progress/Observability не тронуты):**
+- **Stage 1 — Projects:** таблица `projects` + nullable `project_id` на
+  `conversations`/`content_sources` (FK ON DELETE SET NULL). Миграция `a6b7c8d9e0f1`.
+  `routes/projects.py`: CRUD, `/{id}/items|conversations|materials`, `/{id}/attach|detach`,
+  выводимые счётчики.
+- **Stage 3 — Memory Items:** `memory_items` — **единый универсальный контейнер**
+  (idea/note/article/tool/code/prompt/learning/decision). **Решение пользователя:
+  заменяет `project_items` из дизайн-дока** (консолидация, «не плодить параллельные
+  системы»). Поля: source/source_ref/title/content/summary/item_type/importance/tags
+  (JSONB)/status/content_tsv (полнотекст). Миграция `b7c8d9e0f1a2`.
+- **Stage 4 — AI Tagger** (`tagging.py`): после создания item фоном LLM (паттерн
+  `extraction.py`: json_mode + анти-инъекция `<item>`) проставляет summary/tags/
+  item_type/importance. Событие `tagger`. Не перетирает поля, заданные пользователем.
+- **Stage 5 — Memory Links:** `memory_links` — полиморфные связи (kind+id, без
+  жёсткого FK; memory_item|project|fact|conversation), relation/confidence, unique.
+  Миграция `c8d9e0f1a2b3`. Только PostgreSQL, без графовой БД.
+- **Stage 2 — Telegram Capture** (`telegram_bot.py`, aiogram long polling, **без
+  webhook/домена**): allow-list по `TELEGRAM_ALLOWED_USER_ID`; текст/ссылки/код →
+  `POST /memory/items`, документы/фото → `POST /memory/items/file` (реюз
+  `recognize_attachment`); **голос пропущен в V1** (решение). Тонкий HTTP-клиент,
+  в БД не ходит. Токен/uid — в `backend/.env` (gitignored), `aiogram` в pyproject
+  (импорт ленивый → backend без неё работает).
+- **Stage 6 — Recall** (`POST /memory/recall`): полнотекст (content_tsv) **+ совпадение
+  тегов с токенами запроса** + scope проекта → опциональный синтез ответа LLM
+  (`complete`, анти-инъекция `<memory>`). Векторный RAG разговоров/материалов в чате
+  не дублируется (решение: full-text+теги для items в V1).
+
+**Решения (форки, согласованы с пользователем):** единый `memory_items` (не две
+таблицы); голос — пропустить в V1; recall items — full-text+теги (не вектор сейчас).
+
+**Верификация (Docker ЖИВ, проверено по-настоящему):**
+- `alembic upgrade head` → 3 миграции применились, head `c8d9e0f1a2b3`, таблицы и
+  колонки на месте.
+- `pytest -q` → **35/35** (регрессий нет).
+- E2E живьём через backend :8000: создать проект → memory item (теггер вживую
+  переклассифицировал note→idea, importance 4, теги+summary через Groq) → link →
+  recall («MikroTik фаервол», «решения по PAM») с синтезом ответа → счётчики проекта;
+  тестовые данные за собой удалены. Всё зелёно.
+
+**⚠️ Безопасность:** токен бота светился в чате — **РОТИРОВАТЬ** через @BotFather
+(в `backend/.env`, не коммитится). Бот НЕ запускаю автоматически (persistent+outward):
+после ротации — `cd backend && python -m app.telegram_bot` (нужна `aiogram`: пересобрать
+образ `docker compose up -d --build backend` или поставить локально).
+
+**Дальше (V2):** UI-раздел `/projects` во фронте; векторные эмбеддинги memory_items;
+голос (Whisper); обход графа `memory_links` в recall.
 
 ---
 

@@ -19,6 +19,8 @@ from .routes import (
     facts,
     indexing as index_routes,
     learn,
+    memory,
+    projects,
     saved,
     search,
     stats,
@@ -102,6 +104,8 @@ app.include_router(chat.router)
 app.include_router(facts.router)
 app.include_router(learn.router)
 app.include_router(stats.router)
+app.include_router(projects.router)
+app.include_router(memory.router)
 
 
 @app.get("/")

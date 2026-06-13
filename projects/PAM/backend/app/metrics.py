@@ -24,6 +24,7 @@ EVENT_KINDS = (
     "vision",  # распознавание вложенной картинки (vision-провайдер)
     "vision_fallback",
     "capture_failure",
+    "tagger",  # AI-классификация memory item (Project Memory P2)
 )
 
 

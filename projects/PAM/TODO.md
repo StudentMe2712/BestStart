@@ -72,12 +72,16 @@ ROI, основное · `P2` — ценно, не срочно · `P3` — по
       `listSources`, `listProgress`, `factCounts`) — без бэкенда, новых сущностей,
       смены роутов/навигации. Врезка в `page.tsx` — только замена плейсхолдера.
       Проверено: tsc, smoke всех роутов 200.
-- [~] **P2 · Project Memory** — память о проектах (документы/решения/задачи/знания).
-      **Спроектировано (design-only), НЕ реализовано:** `docs/project-memory-design.md`
-      (ADR + схема данных + UX). Замысел: тонкий слой scoping поверх существующей
-      памяти — `projects` + `project_items` + nullable `project_id` на
-      `conversations`/`content_sources`, переиспользование ингеста/RAG/review-queue.
-      Реализацию начинать отдельной фазой после стабилизации и ревью дизайна.
+- [x] **P2 · Project Memory + Telegram Capture — РЕАЛИЗОВАНО V1 (2026-06-14)** ✅
+      Тонкий слой над существующей памятью: `projects` + `memory_items` (заменяет
+      `project_items` — консолидация) + `memory_links` + nullable `project_id` на
+      `conversations`/`content_sources` (миграции a6b7c8d9e0f1/b7c8d9e0f1a2/c8d9e0f1a2b3).
+      AI-теггер (`tagging.py`, паттерн extraction); recall (`/memory/recall`,
+      full-text+теги+scope+синтез); Telegram-бот (`telegram_bot.py`, aiogram long
+      polling, allow-list по user id, голос пропущен). API `/projects` + `/memory/*`.
+      Проверено: pytest 35/35, E2E живьём (проект→item→теггер→link→recall). **Бот
+      запускать отдельно после ротации токена.** V2: UI `/projects`, эмбеддинги items,
+      голос, граф-обход в recall. Дизайн/отклонения — `docs/project-memory-design.md`.
 
 ---
 

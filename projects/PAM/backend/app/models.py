@@ -63,6 +63,14 @@ class Conversation(Base):
     pinned: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
     archived: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
     raw_json: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
+    # Project Memory (P2): необязательная привязка разговора к проекту. NULL = вне
+    # проекта (текущее поведение чата/импорта неизменно). ON DELETE SET NULL —
+    # удаление проекта НЕ удаляет разговор (local-first).
+    project_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("projects.id", ondelete="SET NULL"),
+        nullable=True,
+    )
 
     messages: Mapped[list["Message"]] = relationship(
         "Message",
@@ -75,6 +83,7 @@ class Conversation(Base):
         UniqueConstraint("source", "external_id", name="uq_source_external"),
         Index("ix_conversations_source", "source"),
         Index("ix_conversations_updated", "updated_at"),
+        Index("ix_conversations_project", "project_id"),
     )
 
 
@@ -208,6 +217,13 @@ class ContentSource(Base):
         LargeBinary, nullable=True, deferred=True
     )
     original_mime: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    # Project Memory (P2): необязательная привязка материала к проекту (как у
+    # conversations). NULL = вне проекта; ON DELETE SET NULL.
+    project_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("projects.id", ondelete="SET NULL"),
+        nullable=True,
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
@@ -219,7 +235,10 @@ class ContentSource(Base):
         order_by="ContentChunk.position",
     )
 
-    __table_args__ = (Index("ix_content_sources_created", "created_at"),)
+    __table_args__ = (
+        Index("ix_content_sources_created", "created_at"),
+        Index("ix_content_sources_project", "project_id"),
+    )
 
 
 class ContentChunk(Base):
@@ -401,4 +420,173 @@ class CourseProgress(Base):
     )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+
+# ============================================================================
+# Project Memory (P2) — тонкий слой над существующей памятью.
+#
+# НЕ параллельная система: проекты лишь ГРУППИРУЮТ существующие сущности
+# (conversations/content_sources через nullable project_id), а memory_items —
+# единый универсальный контейнер знаний (заменяет project_items из дизайн-дока;
+# консолидация по принципу «не создавать параллельные системы памяти»).
+# memory_links связывают объекты (полиморфно: kind+id, без жёсткого FK).
+# Поиск по memory_items — полнотекст (content_tsv) + теги (V1, без второго RAG).
+# ============================================================================
+
+# --- projects ---
+PROJECT_ACTIVE = "active"
+PROJECT_ARCHIVED = "archived"
+PROJECT_STATUSES = (PROJECT_ACTIVE, PROJECT_ARCHIVED)
+
+# --- memory_items: тип элемента (AI-теггер выставляет, можно переопределить) ---
+ITEM_IDEA = "idea"
+ITEM_NOTE = "note"
+ITEM_ARTICLE = "article"
+ITEM_TOOL = "tool"
+ITEM_CODE = "code"
+ITEM_PROMPT = "prompt"
+ITEM_LEARNING = "learning"
+ITEM_DECISION = "decision"
+ITEM_TYPES = (
+    ITEM_IDEA, ITEM_NOTE, ITEM_ARTICLE, ITEM_TOOL,
+    ITEM_CODE, ITEM_PROMPT, ITEM_LEARNING, ITEM_DECISION,
+)
+
+# memory_items lifecycle (НЕ review-гейт — захват пользователя доверенный;
+# Fact Review Queue профиля это не затрагивает).
+MEMORY_ACTIVE = "active"
+MEMORY_ARCHIVED = "archived"
+MEMORY_STATUSES = (MEMORY_ACTIVE, MEMORY_ARCHIVED)
+
+# --- memory_links: тип объекта на концах связи (полиморфная ссылка) ---
+LINK_KIND_ITEM = "memory_item"
+LINK_KIND_PROJECT = "project"
+LINK_KIND_FACT = "fact"
+LINK_KIND_CONVERSATION = "conversation"
+LINK_KINDS = (LINK_KIND_ITEM, LINK_KIND_PROJECT, LINK_KIND_FACT, LINK_KIND_CONVERSATION)
+# Подсказки по relation (не enforced — навигационные ярлыки).
+LINK_RELATIONS = (
+    "related_to", "inspired_by", "became", "used_in", "derived_from",
+    "part_of", "references", "contradicts",
+)
+
+
+class Project(Base):
+    """Группа памяти вокруг проекта (Project Memory, P2).
+
+    Лёгкая сущность-зонтик: к ней привязываются разговоры/материалы (nullable
+    project_id) и memory_items; структурного хранилища у проекта своего нет.
+    """
+
+    __tablename__ = "projects"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    name: Mapped[str] = mapped_column(String(200), nullable=False)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    status: Mapped[str] = mapped_column(
+        String(16), nullable=False, server_default=PROJECT_ACTIVE, default=PROJECT_ACTIVE
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+    __table_args__ = (Index("ix_projects_status", "status"),)
+
+
+class MemoryItem(Base):
+    """Универсальный контейнер знания (Project Memory, P2).
+
+    Идея/заметка/статья/инструмент/код/промпт/урок/решение — из Telegram, чата
+    или вручную. AI-теггер (`tagging.py`) заполняет summary/tags/item_type/
+    importance. Поиск — полнотекст (`content_tsv`, словарь `simple`) + теги
+    (JSONB), без отдельного векторного индекса (реюз стека). Привязка к проекту
+    необязательна (`project_id`).
+    """
+
+    __tablename__ = "memory_items"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    project_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("projects.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    source: Mapped[str] = mapped_column(String(32), nullable=False)  # telegram|chat|web|manual
+    source_ref: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    title: Mapped[str | None] = mapped_column(Text, nullable=True)
+    content: Mapped[str] = mapped_column(Text, nullable=False)
+    summary: Mapped[str | None] = mapped_column(Text, nullable=True)  # AI
+    item_type: Mapped[str] = mapped_column(
+        String(16), nullable=False, server_default=ITEM_NOTE, default=ITEM_NOTE
+    )
+    importance: Mapped[int] = mapped_column(
+        Integer, nullable=False, server_default="3", default=3
+    )  # 1..5 (AI)
+    tags: Mapped[list] = mapped_column(
+        JSONB, nullable=False, default=list, server_default="[]"
+    )  # AI, string[]
+    status: Mapped[str] = mapped_column(
+        String(16), nullable=False, server_default=MEMORY_ACTIVE, default=MEMORY_ACTIVE
+    )
+    # GIN-индексируемый tsvector для полнотекстового recall (словарь simple,
+    # заполняется app-side как у messages.content_tsv).
+    content_tsv: Mapped[Any | None] = mapped_column(TSVECTOR, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+    __table_args__ = (
+        Index("ix_memory_items_project", "project_id"),
+        Index("ix_memory_items_type", "item_type"),
+        Index("ix_memory_items_created", "created_at"),
+        Index("ix_memory_items_tsv", "content_tsv", postgresql_using="gin"),
+        Index("ix_memory_items_tags", "tags", postgresql_using="gin"),
+    )
+
+
+class MemoryLink(Base):
+    """Связь между объектами памяти (Project Memory, P2).
+
+    Полиморфная (kind + id, без жёсткого FK), чтобы выражать примеры:
+    idea→inspired_by→article, idea→became→decision, tool→used_in→project,
+    fact→derived_from→conversation. Только PostgreSQL — никакой графовой БД.
+    """
+
+    __tablename__ = "memory_links"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    source_kind: Mapped[str] = mapped_column(
+        String(16), nullable=False, server_default=LINK_KIND_ITEM, default=LINK_KIND_ITEM
+    )
+    source_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    target_kind: Mapped[str] = mapped_column(
+        String(16), nullable=False, server_default=LINK_KIND_ITEM, default=LINK_KIND_ITEM
+    )
+    target_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    relation: Mapped[str] = mapped_column(String(32), nullable=False)
+    confidence: Mapped[float] = mapped_column(Float, nullable=False, default=1.0)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+
+    __table_args__ = (
+        UniqueConstraint(
+            "source_kind", "source_id", "target_kind", "target_id", "relation",
+            name="uq_memory_link",
+        ),
+        Index("ix_memory_links_source", "source_kind", "source_id"),
+        Index("ix_memory_links_target", "target_kind", "target_id"),
     )

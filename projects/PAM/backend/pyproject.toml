@@ -17,6 +17,7 @@ dependencies = [
     "beautifulsoup4>=4.12",
     "markitdown[pdf,docx,pptx,xlsx]>=0.1.6",
     "youtube-transcript-api>=1.0",
+    "aiogram>=3.0",
 ]
 
 [project.optional-dependencies]

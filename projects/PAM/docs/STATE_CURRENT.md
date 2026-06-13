@@ -59,7 +59,12 @@ Neon-облако, Docker на паузе; это деплой, не код).
 | **Search** | Полнотекст / семантика / гибрид | ✅ реализовано | `routes/search.py` |
 | **Diagnostics (Observability)** | Здоровье и метрики памяти | ✅ реализовано | `routes/stats.py`, `events`, `/diag` |
 | **Catalog** | Витрина AI-экосистемы (статика) | ✅ реализовано | `web/lib/catalog.ts`, `/catalog`, `/catalog/[slug]` |
-| **Projects (Project Memory)** | Память о проектах | ⛔ НЕ реализовано (только дизайн) | `docs/project-memory-design.md`; таблиц `projects`/`project_items` НЕТ |
+| **Projects (Project Memory)** | Память о проектах (группа над существующей памятью) | ✅ реализовано V1 (2026-06-14) | `routes/projects.py`, `projects` + nullable `project_id` на conversations/content_sources |
+| **Memory Items** | Универсальный контейнер знаний (idea/note/article/tool/code/prompt/learning/decision) | ✅ реализовано V1 | `routes/memory.py`, `memory_items` (заменяет project_items из дизайн-дока) |
+| **Telegram Capture** | Бот → сообщение в memory item (long polling) | ✅ реализовано V1 (бот отдельным процессом) | `app/telegram_bot.py` (aiogram) → `/memory/items` |
+| **AI Tagger** | Авто summary/tags/item_type/importance после создания item | ✅ реализовано V1 | `app/tagging.py` (паттерн `extraction.py`, фон, event `tagger`) |
+| **Memory Links** | Связи между объектами (полиморфно, без графовой БД) | ✅ реализовано V1 | `memory_links`, `routes/memory.py` |
+| **Recall** | «что я сохранял по X / какие решения» — полнотекст+теги+scope+синтез | ✅ реализовано V1 | `POST /memory/recall` |
 
 **Frontend-роуты (`web/app/`):** `/` (чат+home), `/c/[id]` (детали разговора),
 `/history`, `/saved`, `/me` (профиль+очередь фактов), `/learn`, `/courses/[id]`,
@@ -127,8 +132,11 @@ query → параллельно:
 
 ## 4. Database Inventory
 
-10 таблиц (модели в `backend/app/models.py`). PK везде `UUID` (default uuid4).
-**Таблиц `projects`/`project_items` нет** (Project Memory не реализован).
+13 таблиц (модели в `backend/app/models.py`). PK везде `UUID` (default uuid4).
+Project Memory V1 реализован: добавлены `projects`, `memory_items`, `memory_links`
+(+ nullable `project_id` на `conversations`/`content_sources`) — см. ниже.
+Таблицы `project_items` НЕТ: дизайн-доковый `project_items` консолидирован в
+`memory_items` (принцип «не создавать параллельные системы памяти»).
 
 ### conversations  *(migr 0001; pinned/archived — 68113919ba65)*
 Разговор: импортированный из AI-сервиса или внутренний (`source='pam'`).
@@ -187,7 +195,7 @@ query → параллельно:
 ### events  *(migr e4f5a6b7c8d9)*
 Лёгкий append-only лог observability (best-effort, `metrics.record_event`).
 - `kind` (chat|extraction|lecturer|reformat|embed|vision|vision_fallback|import|
-  capture_failure), `provider`, `status` (ok|error|fallback), `duration_ms`,
+  capture_failure|**tagger**), `provider`, `status` (ok|error|fallback), `duration_ms`,
   `detail`(≤255), `created_at`. Индексы `(kind,created_at)`, `(created_at)`.
 
 ### course_progress  *(migr f5a6b7c8d9e0)*
@@ -198,8 +206,30 @@ query → параллельно:
 - **Статус/процент не хранятся, а выводятся** (`course_study_status`/`course_percent`
   в `models.py`).
 
-**Цепочка миграций:** линейная, **один head `f5a6b7c8d9e0`**, без веток. `0001`
-делает `CREATE EXTENSION IF NOT EXISTS vector`.
+### projects  *(migr a6b7c8d9e0f1 — Project Memory P2)*
+Группа-зонтик. `name`, `description`, `status` (active|archived; индекс),
+`created_at`/`updated_at`. К ней привязываются разговоры/материалы (nullable
+`project_id`, ON DELETE SET NULL) и `memory_items`. Счётчики выводятся, не хранятся.
+
+### memory_items  *(migr b7c8d9e0f1a2 — Project Memory P2)*
+Универсальный контейнер знаний (заменяет project_items из дизайн-дока).
+- `project_id` (FK→projects, SET NULL), `source` (telegram|chat|manual|…),
+  `source_ref`, `title`, `content`, `summary` (AI), `item_type`
+  (idea|note|article|tool|code|prompt|learning|decision; AI), `importance` 1..5 (AI),
+  `tags` (JSONB, AI; **GIN**), `status` (active|archived), `content_tsv` (TSVECTOR,
+  **GIN**, словарь simple — для recall), `created_at`/`updated_at`.
+- Константы `ITEM_TYPES`, `MEMORY_STATUSES`. **Векторного индекса нет** — recall по
+  полнотексту + тегам (решение P2). НЕ проходит Fact-Review-гейт (захват доверенный).
+
+### memory_links  *(migr c8d9e0f1a2b3 — Project Memory P2)*
+Полиморфные связи (без жёсткого FK): `source_kind`/`source_id`,
+`target_kind`/`target_id` (kind ∈ memory_item|project|fact|conversation), `relation`,
+`confidence`, `created_at`. Unique `(source_kind,source_id,target_kind,target_id,relation)`.
+Только PostgreSQL — никакой графовой БД.
+
+**Цепочка миграций:** линейная, **один head `c8d9e0f1a2b3`** (P2: f5a6b7c8d9e0 →
+a6b7c8d9e0f1 → b7c8d9e0f1a2 → c8d9e0f1a2b3), без веток. `0001` делает
+`CREATE EXTENSION IF NOT EXISTS vector`.
 
 ---
 
@@ -415,6 +445,11 @@ pending), `lecturer` (источники/курсы/content-чанки), `facts`
 - **Стабилизация (2026-06-14):** closed provider attribution; единый нав-бар;
   главный экран переписан под Home Screen UX Contract; финальный аудит новых систем
   (чисто).
+- **P2 — Project Memory + Telegram Capture V1 (2026-06-14):** `projects` +
+  `memory_items` + `memory_links` + nullable `project_id`; AI-теггер (`tagging.py`);
+  recall (`/memory/recall`); Telegram-бот (`telegram_bot.py`, aiogram long polling).
+  Миграции a6b7c8d9e0f1/b7c8d9e0f1a2/c8d9e0f1a2b3 применены; pytest 35/35; E2E живьём
+  (проект→item→теггер→link→recall) — зелёно. **Бот запускается отдельно (не авто).**
 - Прочее: избранное, поиск (text/semantic/hybrid), вложения (документы+vision),
   true-multimodal по тумблеру, превью docx/xlsx, экспорт курса (md/print), каталог.
 
@@ -423,10 +458,11 @@ pending), `lecturer` (источники/курсы/content-чанки), `facts`
   фичи, а приёмка отгруженного на реальных данных. Чеклист: `pytest` в Docker,
   проверка `/diag` на реальных провайдерах, `web build`, сквозной E2E-сценарий.
 
-### Planned (только спроектировано, кода нет)
-- **Project Memory (P2)** — `docs/project-memory-design.md` (ADR + схема данных +
-  UX). Замысел: тонкий слой scoping поверх существующей памяти
-  (`projects` + `project_items` + nullable `project_id`).
+### Planned (только спроектировано / частично)
+- **Project Memory V2 (поверх V1):** UI-раздел `/projects` во фронте (V1 — только
+  API + Telegram); векторные эмбеддинги `memory_items` (V1 — full-text+теги);
+  голосовые в Telegram (V1 — пропущены, Whisper позже); recall-обход графа по
+  `memory_links` (V1 — плоский recall).
 - Бэклог (`TODO.md`/`ROADMAP.md`): map-reduce курса по длинным материалам;
   авто-«популярное»/mindmap тем; настоящие эмбеддинги для избранного/курсов;
   route-уровневые тесты; реализация `contents/gemini.ts`.
@@ -435,9 +471,14 @@ pending), `lecturer` (источники/курсы/content-чанки), `facts`
 
 ## 11. Project Memory Readiness
 
+> **ОБНОВЛЕНО 2026-06-14:** Project Memory, Telegram Capture, Memory Items, AI
+> Tagger, Memory Links — **реализованы V1** (см. §10 и `routes/projects.py`,
+> `routes/memory.py`, `tagging.py`, `telegram_bot.py`). Ниже — исходный анализ
+> готовности; для реализованных пунктов он показывает, ИЗ чего они собраны, а
+> «нужно добавить» в основном уже сделано. Knowledge Graph Lite — пока не делали.
+
 Для каждого кандидата — что **уже есть в коде**, что **нужно добавить**, какие
-**таблицы можно переиспользовать**. (Описывается готовность, новые функции не
-проектируются.)
+**таблицы можно переиспользовать**.
 
 ### Project Memory
 - **Есть:** полный субстрат памяти — `content_sources`/`content_chunks` (документы),

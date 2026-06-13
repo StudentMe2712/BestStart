@@ -38,6 +38,13 @@ class Settings(BaseSettings):
     OPENROUTER_MODEL: str = "nvidia/nemotron-3-super-120b-a12b:free"
     OLLAMA_CHAT_MODEL: str = "llama3.2:3b"
 
+    # Project Memory (P2) — Telegram capture (long polling, без webhook/домена).
+    # Токен и allow-list берутся из backend/.env (gitignored). user id =
+    # единственный разрешённый отправитель. BACKEND_URL — куда бот шлёт элементы.
+    TELEGRAM_BOT_TOKEN: str = ""
+    TELEGRAM_ALLOWED_USER_ID: int = 0  # 0 = никого не пускать (защита по умолчанию)
+    BACKEND_URL: str = "http://localhost:8000"
+
     @property
     def cors_origins_list(self) -> list[str]:
         return [o.strip() for o in self.CORS_ORIGINS.split(",") if o.strip()]
