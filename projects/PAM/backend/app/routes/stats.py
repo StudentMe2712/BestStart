@@ -13,6 +13,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..db import get_session
+from ..metrics import record_event
 from ..models import (
     FACT_STATUSES,
     Chunk,
@@ -24,12 +25,50 @@ from ..models import (
     Message,
     ProfileFact,
 )
+from ..schemas import CaptureFailedIn
 
 router = APIRouter(prefix="/stats", tags=["stats"])
+
+# Веса компонент Memory Health Score (в сумме 1.0).
+HEALTH_WEIGHTS = {"capture": 0.35, "indexing": 0.25, "review": 0.20, "stability": 0.20}
+
+
+def _pct(part: int, whole: int) -> int:
+    """Доля part/whole в %, 100 если whole==0 (нечего покрывать = здорово)."""
+    return round(part / whole * 100) if whole else 100
+
+
+def _reliability(ok: int, failed: int) -> int:
+    return _pct(ok, ok + failed)
+
+
+def compute_health(components: dict[str, int]) -> int:
+    """Взвешенный composite 0..100 из компонент здоровья памяти."""
+    return round(sum(components[k] * w for k, w in HEALTH_WEIGHTS.items()))
+
+
+def health_label(score: int) -> str:
+    return "good" if score >= 80 else "ok" if score >= 50 else "poor"
 
 
 async def _count(session: AsyncSession, stmt) -> int:
     return int((await session.execute(stmt)).scalar_one())
+
+
+@router.post("/capture-failed")
+async def capture_failed(payload: CaptureFailedIn) -> dict:
+    """Расширение репортит перманентный сброс захвата (после исчерпания ретраев).
+
+    Закрывает observability-gap: сколько разговоров НЕ удалось захватить.
+    Best-effort (как и весь лог `events`).
+    """
+    await record_event(
+        "capture_failure",
+        provider=payload.source,
+        status="error",
+        detail=payload.reason,
+    )
+    return {"ok": True}
 
 
 @router.get("")
@@ -137,6 +176,38 @@ async def get_stats(
         for (k, p, d, c) in recent_rows
     ]
 
+    # --- Capture reliability: успешные импорты vs перманентные сбросы захвата ---
+    captures_ok = await _count(
+        session,
+        select(func.count())
+        .select_from(Event)
+        .where(Event.created_at >= since, Event.kind == "import"),
+    )
+    captures_failed = await _count(
+        session,
+        select(func.count())
+        .select_from(Event)
+        .where(Event.created_at >= since, Event.kind == "capture_failure"),
+    )
+    capture_reliability = _reliability(captures_ok, captures_failed)
+
+    # --- Memory Health Score: composite из 4 компонент ---
+    total_events = await _count(
+        session,
+        select(func.count()).select_from(Event).where(Event.created_at >= since),
+    )
+    error_rate = (
+        round((errors + fallbacks) / total_events * 100) if total_events else 0
+    )
+    facts_decided = facts["approved"] + facts["rejected"] + facts["edited"]
+    components = {
+        "capture": capture_reliability,
+        "indexing": _pct(chunks_embedded + cc_embedded, chunks_total + cc_total),
+        "review": _pct(facts_decided, facts["total"]),
+        "stability": 100 - error_rate,
+    }
+    health_score = compute_health(components)
+
     return {
         "days": days,
         "memory": {
@@ -160,5 +231,15 @@ async def get_stats(
             "errors": errors,
             "timing": timing,
             "recent_errors": recent_errors,
+            "capture": {
+                "ok": captures_ok,
+                "failed": captures_failed,
+                "reliability": capture_reliability,
+            },
+        },
+        "health": {
+            "score": health_score,
+            "label": health_label(health_score),
+            "components": components,
         },
     }

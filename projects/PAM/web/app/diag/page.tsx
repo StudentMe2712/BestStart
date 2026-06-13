@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 
-import { getStats, type Stats } from "../../lib/api"
+import { getStats, type Stats, type StatsHealth } from "../../lib/api"
 import { getCache, setCache } from "../../lib/cache"
 import RefreshButton from "../refresh-button"
 
@@ -55,14 +55,95 @@ export default function DiagPage() {
           Нет данных.
         </div>
       ) : (
-        <div className="grid gap-6 lg:grid-cols-2">
-          <MemorySection memory={stats.memory} />
-          <LecturerSection lecturer={stats.lecturer} />
-          <FactsSection facts={stats.facts} />
-          <EventsSection events={stats.events} />
-        </div>
+        <>
+          <HealthHero health={stats.health} />
+          <div className="grid gap-6 lg:grid-cols-2">
+            <MemorySection memory={stats.memory} />
+            <LecturerSection lecturer={stats.lecturer} />
+            <FactsSection facts={stats.facts} />
+            <CaptureSection capture={stats.events.capture} />
+            <EventsSection events={stats.events} />
+          </div>
+        </>
       )}
     </main>
+  )
+}
+
+// ── Здоровье памяти (hero) ─────────────────────────────────────────────────
+
+const HEALTH_TONE: Record<StatsHealth["label"], Tone> = {
+  good: "lime",
+  ok: "amber",
+  poor: "red"
+}
+
+const HEALTH_LABEL: Record<StatsHealth["label"], string> = {
+  good: "в норме",
+  ok: "удовлетворительно",
+  poor: "требует внимания"
+}
+
+function HealthHero({ health }: { health: StatsHealth }) {
+  const tone = HEALTH_TONE[health.label]
+  return (
+    <section className="border border-neutral-800 rounded-sm p-5 mb-6">
+      <div className="flex items-end justify-between gap-4 flex-wrap mb-5">
+        <div>
+          <div className="text-[11px] uppercase tracking-widest text-neutral-500 mb-2">
+            Здоровье памяти
+          </div>
+          <div className="flex items-baseline gap-3">
+            <span
+              className={`text-5xl font-semibold tabular-nums ${TONE_TEXT[tone]}`}>
+              {health.score}
+            </span>
+            <span className={`text-sm font-sans ${TONE_TEXT[tone]}`}>
+              {HEALTH_LABEL[health.label]}
+            </span>
+          </div>
+        </div>
+      </div>
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <HealthBar label="Захват" value={health.components.capture} />
+        <HealthBar label="Индексация" value={health.components.indexing} />
+        <HealthBar label="Ревью фактов" value={health.components.review} />
+        <HealthBar label="Стабильность" value={health.components.stability} />
+      </div>
+    </section>
+  )
+}
+
+/** Тон для значения-компонента 0–100: ≥80 lime, ≥50 amber, иначе red. */
+function barTone(v: number): Tone {
+  if (v >= 80) return "lime"
+  if (v >= 50) return "amber"
+  return "red"
+}
+
+const BAR_BG: Record<Tone, string> = {
+  lime: "bg-lime-400",
+  amber: "bg-amber-400",
+  red: "bg-red-400",
+  neutral: "bg-neutral-400",
+  muted: "bg-neutral-600"
+}
+
+function HealthBar({ label, value }: { label: string; value: number }) {
+  const tone = barTone(value)
+  return (
+    <div>
+      <div className="flex items-center justify-between text-xs font-sans mb-1.5">
+        <span className="text-neutral-400">{label}</span>
+        <span className={`tabular-nums ${TONE_TEXT[tone]}`}>{value}%</span>
+      </div>
+      <div className="h-1.5 rounded-full bg-neutral-900 overflow-hidden">
+        <div
+          className={`h-full rounded-full transition-all ${BAR_BG[tone]}`}
+          style={{ width: `${value}%` }}
+        />
+      </div>
+    </div>
   )
 }
 
@@ -120,6 +201,50 @@ function FactsSection({ facts }: { facts: Stats["facts"] }) {
         <Metric label="отклонено" value={facts.rejected} tone="muted" />
         <Metric label="всего" value={facts.total} />
       </div>
+    </Section>
+  )
+}
+
+// ── Надёжность захвата ─────────────────────────────────────────────────────
+
+function CaptureSection({
+  capture
+}: {
+  capture: Stats["events"]["capture"]
+}) {
+  const { ok, failed, reliability } = capture
+  const empty = ok + failed === 0
+  const tone: Tone = reliability >= 90 ? "lime" : reliability >= 50 ? "amber" : "red"
+  return (
+    <Section title="Надёжность захвата">
+      <div
+        className={`text-5xl font-semibold tabular-nums mb-4 ${
+          empty ? TONE_TEXT.muted : TONE_TEXT[tone]
+        }`}>
+        {reliability}%
+      </div>
+      <div className="flex items-center gap-6 text-sm font-sans">
+        <span className="text-neutral-400">
+          захвачено:{" "}
+          <span className="tabular-nums text-neutral-200">
+            {ok.toLocaleString("ru")}
+          </span>
+        </span>
+        <span className="text-neutral-400">
+          потеряно:{" "}
+          <span
+            className={`tabular-nums ${
+              failed > 0 ? "text-red-400" : "text-neutral-200"
+            }`}>
+            {failed.toLocaleString("ru")}
+          </span>
+        </span>
+      </div>
+      {empty && (
+        <p className="text-neutral-600 text-sm font-sans mt-3">
+          Пока нет захватов
+        </p>
+      )}
     </Section>
   )
 }

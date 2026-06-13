@@ -21,6 +21,7 @@ EVENT_KINDS = (
     "import",
     "lecturer",
     "vision_fallback",
+    "capture_failure",
 )
 
 

@@ -43,3 +43,23 @@ export async function sendConversation(
   }
   return resp.json()
 }
+
+/**
+ * Сообщить бэкенду о перманентном сбросе захвата (после исчерпания ретраев) —
+ * для observability «сколько не удалось захватить». Best-effort: если бэкенд
+ * недоступен, фиксировать всё равно негде, так что ошибку глотаем.
+ */
+export async function reportCaptureFailure(
+  source: string,
+  reason: string
+): Promise<void> {
+  try {
+    await fetch(`${BACKEND_URL}/stats/capture-failed`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ source, reason: reason.slice(0, 255) })
+    })
+  } catch {
+    /* backend недоступен — сброс не зафиксировать, это ожидаемо */
+  }
+}

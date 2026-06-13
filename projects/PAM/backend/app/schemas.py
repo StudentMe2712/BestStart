@@ -206,3 +206,12 @@ class ProgressSummaryOut(BaseModel):
     status: str
     completed_count: int
     lessons_total: int
+
+
+# ---- Observability ingest ----
+
+class CaptureFailedIn(BaseModel):
+    """Расширение репортит перманентный сброс захвата разговора."""
+
+    source: str
+    reason: str | None = None

@@ -5,7 +5,11 @@
  * them to the local backend. Implements a simple retry queue.
  */
 
-import { sendConversation, type IncomingConversation } from "~lib/api"
+import {
+  reportCaptureFailure,
+  sendConversation,
+  type IncomingConversation
+} from "~lib/api"
 
 interface QueueItem {
   payload: IncomingConversation
@@ -77,6 +81,8 @@ async function processQueue() {
         console.error("[PAM] Giving up on", item.payload.external_id)
         stats.failed += 1
         saveStats()
+        // observability: сообщить бэкенду о перманентном сбросе захвата.
+        void reportCaptureFailure(item.payload.source, String(err))
         queue.shift()
       } else {
         await sleep(RETRY_DELAY_MS * item.attempts)

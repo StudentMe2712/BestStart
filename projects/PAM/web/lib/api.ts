@@ -651,6 +651,18 @@ export interface StatsEvents {
   errors: number
   timing: StatsTiming[]
   recent_errors: StatsRecentError[]
+  capture: { ok: number; failed: number; reliability: number }
+}
+
+export interface StatsHealth {
+  score: number
+  label: "good" | "ok" | "poor"
+  components: {
+    capture: number
+    indexing: number
+    review: number
+    stability: number
+  }
 }
 
 export interface Stats {
@@ -659,6 +671,7 @@ export interface Stats {
   lecturer: StatsLecturer
   facts: StatsFacts
   events: StatsEvents
+  health: StatsHealth
 }
 
 export async function getStats(days = 7): Promise<Stats> {
