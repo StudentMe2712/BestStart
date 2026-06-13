@@ -153,6 +153,7 @@ These are documented in `VIBE_PROMPT.md` and `implementation-plan.html`; restati
 - **Observability is best-effort, off the critical path**: instrument boundaries with `await record_event(...)` from `metrics.py` only — it opens its own session and swallows all errors. Never let a metric write change behavior or block a response. Do **not** record per-tick errors in the 15s embed worker (floods on no-Ollama machines); the DB snapshot in `/stats` already shows the embed backlog (`chunks_pending`). The `/diag` panel reads `/stats`; live counts come from the data tables, capture-heavy metrics from the `events` log.
 - **Learning progress is server-derived, one row per course**: `course_progress` (unique `course_id`) stores `completed_lessons` (keys `"<moduleIdx>-<lessonIdx>"`), a `lessons_total` snapshot, and the quiz result. **Status and percent are computed, not stored** (`course_study_status`/`course_percent` in `models.py`). Regenerating a course = new `course_id` = fresh progress (by design). This replaced the old localStorage `course-status.ts` (removed) — don't reintroduce a parallel client-side study status.
 - **Provider paths are a closed set (don't add branches)**: the only sanctioned LLM paths are **Groq** (fast default), **OpenRouter** (heavy/hybrid via `route_provider`), **Ollama** (local chat + the local embeddings in `indexing.py`), and **vision** (Groq-vision or OpenRouter in `describe_image`/`stream_vision`). There is **no provider-to-provider failure fallback** — the only real degradation is vision→text pre-pass in `chat.py`. Add a new provider/branch only with a measured benefit (see iteration brief #6).
+- **New App Router routes 404 until `docker compose restart web`**: the dockerized `next dev` (Turbopack over a bind mount with polling) does **not** reliably hot-register a brand-new route *folder* (`web/app/<new>/page.tsx`) added while it's running — the route returns 404 even though `tsc` is clean. Restart the web container to re-scan routes. Editing an existing route hot-reloads fine; only brand-new route segments need the restart. (Verifying a new page over HTTP, not just `tsc`, catches this.)
 
 ## When extension capture breaks
 
@@ -200,7 +201,10 @@ extension/
   contents/relay.ts  isolated-world bridge: window.postMessage → chrome.runtime.sendMessage
 
 web/app/
-  page.tsx           CHAT page (RAG chat + attachments, glass UI, центр-glow)
+  page.tsx           CHAT page (RAG chat + attachments, glass UI, центр-glow);
+                     empty state (no messages) renders <HomeDashboard/>
+  home-dashboard.tsx Home dashboard shown on the empty chat landing (continue last
+                     chat, recent materials, active courses %, pending facts, actions)
   chat-sidebar.tsx   chat sidebar (date-grouped «Недавнее», search modal, glass «Новый чат»)
   c/[id]/page.tsx    conversation detail with markdown (opened from History)
   learn/page.tsx     Лектор: add material + materials grid/list

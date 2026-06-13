@@ -14,6 +14,7 @@ import {
 } from "../lib/api"
 import { getCache, setCache } from "../lib/cache"
 import ChatSidebar from "./chat-sidebar"
+import HomeDashboard from "./home-dashboard"
 import Markdown from "./markdown"
 
 interface Attach {
@@ -259,16 +260,7 @@ export default function ChatPage() {
         <div className="relative z-10 flex-1 overflow-y-auto">
           <div className="max-w-3xl mx-auto px-4 md:px-6 py-4 space-y-6">
             {messages.length === 0 ? (
-              <div className="h-[62vh] flex flex-col items-center justify-center text-center px-6">
-                <div className="w-12 h-12 rounded-xl bg-lime-400/10 border border-lime-400/30 text-lime-400 flex items-center justify-center text-lg font-semibold mb-4">
-                  P
-                </div>
-                <div className="text-xl font-semibold mb-1.5">Чат с твоей памятью</div>
-                <p className="text-neutral-400 text-sm font-sans max-w-md">
-                  Спроси что угодно — я помню прошлые разговоры, материалы и
-                  знания.
-                </p>
-              </div>
+              <HomeDashboard chats={chats} onOpenChat={openChat} />
             ) : (
               messages.map((m, i) =>
                 m.role === "user" ? (
