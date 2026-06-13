@@ -152,6 +152,17 @@ def _ext_of(filename: str) -> str:
     return filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
 
 
+# Документы, для которых храним ОРИГИНАЛ ради превью (помимо извлечённого текста):
+# pdf — нативно в <iframe>; docx — рендер mammoth на клиенте; xlsx/xls — SheetJS.
+# pptx сюда НЕ входит (нет лёгкого клиентского рендера) — остаётся только текст.
+_PREVIEW_MIME = {
+    "pdf": "application/pdf",
+    "docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    "xls": "application/vnd.ms-excel",
+}
+
+
 def extract_file_text(filename: str, data: bytes) -> tuple[str | None, str]:
     """Dispatch an uploaded file to the right extractor → (title, text).
 
@@ -301,10 +312,11 @@ async def ingest_file(session: AsyncSession, filename: str, data: bytes) -> Cont
     try:
         title, text = extract_file_text(filename, data)
         await _finalize(session, src, title=title or filename, text=text)
-        # PDFs uploaded via the universal inbox also get a native preview.
-        if src.status == "extracted" and _ext_of(filename) == "pdf":
+        # Документы с превью (pdf нативно, docx/xlsx — на клиенте) — храним оригинал.
+        ext = _ext_of(filename)
+        if src.status == "extracted" and ext in _PREVIEW_MIME:
             src.original_data = data
-            src.original_mime = "application/pdf"
+            src.original_mime = _PREVIEW_MIME[ext]
     except Exception as e:  # noqa: BLE001
         await _fail(session, src, f"file extract failed: {type(e).__name__}: {e}")
     await session.commit()

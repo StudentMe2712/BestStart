@@ -161,8 +161,14 @@ export default function CourseReaderPage() {
   const mod = modules[chapter]
   const kind = source ? kindOf(source) : "text"
   const ytId = kind === "youtube" ? youtubeId(source?.url ?? null) : null
-  // Нативный предпросмотр оригинала — пока только PDF (браузер рендерит сам).
-  const hasPdfPreview = !!source?.has_file && !!source?.mime?.includes("pdf")
+  // Предпросмотр оригинала: PDF — нативно (iframe); docx — mammoth; xlsx — SheetJS.
+  const mimeStr = source?.mime || ""
+  const hasPdfPreview = !!source?.has_file && mimeStr.includes("pdf")
+  const hasDocxPreview =
+    !!source?.has_file && mimeStr.includes("wordprocessingml")
+  const hasXlsxPreview =
+    !!source?.has_file &&
+    (mimeStr.includes("spreadsheetml") || mimeStr.includes("ms-excel"))
 
   const brief = useMemo(() => {
     const raw = mod?.lessons?.find((l) => l.content?.trim())?.content || ""
@@ -280,10 +286,11 @@ export default function CourseReaderPage() {
           {ytId ? (
             <YoutubeHero ytId={ytId} url={source?.url ?? null} />
           ) : hasPdfPreview ? (
-            <PdfHero
-              src={sourceFileUrl(id)}
-              title={source?.title ?? null}
-            />
+            <PdfHero src={sourceFileUrl(id)} title={source?.title ?? null} />
+          ) : hasDocxPreview ? (
+            <DocxHero src={sourceFileUrl(id)} title={source?.title ?? null} />
+          ) : hasXlsxPreview ? (
+            <XlsxHero src={sourceFileUrl(id)} title={source?.title ?? null} />
           ) : null}
 
           <div className="mb-5">
@@ -616,6 +623,152 @@ function PdfHero({ src, title }: { src: string; title: string | null }) {
         style={{ height: 600 }}
       />
     </div>
+  )
+}
+
+/** Общая «рамка» предпросмотра офисного документа: шапка (метка + скачать) + тело. */
+function OfficePreviewFrame({
+  label,
+  src,
+  children
+}: {
+  label: string
+  src: string
+  children: React.ReactNode
+}) {
+  return (
+    <div className="w-full rounded-xl overflow-hidden mb-6 border border-neutral-800 bg-neutral-900">
+      <div className="flex items-center justify-between gap-3 px-4 py-2 border-b border-neutral-800">
+        <span className="text-xs uppercase tracking-widest text-neutral-500">
+          Предпросмотр · {label}
+        </span>
+        <a
+          href={src}
+          target="_blank"
+          rel="noopener noreferrer"
+          download
+          className="text-xs font-sans text-neutral-400 hover:text-lime-400 transition-colors">
+          Скачать оригинал ↓
+        </a>
+      </div>
+      <div className="max-h-[600px] overflow-auto bg-neutral-950">{children}</div>
+    </div>
+  )
+}
+
+/** Предпросмотр Word (.docx): mammoth (браузерная сборка) → HTML. #5
+    Ленивый импорт — тяжёлую либу тянем только когда реально есть docx.
+    Деградация: при ошибке скрываемся (текст доступен во вкладке «Дополнительно»). */
+function DocxHero({ src, title }: { src: string; title: string | null }) {
+  const [html, setHtml] = useState<string | null>(null)
+  const [failed, setFailed] = useState(false)
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      try {
+        const mammoth = (await import("mammoth/mammoth.browser")).default
+        const buf = await (await fetch(src)).arrayBuffer()
+        const res = await mammoth.convertToHtml({ arrayBuffer: buf })
+        if (!cancelled) setHtml(res.value || "")
+      } catch {
+        if (!cancelled) setFailed(true)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [src])
+  if (failed) return null
+  return (
+    <OfficePreviewFrame label="Word" src={src}>
+      {html === null ? (
+        <div className="text-neutral-500 text-sm font-sans p-4">
+          {/* загрузка */}// рендерю документ «{title || "Word"}»…
+        </div>
+      ) : html === "" ? (
+        <div className="text-neutral-500 text-sm font-sans p-4">
+          Документ пустой или не содержит текста.
+        </div>
+      ) : (
+        <div
+          className="prose prose-invert max-w-none p-5 doc-preview"
+          dangerouslySetInnerHTML={{ __html: html }}
+        />
+      )}
+    </OfficePreviewFrame>
+  )
+}
+
+/** Извлечь только <table>…</table> из вывода SheetJS (он отдаёт целый HTML-док). */
+function tableOnly(html: string): string {
+  const i = html.indexOf("<table")
+  const j = html.lastIndexOf("</table>")
+  return i >= 0 && j >= 0 ? html.slice(i, j + "</table>".length) : html
+}
+
+/** Предпросмотр Excel (.xlsx/.xls): SheetJS → HTML-таблица (по листам). #5 */
+function XlsxHero({ src, title }: { src: string; title: string | null }) {
+  const [sheets, setSheets] = useState<{ name: string; html: string }[] | null>(
+    null
+  )
+  const [failed, setFailed] = useState(false)
+  const [active, setActive] = useState(0)
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      try {
+        const XLSX = await import("xlsx")
+        const buf = await (await fetch(src)).arrayBuffer()
+        const wb = XLSX.read(buf, { type: "array" })
+        const out = wb.SheetNames.map((name) => ({
+          name,
+          html: tableOnly(XLSX.utils.sheet_to_html(wb.Sheets[name]))
+        }))
+        if (!cancelled) setSheets(out)
+      } catch {
+        if (!cancelled) setFailed(true)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [src])
+  if (failed) return null
+  return (
+    <OfficePreviewFrame label="Excel" src={src}>
+      {sheets === null ? (
+        <div className="text-neutral-500 text-sm font-sans p-4">
+          {/* загрузка */}// читаю таблицу «{title || "Excel"}»…
+        </div>
+      ) : sheets.length === 0 ? (
+        <div className="text-neutral-500 text-sm font-sans p-4">
+          Пустая книга.
+        </div>
+      ) : (
+        <div>
+          {sheets.length > 1 && (
+            <div className="flex flex-wrap gap-1 px-3 pt-3">
+              {sheets.map((s, i) => (
+                <button
+                  key={i}
+                  onClick={() => setActive(i)}
+                  className={`text-xs font-sans px-2.5 py-1 rounded-md border transition-colors ${
+                    i === active
+                      ? "border-lime-400/40 text-lime-400 bg-neutral-900"
+                      : "border-neutral-800 text-neutral-400 hover:text-neutral-200"
+                  }`}>
+                  {s.name || `Лист ${i + 1}`}
+                </button>
+              ))}
+            </div>
+          )}
+          <div
+            className="p-4 xlsx-preview"
+            dangerouslySetInnerHTML={{ __html: sheets[active]?.html || "" }}
+          />
+        </div>
+      )}
+    </OfficePreviewFrame>
   )
 }
 

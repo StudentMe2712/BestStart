@@ -48,6 +48,19 @@ body {
   background: transparent;
 }
 
+/* Предпросмотр Excel (#5): таблица SheetJS — рамки и компактные ячейки. */
+.xlsx-preview table {
+  border-collapse: collapse;
+  font-size: 12px;
+}
+.xlsx-preview td,
+.xlsx-preview th {
+  border: 1px solid #2a2a2a;
+  padding: 3px 8px;
+  white-space: nowrap;
+  color: rgb(212 212 212);
+}
+
 /* ── Печать курса (#7 — экспорт в PDF через печать) ─────────────────────────
    Экранный UI (nav, сайдбары, табы) помечен `print:hidden`, а полноразмерная
    версия курса — `.print-course` (`hidden print:block`): на печать выводится
