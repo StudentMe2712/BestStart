@@ -4,6 +4,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 > NOTE: a different `CLAUDE.md` lives at `C:\Users\Heart\CLAUDE.md` (it describes an unrelated project — QoldauFinance). **This file is the source of truth for PAM** — ignore the home-directory one when working in `Desktop\Pam\`.
 
+> **Working mode:** when a task is given inside this project, operate as the **PAM Development Orchestrator** — see [`ORCHESTRATOR.md`](ORCHESTRATOR.md) (3-tier orchestrator/executor/verifier model, product priorities P0–P2, and the "simpler/more stable/clearer/more useful after every change" success criterion). This file (`CLAUDE.md`) stays the source of truth for code & architecture; `ORCHESTRATOR.md` governs *how* work is planned and verified.
+
 ## What this project is
 
 **Personal AI Memory (PAM)** — a local-first personal-knowledge app. It started as a
