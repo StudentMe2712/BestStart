@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link"
 import { useParams, useRouter } from "next/navigation"
 
@@ -9,7 +9,7 @@ import {
   getSource,
   generateCourse,
   deleteSource,
-  reformatSource,
+  startReformat,
   sourceFileUrl,
   type Course,
   type ContentSourceDetail
@@ -64,6 +64,14 @@ export default function CourseReaderPage() {
   const [formatted, setFormatted] = useState<string | null>(null)
   const [showFormatted, setShowFormatted] = useState(false)
   const [reformatting, setReformatting] = useState(false)
+  // #6 — фоновый реформат: прогресс (0..100) + таймер поллинга.
+  const [reformatProgress, setReformatProgress] = useState(0)
+  const pollRef = useRef<number | null>(null)
+  useEffect(() => {
+    return () => {
+      if (pollRef.current) window.clearTimeout(pollRef.current)
+    }
+  }, [])
 
   useEffect(() => {
     let cancelled = false
@@ -86,11 +94,43 @@ export default function CourseReaderPage() {
     setStatus(getCourseStatus(id))
   }, [id])
 
-  // Подхватываем уже сгенерированную ранее «причёсанную» версию (кэш на бэке).
+  // Подхватываем уже сгенерированную ранее «причёсанную» версию (кэш на бэке);
+  // если реформат ещё идёт (#6, напр. перезагрузили страницу) — продолжаем поллинг.
   useEffect(() => {
     setFormatted(source?.formatted_text ?? null)
     setShowFormatted(!!source?.formatted_text)
+    if (source && !source.formatted_text && source.reformat_status === "running") {
+      setReformatProgress(source.reformat_progress || 0)
+      setReformatting(true)
+      scheduleReformatPoll()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [source])
+
+  // Один тик поллинга статуса фонового реформата (#6); сам перезапускается.
+  function scheduleReformatPoll() {
+    pollRef.current = window.setTimeout(async () => {
+      try {
+        const s = await getSource(id)
+        setReformatProgress(s.reformat_progress || 0)
+        if (s.reformat_status === "done" && s.formatted_text) {
+          setFormatted(s.formatted_text)
+          setShowFormatted(true)
+          setReformatting(false)
+          return
+        }
+        if (s.reformat_status === "failed") {
+          setError("Не удалось причесать текст (фоновая задача)")
+          setReformatting(false)
+          return
+        }
+        scheduleReformatPoll()
+      } catch (e) {
+        setError(String(e))
+        setReformatting(false)
+      }
+    }, 1500)
+  }
 
   async function improveReadability() {
     if (formatted) {
@@ -99,13 +139,19 @@ export default function CourseReaderPage() {
     }
     setReformatting(true)
     setError(null)
+    setReformatProgress(0)
     try {
-      const t = await reformatSource(id)
-      setFormatted(t)
-      setShowFormatted(true)
+      const start = await startReformat(id)
+      if (start.status === "done" && start.formatted_text) {
+        setFormatted(start.formatted_text)
+        setShowFormatted(true)
+        setReformatting(false)
+        return
+      }
+      setReformatProgress(start.progress || 0)
+      scheduleReformatPoll() // фоновая задача запущена — поллим до готовности
     } catch (e) {
       setError(String(e))
-    } finally {
       setReformatting(false)
     }
   }
@@ -378,7 +424,7 @@ export default function CourseReaderPage() {
                         title="Разбить по смыслу на главы и абзацы (ИИ)"
                         className="shrink-0 text-xs font-sans px-3 py-1.5 rounded-lg border border-neutral-700 text-neutral-300 hover:text-lime-400 hover:border-lime-400/50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
                         {reformatting
-                          ? "Улучшаю…"
+                          ? `Улучшаю… ${reformatProgress}%`
                           : formatted
                             ? showFormatted
                               ? "Показать оригинал"

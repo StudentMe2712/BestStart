@@ -178,6 +178,12 @@ class ContentSource(Base):
     # AI-причёсанная версия `text` (главы/абзацы) — заполняется по кнопке
     # «Улучшить читаемость», кэшируется здесь, чтобы не гонять LLM повторно.
     formatted_text: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # #6 — фоновый реформат больших материалов: статус и прогресс (0..100).
+    # reformat_status ∈ {NULL (не запускали), running, done, failed}.
+    reformat_status: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    reformat_progress: Mapped[int] = mapped_column(
+        Integer, nullable=False, server_default="0"
+    )
     char_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     error: Mapped[str | None] = mapped_column(Text, nullable=True)
     # Оригинальные байты загруженного файла (только для PDF — для нативного

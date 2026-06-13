@@ -27,7 +27,7 @@ from ..content import (
 )
 from ..courses import generate_course
 from ..db import get_session
-from ..formatting import reformat_source_text
+from ..formatting import schedule_reformat
 from ..models import ContentSource, Course
 from ..schemas import (
     ContentSourceOut,
@@ -182,6 +182,9 @@ async def get_source(
         "error": src.error,
         "text": src.text,
         "formatted_text": src.formatted_text,
+        # #6 — статус/прогресс фонового реформата (клиент поллит этот эндпоинт).
+        "reformat_status": src.reformat_status,
+        "reformat_progress": src.reformat_progress,
         # has_file/mime — флаг нативного предпросмотра (сейчас только PDF).
         # original_mime НЕ deferred, так что байты файла мы тут не тянем.
         "has_file": src.original_mime is not None,
@@ -224,7 +227,12 @@ async def reformat_source(
     source_id: uuid.UUID,
     session: AsyncSession = Depends(get_session),
 ) -> dict:
-    """AI-«причесать» исходный текст в читаемый markdown (кэшируется)."""
+    """Запустить фоновый AI-реформат исходного текста (#6). Возвращает статус.
+
+    Готово (`formatted_text` есть) → отдаём кэш. Уже идёт → текущий прогресс.
+    Иначе → ставим `reformat_status='running'` и запускаем фоновую задачу; клиент
+    поллит GET /sources/{id} (`reformat_status` / `reformat_progress`).
+    """
     src = (
         await session.execute(
             select(ContentSource).where(ContentSource.id == source_id)
@@ -235,14 +243,14 @@ async def reformat_source(
     if not src.text:
         raise HTTPException(status_code=409, detail="source has no text")
     if src.formatted_text:  # уже причёсано — отдаём кэш, не гоняем LLM повторно
-        return {"formatted_text": src.formatted_text}
-    try:
-        formatted = await reformat_source_text(session, src)
-    except ValueError as e:
-        raise HTTPException(status_code=422, detail=str(e))
-    except Exception as e:  # noqa: BLE001
-        raise HTTPException(status_code=502, detail=f"reformat failed: {e}")
-    return {"formatted_text": formatted}
+        return {"status": "done", "progress": 100, "formatted_text": src.formatted_text}
+    if src.reformat_status == "running":  # уже идёт — отдаём текущий прогресс
+        return {"status": "running", "progress": src.reformat_progress}
+    src.reformat_status = "running"
+    src.reformat_progress = 0
+    await session.commit()
+    schedule_reformat(src.id)
+    return {"status": "running", "progress": 0}
 
 
 @router.delete("/sources/{source_id}", status_code=204)

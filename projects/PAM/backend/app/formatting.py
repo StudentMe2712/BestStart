@@ -16,9 +16,11 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import uuid
 
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 
+from .db import AsyncSessionLocal
 from .llm import complete
 from .models import ContentSource
 
@@ -26,8 +28,6 @@ log = logging.getLogger(__name__)
 
 # Сколько символов отдаём в один вызов LLM (~под free-tier лимит токенов/мин).
 REFORMAT_CHUNK_CHARS = 6_000
-# Сколько символов всего пытаемся причесать (остаток дописываем сырым).
-REFORMAT_MAX_CHARS = 48_000
 
 REFORMAT_SYSTEM = (
     "Ты — редактор-форматировщик. Тебе дают фрагмент сырого текста (выгрузка из "
@@ -68,36 +68,70 @@ def _split_for_reformat(text: str, limit: int = REFORMAT_CHUNK_CHARS) -> list[st
     return chunks or [text]
 
 
-async def reformat_source_text(session: AsyncSession, source: ContentSource) -> str:
-    """Reformat `source.text` into readable markdown, cache in `formatted_text`."""
-    raw = (source.text or "").strip()
-    if not raw:
-        raise ValueError("source has no text to reformat")
+async def _reformat_one(chunk: str, source_id: uuid.UUID) -> str:
+    """Причесать один кусок; при сбое/лимите провайдера вернуть кусок как есть."""
+    messages = [
+        {"role": "system", "content": REFORMAT_SYSTEM},
+        {
+            "role": "user",
+            "content": f"<material>\n{chunk}\n</material>\n\nОтформатируй фрагмент.",
+        },
+    ]
+    try:
+        formatted = (await complete(messages)).strip()
+    except Exception as e:  # noqa: BLE001 — деградируем: оставляем кусок как есть
+        log.warning("reformat: LLM call failed for %s: %s", source_id, e)
+        return chunk
+    return formatted or chunk
 
-    head = raw[:REFORMAT_MAX_CHARS]
-    tail = raw[REFORMAT_MAX_CHARS:]
-    out: list[str] = []
-    for i, chunk in enumerate(_split_for_reformat(head)):
-        if i > 0:
-            await asyncio.sleep(0.8)  # разносим вызовы — мягче к rate-limit Groq
-        messages = [
-            {"role": "system", "content": REFORMAT_SYSTEM},
-            {
-                "role": "user",
-                "content": f"<material>\n{chunk}\n</material>\n\nОтформатируй фрагмент.",
-            },
-        ]
+
+# Фоновые задачи реформата — держим ссылки, чтобы их не собрал GC.
+_bg_tasks: set = set()
+
+
+def schedule_reformat(source_id: uuid.UUID) -> None:
+    """Запустить фоновый реформат источника (fire-and-forget)."""
+    task = asyncio.create_task(_reformat_background(source_id))
+    _bg_tasks.add(task)
+    task.add_done_callback(_bg_tasks.discard)
+
+
+async def _reformat_background(source_id: uuid.UUID) -> None:
+    """В фоне причесать ВЕСЬ текст источника, обновляя прогресс по кускам.
+
+    Прогресс (0..100) коммитится после каждого куска, чтобы UI видел движение
+    при поллинге. Между вызовами — пауза (мягче к rate-limit Groq). На общем
+    сбое — `reformat_status='failed'` (per-chunk сбои деградируют в сырой кусок).
+    """
+    async with AsyncSessionLocal() as session:
+        src = (
+            await session.execute(
+                select(ContentSource).where(ContentSource.id == source_id)
+            )
+        ).scalar_one_or_none()
+        if src is None:
+            return
+        raw = (src.text or "").strip()
+        if not raw:
+            src.reformat_status = "failed"
+            await session.commit()
+            return
+        chunks = _split_for_reformat(raw)
+        total = len(chunks)
+        out: list[str] = []
         try:
-            formatted = (await complete(messages)).strip()
-        except Exception as e:  # noqa: BLE001 — деградируем: оставляем кусок как есть
-            log.warning("reformat: LLM call failed for %s: %s", source.id, e)
-            formatted = chunk
-        out.append(formatted or chunk)
-
-    result = "\n\n".join(out).strip()
-    if tail.strip():  # длинный материал — хвост дописываем сырым, чтобы не потерять
-        result = f"{result}\n\n{tail.strip()}"
-
-    source.formatted_text = result
-    await session.commit()
-    return result
+            for i, chunk in enumerate(chunks):
+                if i > 0:
+                    await asyncio.sleep(0.8)  # разносим вызовы — мягче к rate-limit
+                out.append(await _reformat_one(chunk, source_id))
+                src.reformat_progress = round((i + 1) / total * 100)
+                await session.commit()  # видимый прогресс для поллинга
+            src.formatted_text = "\n\n".join(out).strip()
+            src.reformat_status = "done"
+            src.reformat_progress = 100
+            await session.commit()
+            log.info("reformat done for %s (%d chunks)", source_id, total)
+        except Exception as e:  # noqa: BLE001 — фон не должен валить процесс
+            log.warning("reformat background failed for %s: %s", source_id, e)
+            src.reformat_status = "failed"
+            await session.commit()

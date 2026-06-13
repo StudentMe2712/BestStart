@@ -250,6 +250,10 @@ export interface ContentSourceDetail extends ContentSource {
   text: string | null
   /** AI-причёсанная версия text (если уже сгенерирована), иначе null. */
   formatted_text: string | null
+  /** #6 — статус фонового реформата: null (не запускали) | running | done | failed. */
+  reformat_status: "running" | "done" | "failed" | null
+  /** #6 — прогресс реформата в процентах (0..100). */
+  reformat_progress: number
   /** true, если у источника сохранён оригинал файла для предпросмотра (PDF). */
   has_file: boolean
   /** MIME оригинала, если has_file. */
@@ -268,8 +272,15 @@ export function sourceFileUrl(id: string): string {
   return `${BACKEND_URL}/learn/sources/${id}/file`
 }
 
-/** POST /learn/sources/{id}/reformat — AI-«причесать» исходный текст. */
-export async function reformatSource(id: string): Promise<string> {
+export interface ReformatStatus {
+  status: "running" | "done" | "failed" | null
+  progress: number
+  formatted_text?: string | null
+}
+
+/** POST /learn/sources/{id}/reformat — запустить ФОНОВЫЙ реформат (#6).
+    Возвращает текущий статус; готовый текст забираем поллингом getSource. */
+export async function startReformat(id: string): Promise<ReformatStatus> {
   const r = await fetch(`${BACKEND_URL}/learn/sources/${id}/reformat`, {
     method: "POST"
   })
@@ -277,8 +288,7 @@ export async function reformatSource(id: string): Promise<string> {
     const d = await r.json().catch(() => ({}))
     throw new Error(d.detail || `reformat failed: ${r.status}`)
   }
-  const data = await r.json()
-  return data.formatted_text as string
+  return r.json()
 }
 
 export async function ingestArticle(url: string): Promise<ContentSource> {
