@@ -4,289 +4,256 @@ import { useEffect, useState } from "react"
 import Link from "next/link"
 
 import {
-  listSources,
-  listProgress,
-  factCounts,
-  type ConversationSummary,
-  type ContentSource,
-  type ProgressSummary
+  getStats,
+  type Stats,
+  type StatsHealth,
+  type ConversationSummary
 } from "../lib/api"
-import { KIND_LABEL, kindOf, fmtDate } from "../lib/material-ui"
+import { getCache, setCache } from "../lib/cache"
+import { fmtDate } from "../lib/material-ui"
 
-/** Курс в процессе: прогресс + название материала (из listSources по source_id). */
-interface ActiveCourse {
-  source_id: string
-  title: string
-  percent: number
-}
-
+/**
+ * Главный экран PAM = точка входа в память (см. Home Screen UX Contract).
+ * НЕ дашборд: только приветствие, компактная карточка состояния памяти и
+ * фиксированные быстрые действия. Истории/материалов/курсов здесь нет — они
+ * живут в сайдбаре и своих разделах; дублировать и плодить пустые блоки нельзя.
+ */
 export default function HomeDashboard({
-  chats,
-  onOpenChat
+  chats
 }: {
   chats: ConversationSummary[]
-  onOpenChat: (id: string) => void
 }) {
-  const [sources, setSources] = useState<ContentSource[]>([])
-  const [active, setActive] = useState<ActiveCourse[]>([])
-  const [pendingFacts, setPendingFacts] = useState(0)
+  const [stats, setStats] = useState<Stats | null>(
+    () => getCache<Stats>("stats") ?? null
+  )
 
-  // Best-effort: любой сбой → пустое состояние, дашборд остаётся полезным.
+  // Best-effort: карточка памяти — индикатор состояния, а не центр экрана.
+  // Любой сбой → карточку просто не показываем, экран остаётся спокойным.
   useEffect(() => {
     let cancelled = false
-    Promise.allSettled([listSources(), listProgress(), factCounts()]).then(
-      ([srcRes, progRes, factRes]) => {
+    getStats()
+      .then((d) => {
         if (cancelled) return
-        const srcs =
-          srcRes.status === "fulfilled" ? srcRes.value : []
-        setSources(srcs)
-
-        if (progRes.status === "fulfilled") {
-          const byId = new Map(srcs.map((s) => [s.id, s]))
-          const titleOf = (sid: string) =>
-            byId.get(sid)?.title || byId.get(sid)?.url || "Без названия"
-          const rows = progRes.value
-          // Курсы в процессе; fallback — любой курс с ненулевым прогрессом.
-          let pick = rows.filter((r) => r.status === "in_progress")
-          if (pick.length === 0) pick = rows.filter((r) => r.percent > 0)
-          setActive(
-            pick
-              .slice(0, 3)
-              .map((r): ActiveCourse => ({
-                source_id: r.source_id,
-                title: titleOf(r.source_id),
-                percent: r.percent
-              }))
-          )
-        }
-
-        if (factRes.status === "fulfilled") {
-          setPendingFacts(factRes.value.pending_review || 0)
-        }
-      }
-    )
+        setStats(d)
+        setCache("stats", d)
+      })
+      .catch(() => {})
     return () => {
       cancelled = true
     }
   }, [])
 
-  const recentSources = sources.slice(0, 4)
-  const top = chats[0]
-  const more = chats.slice(1, 3)
+  const lastUpdate = chats[0]?.updated_at
 
   return (
-    <div className="py-6 space-y-7">
-      {/* 1. Заголовок */}
-      <header>
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-lime-400/10 border border-lime-400/30 text-lime-400 flex items-center justify-center text-base font-semibold">
-            P
-          </div>
-          <div>
-            <h1 className="text-2xl font-semibold leading-tight">
-              С возвращением
-            </h1>
-            <p className="text-neutral-400 text-sm font-sans">
-              Продолжи с того места, где остановился — или спроси что угодно ниже.
-            </p>
-          </div>
-        </div>
-      </header>
+    <div className="py-8 md:py-12">
+      {/* Приветствие + компактная карточка памяти справа */}
+      <div className="flex items-start justify-between gap-6 flex-wrap mb-10">
+        <header className="min-w-0">
+          <h1 className="text-3xl font-semibold leading-tight mb-2">
+            С возвращением
+          </h1>
+          <p className="text-neutral-400 text-sm font-sans max-w-md">
+            Продолжи с того места, где остановился — или задай вопрос ниже.
+          </p>
+        </header>
+        {stats && <MemoryCard stats={stats} lastUpdate={lastUpdate} />}
+      </div>
 
-      {/* 2. Продолжить */}
+      {/* Быстрые действия — главный (и единственный) контент экрана */}
       <section>
-        <SectionTitle>Продолжить</SectionTitle>
-        {top ? (
-          <div className="space-y-1.5">
-            <button
-              onClick={() => onOpenChat(top.id)}
-              className="w-full text-left flex items-center gap-3 rounded-lg border border-neutral-800 bg-neutral-900/40 hover:border-lime-400/40 hover:bg-lime-400/[0.04] transition-colors px-4 py-3 group">
-              <span className="shrink-0 w-8 h-8 rounded-md bg-lime-400/10 border border-lime-400/30 text-lime-400 flex items-center justify-center">
-                <ChatIcon />
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className="block text-sm font-sans font-medium truncate">
-                  {top.title || "Без названия"}
-                </span>
-                <span className="block text-[11px] text-neutral-500 font-sans tabular-nums">
-                  {fmtDate(top.updated_at)} · {top.message_count} сообщ.
-                </span>
-              </span>
-              <span className="shrink-0 text-neutral-600 group-hover:text-lime-400 transition-colors">
-                <ArrowIcon />
-              </span>
-            </button>
-            {more.map((c) => (
-              <button
-                key={c.id}
-                onClick={() => onOpenChat(c.id)}
-                className="w-full text-left flex items-center justify-between gap-3 rounded-md px-4 py-2 hover:bg-neutral-900/60 transition-colors group">
-                <span className="min-w-0 text-sm font-sans text-neutral-300 truncate group-hover:text-neutral-100">
-                  {c.title || "Без названия"}
-                </span>
-                <span className="shrink-0 text-[11px] text-neutral-600 font-sans tabular-nums">
-                  {fmtDate(c.updated_at)}
-                </span>
-              </button>
-            ))}
-          </div>
-        ) : (
-          <Muted>Начни новый разговор ниже.</Muted>
-        )}
-      </section>
-
-      {/* 3. Последние материалы */}
-      <section>
-        <SectionTitle>
-          Последние материалы
-          <Link
+        <h2 className="text-[11px] uppercase tracking-widest text-neutral-500 mb-3">
+          Быстрые действия
+        </h2>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <ActionCard
             href="/learn"
-            className="ml-auto text-[11px] normal-case tracking-normal text-neutral-500 hover:text-lime-400 transition-colors">
-            все →
-          </Link>
-        </SectionTitle>
-        {recentSources.length > 0 ? (
-          <div className="grid gap-1.5">
-            {recentSources.map((s) => (
-              <Link
-                key={s.id}
-                href={"/courses/" + s.id}
-                className="flex items-center gap-3 rounded-md border border-neutral-800 bg-neutral-900/30 hover:border-neutral-700 transition-colors px-3 py-2">
-                <span className="shrink-0 text-[9px] uppercase tracking-wide font-semibold text-neutral-400 border border-neutral-700 rounded px-1.5 py-0.5">
-                  {KIND_LABEL[kindOf(s)]}
-                </span>
-                <span className="min-w-0 flex-1 text-sm font-sans text-neutral-200 truncate">
-                  {s.title || s.url || "Без названия"}
-                </span>
-                <span className="shrink-0 text-[11px] text-neutral-600 font-sans tabular-nums">
-                  {fmtDate(s.created_at)}
-                </span>
-              </Link>
-            ))}
-          </div>
-        ) : (
-          <Muted>
-            Пока нет материалов.{" "}
-            <Link href="/learn" className="text-lime-400 hover:underline">
-              Добавить →
-            </Link>
-          </Muted>
-        )}
-      </section>
-
-      {/* 4. Курсы в процессе */}
-      <section>
-        <SectionTitle>Курсы в процессе</SectionTitle>
-        {active.length > 0 ? (
-          <div className="grid gap-1.5">
-            {active.map((c) => (
-              <Link
-                key={c.source_id}
-                href={"/courses/" + c.source_id}
-                className="block rounded-md border border-neutral-800 bg-neutral-900/30 hover:border-neutral-700 transition-colors px-3 py-2.5">
-                <div className="flex items-center justify-between gap-3 mb-1.5">
-                  <span className="min-w-0 text-sm font-sans text-neutral-200 truncate">
-                    {c.title}
-                  </span>
-                  <span className="shrink-0 text-[11px] text-neutral-500 font-sans tabular-nums">
-                    {c.percent}%
-                  </span>
-                </div>
-                <div className="h-1 rounded-full bg-neutral-800 overflow-hidden">
-                  <div
-                    className="h-full bg-lime-400 transition-all"
-                    style={{ width: `${c.percent}%` }}
-                  />
-                </div>
-              </Link>
-            ))}
-          </div>
-        ) : (
-          <Muted>Нет активных курсов.</Muted>
-        )}
-      </section>
-
-      {/* 5. Новые факты */}
-      <section>
-        <SectionTitle>Новые факты</SectionTitle>
-        {pendingFacts > 0 ? (
-          <Link
+            icon={<DocIcon />}
+            title="Добавить материал"
+            desc="Статья, PDF, видео или файл в память"
+            cta="Создать"
+            primary
+          />
+          <ActionCard
             href="/me"
-            className="inline-flex items-center gap-2 rounded-md border border-amber-400/30 bg-amber-400/[0.04] hover:bg-amber-400/[0.08] transition-colors px-3 py-2 text-sm font-sans text-amber-300">
-            <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
-            {pendingFacts}{" "}
-            {factWord(pendingFacts)} на проверке →
-          </Link>
-        ) : (
-          <Muted>Очередь фактов пуста.</Muted>
-        )}
-      </section>
-
-      {/* 6. Быстрые действия */}
-      <section>
-        <SectionTitle>Быстрые действия</SectionTitle>
-        <div className="flex flex-wrap gap-2">
-          <QuickAction href="/learn">Добавить материал</QuickAction>
-          <QuickAction href="/me">Проверить факты</QuickAction>
-          <QuickAction href="/diag">Диагностика</QuickAction>
-          <QuickAction href="/saved">Избранное</QuickAction>
+            icon={<CheckIcon />}
+            title="Проверить факты"
+            desc="Очередь фактов на проверку"
+            cta="Открыть"
+          />
+          <ActionCard
+            href="/diag"
+            icon={<PulseIcon />}
+            title="Диагностика"
+            desc="Состояние и здоровье памяти"
+            cta="Открыть"
+          />
+          <ActionCard
+            href="/saved"
+            icon={<StarIcon />}
+            title="Избранное"
+            desc="Сохранённые сообщения и факты"
+            cta="Открыть"
+          />
         </div>
       </section>
     </div>
   )
 }
 
-// ── Подкомпоненты ─────────────────────────────────────────────────────────
+// ── Карточка памяти (компактный индикатор состояния) ───────────────────────
 
-function SectionTitle({ children }: { children: React.ReactNode }) {
+const HEALTH_BADGE: Record<
+  StatsHealth["label"],
+  { text: string; cls: string; num: string }
+> = {
+  good: {
+    text: "хорошо",
+    cls: "text-lime-400 bg-lime-400/10 border-lime-400/30",
+    num: "text-lime-400"
+  },
+  ok: {
+    text: "норм",
+    cls: "text-amber-400 bg-amber-400/10 border-amber-400/30",
+    num: "text-amber-400"
+  },
+  poor: {
+    text: "внимание",
+    cls: "text-red-400 bg-red-400/10 border-red-400/30",
+    num: "text-red-400"
+  }
+}
+
+function MemoryCard({
+  stats,
+  lastUpdate
+}: {
+  stats: Stats
+  lastUpdate?: string
+}) {
+  const badge = HEALTH_BADGE[stats.health.label]
+  const pending = stats.facts.pending_review
   return (
-    <h2 className="flex items-center gap-2 text-[11px] uppercase tracking-widest text-neutral-500 mb-2.5">
-      {children}
-    </h2>
+    <aside className="shrink-0 w-full sm:w-64 rounded-xl border border-neutral-800 bg-neutral-900/40 p-4">
+      <div className="flex items-center justify-between mb-3">
+        <span className="text-[11px] uppercase tracking-widest text-neutral-500">
+          Память
+        </span>
+        <span
+          className={`text-[10px] font-sans px-1.5 py-0.5 rounded border ${badge.cls}`}>
+          {badge.text}
+        </span>
+      </div>
+      <div className="flex items-baseline gap-1.5 mb-4">
+        <span className={`text-4xl font-semibold tabular-nums ${badge.num}`}>
+          {stats.health.score}
+        </span>
+        <span className="text-xs text-neutral-600 font-sans">/100</span>
+      </div>
+      <dl className="space-y-1.5 text-sm font-sans">
+        <CardRow label="Фактов" value={stats.facts.total.toLocaleString("ru")} />
+        <CardRow
+          label="На проверке"
+          value={pending.toLocaleString("ru")}
+          tone={pending > 0 ? "text-amber-400" : undefined}
+        />
+        {lastUpdate && <CardRow label="Обновлено" value={fmtDate(lastUpdate)} />}
+      </dl>
+    </aside>
   )
 }
 
-function Muted({ children }: { children: React.ReactNode }) {
-  return <p className="text-sm font-sans text-neutral-600">{children}</p>
+function CardRow({
+  label,
+  value,
+  tone
+}: {
+  label: string
+  value: string
+  tone?: string
+}) {
+  return (
+    <div className="flex items-center justify-between gap-3">
+      <dt className="text-neutral-500">{label}</dt>
+      <dd className={`tabular-nums ${tone ?? "text-neutral-200"}`}>{value}</dd>
+    </div>
+  )
 }
 
-function QuickAction({
+// ── Быстрые действия (равные карточки) ─────────────────────────────────────
+
+function ActionCard({
   href,
-  children
+  icon,
+  title,
+  desc,
+  cta,
+  primary = false
 }: {
   href: string
-  children: React.ReactNode
+  icon: React.ReactNode
+  title: string
+  desc: string
+  cta: string
+  primary?: boolean
 }) {
   return (
     <Link
       href={href}
-      className="text-sm font-sans px-3.5 py-1.5 rounded-lg border border-neutral-800 text-neutral-300 hover:text-lime-400 hover:border-lime-400/40 transition-colors">
-      {children}
+      className="group flex flex-col rounded-xl border border-neutral-800 bg-neutral-900/30 hover:border-lime-400/40 hover:bg-lime-400/[0.03] transition-colors p-4 min-h-[150px]">
+      <span className="w-9 h-9 rounded-lg bg-neutral-800/60 border border-neutral-700 text-neutral-300 group-hover:text-lime-400 flex items-center justify-center mb-3 transition-colors">
+        {icon}
+      </span>
+      <span className="text-sm font-sans font-medium mb-1">{title}</span>
+      <span className="text-[12px] font-sans text-neutral-500 leading-snug mb-4">
+        {desc}
+      </span>
+      <span
+        className={`mt-auto inline-flex items-center justify-center text-[12px] font-sans rounded-lg px-3 py-1.5 transition-colors ${
+          primary
+            ? "bg-lime-400 text-neutral-950"
+            : "border border-neutral-700 text-neutral-300 group-hover:border-lime-400/40 group-hover:text-lime-400"
+        }`}>
+        {cta}
+      </span>
     </Link>
   )
 }
 
-/** «факт / факта / фактов» по числу. */
-function factWord(n: number): string {
-  const d = n % 10
-  const dd = n % 100
-  if (d === 1 && dd !== 11) return "факт"
-  if (d >= 2 && d <= 4 && (dd < 10 || dd >= 20)) return "факта"
-  return "фактов"
-}
+// ── Иконки ─────────────────────────────────────────────────────────────────
 
-function ChatIcon() {
+function DocIcon() {
   return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+      <polyline points="14 2 14 8 20 8" />
+      <line x1="9" y1="13" x2="15" y2="13" />
+      <line x1="9" y1="17" x2="13" y2="17" />
     </svg>
   )
 }
 
-function ArrowIcon() {
+function CheckIcon() {
   return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M5 12h14M13 6l6 6-6 6" />
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M9 11l3 3L22 4" />
+      <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
+    </svg>
+  )
+}
+
+function PulseIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
+    </svg>
+  )
+}
+
+function StarIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
     </svg>
   )
 }

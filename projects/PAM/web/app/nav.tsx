@@ -15,13 +15,9 @@ export default function Nav() {
 
   return (
     <header className="sticky top-0 z-20 border-b border-neutral-800 bg-neutral-950/80 backdrop-blur print:hidden">
-      {/* На странице чата лого выровнено по левому краю — на уровне «Новый чат»
-          в сайдбаре (pl-5 = отступ пунктов сайдбара). Остальные страницы —
-          центрированный контейнер 1700px. */}
-      <div
-        className={`h-14 flex items-center justify-between ${
-          onChat ? "w-full pl-5 pr-6" : "max-w-[1700px] mx-auto px-6"
-        }`}>
+      {/* Единый нав-бар для всех страниц (как на чате): лого по левому краю на
+          уровне «Новый чат» в сайдбаре (pl-5), вкладки прижаты вправо (pr-6). */}
+      <div className="h-14 flex items-center justify-between w-full pl-5 pr-6">
         <Link href="/" className="flex items-center gap-2.5 shrink-0">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img

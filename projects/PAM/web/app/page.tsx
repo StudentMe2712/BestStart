@@ -258,9 +258,13 @@ export default function ChatPage() {
           }}
         />
         <div className="relative z-10 flex-1 overflow-y-auto">
-          <div className="max-w-3xl mx-auto px-4 md:px-6 py-4 space-y-6">
+          {/* Главный экран шире (под ряд быстрых действий), переписка — узкая колонка. */}
+          <div
+            className={`mx-auto px-4 md:px-6 py-4 space-y-6 ${
+              messages.length === 0 ? "max-w-[1100px]" : "max-w-3xl"
+            }`}>
             {messages.length === 0 ? (
-              <HomeDashboard chats={chats} onOpenChat={openChat} />
+              <HomeDashboard chats={chats} />
             ) : (
               messages.map((m, i) =>
                 m.role === "user" ? (
