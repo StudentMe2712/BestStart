@@ -12,6 +12,7 @@ extracted, chunked and (via the background worker) embedded.
 from __future__ import annotations
 
 import uuid
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, File, HTTPException, Response, UploadFile
 from sqlalchemy import select
@@ -28,12 +29,22 @@ from ..content import (
 from ..courses import generate_course
 from ..db import get_session
 from ..formatting import schedule_reformat
-from ..models import ContentSource, Course
+from ..models import (
+    ContentSource,
+    Course,
+    CourseProgress,
+    course_percent,
+    course_study_status,
+)
 from ..schemas import (
     ContentSourceOut,
     CourseOut,
+    CourseProgressOut,
     IngestArticleIn,
     IngestTextIn,
+    LessonToggleIn,
+    ProgressSummaryOut,
+    QuizResultIn,
     RememberIn,
 )
 
@@ -306,3 +317,152 @@ async def latest_course(
             .limit(1)
         )
     ).scalar_one_or_none()
+
+
+# ---- Learning progress (P1) ------------------------------------------------
+
+
+def _lessons_total(course: Course) -> int:
+    mods = (course.data or {}).get("modules") or []
+    return sum(len((m or {}).get("lessons") or []) for m in mods)
+
+
+async def _newest_course(session: AsyncSession, source_id: uuid.UUID) -> Course | None:
+    return (
+        await session.execute(
+            select(Course)
+            .where(Course.source_id == source_id)
+            .order_by(Course.created_at.desc())
+            .limit(1)
+        )
+    ).scalar_one_or_none()
+
+
+async def _get_or_create_progress(
+    session: AsyncSession, course: Course
+) -> CourseProgress:
+    prog = (
+        await session.execute(
+            select(CourseProgress).where(CourseProgress.course_id == course.id)
+        )
+    ).scalar_one_or_none()
+    if prog is None:
+        prog = CourseProgress(
+            course_id=course.id,
+            completed_lessons=[],
+            lessons_total=_lessons_total(course),
+        )
+        session.add(prog)
+        await session.flush()
+    return prog
+
+
+def _progress_out(prog: CourseProgress) -> CourseProgressOut:
+    completed = list(prog.completed_lessons or [])
+    total = prog.lessons_total or 0
+    return CourseProgressOut(
+        course_id=prog.course_id,
+        completed_lessons=completed,
+        completed_count=len(completed),
+        lessons_total=total,
+        percent=course_percent(len(completed), total),
+        status=course_study_status(len(completed), total, prog.quiz_score is not None),
+        quiz_score=prog.quiz_score,
+        quiz_total=prog.quiz_total,
+        quiz_completed_at=prog.quiz_completed_at,
+    )
+
+
+@router.get("/sources/{source_id}/progress", response_model=CourseProgressOut | None)
+async def get_progress(
+    source_id: uuid.UUID,
+    session: AsyncSession = Depends(get_session),
+) -> CourseProgressOut | None:
+    """Прогресс изучения новейшего курса источника (или null, если курса нет)."""
+    course = await _newest_course(session, source_id)
+    if not course:
+        return None
+    prog = await _get_or_create_progress(session, course)
+    total = _lessons_total(course)
+    if prog.lessons_total != total:  # курс мог быть пересоздан/переструктурирован
+        prog.lessons_total = total
+    await session.commit()
+    await session.refresh(prog)
+    return _progress_out(prog)
+
+
+@router.post("/sources/{source_id}/lesson", response_model=CourseProgressOut)
+async def toggle_lesson(
+    source_id: uuid.UUID,
+    payload: LessonToggleIn,
+    session: AsyncSession = Depends(get_session),
+) -> CourseProgressOut:
+    """Отметить/снять урок как пройденный (key = "модуль-урок")."""
+    course = await _newest_course(session, source_id)
+    if not course:
+        raise HTTPException(status_code=404, detail="course not found")
+    prog = await _get_or_create_progress(session, course)
+    prog.lessons_total = _lessons_total(course)
+    done = list(prog.completed_lessons or [])
+    key = payload.key.strip()
+    if payload.completed:
+        if key not in done:
+            done.append(key)
+    else:
+        done = [k for k in done if k != key]
+    prog.completed_lessons = done  # переприсваиваем — чтобы JSONB-изменение отследилось
+    await session.commit()
+    await session.refresh(prog)
+    return _progress_out(prog)
+
+
+@router.post("/sources/{source_id}/quiz", response_model=CourseProgressOut)
+async def submit_quiz(
+    source_id: uuid.UUID,
+    payload: QuizResultIn,
+    session: AsyncSession = Depends(get_session),
+) -> CourseProgressOut:
+    """Сохранить результат квиза (score из total)."""
+    course = await _newest_course(session, source_id)
+    if not course:
+        raise HTTPException(status_code=404, detail="course not found")
+    prog = await _get_or_create_progress(session, course)
+    prog.lessons_total = _lessons_total(course)
+    prog.quiz_score = payload.score
+    prog.quiz_total = payload.total
+    prog.quiz_completed_at = datetime.now(timezone.utc)
+    await session.commit()
+    await session.refresh(prog)
+    return _progress_out(prog)
+
+
+@router.get("/progress", response_model=list[ProgressSummaryOut])
+async def list_progress(
+    session: AsyncSession = Depends(get_session),
+) -> list[ProgressSummaryOut]:
+    """Сводка прогресса по источникам (для сетки материалов и главной).
+
+    На источник — прогресс его НОВЕЙШЕГО курса (более новый перетирает старый).
+    """
+    rows = (
+        await session.execute(
+            select(CourseProgress, Course.source_id)
+            .join(Course, Course.id == CourseProgress.course_id)
+            .order_by(Course.created_at.asc())
+        )
+    ).all()
+    by_source: dict[uuid.UUID, ProgressSummaryOut] = {}
+    for prog, source_id in rows:
+        completed = list(prog.completed_lessons or [])
+        total = prog.lessons_total or 0
+        by_source[source_id] = ProgressSummaryOut(
+            source_id=source_id,
+            course_id=prog.course_id,
+            percent=course_percent(len(completed), total),
+            status=course_study_status(
+                len(completed), total, prog.quiz_score is not None
+            ),
+            completed_count=len(completed),
+            lessons_total=total,
+        )
+    return list(by_source.values())

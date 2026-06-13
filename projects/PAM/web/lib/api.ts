@@ -439,6 +439,80 @@ export async function getCourse(sourceId: string): Promise<Course | null> {
   return r.json()
 }
 
+// ---- Learning progress (server-persisted) ----
+
+export type CourseStudyStatus = "not_started" | "in_progress" | "completed"
+
+export interface CourseProgress {
+  course_id: string
+  completed_lessons: string[]
+  completed_count: number
+  lessons_total: number
+  percent: number
+  status: CourseStudyStatus
+  quiz_score: number | null
+  quiz_total: number | null
+  quiz_completed_at: string | null
+}
+
+export interface ProgressSummary {
+  source_id: string
+  course_id: string
+  percent: number
+  status: CourseStudyStatus
+  completed_count: number
+  lessons_total: number
+}
+
+/** GET /learn/sources/{id}/progress — прогресс по курсу или null (курса ещё нет). */
+export async function getProgress(
+  sourceId: string
+): Promise<CourseProgress | null> {
+  const r = await fetch(
+    `${BACKEND_URL}/learn/sources/${sourceId}/progress`,
+    { cache: "no-store" }
+  )
+  if (!r.ok) throw new Error(`get progress failed: ${r.status}`)
+  return r.json()
+}
+
+/** POST /learn/sources/{id}/lesson — отметить урок изученным/неизученным. */
+export async function toggleLesson(
+  sourceId: string,
+  key: string,
+  completed: boolean
+): Promise<CourseProgress> {
+  const r = await fetch(`${BACKEND_URL}/learn/sources/${sourceId}/lesson`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ key, completed })
+  })
+  if (!r.ok) throw new Error(`toggle lesson failed: ${r.status}`)
+  return r.json()
+}
+
+/** POST /learn/sources/{id}/quiz — записать результат теста. */
+export async function submitQuiz(
+  sourceId: string,
+  score: number,
+  total: number
+): Promise<CourseProgress> {
+  const r = await fetch(`${BACKEND_URL}/learn/sources/${sourceId}/quiz`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ score, total })
+  })
+  if (!r.ok) throw new Error(`submit quiz failed: ${r.status}`)
+  return r.json()
+}
+
+/** GET /learn/progress — сводка прогресса по всем курсам. */
+export async function listProgress(): Promise<ProgressSummary[]> {
+  const r = await fetch(`${BACKEND_URL}/learn/progress`, { cache: "no-store" })
+  if (!r.ok) throw new Error(`list progress failed: ${r.status}`)
+  return r.json()
+}
+
 // ---- Chat (Phase 4) ----
 
 export interface SourceRef {

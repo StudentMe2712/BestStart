@@ -341,3 +341,64 @@ class Event(Base):
         Index("ix_events_kind_created", "kind", "created_at"),
         Index("ix_events_created", "created_at"),
     )
+
+
+# ---- Learning progress (P1) — статус изучения курса ----
+COURSE_NOT_STARTED = "not_started"
+COURSE_IN_PROGRESS = "in_progress"
+COURSE_COMPLETED = "completed"
+
+
+def course_percent(completed: int, total: int) -> int:
+    """Процент пройденных уроков (0..100)."""
+    if total <= 0:
+        return 0
+    return min(100, round(completed / total * 100))
+
+
+def course_study_status(completed: int, total: int, quiz_taken: bool = False) -> str:
+    """Статус изучения, выведенный из прогресса (не ручная метка)."""
+    if total > 0 and completed >= total:
+        return COURSE_COMPLETED
+    if completed > 0 or quiz_taken:
+        return COURSE_IN_PROGRESS
+    return COURSE_NOT_STARTED
+
+
+class CourseProgress(Base):
+    """Прогресс изучения одного курса (P1 — «учусь по нему»).
+
+    Одна строка на курс. `completed_lessons` — список ключей "модуль-урок"
+    (индексы в `course.data.modules[].lessons[]`); `lessons_total` — снимок их
+    числа для процента; квиз-результат — score/total. Статус/процент выводятся
+    (см. `course_study_status`/`course_percent`), здесь не хранятся.
+    """
+
+    __tablename__ = "course_progress"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    course_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("courses.id", ondelete="CASCADE"),
+        nullable=False,
+        unique=True,
+    )
+    completed_lessons: Mapped[list] = mapped_column(
+        JSONB, nullable=False, default=list, server_default="[]"
+    )
+    lessons_total: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default="0"
+    )
+    quiz_score: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    quiz_total: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    quiz_completed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )

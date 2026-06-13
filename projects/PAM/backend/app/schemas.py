@@ -171,3 +171,38 @@ class CourseOut(BaseModel):
     level: str | None
     data: dict[str, Any]
     created_at: datetime
+
+
+# ---- Learning progress (P1) ----
+
+class CourseProgressOut(BaseModel):
+    course_id: uuid.UUID
+    completed_lessons: list[str]
+    completed_count: int
+    lessons_total: int
+    percent: int
+    status: str
+    quiz_score: int | None
+    quiz_total: int | None
+    quiz_completed_at: datetime | None
+
+
+class LessonToggleIn(BaseModel):
+    key: str
+    completed: bool
+
+
+class QuizResultIn(BaseModel):
+    score: int = Field(ge=0)
+    total: int = Field(ge=1)
+
+
+class ProgressSummaryOut(BaseModel):
+    """Лёгкая сводка прогресса по источнику (для сетки материалов / главной)."""
+
+    source_id: uuid.UUID
+    course_id: uuid.UUID
+    percent: int
+    status: str
+    completed_count: int
+    lessons_total: int

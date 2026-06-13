@@ -11,15 +11,13 @@ import {
   deleteSource,
   startReformat,
   sourceFileUrl,
+  getProgress,
+  toggleLesson,
+  submitQuiz,
   type Course,
-  type ContentSourceDetail
+  type ContentSourceDetail,
+  type CourseProgress
 } from "../../../lib/api"
-import {
-  COURSE_STATUSES,
-  getCourseStatus,
-  setCourseStatus,
-  type CourseStatus
-} from "../../../lib/course-status"
 import {
   youtubeId,
   kindOf,
@@ -57,7 +55,7 @@ export default function CourseReaderPage() {
 
   const [activeChapter, setActiveChapter] = useState(0)
   const [tab, setTab] = useState<Tab>("summary")
-  const [status, setStatus] = useState<CourseStatus>("new")
+  const [progress, setProgress] = useState<CourseProgress | null>(null)
   const [regen, setRegen] = useState(false)
 
   // «Исходный материал»: AI-причёсанная версия + переключатель оригинал/форматировано.
@@ -77,22 +75,21 @@ export default function CourseReaderPage() {
     let cancelled = false
     setLoading(true)
     setError(null)
-    Promise.allSettled([getCourse(id), getSource(id)]).then(([c, s]) => {
-      if (cancelled) return
-      if (c.status === "fulfilled") setCourse(c.value)
-      if (s.status === "fulfilled") setSource(s.value)
-      if (c.status === "rejected" && s.status === "rejected")
-        setError("Не удалось загрузить курс")
-      setLoading(false)
-    })
+    Promise.allSettled([getCourse(id), getSource(id), getProgress(id)]).then(
+      ([c, s, p]) => {
+        if (cancelled) return
+        if (c.status === "fulfilled") setCourse(c.value)
+        if (s.status === "fulfilled") setSource(s.value)
+        setProgress(p.status === "fulfilled" ? p.value : null)
+        if (c.status === "rejected" && s.status === "rejected")
+          setError("Не удалось загрузить курс")
+        setLoading(false)
+      }
+    )
     return () => {
       cancelled = true
     }
   }, [id, tick])
-
-  useEffect(() => {
-    setStatus(getCourseStatus(id))
-  }, [id])
 
   // Подхватываем уже сгенерированную ранее «причёсанную» версию (кэш на бэке);
   // если реформат ещё идёт (#6, напр. перезагрузили страницу) — продолжаем поллинг.
@@ -156,9 +153,13 @@ export default function CourseReaderPage() {
     }
   }
 
-  function pickStatus(s: CourseStatus) {
-    setStatus(s)
-    setCourseStatus(id, s)
+  async function toggleLessonDone(key: string, done: boolean) {
+    try {
+      const p = await toggleLesson(id, key, done)
+      setProgress(p)
+    } catch (e) {
+      setError(String(e))
+    }
   }
 
   async function regenerate() {
@@ -381,14 +382,36 @@ export default function CourseReaderPage() {
             {tab === "summary" &&
               (mod?.lessons?.length ? (
                 <div className="space-y-7">
-                  {mod.lessons.map((l, li) => (
-                    <article key={li}>
-                      <h3 className="text-base font-semibold font-sans mb-2">
-                        {l.title}
-                      </h3>
-                      <Markdown>{l.content || ""}</Markdown>
-                    </article>
-                  ))}
+                  {mod.lessons.map((l, li) => {
+                    const key = `${chapter}-${li}`
+                    const done =
+                      progress?.completed_lessons.includes(key) ?? false
+                    return (
+                      <article key={li}>
+                        <div className="flex items-start justify-between gap-3 mb-2">
+                          <h3 className="text-base font-semibold font-sans">
+                            {l.title}
+                          </h3>
+                          <button
+                            onClick={() => toggleLessonDone(key, !done)}
+                            title={done ? "Отметить неизученным" : "Отметить изученным"}
+                            className={`shrink-0 inline-flex items-center gap-1.5 text-[11px] font-sans px-2.5 py-1 rounded-md border transition-colors ${
+                              done
+                                ? "border-lime-400/50 text-lime-400 bg-lime-400/10"
+                                : "border-neutral-700 text-neutral-400 hover:text-neutral-200 hover:border-neutral-600"
+                            }`}>
+                            <span
+                              className={`w-2 h-2 rounded-full ${
+                                done ? "bg-lime-400" : "bg-neutral-600"
+                              }`}
+                            />
+                            {done ? "Изучено" : "Изучить"}
+                          </button>
+                        </div>
+                        <Markdown>{l.content || ""}</Markdown>
+                      </article>
+                    )
+                  })}
                 </div>
               ) : (
                 <p className="text-neutral-500 text-sm font-sans">
@@ -450,7 +473,9 @@ export default function CourseReaderPage() {
               </div>
             )}
 
-            {tab === "quiz" && <Quiz questions={quiz} />}
+            {tab === "quiz" && (
+              <Quiz questions={quiz} sourceId={id} onProgress={setProgress} />
+            )}
           </div>
         </section>
 
@@ -468,26 +493,8 @@ export default function CourseReaderPage() {
             <InfoRow label="Вопросов" value={String(quiz.length)} />
           </Card>
 
-          <Card title="Статус курса">
-            <div className="space-y-1.5">
-              {COURSE_STATUSES.map((s) => {
-                const active = status === s.key
-                return (
-                  <button
-                    key={s.key}
-                    onClick={() => pickStatus(s.key)}
-                    className={`w-full flex items-center gap-2.5 text-sm font-sans px-3 py-2 rounded-lg border transition-colors ${
-                      active
-                        ? "border-lime-400/40 bg-neutral-900 text-neutral-100"
-                        : "border-transparent text-neutral-400 hover:bg-neutral-900/60"
-                    }`}>
-                    <span className={`w-2.5 h-2.5 rounded-full ${s.dot}`} />
-                    {s.label}
-                    {active && <span className="ml-auto text-lime-400">✓</span>}
-                  </button>
-                )
-              })}
-            </div>
+          <Card title="Прогресс">
+            <ProgressBody progress={progress} />
           </Card>
 
           <Card title="Действия">
@@ -818,6 +825,50 @@ function XlsxHero({ src, title }: { src: string; title: string | null }) {
   )
 }
 
+/** Метки статуса изучения — общие для карточки прогресса. */
+const STUDY_STATUS: Record<
+  CourseProgress["status"],
+  { label: string; dot: string; text: string }
+> = {
+  not_started: { label: "Не начат", dot: "bg-sky-400", text: "text-sky-400" },
+  in_progress: { label: "Изучаю", dot: "bg-lime-400", text: "text-lime-400" },
+  completed: {
+    label: "Изучено",
+    dot: "bg-emerald-400",
+    text: "text-emerald-400"
+  }
+}
+
+/** Тело карточки «Прогресс»: статус, полоса процента, счётчик уроков, результат теста. */
+function ProgressBody({ progress }: { progress: CourseProgress | null }) {
+  if (!progress) {
+    return <div className="text-sm font-sans text-neutral-600">—</div>
+  }
+  const meta = STUDY_STATUS[progress.status]
+  return (
+    <div className="space-y-3">
+      <div className={`flex items-center gap-2 text-sm font-sans ${meta.text}`}>
+        <span className={`w-2.5 h-2.5 rounded-full ${meta.dot}`} />
+        {meta.label}
+      </div>
+      <div className="h-1.5 rounded-full bg-neutral-800 overflow-hidden">
+        <div
+          className="h-full bg-lime-400 transition-all"
+          style={{ width: `${progress.percent}%` }}
+        />
+      </div>
+      <div className="text-[12px] font-sans text-neutral-400">
+        {progress.completed_count} / {progress.lessons_total} уроков
+      </div>
+      {progress.quiz_total != null && (
+        <div className="text-[12px] font-sans text-neutral-400">
+          Тест: {progress.quiz_score}/{progress.quiz_total}
+        </div>
+      )}
+    </div>
+  )
+}
+
 function Card({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="rounded-xl border border-neutral-800 bg-neutral-950 p-4">
@@ -863,8 +914,38 @@ function ActionRow({
   )
 }
 
-function Quiz({ questions }: { questions: Course["data"]["quiz"] }) {
+function Quiz({
+  questions,
+  sourceId,
+  onProgress
+}: {
+  questions: Course["data"]["quiz"]
+  sourceId: string
+  onProgress?: (p: CourseProgress) => void
+}) {
   const [answers, setAnswers] = useState<Record<number, number>>({})
+  const [result, setResult] = useState<{ score: number; total: number } | null>(
+    null
+  )
+  const submitted = useRef(false)
+
+  // Когда отвечены ВСЕ вопросы — один раз посчитать балл и записать результат.
+  useEffect(() => {
+    if (!questions?.length || submitted.current) return
+    if (Object.keys(answers).length !== questions.length) return
+    submitted.current = true
+    const score = questions.reduce(
+      (acc, q, qi) => acc + (answers[qi] === q.answer_index ? 1 : 0),
+      0
+    )
+    setResult({ score, total: questions.length })
+    submitQuiz(sourceId, score, questions.length)
+      .then((p) => onProgress?.(p))
+      .catch(() => {
+        /* запись результата — best-effort, не ломаем прохождение теста */
+      })
+  }, [answers, questions, sourceId, onProgress])
+
   if (!questions?.length) {
     return (
       <p className="text-neutral-500 text-sm font-sans">
@@ -875,9 +956,14 @@ function Quiz({ questions }: { questions: Course["data"]["quiz"] }) {
   return (
     <div className="space-y-6">
       <p className="text-[12px] text-neutral-500 font-sans">
-        Тест — для самопроверки. Проходить необязательно, на статус курса он не
-        влияет.
+        Тест — для самопроверки. По завершении PAM сохранит твой результат
+        (отметки об изучении уроков он не меняет).
       </p>
+      {result && (
+        <p className="text-sm font-sans text-lime-400">
+          Результат: {result.score} из {result.total}
+        </p>
+      )}
       {questions.map((q, qi) => {
         const chosen = answers[qi]
         const answered = chosen !== undefined

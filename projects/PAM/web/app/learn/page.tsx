@@ -13,7 +13,9 @@ import {
   deleteSource,
   generateCourse,
   getCourse,
-  type ContentSource
+  listProgress,
+  type ContentSource,
+  type ProgressSummary
 } from "../../lib/api"
 import { getCache, setCache } from "../../lib/cache"
 import {
@@ -68,6 +70,10 @@ export default function LearnPage() {
 
   // sourceId → курс уже сгенерирован (определяется фоном через getCourse).
   const [coursed, setCoursed] = useState<Set<string>>(new Set())
+  // sourceId → сводка прогресса изучения (server-persisted).
+  const [progress, setProgress] = useState<Map<string, ProgressSummary>>(
+    new Map()
+  )
   const [busyId, setBusyId] = useState<string | null>(null)
 
   const [filter, setFilter] = useState<Kind | "all">("all")
@@ -102,6 +108,24 @@ export default function LearnPage() {
       cancelled = true
     }
   }, [sources])
+
+  // Сводка прогресса по всем курсам → Map<source_id, ProgressSummary>.
+  useEffect(() => {
+    let cancelled = false
+    listProgress()
+      .then((rows) => {
+        if (cancelled) return
+        setProgress(
+          new Map(rows.map((r): [string, ProgressSummary] => [r.source_id, r]))
+        )
+      })
+      .catch(() => {
+        /* индикатор прогресса — best-effort, не ломаем сетку */
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [tick])
 
   async function addMaterial() {
     const v = material.trim()
@@ -343,6 +367,7 @@ export default function LearnPage() {
                 key={s.id}
                 source={s}
                 hasCourse={coursed.has(s.id)}
+                progress={progress.get(s.id) ?? null}
                 busy={busyId === s.id}
                 onOpen={() => handleOpen(s.id)}
                 onCreate={() => handleCreate(s.id)}
@@ -357,6 +382,7 @@ export default function LearnPage() {
                 key={s.id}
                 source={s}
                 hasCourse={coursed.has(s.id)}
+                progress={progress.get(s.id) ?? null}
                 busy={busyId === s.id}
                 onOpen={() => handleOpen(s.id)}
                 onCreate={() => handleCreate(s.id)}
@@ -375,6 +401,7 @@ export default function LearnPage() {
 interface CardProps {
   source: ContentSource
   hasCourse: boolean
+  progress: ProgressSummary | null
   busy: boolean
   onOpen: () => void
   onCreate: () => void
@@ -384,6 +411,7 @@ interface CardProps {
 function MaterialCard({
   source,
   hasCourse,
+  progress,
   busy,
   onOpen,
   onCreate,
@@ -435,6 +463,8 @@ function MaterialCard({
             />
           </div>
         </div>
+
+        <ProgressBadge progress={progress} />
       </div>
     </div>
   )
@@ -445,6 +475,7 @@ function MaterialCard({
 function MaterialRow({
   source,
   hasCourse,
+  progress,
   busy,
   onOpen,
   onCreate,
@@ -478,6 +509,7 @@ function MaterialRow({
         <div className="mt-2">
           <StatusPill source={source} hasCourse={hasCourse} busy={busy} />
         </div>
+        <ProgressBadge progress={progress} />
       </div>
 
       <div className="flex items-center gap-1.5 shrink-0">
@@ -606,6 +638,45 @@ function StatusPill({
       <span className={`w-2 h-2 rounded-full ${dot}`} />
       {label}
     </span>
+  )
+}
+
+// Тон статуса изучения для индикатора прогресса на карточке.
+const PROGRESS_STATUS: Record<
+  ProgressSummary["status"],
+  { label: string; dot: string; text: string }
+> = {
+  not_started: { label: "Не начат", dot: "bg-sky-400", text: "text-sky-400" },
+  in_progress: { label: "Изучаю", dot: "bg-lime-400", text: "text-lime-400" },
+  completed: {
+    label: "Изучено",
+    dot: "bg-emerald-400",
+    text: "text-emerald-400"
+  }
+}
+
+/** Тонкий индикатор прогресса изучения: статус-точка + процент + полоса. */
+function ProgressBadge({ progress }: { progress: ProgressSummary | null }) {
+  if (!progress) return null
+  const meta = PROGRESS_STATUS[progress.status]
+  return (
+    <div className="mt-2 pt-2 border-t border-neutral-800/70">
+      <div className="flex items-center justify-between gap-2 text-[11px] font-sans mb-1">
+        <span className={`inline-flex items-center gap-1.5 ${meta.text}`}>
+          <span className={`w-1.5 h-1.5 rounded-full ${meta.dot}`} />
+          {meta.label}
+        </span>
+        <span className="tabular-nums text-neutral-500">
+          {progress.percent}%
+        </span>
+      </div>
+      <div className="h-1 rounded-full bg-neutral-800 overflow-hidden">
+        <div
+          className="h-full bg-lime-400 transition-all"
+          style={{ width: `${progress.percent}%` }}
+        />
+      </div>
+    </div>
   )
 }
 
