@@ -156,6 +156,9 @@ export async function deleteSaved(id: string): Promise<void> {
 
 // ---- Profile facts (Phase 3, "память обо мне") ----
 
+/** Fact Review Queue (P0): факт принимается в память только после проверки. */
+export type FactStatus = "pending_review" | "approved" | "rejected" | "edited"
+
 export interface ProfileFact {
   id: string
   category: string
@@ -163,14 +166,54 @@ export interface ProfileFact {
   source_conversation_id: string | null
   source_excerpt: string | null
   confidence: number
+  status: FactStatus
   created_at: string
 }
 
-export async function listFacts(category?: string): Promise<ProfileFact[]> {
+export async function listFacts(
+  opts: { category?: string; status?: FactStatus } = {}
+): Promise<ProfileFact[]> {
   const params = new URLSearchParams()
-  if (category) params.set("category", category)
+  if (opts.category) params.set("category", opts.category)
+  if (opts.status) params.set("status", opts.status)
   const r = await fetch(`${BACKEND_URL}/facts?${params}`, { cache: "no-store" })
   if (!r.ok) throw new Error(`list facts failed: ${r.status}`)
+  return r.json()
+}
+
+export type FactCounts = Record<FactStatus, number>
+
+export async function factCounts(): Promise<FactCounts> {
+  const r = await fetch(`${BACKEND_URL}/facts/counts`, { cache: "no-store" })
+  if (!r.ok) throw new Error(`fact counts failed: ${r.status}`)
+  return r.json()
+}
+
+export async function approveFact(id: string): Promise<ProfileFact> {
+  const r = await fetch(`${BACKEND_URL}/facts/${id}/approve`, { method: "POST" })
+  if (!r.ok) throw new Error(`approve fact failed: ${r.status}`)
+  return r.json()
+}
+
+export async function rejectFact(id: string): Promise<ProfileFact> {
+  const r = await fetch(`${BACKEND_URL}/facts/${id}/reject`, { method: "POST" })
+  if (!r.ok) throw new Error(`reject fact failed: ${r.status}`)
+  return r.json()
+}
+
+export async function updateFact(
+  id: string,
+  body: { content?: string; category?: string }
+): Promise<ProfileFact> {
+  const r = await fetch(`${BACKEND_URL}/facts/${id}`, {
+    method: "PATCH",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(body)
+  })
+  if (!r.ok) {
+    const d = await r.json().catch(() => ({}))
+    throw new Error(d.detail || `update fact failed: ${r.status}`)
+  }
   return r.json()
 }
 

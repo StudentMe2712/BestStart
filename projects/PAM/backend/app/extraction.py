@@ -17,7 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from .llm import complete
-from .models import Conversation, ProfileFact
+from .models import FACT_PENDING, Conversation, ProfileFact
 
 log = logging.getLogger(__name__)
 
@@ -112,6 +112,7 @@ async def extract_facts_for_conversation(session: AsyncSession, conv: Conversati
                 source_conversation_id=conv.id,
                 source_excerpt=excerpt[:1000],
                 confidence=max(0.0, min(1.0, confidence)),
+                status=FACT_PENDING,  # очередь проверки: в память — только после approve
             )
         )
         added += 1

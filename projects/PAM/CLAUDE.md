@@ -149,6 +149,7 @@ These are documented in `VIBE_PROMPT.md` and `implementation-plan.html`; restati
 - **Russian-language UI**: code identifiers and comments are mixed Russian/English, the UI is Russian. Keep UI strings in Russian unless changing a whole page.
 - **Phase 3 prompt-injection awareness**: conversations may contain `"ignore previous instructions"`. When you build the extraction prompt, wrap user content in clearly delimited blocks and don't trust nested instructions.
 - **Phase 3 hallucination guard**: every extracted fact must store `source_message_id`. Never persist an LLM-extracted fact you can't trace back to a message.
+- **Fact Review Queue gate (P0)**: a `profile_facts.status` (`pending_review|approved|rejected|edited`) governs what reaches chat memory. Extraction writes `pending_review`; **only `approved`+`edited` are retrieved** (`chat._profile_facts`, single source of truth `ACCEPTED_FACT_STATUSES`/`is_fact_accepted` in `models.py`). If you add a new path that surfaces facts into a prompt, gate it the same way — don't read raw `profile_facts` without filtering status.
 
 ## When extension capture breaks
 
@@ -182,7 +183,8 @@ backend/app/
     search.py        websearch_to_tsquery, ts_headline snippets, ts_rank ordering
     chat.py          POST /chat (SSE RAG chat) + POST /chat/attachment (recognition)
     learn.py         Лектор: ingest sources, course gen, PDF file preview, reformat
-    facts.py         profile_facts CRUD + /facts/extract
+    facts.py         profile_facts review queue: extract + list(?status=) + counts
+                     + approve/reject + PATCH(edit→edited) + delete
     saved.py         starred («Избранное») messages
   tests/             pytest units (recognize dispatch, reformat split, _safe_name, SSRF)
 

@@ -27,6 +27,7 @@ from ..extraction import extract_facts_for_conversation
 from ..indexing import chunk_text, embed_text
 from ..llm import model_for, route_provider, stream_chat, stream_vision, vision_target
 from ..models import (
+    ACCEPTED_FACT_STATUSES,
     Chunk,
     ContentChunk,
     ContentSource,
@@ -287,6 +288,8 @@ async def _profile_facts(limit: int = MAX_PROFILE_FACTS) -> str:
         rows = (
             await session.execute(
                 select(ProfileFact.category, ProfileFact.content)
+                # Fact Review Queue: в память чата — только принятые пользователем факты.
+                .where(ProfileFact.status.in_(ACCEPTED_FACT_STATUSES))
                 .order_by(ProfileFact.confidence.desc(), ProfileFact.created_at.desc())
                 .limit(limit)
             )

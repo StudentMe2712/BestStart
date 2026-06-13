@@ -120,7 +120,15 @@ class ProfileFactOut(BaseModel):
     source_conversation_id: uuid.UUID | None
     source_excerpt: str | None
     confidence: float
+    status: str
     created_at: datetime
+
+
+class ProfileFactUpdate(BaseModel):
+    """Правка факта в очереди проверки (перевод в статус edited)."""
+
+    content: str | None = None
+    category: str | None = None
 
 
 # ---- Learning content (Phase 5 — личный лектор) ----

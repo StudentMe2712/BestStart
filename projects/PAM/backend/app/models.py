@@ -28,6 +28,22 @@ class Base(DeclarativeBase):
     pass
 
 
+# ---- Fact Review Queue (P0) — статусы факта профиля ----
+# Перед попаданием в долгую память факт проходит проверку. Принятыми (видимыми
+# в чате) считаются approved + edited; pending_review ждёт решения, rejected скрыт.
+FACT_PENDING = "pending_review"
+FACT_APPROVED = "approved"
+FACT_REJECTED = "rejected"
+FACT_EDITED = "edited"
+FACT_STATUSES = (FACT_PENDING, FACT_APPROVED, FACT_REJECTED, FACT_EDITED)
+ACCEPTED_FACT_STATUSES = (FACT_APPROVED, FACT_EDITED)
+
+
+def is_fact_accepted(status: str) -> bool:
+    """Факт «принят» (подмешивается в память чата), если approved или edited."""
+    return status in ACCEPTED_FACT_STATUSES
+
+
 class Conversation(Base):
     """A conversation imported from one of the AI services."""
 
@@ -283,8 +299,15 @@ class ProfileFact(Base):
     )
     source_excerpt: Mapped[str | None] = mapped_column(Text, nullable=True)
     confidence: Mapped[float] = mapped_column(Float, nullable=False, default=0.5)
+    # Очередь проверки: новые факты — pending_review; в память чата идут approved+edited.
+    status: Mapped[str] = mapped_column(
+        String(16), nullable=False, server_default=FACT_PENDING, default=FACT_PENDING
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
 
-    __table_args__ = (Index("ix_profile_facts_category", "category"),)
+    __table_args__ = (
+        Index("ix_profile_facts_category", "category"),
+        Index("ix_profile_facts_status", "status"),
+    )
