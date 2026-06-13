@@ -12,12 +12,14 @@ Everything is local-first: embeddings run on the user's machine via Ollama.
 from __future__ import annotations
 
 import logging
+import time
 
 import httpx
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from .config import settings
+from .metrics import record_event
 from .models import Chunk, Message
 
 log = logging.getLogger(__name__)
@@ -88,12 +90,20 @@ async def embed_pending(session: AsyncSession, limit: int = 64) -> int:
             select(Chunk).where(Chunk.embedding.is_(None)).limit(limit)
         )
     ).scalars().all()
+    t0 = time.monotonic()
     done = 0
     for ch in pending:
         ch.embedding = await embed_text(ch.content)
         done += 1
     if done:
         await session.commit()
+        await record_event(
+            "embed",
+            provider="ollama",
+            status="ok",
+            duration_ms=int((time.monotonic() - t0) * 1000),
+            detail=f"{done} chunks",
+        )
     return done
 
 

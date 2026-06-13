@@ -150,6 +150,8 @@ These are documented in `VIBE_PROMPT.md` and `implementation-plan.html`; restati
 - **Phase 3 prompt-injection awareness**: conversations may contain `"ignore previous instructions"`. When you build the extraction prompt, wrap user content in clearly delimited blocks and don't trust nested instructions.
 - **Phase 3 hallucination guard**: every extracted fact must store `source_message_id`. Never persist an LLM-extracted fact you can't trace back to a message.
 - **Fact Review Queue gate (P0)**: a `profile_facts.status` (`pending_review|approved|rejected|edited`) governs what reaches chat memory. Extraction writes `pending_review`; **only `approved`+`edited` are retrieved** (`chat._profile_facts`, single source of truth `ACCEPTED_FACT_STATUSES`/`is_fact_accepted` in `models.py`). If you add a new path that surfaces facts into a prompt, gate it the same way — don't read raw `profile_facts` without filtering status.
+- **Observability is best-effort, off the critical path**: instrument boundaries with `await record_event(...)` from `metrics.py` only — it opens its own session and swallows all errors. Never let a metric write change behavior or block a response. Do **not** record per-tick errors in the 15s embed worker (floods on no-Ollama machines); the DB snapshot in `/stats` already shows the embed backlog (`chunks_pending`). The `/diag` panel reads `/stats`; live counts come from the data tables, capture-heavy metrics from the `events` log.
+- **Provider paths are a closed set (don't add branches)**: the only sanctioned LLM paths are **Groq** (fast default), **OpenRouter** (heavy/hybrid via `route_provider`), **Ollama** (local chat + the local embeddings in `indexing.py`), and **vision** (Groq-vision or OpenRouter in `describe_image`/`stream_vision`). There is **no provider-to-provider failure fallback** — the only real degradation is vision→text pre-pass in `chat.py`. Add a new provider/branch only with a measured benefit (see iteration brief #6).
 
 ## When extension capture breaks
 
@@ -177,7 +179,7 @@ backend/app/
   formatting.py      AI «улучшить читаемость» reformat of raw source text (chunked)
   extraction.py      extract profile_facts ABOUT THE USER from conversations
   models.py          SQLAlchemy models (Conversation/Message/Chunk, ContentSource/
-                     ContentChunk, Course, ProfileFact, SavedMessage)
+                     ContentChunk, Course, ProfileFact, SavedMessage, Event)
   routes/
     conversations.py UPSERT + wipe-and-reinsert messages + tsvector UPDATE
     search.py        websearch_to_tsquery, ts_headline snippets, ts_rank ordering
@@ -185,6 +187,8 @@ backend/app/
     learn.py         Лектор: ingest sources, course gen, PDF file preview, reformat
     facts.py         profile_facts review queue: extract + list(?status=) + counts
                      + approve/reject + PATCH(edit→edited) + delete
+    stats.py         GET /stats — observability snapshot (DB counts + events aggregates)
+  metrics.py         record_event(...) — best-effort append to `events` (never raises)
     saved.py         starred («Избранное») messages
   tests/             pytest units (recognize dispatch, reformat split, _safe_name, SSRF)
 

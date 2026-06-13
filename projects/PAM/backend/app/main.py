@@ -21,6 +21,7 @@ from .routes import (
     learn,
     saved,
     search,
+    stats,
 )
 
 logging.basicConfig(
@@ -100,6 +101,7 @@ app.include_router(index_routes.router)
 app.include_router(chat.router)
 app.include_router(facts.router)
 app.include_router(learn.router)
+app.include_router(stats.router)
 
 
 @app.get("/")

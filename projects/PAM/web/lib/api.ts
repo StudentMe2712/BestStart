@@ -525,6 +525,76 @@ export async function uploadChatAttachment(
   return r.json()
 }
 
+// ---- Diagnostics / quality panel (GET /stats) ----
+
+export interface StatsMemory {
+  conversations: number
+  messages: number
+  chunks_total: number
+  chunks_embedded: number
+  chunks_pending: number
+}
+
+export interface StatsLecturer {
+  sources: number
+  content_chunks_total: number
+  content_chunks_embedded: number
+  content_chunks_pending: number
+  courses: number
+}
+
+export interface StatsFacts {
+  pending_review: number
+  approved: number
+  rejected: number
+  edited: number
+  total: number
+}
+
+export interface StatsProvider {
+  provider: string
+  status: string
+  count: number
+}
+
+export interface StatsTiming {
+  kind: string
+  count: number
+  avg_ms: number
+  p95_ms: number
+}
+
+export interface StatsRecentError {
+  kind: string
+  provider: string
+  detail: string
+  created_at: string
+}
+
+export interface StatsEvents {
+  providers: StatsProvider[]
+  fallbacks: number
+  errors: number
+  timing: StatsTiming[]
+  recent_errors: StatsRecentError[]
+}
+
+export interface Stats {
+  days: number
+  memory: StatsMemory
+  lecturer: StatsLecturer
+  facts: StatsFacts
+  events: StatsEvents
+}
+
+export async function getStats(days = 7): Promise<Stats> {
+  const r = await fetch(`${BACKEND_URL}/stats?days=${days}`, {
+    cache: "no-store"
+  })
+  if (!r.ok) throw new Error(`stats failed: ${r.status}`)
+  return r.json()
+}
+
 /** POST /chat and consume the SSE stream (data: {...}\n\n). */
 export async function streamChat(
   message: string,

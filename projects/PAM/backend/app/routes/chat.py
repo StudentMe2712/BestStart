@@ -10,6 +10,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import time
 import uuid
 from collections.abc import AsyncIterator
 from types import SimpleNamespace
@@ -26,6 +27,7 @@ from ..db import AsyncSessionLocal
 from ..extraction import extract_facts_for_conversation
 from ..indexing import chunk_text, embed_text
 from ..llm import model_for, route_provider, stream_chat, stream_vision, vision_target
+from ..metrics import record_event
 from ..models import (
     ACCEPTED_FACT_STATUSES,
     Chunk,
@@ -473,6 +475,8 @@ async def chat(payload: ChatIn):
     vprov, vmodel = vision_target() if use_vision else (chosen, model_for(chosen))
 
     async def gen() -> AsyncIterator[bytes]:
+        t0 = time.monotonic()
+        prov_used = chosen
         answer = ""
         streamed = False
         # 1) Multimodal: пробуем ответить vision-моделью прямо по картинке.
@@ -490,11 +494,19 @@ async def chat(payload: ChatIn):
                     yield _sse({"meta": {"provider": vprov, "model": vmodel}})
                     yield _sse({"sources": sources})
                 streamed = True
+                prov_used = vprov
             except Exception as e:  # noqa: BLE001
                 if not first:  # ошибка уже посреди стрима — чисто откатиться нельзя
+                    await record_event(
+                        "chat", provider=vprov, status="error",
+                        duration_ms=int((time.monotonic() - t0) * 1000), detail=str(e),
+                    )
                     yield _sse({"error": str(e)})
                     return
                 # Vision недоступна до первого токена → деградация на текстовый pre-pass.
+                await record_event(
+                    "vision_fallback", provider=vprov, status="fallback", detail=str(e)
+                )
                 log.warning("multimodal vision failed, fallback to text: %s", e)
                 answer = ""
         # 2) Текстовый путь: обычный режим или fallback после сбоя vision.
@@ -506,6 +518,10 @@ async def chat(payload: ChatIn):
                     answer += tok
                     yield _sse({"token": tok})
             except Exception as e:  # noqa: BLE001
+                await record_event(
+                    "chat", provider=chosen, status="error",
+                    duration_ms=int((time.monotonic() - t0) * 1000), detail=str(e),
+                )
                 yield _sse({"error": str(e)})
                 return
         conv_id = payload.conversation_id
@@ -515,6 +531,10 @@ async def chat(payload: ChatIn):
             log.warning("chat persist failed: %s", e)
         if conv_id:
             _schedule_learn(conv_id)  # авто-обучение: факты о пользователе в фоне
+        await record_event(
+            "chat", provider=prov_used, status="ok",
+            duration_ms=int((time.monotonic() - t0) * 1000),
+        )
         yield _sse({"done": True, "conversation_id": str(conv_id) if conv_id else None})
 
     return StreamingResponse(gen(), media_type="text/event-stream")

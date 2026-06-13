@@ -10,6 +10,7 @@ export default function Nav() {
   const onHistory = pathname === "/history" || pathname.startsWith("/c/")
   const onSaved = pathname === "/saved"
   const onLearn = pathname === "/learn"
+  const onDiag = pathname === "/diag"
   const onCatalog = pathname === "/catalog"
 
   return (
@@ -47,7 +48,12 @@ export default function Nav() {
           <Tab href="/learn" active={onLearn}>
             Лектор
           </Tab>
-          <Tab href="/catalog" active={onCatalog}>
+          <Tab href="/diag" active={onDiag}>
+            Диагностика
+          </Tab>
+          {/* «Каталог» — второстепенная витрина: отделяем дивайдером и приглушаем. */}
+          <span className="w-px h-4 bg-neutral-800 mx-1" />
+          <Tab href="/catalog" active={onCatalog} muted>
             Каталог
           </Tab>
         </nav>
@@ -59,10 +65,12 @@ export default function Nav() {
 function Tab({
   href,
   active,
+  muted = false,
   children
 }: {
   href: string
   active: boolean
+  muted?: boolean
   children: ReactNode
 }) {
   return (
@@ -72,7 +80,9 @@ function Tab({
       className={`relative px-3 py-1.5 transition-colors duration-[180ms] ${
         active
           ? "text-lime-400"
-          : "text-neutral-400 hover:text-neutral-100"
+          : muted
+            ? "text-neutral-600 hover:text-neutral-300"
+            : "text-neutral-400 hover:text-neutral-100"
       }`}>
       {children}
       {active && (

@@ -11,12 +11,15 @@ from __future__ import annotations
 
 import json
 import logging
+import time
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from .config import settings
 from .llm import complete
+from .metrics import record_event
 from .models import FACT_PENDING, Conversation, ProfileFact
 
 log = logging.getLogger(__name__)
@@ -75,10 +78,24 @@ async def extract_facts_for_conversation(session: AsyncSession, conv: Conversati
         {"role": "system", "content": EXTRACTION_SYSTEM},
         {"role": "user", "content": f"<conversation>\n{text}\n</conversation>\n\nИзвлеки факты о пользователе."},
     ]
+    t0 = time.monotonic()
     try:
         raw = await complete(messages, json_mode=True)
+        await record_event(
+            "extraction",
+            provider=settings.LLM_PROVIDER,
+            status="ok",
+            duration_ms=int((time.monotonic() - t0) * 1000),
+        )
     except Exception as e:  # noqa: BLE001
         log.warning("extract: LLM call failed for %s: %s", conv.id, e)
+        await record_event(
+            "extraction",
+            provider=settings.LLM_PROVIDER,
+            status="error",
+            duration_ms=int((time.monotonic() - t0) * 1000),
+            detail=str(e),
+        )
         return 0
 
     # existing fact contents (for dedupe), normalized

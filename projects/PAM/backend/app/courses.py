@@ -13,11 +13,14 @@ from __future__ import annotations
 
 import json
 import logging
+import time
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from .config import settings
 from .llm import complete
+from .metrics import record_event
 from .models import Course, ContentSource, ProfileFact
 
 log = logging.getLogger(__name__)
@@ -110,7 +113,14 @@ async def generate_course(session: AsyncSession, source: ContentSource) -> Cours
             ),
         },
     ]
+    t0 = time.monotonic()
     raw = await complete(messages, json_mode=True)
+    await record_event(
+        "lecturer",
+        provider=settings.LLM_PROVIDER,
+        status="ok",
+        duration_ms=int((time.monotonic() - t0) * 1000),
+    )
     data = _parse_course(raw)
     if data is None:
         raise ValueError("LLM did not return a valid course JSON")

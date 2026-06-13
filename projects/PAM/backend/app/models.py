@@ -311,3 +311,33 @@ class ProfileFact(Base):
         Index("ix_profile_facts_category", "category"),
         Index("ix_profile_facts_status", "status"),
     )
+
+
+class Event(Base):
+    """Lightweight observability event (Observability panel, P0).
+
+    Local-first append-only лог: вызовы провайдеров, фолбэки, батчи эмбеддингов,
+    импорты и прогоны Лектора. Пишется best-effort через `metrics.record_event` —
+    никогда не на критическом пути запроса. Агрегируется в `/stats`.
+    """
+
+    __tablename__ = "events"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    kind: Mapped[str] = mapped_column(String(32), nullable=False)
+    provider: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    status: Mapped[str] = mapped_column(
+        String(16), nullable=False, server_default="ok", default="ok"
+    )
+    duration_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    detail: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+
+    __table_args__ = (
+        Index("ix_events_kind_created", "kind", "created_at"),
+        Index("ix_events_created", "created_at"),
+    )

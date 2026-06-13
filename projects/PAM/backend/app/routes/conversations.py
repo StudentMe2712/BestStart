@@ -10,6 +10,7 @@ from sqlalchemy.orm import selectinload
 
 from ..db import get_session
 from ..indexing import chunk_text
+from ..metrics import record_event
 from ..models import Chunk, Conversation, Message
 from ..schemas import (
     ConversationDetail,
@@ -93,6 +94,8 @@ async def ingest_conversation(
             session.add(Chunk(message_id=obj.id, content=ch, position=i))
 
     await session.commit()
+
+    await record_event("import", provider=payload.source, status="ok")
 
     return IngestResult(
         conversation_id=existing.id,
