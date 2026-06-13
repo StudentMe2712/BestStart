@@ -47,3 +47,28 @@ body {
 *::-webkit-scrollbar-corner {
   background: transparent;
 }
+
+/* ── Печать курса (#7 — экспорт в PDF через печать) ─────────────────────────
+   Экранный UI (nav, сайдбары, табы) помечен `print:hidden`, а полноразмерная
+   версия курса — `.print-course` (`hidden print:block`): на печать выводится
+   только она, целиком (все главы + тест), чёрным по белому. */
+@page {
+  margin: 14mm;
+}
+@media print {
+  body {
+    background: #fff !important;
+  }
+  .print-course,
+  .print-course * {
+    color: #000 !important;
+    border-color: #ccc !important;
+  }
+  .print-course pre,
+  .print-course code {
+    background: #f4f4f4 !important;
+  }
+  .print-course a {
+    text-decoration: underline;
+  }
+}

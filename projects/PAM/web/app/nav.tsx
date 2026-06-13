@@ -13,7 +13,7 @@ export default function Nav() {
   const onCatalog = pathname === "/catalog"
 
   return (
-    <header className="sticky top-0 z-20 border-b border-neutral-800 bg-neutral-950/80 backdrop-blur">
+    <header className="sticky top-0 z-20 border-b border-neutral-800 bg-neutral-950/80 backdrop-blur print:hidden">
       {/* На странице чата лого выровнено по левому краю — на уровне «Новый чат»
           в сайдбаре (pl-5 = отступ пунктов сайдбара). Остальные страницы —
           центрированный контейнер 1700px. */}

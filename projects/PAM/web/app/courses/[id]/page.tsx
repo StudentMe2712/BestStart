@@ -29,6 +29,11 @@ import {
   PlayIcon
 } from "../../../lib/material-ui"
 import Markdown from "../../markdown"
+import {
+  courseToMarkdown,
+  downloadText,
+  safeCourseFilename
+} from "../../../lib/course-export"
 
 type Tab = "summary" | "extra" | "quiz"
 
@@ -140,6 +145,16 @@ export default function CourseReaderPage() {
     }
   }
 
+  function exportMarkdown() {
+    if (!course) return
+    const md = courseToMarkdown(course, source?.title)
+    downloadText(
+      safeCourseFilename(course.title || source?.title, "md"),
+      md,
+      "text/markdown"
+    )
+  }
+
   const modules = course?.data.modules ?? []
   const quiz = course?.data.quiz ?? []
   const chapter = Math.min(activeChapter, Math.max(modules.length - 1, 0))
@@ -198,7 +213,9 @@ export default function CourseReaderPage() {
 
   return (
     <main className="max-w-[1700px] mx-auto px-6 py-8">
-      <div className="flex flex-col lg:flex-row gap-6 items-start">
+      {/* Полная версия курса для печати/PDF (#7) — скрыта на экране, видна при печати. */}
+      <CoursePrintable course={course} sourceTitle={source?.title ?? null} />
+      <div className="flex flex-col lg:flex-row gap-6 items-start print:hidden">
         {/* ── ЛЕВАЯ: содержание ────────────────────────────────────────── */}
         <aside className="w-full lg:w-[340px] shrink-0 lg:sticky lg:top-20 space-y-4">
           <Link
@@ -425,6 +442,12 @@ export default function CourseReaderPage() {
               <ActionRow onClick={regenerate} disabled={regen}>
                 {regen ? "Пересоздаю…" : "Пересоздать курс"}
               </ActionRow>
+              <ActionRow onClick={exportMarkdown}>
+                Скачать конспект (.md)
+              </ActionRow>
+              <ActionRow onClick={() => window.print()}>
+                Печать / Сохранить PDF
+              </ActionRow>
               {source?.url ? (
                 <a
                   href={source.url}
@@ -449,6 +472,71 @@ export default function CourseReaderPage() {
         </aside>
       </div>
     </main>
+  )
+}
+
+/** Полноразмерная версия курса для печати/PDF (#7): все главы + тест, целиком.
+    На экране скрыта (`hidden`), показывается только при печати (`print:block`). */
+function CoursePrintable({
+  course,
+  sourceTitle
+}: {
+  course: Course
+  sourceTitle: string | null
+}) {
+  const d = course.data
+  const modules = d.modules ?? []
+  const quiz = d.quiz ?? []
+  const title = course.title || d.title || sourceTitle || "Курс"
+  const level = course.level || d.level
+  return (
+    <div className="print-course hidden print:block">
+      <h1 className="text-2xl font-semibold mb-2">{title}</h1>
+      {level && <p className="text-sm mb-3">Уровень: {level}</p>}
+      {d.summary && (
+        <div className="mb-6">
+          <Markdown>{d.summary}</Markdown>
+        </div>
+      )}
+      {modules.map((m, i) => (
+        <section key={i} className="mb-6" style={{ breakInside: "avoid" }}>
+          <h2 className="text-lg font-semibold mb-2">
+            {i + 1}. {m.title}
+          </h2>
+          {(m.lessons ?? []).map((l, li) => (
+            <article key={li} className="mb-4">
+              {l.title && (
+                <h3 className="text-base font-semibold mb-1">{l.title}</h3>
+              )}
+              <Markdown>{l.content || ""}</Markdown>
+            </article>
+          ))}
+        </section>
+      ))}
+      {quiz.length > 0 && (
+        <section className="mt-6">
+          <h2 className="text-lg font-semibold mb-3">Тест</h2>
+          {quiz.map((q, qi) => (
+            <div key={qi} className="mb-4" style={{ breakInside: "avoid" }}>
+              <p className="font-semibold mb-1">
+                {qi + 1}. {q.question}
+              </p>
+              <ul className="list-none pl-0">
+                {q.options.map((opt, oi) => (
+                  <li key={oi}>
+                    {String.fromCharCode(65 + oi)}. {opt}
+                    {oi === q.answer_index ? "  ✓" : ""}
+                  </li>
+                ))}
+              </ul>
+              {q.explanation && (
+                <p className="text-sm mt-1 italic">{q.explanation}</p>
+              )}
+            </div>
+          ))}
+        </section>
+      )}
+    </div>
   )
 }
 
