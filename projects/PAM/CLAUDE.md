@@ -9,7 +9,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 **Personal AI Memory (PAM)** — a local-first personal-knowledge app. It started as a
 capture-and-search tool for AI conversations and has grown into two connected products:
 
-1. **Memory + chat** — capture conversations from ChatGPT / Claude (Gemini = stub) via a
+1. **Memory + chat** — capture conversations from ChatGPT / Claude via a
    browser extension into local Postgres+pgvector; a RAG **chat with memory**
    (`POST /chat`, SSE streaming) that retrieves across past conversations **and** learning
    material, supports **file/image attachments** (documents → markitdown, images → Groq
@@ -29,9 +29,12 @@ LLM calls (Groq / OpenRouter) and embeddings (local Ollama) reach out.
 > inaccurate (e.g. extraction/chat run on Groq/OpenRouter, not Gemini/Claude as the old
 > table said) — **this file is the current source of truth.**
 
-The Gemini content script is intentionally a **stub** (`extension/contents/gemini.ts`) —
-Claude.ai and ChatGPT capture is wired up; Gemini is left to be implemented after observing
-the real streaming format in DevTools.
+Only **Claude.ai and ChatGPT** capture is wired up. A Gemini content script was **removed**
+(TODO #11): its non-standard stream format was never implemented, so the stub was dropped to
+avoid implying Gemini capture works. `gemini` stays a valid `source` value (it could be
+imported manually), but nothing captures it automatically. To add it later, write a new
+`extension/contents/gemini.ts` after observing the real stream format in DevTools and re-add
+the `gemini.google.com` host permission + relay match.
 
 ## Common commands
 
@@ -116,7 +119,7 @@ The split between **page world** and **isolated content-script world** matters: 
 
 ### Normalization is two-sided
 
-Each AI service returns very different JSON. Current design: **the extension normalizes** into the unified shape declared in `backend/app/schemas.py::IncomingConversation`, and the backend mostly trusts it. `backend/app/normalizers.py` contains parallel server-side normalizers that are **not currently called** from routes — they exist as a fallback / reference for when raw payloads need re-processing on the server. If you change one side's parser, decide whether the other needs to follow.
+Each AI service returns very different JSON. Current design: **the extension normalizes** into the unified shape declared in `backend/app/schemas.py::IncomingConversation`, and the backend trusts it. There is **no** server-side normalizer — that dead fallback layer (`backend/app/normalizers.py`) was removed (TODO #9). If raw payloads ever need re-processing on the server, reintroduce a normalizer module deliberately rather than relying on a stub.
 
 ### Idempotency contract
 
@@ -152,7 +155,7 @@ Symptoms: `parse error` in DevTools console of the AI site, or zero conversation
 1. Open DevTools → Network on the relevant AI site.
 2. Find the request that returns a full conversation in JSON.
 3. Update `URL_RE` and/or the parser in `extension/contents/<site>.ts`.
-4. The three sources are isolated — fixing one doesn't affect the others.
+4. The per-site scripts are isolated — fixing one doesn't affect the other.
 
 Manual import via the AI sites' official export feature is the documented fallback if a parser stays broken.
 
@@ -170,7 +173,6 @@ backend/app/
   courses.py         generate a mini-course (modules/lessons/quiz) from a ContentSource
   formatting.py      AI «улучшить читаемость» reformat of raw source text (chunked)
   extraction.py      extract profile_facts ABOUT THE USER from conversations
-  normalizers.py     server-side fallback normalizers (NOT currently invoked — see TODO #9)
   models.py          SQLAlchemy models (Conversation/Message/Chunk, ContentSource/
                      ContentChunk, Course, ProfileFact, SavedMessage)
   routes/
@@ -184,9 +186,8 @@ backend/app/
 
 extension/
   background.ts      retry queue (4s × attempts, MAX_ATTEMPTS=5); stats in chrome.storage.local
-  contents/*.ts      MAIN-world fetch patch → postMessage (claude.ts, chatgpt.ts; gemini.ts is a stub)
+  contents/*.ts      MAIN-world fetch patch → postMessage (claude.ts, chatgpt.ts)
   contents/relay.ts  isolated-world bridge: window.postMessage → chrome.runtime.sendMessage
-  contents/gemini.ts STUB — implement after observing real streaming format in DevTools
 
 web/app/
   page.tsx           CHAT page (RAG chat + attachments, glass UI, центр-glow)

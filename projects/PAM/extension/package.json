@@ -2,7 +2,7 @@
   "name": "pam-extension",
   "displayName": "Personal AI Memory",
   "version": "0.1.0",
-  "description": "Captures your ChatGPT / Claude / Gemini conversations into a local-first memory backend.",
+  "description": "Captures your ChatGPT / Claude conversations into a local-first memory backend.",
   "private": true,
   "scripts": {
     "dev": "plasmo dev",
@@ -14,7 +14,6 @@
       "https://chatgpt.com/*",
       "https://chat.openai.com/*",
       "https://claude.ai/*",
-      "https://gemini.google.com/*",
       "http://localhost:8000/*"
     ],
     "permissions": [

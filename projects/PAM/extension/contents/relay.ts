@@ -1,7 +1,7 @@
 /**
  * Isolated-world relay (bridge).
  *
- * The per-site content scripts (claude.ts / chatgpt.ts / gemini.ts) run in the
+ * The per-site content scripts (claude.ts / chatgpt.ts) run in the
  * page world (`world: "MAIN"`) so they can patch `window.fetch`. But in the MAIN
  * world `chrome.runtime` is NOT available, so they cannot talk to the background
  * worker directly — they `window.postMessage(...)` instead.
@@ -20,8 +20,7 @@ export const config: PlasmoCSConfig = {
   matches: [
     "https://chatgpt.com/*",
     "https://chat.openai.com/*",
-    "https://claude.ai/*",
-    "https://gemini.google.com/*"
+    "https://claude.ai/*"
   ],
   run_at: "document_start"
   // no `world` → runs in the isolated world, where chrome.runtime exists

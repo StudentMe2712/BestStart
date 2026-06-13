@@ -25,7 +25,6 @@ Then add to `package.json`:
     "host_permissions": [
       "https://chatgpt.com/*",
       "https://claude.ai/*",
-      "https://gemini.google.com/*",
       "http://localhost:8000/*"
     ],
     "permissions": ["storage", "webRequest"]
@@ -53,7 +52,6 @@ Then in Chrome → `chrome://extensions` → enable Developer mode →
 - `popup.tsx` — small UI with stats counter
 - `contents/chatgpt.ts` — MAIN-world fetch patch for chatgpt.com
 - `contents/claude.ts` — MAIN-world fetch patch for claude.ai
-- `contents/gemini.ts` — STUB for gemini.google.com (implement after DevTools)
 - `contents/relay.ts` — isolated-world bridge: `postMessage` → `chrome.runtime.sendMessage`
 - `lib/api.ts` — backend API client
 - `tsconfig.json`, `assets/icon.png` — required by Plasmo
