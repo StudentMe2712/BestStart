@@ -199,6 +199,39 @@ async def describe_image(data: bytes, mime: str) -> str:
     )
 
 
+def vision_target() -> tuple[str, str]:
+    """(provider, model) для стримингового мультимодального ответа.
+
+    Совпадает с выбором в `describe_image`: OpenRouter, если он выбран и есть
+    ключ, иначе Groq vision. Ollama для vision здесь не используется.
+    """
+    p = settings.LLM_PROVIDER.lower()
+    if p == "openrouter" and settings.OPENROUTER_API_KEY:
+        return "openrouter", settings.OPENROUTER_MODEL
+    return "groq", settings.GROQ_VISION_MODEL
+
+
+async def stream_vision(messages: list[dict]) -> AsyncIterator[str]:
+    """Stream a multimodal answer (messages may carry image_url parts).
+
+    Используется, когда пользователь включил режим «картинка прямо в модель»:
+    отвечает та же vision-модель, что и распознаёт (Groq vision / OpenRouter),
+    но потоково. Контент последнего user-сообщения — список частей text/image_url.
+    """
+    provider, model = vision_target()
+    if provider == "openrouter":
+        async for tok in _stream_openai_compatible(
+            messages, OPENROUTER_URL, settings.OPENROUTER_API_KEY,
+            model, "OPENROUTER_API_KEY", OPENROUTER_HEADERS,
+        ):
+            yield tok
+    else:
+        async for tok in _stream_openai_compatible(
+            messages, GROQ_URL, settings.GROQ_API_KEY, model, "GROQ_API_KEY"
+        ):
+            yield tok
+
+
 async def _complete_ollama(messages: list[dict], json_mode: bool) -> str:
     payload: dict = {"model": settings.OLLAMA_CHAT_MODEL, "messages": messages, "stream": False}
     if json_mode:

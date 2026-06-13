@@ -410,6 +410,8 @@ export interface ChatHandlers {
 export interface ChatAttachment {
   name: string
   text: string
+  /** data:-URL картинки для multimodal-режима (уходит прямо в vision-модель). */
+  image_url?: string
 }
 
 /** Контекст-чипы: какие источники подмешивать в ретрив чата. */
@@ -477,7 +479,8 @@ export async function streamChat(
   h: ChatHandlers,
   signal?: AbortSignal,
   attachments?: ChatAttachment[],
-  ctx?: ChatCtx
+  ctx?: ChatCtx,
+  multimodal?: boolean
 ): Promise<void> {
   const r = await fetch(`${BACKEND_URL}/chat`, {
     method: "POST",
@@ -489,7 +492,8 @@ export async function streamChat(
       use_memory: ctx ? ctx.memory : true,
       use_materials: ctx ? ctx.materials : false,
       use_courses: ctx ? ctx.courses : false,
-      use_saved: ctx ? ctx.saved : false
+      use_saved: ctx ? ctx.saved : false,
+      multimodal: multimodal || undefined
     }),
     signal
   })

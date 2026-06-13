@@ -25,7 +25,7 @@ from ..content import recognize_attachment
 from ..db import AsyncSessionLocal
 from ..extraction import extract_facts_for_conversation
 from ..indexing import chunk_text, embed_text
-from ..llm import model_for, route_provider, stream_chat
+from ..llm import model_for, route_provider, stream_chat, stream_vision, vision_target
 from ..models import (
     Chunk,
     ContentChunk,
@@ -106,9 +106,17 @@ ATTACH_EXTS = {
 MAX_ATTACHMENTS = 8  # сколько вложений принимаем за одно сообщение
 
 
+# data:-URL картинки для multimodal-режима. base64 25 МБ ≈ 34 млн символов —
+# кап с запасом, чтобы отсечь патологический payload, но пропустить лимит вложения.
+MAX_IMAGE_URL_CHARS = 40_000_000
+
+
 class Attachment(BaseModel):
     name: str = Field(max_length=300)
     text: str = Field(max_length=MAX_ATTACH_TEXT)
+    # Только для изображений в multimodal-режиме: data:-URL самой картинки, которая
+    # уходит прямо в отвечающую vision-модель (а не только её pre-pass транскрипция).
+    image_url: str | None = Field(default=None, max_length=MAX_IMAGE_URL_CHARS)
 
 
 class ChatIn(BaseModel):
@@ -120,6 +128,9 @@ class ChatIn(BaseModel):
     use_materials: bool = False   # материалы Лектора (content_chunks)
     use_courses: bool = False     # сгенерированные курсы (полнотекст)
     use_saved: bool = False        # избранное (полнотекст)
+    # True-multimodal: приложенную картинку отправить прямо в vision-модель и
+    # стримить ответ (вместо ответа текстовой модели по pre-pass транскрипции).
+    multimodal: bool = False
 
 
 def _safe_name(name: str) -> str:
@@ -378,12 +389,18 @@ async def chat(payload: ChatIn):
     user_msg = payload.message.strip()
     if not user_msg and not payload.attachments:
         raise HTTPException(status_code=400, detail="пустой запрос")
+    # True-multimodal: какие вложения уходят картинкой в модель, а какие — текстом.
+    use_vision = payload.multimodal and any(a.image_url for a in payload.attachments)
+    img_atts = [a for a in payload.attachments if a.image_url] if use_vision else []
+    # В vision-режиме картинки идут как image_url-части (их pre-pass транскрипцию в
+    # текст не дублируем); документы — и всё в обычном режиме — текстом в <attachments>.
+    text_atts = [a for a in payload.attachments if not (use_vision and a.image_url)]
     # Вложения уходят в запрос как данные (анти-инъекция в SYSTEM_PROMPT).
     att_block = ""
-    if payload.attachments:
+    if text_atts:
         parts = [
             f"[файл: {_safe_name(a.name)}]\n{(a.text or '').strip()[:MAX_ATTACH_TEXT]}"
-            for a in payload.attachments
+            for a in text_atts
         ]
         att_block = "<attachments>\n" + "\n\n".join(parts) + "\n</attachments>\n\n"
     # Запрос для ретрива/ответа: если текста нет, но есть вложения — дефолтный.
@@ -410,20 +427,24 @@ async def chat(payload: ChatIn):
         f"[{r.source}/{r.title or 'без названия'}]\n{r.content}" for r in ctx_rows
     ) or "(нет релевантного контекста)"
 
-    messages: list[dict] = [{"role": "system", "content": SYSTEM_PROMPT}]
+    base_messages: list[dict] = [{"role": "system", "content": SYSTEM_PROMPT}]
     for r in history:
         role = "assistant" if r.role == "assistant" else "user"
-        messages.append({"role": role, "content": r.content})
+        base_messages.append({"role": role, "content": r.content})
     profile_block = f"<profile>\n{profile}\n</profile>\n\n" if profile else ""
-    messages.append(
-        {
-            "role": "user",
-            "content": (
-                f"{profile_block}<context>\n{ctx}\n</context>\n\n"
-                f"{att_block}Запрос: {query}"
-            ),
-        }
+    user_text = (
+        f"{profile_block}<context>\n{ctx}\n</context>\n\n"
+        f"{att_block}Запрос: {query}"
     )
+    # Текстовый путь (и fallback для vision): обычное строковое user-сообщение.
+    text_messages = base_messages + [{"role": "user", "content": user_text}]
+    # Vision-путь: последнее сообщение — список частей text + image_url.
+    vision_messages: list[dict] | None = None
+    if use_vision:
+        content_parts: list[dict] = [{"type": "text", "text": user_text}]
+        for a in img_atts:
+            content_parts.append({"type": "image_url", "image_url": {"url": a.image_url}})
+        vision_messages = base_messages + [{"role": "user", "content": content_parts}]
 
     # Dedupe sources for the UI chips (the same conversation can yield several chunks).
     sources: list[dict] = []
@@ -446,18 +467,44 @@ async def chat(payload: ChatIn):
     # Гибрид-роутер: на «тяжёлый» запрос берём мощную модель, иначе быструю.
     cfg = settings.LLM_PROVIDER.lower()
     chosen = route_provider(query) if cfg == "hybrid" else cfg
+    vprov, vmodel = vision_target() if use_vision else (chosen, model_for(chosen))
 
     async def gen() -> AsyncIterator[bytes]:
-        yield _sse({"meta": {"provider": chosen, "model": model_for(chosen)}})
-        yield _sse({"sources": sources})
         answer = ""
-        try:
-            async for tok in stream_chat(messages, provider=chosen):
-                answer += tok
-                yield _sse({"token": tok})
-        except Exception as e:  # noqa: BLE001
-            yield _sse({"error": str(e)})
-            return
+        streamed = False
+        # 1) Multimodal: пробуем ответить vision-моделью прямо по картинке.
+        if use_vision:
+            first = True
+            try:
+                async for tok in stream_vision(vision_messages):
+                    if first:
+                        yield _sse({"meta": {"provider": vprov, "model": vmodel}})
+                        yield _sse({"sources": sources})
+                        first = False
+                    answer += tok
+                    yield _sse({"token": tok})
+                if first:  # модель не вернула ни одного токена — всё равно meta/sources
+                    yield _sse({"meta": {"provider": vprov, "model": vmodel}})
+                    yield _sse({"sources": sources})
+                streamed = True
+            except Exception as e:  # noqa: BLE001
+                if not first:  # ошибка уже посреди стрима — чисто откатиться нельзя
+                    yield _sse({"error": str(e)})
+                    return
+                # Vision недоступна до первого токена → деградация на текстовый pre-pass.
+                log.warning("multimodal vision failed, fallback to text: %s", e)
+                answer = ""
+        # 2) Текстовый путь: обычный режим или fallback после сбоя vision.
+        if not streamed:
+            yield _sse({"meta": {"provider": chosen, "model": model_for(chosen)}})
+            yield _sse({"sources": sources})
+            try:
+                async for tok in stream_chat(text_messages, provider=chosen):
+                    answer += tok
+                    yield _sse({"token": tok})
+            except Exception as e:  # noqa: BLE001
+                yield _sse({"error": str(e)})
+                return
         conv_id = payload.conversation_id
         try:
             conv_id = await _persist(payload.conversation_id, persisted_user, answer)

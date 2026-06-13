@@ -25,6 +25,8 @@ interface Attach {
   error?: string
   remembered?: boolean
   remembering?: boolean
+  /** data:-URL картинки (для multimodal — уходит прямо в vision-модель). */
+  imageUrl?: string
 }
 
 interface Msg {
@@ -55,6 +57,8 @@ export default function ChatPage() {
   const [ctxMaterials, setCtxMaterials] = useState(false)
   const [ctxCourses, setCtxCourses] = useState(false)
   const [ctxSaved, setCtxSaved] = useState(false)
+  // True-multimodal: приложенную картинку отправить прямо в vision-модель.
+  const [multimodal, setMultimodal] = useState(false)
 
   const loadChats = () =>
     listConversations({ source: "pam", limit: 50 })
@@ -114,12 +118,22 @@ export default function ChatPage() {
         ...prev,
         { id, name: f.name, kind: "", text: "", status: "loading" }
       ])
+      // Для картинок заранее читаем data:-URL — на случай multimodal-режима
+      // (сам файл уходит в vision-модель, а не только pre-pass транскрипция).
+      let imageUrl: string | undefined
+      if (f.type.startsWith("image/")) {
+        try {
+          imageUrl = await readDataUrl(f)
+        } catch {
+          /* без data-url multimodal просто недоступен для этого файла */
+        }
+      }
       try {
         const res = await uploadChatAttachment(f)
         setAttachments((prev) =>
           prev.map((a) =>
             a.id === id
-              ? { ...a, kind: res.kind, text: res.text, status: "done" }
+              ? { ...a, kind: res.kind, text: res.text, status: "done", imageUrl }
               : a
           )
         )
@@ -169,7 +183,12 @@ export default function ChatPage() {
     setSources([])
     setMeta(null)
     setBusy(true)
-    const atts = ready.map((a) => ({ name: a.name, text: a.text }))
+    const atts = ready.map((a) => ({
+      name: a.name,
+      text: a.text,
+      // image_url шлём только в multimodal-режиме (иначе не раздуваем запрос).
+      ...(multimodal && a.imageUrl ? { image_url: a.imageUrl } : {})
+    }))
     setMessages((prev) => [
       ...prev,
       {
@@ -207,7 +226,8 @@ export default function ChatPage() {
           materials: ctxMaterials,
           courses: ctxCourses,
           saved: ctxSaved
-        }
+        },
+        multimodal
       )
     } finally {
       setBusy(false)
@@ -410,6 +430,14 @@ export default function ChatPage() {
                     active={ctxSaved}
                     onClick={() => setCtxSaved((v) => !v)}
                   />
+                  {attachments.some((a) => a.imageUrl) && (
+                    <CtxToggle
+                      icon={<EyeIcon />}
+                      label="Vision"
+                      active={multimodal}
+                      onClick={() => setMultimodal((v) => !v)}
+                    />
+                  )}
                 </div>
                 <button
                   type="submit"
@@ -429,6 +457,16 @@ export default function ChatPage() {
       </main>
     </div>
   )
+}
+
+/** Прочитать файл как data:-URL (для multimodal — картинка уходит в vision-модель). */
+function readDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader()
+    r.onload = () => resolve(r.result as string)
+    r.onerror = () => reject(r.error)
+    r.readAsDataURL(file)
+  })
 }
 
 function TypingDots() {
@@ -565,6 +603,14 @@ function StarIcon() {
   return (
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
       <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+    </svg>
+  )
+}
+function EyeIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z" />
+      <circle cx="12" cy="12" r="3" />
     </svg>
   )
 }
