@@ -1,22 +1,29 @@
-"""Project Memory (P2) — Telegram capture bot (stage 2).
+"""Project Memory (P2) — Telegram bot: capture + chat (stage 2 / P2.2).
 
 Long polling (без webhook/домена/внешнего сервера) — работает на локальной машине
-рядом с бэкендом. Тонкий HTTP-клиент: НЕ ходит в БД напрямую, а шлёт в backend
-(`POST /memory/items` для текста/ссылок/кода, `POST /memory/items/file` для
-документов/фото). AI-теггер на стороне бэкенда дозаполнит summary/tags/type.
+рядом с бэкендом. Тонкий HTTP-клиент: НЕ ходит в БД напрямую, а шлёт в backend.
 
-Запуск (отдельный процесс, рядом с uvicorn):
+Два режима, оба через backend (никакой логики памяти в боте):
+  • ЗАХВАT (по умолчанию) — текст/ссылка/код → `POST /memory/items`,
+    документ/фото → `POST /memory/items/file`. AI-теггер дозаполнит summary/tags/type.
+  • ЧАT — `/ask <вопрос>` → `POST /chat` (RAG по ВСЕЙ памяти PAM: profile_facts +
+    разговоры + memory_items + …). Один непрерывный тред на пользователя (хранится
+    conversation_id в памяти процесса), синхронизируется с веб-чатом как pam-беседа.
+    `/new` — начать новый тред.
+
+Запуск: как сервис `bot` в docker-compose (рядом с backend), либо вручную
     cd backend && python -m app.telegram_bot
 Требует в backend/.env: TELEGRAM_BOT_TOKEN, TELEGRAM_ALLOWED_USER_ID
-(+ опц. BACKEND_URL, по умолчанию http://localhost:8000). Голосовые в V1 не
-обрабатываются (см. решение P2). Доступ — только у TELEGRAM_ALLOWED_USER_ID.
+(+ BACKEND_URL — в compose `http://backend:8000`, иначе по умолч. http://localhost:8000).
+Голосовые в V1 не обрабатываются. Доступ — только у TELEGRAM_ALLOWED_USER_ID.
 
-Зависимость: aiogram>=3 (см. pyproject). На машине без неё бот не запускается —
-это не влияет на backend (бот импортируется только при явном запуске).
+Зависимость: aiogram>=3 (см. pyproject). Бот импортируется только при явном запуске,
+поэтому его отсутствие не влияет на backend.
 """
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 
 import httpx
@@ -26,6 +33,12 @@ from .config import settings
 log = logging.getLogger("pam.telegram")
 
 _TIMEOUT = httpx.Timeout(60.0)
+_CHAT_TIMEOUT = httpx.Timeout(180.0)  # ответ LLM может идти десятки секунд
+_TG_LIMIT = 4000  # запас под лимит сообщения Telegram (4096)
+
+# Непрерывный тред чата на пользователя: telegram uid -> conversation_id (pam-беседа).
+# Живёт в памяти процесса: после перезапуска бота тред начинается заново (или /new).
+_threads: dict[int, str] = {}
 
 
 def _denied(message) -> bool:
@@ -55,10 +68,48 @@ async def _post_file(data: bytes, filename: str, source_ref: str) -> bool:
     return True
 
 
+async def _chat(question: str, conv_id: str | None) -> tuple[str, str | None, str | None]:
+    """Спросить `/chat` (SSE, RAG по всей памяти PAM). Возврат: (ответ, conv_id, ошибка).
+
+    Токены копим в полный ответ (Telegram не стримит по-токенно); conversation_id из
+    события `done` — продолжение того же треда; ответ заодно сохраняется бэкендом как
+    pam-беседа (та самая синхронизация с веб-чатом).
+    """
+    payload: dict = {"message": question}
+    if conv_id:
+        payload["conversation_id"] = conv_id
+    answer, new_conv, err = "", conv_id, None
+    async with httpx.AsyncClient(timeout=_CHAT_TIMEOUT) as client:
+        async with client.stream("POST", f"{settings.BACKEND_URL}/chat", json=payload) as r:
+            if r.status_code >= 400:
+                body = (await r.aread()).decode("utf-8", "replace")[:300]
+                return "", conv_id, f"backend {r.status_code}: {body}"
+            async for line in r.aiter_lines():
+                if not line.startswith("data: "):
+                    continue
+                try:
+                    obj = json.loads(line[6:])
+                except json.JSONDecodeError:
+                    continue
+                if "token" in obj:
+                    answer += obj["token"]
+                elif "error" in obj:
+                    err = obj["error"]
+                elif obj.get("done"):
+                    new_conv = obj.get("conversation_id") or conv_id
+    return answer.strip(), new_conv, err
+
+
+def _chunks(text: str, n: int = _TG_LIMIT):
+    """Разбить длинный ответ под лимит сообщения Telegram."""
+    for i in range(0, len(text), n):
+        yield text[i : i + n]
+
+
 def build_dispatcher():
     """Собрать aiogram Dispatcher с обработчиками. Импорт aiogram — лениво."""
     from aiogram import Dispatcher, F
-    from aiogram.filters import CommandStart
+    from aiogram.filters import Command, CommandStart
     from aiogram.types import Message
 
     dp = Dispatcher()
@@ -68,9 +119,51 @@ def build_dispatcher():
         if _denied(message):
             return
         await message.answer(
-            "PAM на связи. Пришли текст, ссылку, код или документ — сохраню в память "
-            "и автоматически проставлю теги и тип. (Голосовые пока не поддерживаются.)"
+            "PAM на связи.\n"
+            "• Текст / ссылка / код / файл / фото — сохраню в память "
+            "(теги и тип проставлю автоматически).\n"
+            "• /ask <вопрос> — отвечу с учётом всей твоей памяти PAM "
+            "(синхронизируется с веб-чатом).\n"
+            "• /new — начать новый тред чата.\n"
+            "(Голосовые пока не поддерживаются.)"
         )
+
+    # Команды регистрируем ДО общего обработчика текста (F.text), иначе «/ask …»
+    # перехватился бы захватом: aiogram берёт первый подошедший обработчик.
+    @dp.message(Command("new"))
+    async def on_new(message: "Message") -> None:
+        if _denied(message):
+            return
+        _threads.pop(message.from_user.id, None)
+        await message.answer("Начал новый тред ✓ Следующий /ask — с чистой историей.")
+
+    @dp.message(Command("ask"))
+    async def on_ask(message: "Message") -> None:
+        if _denied(message):
+            return
+        parts = (message.text or "").split(maxsplit=1)
+        question = parts[1].strip() if len(parts) > 1 else ""
+        if not question:
+            await message.answer("Напиши вопрос после команды: /ask <вопрос>")
+            return
+        uid = message.from_user.id
+        try:
+            await message.bot.send_chat_action(message.chat.id, "typing")
+        except Exception:  # noqa: BLE001 — индикатор «печатает» не критичен
+            pass
+        try:
+            answer, conv_id, err = await _chat(question, _threads.get(uid))
+        except Exception as e:  # noqa: BLE001
+            log.warning("chat ask failed: %s", e)
+            await message.answer(f"Не удалось ответить: {e}")
+            return
+        if conv_id:
+            _threads[uid] = conv_id  # держим один непрерывный тред
+        if not answer:
+            await message.answer(f"Ошибка модели: {err}" if err else "Пустой ответ модели.")
+            return
+        for ch in _chunks(answer):
+            await message.answer(ch)
 
     @dp.message(F.voice | F.audio | F.video_note)
     async def on_voice(message: "Message") -> None:
@@ -135,6 +228,15 @@ async def main() -> None:
 
     bot = Bot(settings.TELEGRAM_BOT_TOKEN)
     dp = build_dispatcher()
+    try:
+        from aiogram.types import BotCommand
+
+        await bot.set_my_commands([
+            BotCommand(command="ask", description="Спросить PAM (ответ с памятью)"),
+            BotCommand(command="new", description="Новый тред чата"),
+        ])
+    except Exception as e:  # noqa: BLE001 — меню команд не критично
+        log.warning("set_my_commands failed: %s", e)
     log.info("PAM Telegram bot: long polling started (allowed uid=%s)", settings.TELEGRAM_ALLOWED_USER_ID)
     await dp.start_polling(bot)
 

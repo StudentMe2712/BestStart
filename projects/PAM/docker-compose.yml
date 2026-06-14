@@ -52,6 +52,30 @@ services:
       sh -c "alembic upgrade head &&
              uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
 
+  # ── Telegram bot (capture + /ask chat) ────────────────────────────────────
+  # Отдельный процесс рядом с backend: long polling, без вебхука/домена. Ходит в
+  # backend ПО COMPOSE-СЕТИ (BACKEND_URL=http://backend:8000), а не на localhost.
+  # Токен и allow-list — из backend/.env. aiogram ставится из pyproject при сборке
+  # (та же Dockerfile, что и у backend). Запуск только если задан токен — иначе
+  # процесс упадёт с понятным сообщением и compose будет его рестартить; чтобы бот
+  # не поднимался вовсе, удали/закомментируй этот сервис.
+  bot:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: pam-bot
+    restart: unless-stopped
+    env_file:
+      - ./backend/.env
+    environment:
+      BACKEND_URL: "http://backend:8000"
+      LOG_LEVEL: INFO
+    depends_on:
+      - backend
+    volumes:
+      - ./backend/app:/app/app
+    command: python -m app.telegram_bot
+
   # ── Web UI (Next.js) ──────────────────────────────────────────────────────
   # Replaces the `web` window that dev.bat used to open. `npm install` runs on
   # start (cached in the named volume after the first time); next dev serves on
