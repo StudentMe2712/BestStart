@@ -56,6 +56,9 @@ services:
       - ./TODO.md:/app/project-docs/TODO.md:ro
       - ./README.md:/app/project-docs/README.md:ro
       - ./docs/STATE_CURRENT.md:/app/project-docs/STATE_CURRENT.md:ro
+      # P2.4: PROJECT_FACTS.md генерируется из кода при старте → пишется сюда (read-WRITE),
+      # затем индексируется тем же сидом. Файл-артефакт коммитится, не редактируется руками.
+      - ./PROJECT_FACTS.md:/app/project-docs/PROJECT_FACTS.md
     command: >
       sh -c "alembic upgrade head &&
              uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"

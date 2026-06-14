@@ -35,6 +35,9 @@ PAM_DOC_URL_PREFIX = "pamdoc://"
 # (имя файла внутри PROJECT_DOCS_DIR, заголовок источника). Имена плоские —
 # bind-mount кладёт и docs/STATE_CURRENT.md как STATE_CURRENT.md (см. docker-compose).
 PROJECT_DOCS: list[tuple[str, str]] = [
+    # Генерируется из кода (app/generate_project_facts.py) — точный источник правды по
+    # структуре (таблицы/миграции/роуты/провайдеры/Telegram). Должен идти первым.
+    ("PROJECT_FACTS.md", "📊 PAM facts (генерируется из кода — источник правды по структуре)"),
     ("CLAUDE.md", "📖 PAM docs: CLAUDE.md (архитектура, таблицы, источник правды)"),
     ("PROJECT_OVERVIEW.md", "📖 PAM docs: обзор проекта"),
     ("ORCHESTRATOR.md", "📖 PAM docs: оркестратор и приоритеты продукта"),

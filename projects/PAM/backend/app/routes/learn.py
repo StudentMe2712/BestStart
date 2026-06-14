@@ -157,6 +157,7 @@ async def reindex_project_docs(
     from pathlib import Path
 
     from ..config import settings
+    from ..generate_project_facts import regenerate
     from ..project_docs import seed_project_docs
 
     docs_dir = Path(settings.PROJECT_DOCS_DIR)
@@ -164,7 +165,34 @@ async def reindex_project_docs(
         raise HTTPException(
             status_code=404, detail=f"project docs dir not mounted: {docs_dir}"
         )
+    regenerate(docs_dir)  # P2.4: освежить PROJECT_FACTS.md из кода перед сидом
     return await seed_project_docs(session, docs_dir, force=force)
+
+
+@router.post("/project-facts/regenerate")
+async def regenerate_project_facts(
+    force: bool = True,
+    session: AsyncSession = Depends(get_session),
+) -> dict:
+    """Сгенерировать PROJECT_FACTS.md из кода и (пере)залить в Project Knowledge (P2.4).
+
+    Файл строится интроспекцией кода (таблицы/миграции/роуты/провайдеры/Telegram) — не
+    редактируется руками. 404 если каталог доков не примонтирован.
+    """
+    from pathlib import Path
+
+    from ..config import settings
+    from ..generate_project_facts import regenerate
+    from ..project_docs import seed_project_docs
+
+    docs_dir = Path(settings.PROJECT_DOCS_DIR)
+    if not docs_dir.is_dir():
+        raise HTTPException(
+            status_code=404, detail=f"project docs dir not mounted: {docs_dir}"
+        )
+    target = regenerate(docs_dir)
+    seeded = await seed_project_docs(session, docs_dir, force=force)
+    return {"generated": str(target) if target else None, "seed": seeded}
 
 
 @router.post("/remember", response_model=ContentSourceOut)

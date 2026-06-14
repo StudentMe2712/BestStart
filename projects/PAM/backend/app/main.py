@@ -65,11 +65,13 @@ async def _seed_docs_once() -> None:
     try:
         from pathlib import Path
 
+        from .generate_project_facts import regenerate
         from .project_docs import seed_project_docs
 
         docs_dir = Path(settings.PROJECT_DOCS_DIR)
         if not docs_dir.is_dir():
             return
+        regenerate(docs_dir)  # P2.4: освежить PROJECT_FACTS.md из кода перед ingest
         async with AsyncSessionLocal() as session:
             await seed_project_docs(session, docs_dir)
     except Exception as e:  # noqa: BLE001 — сид не на критическом пути старта
