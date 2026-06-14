@@ -55,11 +55,16 @@ services:
   # ── Telegram bot (capture + /ask chat) ────────────────────────────────────
   # Отдельный процесс рядом с backend: long polling, без вебхука/домена. Ходит в
   # backend ПО COMPOSE-СЕТИ (BACKEND_URL=http://backend:8000), а не на localhost.
-  # Токен и allow-list — из backend/.env. aiogram ставится из pyproject при сборке
-  # (та же Dockerfile, что и у backend). Запуск только если задан токен — иначе
-  # процесс упадёт с понятным сообщением и compose будет его рестартить; чтобы бот
-  # не поднимался вовсе, удали/закомментируй этот сервис.
+  # Токен и allow-list — из backend/.env. aiogram ставится из pyproject при сборке.
+  #
+  # SINGLE-INSTANCE: бот вынесен в compose-профиль `bot`, поэтому обычный
+  # `docker compose up -d` его НЕ поднимает (предотвращает случайный второй
+  # инстанс после git pull на другой машине). Запуск только явно:
+  #     docker compose --profile bot up -d
+  # Второй guard — runtime: бот поллит, лишь если TELEGRAM_BOT_OWNER=true в
+  # backend/.env этой машины (per-machine, gitignored). См. docs/DEPLOYMENT.md.
   bot:
+    profiles: ["bot"]
     build:
       context: ./backend
       dockerfile: Dockerfile

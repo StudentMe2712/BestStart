@@ -224,6 +224,18 @@ async def main() -> None:
         raise SystemExit("TELEGRAM_BOT_TOKEN не задан (backend/.env).")
     if not settings.TELEGRAM_ALLOWED_USER_ID:
         raise SystemExit("TELEGRAM_ALLOWED_USER_ID не задан (backend/.env) — бот никого не пустит.")
+    # Single-instance guard: на машине-НЕ-владельце не запускаем polling вообще
+    # (две машины с одним токеном → Telegram 409 Conflict, рваная доставка). Контейнер
+    # остаётся «up», но простаивает — никакого getUpdates. Включить тут: задать
+    # TELEGRAM_BOT_OWNER=true в backend/.env (ТОЛЬКО на одной машине).
+    if not settings.TELEGRAM_BOT_OWNER:
+        log.warning(
+            "TELEGRAM_BOT_OWNER != true → эта машина НЕ владелец бота; polling отключён "
+            "(idle). Чтобы запускать бота здесь, задайте TELEGRAM_BOT_OWNER=true в "
+            "backend/.env — но ТОЛЬКО на одной машине одновременно."
+        )
+        await asyncio.Event().wait()  # блокируемся навсегда, не открывая getUpdates
+        return
     from aiogram import Bot
 
     bot = Bot(settings.TELEGRAM_BOT_TOKEN)

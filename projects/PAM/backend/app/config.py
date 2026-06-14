@@ -44,6 +44,12 @@ class Settings(BaseSettings):
     TELEGRAM_BOT_TOKEN: str = ""
     TELEGRAM_ALLOWED_USER_ID: int = 0  # 0 = никого не пускать (защита по умолчанию)
     BACKEND_URL: str = "http://localhost:8000"
+    # Single-instance guard: long polling Telegram допускает ТОЛЬКО один активный
+    # getUpdates на токен. Эта машина опрашивает бота, лишь если она «владелец».
+    # Флаг живёт в per-machine `backend/.env` (gitignored) → git pull его не несёт,
+    # поэтому на второй машине бот по умолчанию НЕ поллит (idle). True — только на
+    # ОДНОЙ (основной) машине.
+    TELEGRAM_BOT_OWNER: bool = False
 
     @property
     def cors_origins_list(self) -> list[str]:

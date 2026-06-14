@@ -45,7 +45,8 @@ All commands assume CWD = `Desktop\Pam\` unless noted.
 ### Backend + DB (Docker)
 
 ```bash
-docker compose up -d                                # starts Postgres + backend (alembic upgrade head runs automatically)
+docker compose up -d                                # db + backend + web + extension (NOT the bot)
+docker compose --profile bot up -d                  # + Telegram bot (only on the OWNER machine)
 docker compose logs -f backend                      # tail backend logs
 docker compose down                                 # stop
 docker compose exec db psql -U pam pam              # psql shell
