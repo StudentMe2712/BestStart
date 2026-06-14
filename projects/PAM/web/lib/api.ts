@@ -665,6 +665,23 @@ export interface StatsHealth {
   }
 }
 
+/** Memory Health — качество самой памяти (memory_items), отдельно от system health. */
+export interface StatsMemoryHealth {
+  score: number
+  label: "good" | "ok" | "poor" | "empty"
+  total_items: number
+  components: {
+    summary: number
+    tags: number
+    project: number
+    linked: number
+    importance: number
+    retrieval: number
+    content: number
+  }
+  weak_spots: string[]
+}
+
 export interface Stats {
   days: number
   memory: StatsMemory
@@ -672,6 +689,7 @@ export interface Stats {
   facts: StatsFacts
   events: StatsEvents
   health: StatsHealth
+  memory_health: StatsMemoryHealth
 }
 
 export async function getStats(days = 7): Promise<Stats> {
@@ -679,6 +697,73 @@ export async function getStats(days = 7): Promise<Stats> {
     cache: "no-store"
   })
   if (!r.ok) throw new Error(`stats failed: ${r.status}`)
+  return r.json()
+}
+
+// ---- Timeline (GET /timeline) + projects (для фильтра) ----
+
+export interface TimelineRelated {
+  relation: string
+  kind: string
+  id: string
+  title: string | null
+}
+
+export type TimelineEntity =
+  | "memory_item"
+  | "conversation"
+  | "material"
+  | "course"
+  | "fact"
+  | "link"
+
+export interface TimelineItem {
+  timestamp: string
+  entity_type: TimelineEntity
+  subtype: string | null
+  title: string | null
+  summary: string | null
+  source: string | null
+  project_id: string | null
+  ref_id: string
+  related: TimelineRelated[]
+}
+
+export async function getTimeline(opts?: {
+  projectId?: string
+  entityType?: string
+  source?: string
+  from?: string
+  to?: string
+  limit?: number
+  offset?: number
+}): Promise<TimelineItem[]> {
+  const p = new URLSearchParams()
+  if (opts?.projectId) p.set("project_id", opts.projectId)
+  if (opts?.entityType) p.set("entity_type", opts.entityType)
+  if (opts?.source) p.set("source", opts.source)
+  if (opts?.from) p.set("from", opts.from)
+  if (opts?.to) p.set("to", opts.to)
+  p.set("limit", String(opts?.limit ?? 50))
+  if (opts?.offset) p.set("offset", String(opts.offset))
+  const r = await fetch(`${BACKEND_URL}/timeline?${p}`, { cache: "no-store" })
+  if (!r.ok) throw new Error(`timeline failed: ${r.status}`)
+  return r.json()
+}
+
+export interface Project {
+  id: string
+  name: string
+  description: string | null
+  status: string
+  items_count?: number
+  conversations_count?: number
+  materials_count?: number
+}
+
+export async function listProjects(): Promise<Project[]> {
+  const r = await fetch(`${BACKEND_URL}/projects`, { cache: "no-store" })
+  if (!r.ok) throw new Error(`projects failed: ${r.status}`)
   return r.json()
 }
 

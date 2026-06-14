@@ -322,3 +322,26 @@ class RecallOut(BaseModel):
     query: str
     answer: str | None  # синтез LLM (None, если synthesize=false или нет элементов)
     items: list[MemoryItemOut]
+
+
+# ---- Timeline (P2.3) — read-only производный поток событий памяти ----
+
+class TimelineRelated(BaseModel):
+    """Связанный элемент (для memory_item/link-записей таймлайна)."""
+
+    relation: str
+    kind: str
+    id: uuid.UUID
+    title: str | None = None
+
+
+class TimelineItem(BaseModel):
+    timestamp: datetime
+    entity_type: str            # memory_item|conversation|material|course|fact|link
+    subtype: str | None = None  # item_type / kind / conv source / category / relation
+    title: str | None = None
+    summary: str | None = None
+    source: str | None = None
+    project_id: uuid.UUID | None = None
+    ref_id: uuid.UUID           # id сущности для перехода к деталям
+    related: list[TimelineRelated] = Field(default_factory=list)

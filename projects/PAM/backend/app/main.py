@@ -24,6 +24,7 @@ from .routes import (
     saved,
     search,
     stats,
+    timeline,
 )
 
 logging.basicConfig(
@@ -106,6 +107,7 @@ app.include_router(learn.router)
 app.include_router(stats.router)
 app.include_router(projects.router)
 app.include_router(memory.router)
+app.include_router(timeline.router)
 
 
 @app.get("/")

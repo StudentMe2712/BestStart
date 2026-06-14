@@ -148,6 +148,11 @@ async def apply_tags(item_id: uuid.UUID, *, override_type: bool = True) -> None:
         elif not item.tags:
             item.tags = result["tags"]
         await session.commit()
+    # Авто-связи после тегирования: tags/summary/type уже заполнены → лучше кандидаты.
+    # Ленивый импорт рвёт цикл tagging→linking→routes.memory→tagging.
+    from .linking import schedule_autolink
+
+    schedule_autolink(item_id)
 
 
 # Фоновые задачи теггера — держим ссылки, чтобы их не собрал GC.

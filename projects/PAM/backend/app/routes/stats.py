@@ -9,19 +9,23 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, Query
-from sqlalchemy import func, select
+from sqlalchemy import and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..db import get_session
 from ..metrics import record_event
 from ..models import (
     FACT_STATUSES,
+    LINK_KIND_ITEM,
+    MEMORY_ACTIVE,
     Chunk,
     ContentChunk,
     ContentSource,
     Conversation,
     Course,
     Event,
+    MemoryItem,
+    MemoryLink,
     Message,
     ProfileFact,
 )
@@ -29,8 +33,50 @@ from ..schemas import CaptureFailedIn
 
 router = APIRouter(prefix="/stats", tags=["stats"])
 
-# Веса компонент Memory Health Score (в сумме 1.0).
+# Веса компонент СИСТЕМНОГО health (наблюдаемость; в сумме 1.0). НЕ путать с
+# memory_health ниже — это про работу провайдеров/индексации/ревью, а не про
+# качество самой памяти.
 HEALTH_WEIGHTS = {"capture": 0.35, "indexing": 0.25, "review": 0.20, "stability": 0.20}
+
+# ── Memory Health — отдельная метрика КАЧЕСТВА памяти (memory_items) ──────────
+# Насколько память заполнена/связана/пригодна к retrieval, а не зашумлена.
+# Веса в сумме 1.0; связи и retrieval весят больше (новая ценность P2.x).
+MEMORY_HEALTH_WEIGHTS = {
+    "summary": 0.15, "tags": 0.15, "project": 0.10, "linked": 0.20,
+    "importance": 0.10, "retrieval": 0.20, "content": 0.10,
+}
+IMPORTANCE_OK = 3              # importance >= порога = «не мелочь»
+WEAK_SPOT_THRESHOLD = 60      # компонент ниже → попадает в «слабые места»
+MEMORY_HEALTH_WEAK_LABELS = {
+    "summary": "много items без summary",
+    "tags": "много items без тегов",
+    "project": "часть items без проекта",
+    "linked": "мало связей между items",
+    "importance": "много items низкой важности",
+    "retrieval": "низкое покрытие retrieval",
+    "content": "есть items с пустым content",
+}
+
+
+def compute_memory_health(components: dict[str, int]) -> int:
+    """Взвешенный composite 0..100 из компонент качества памяти."""
+    return round(sum(components[k] * w for k, w in MEMORY_HEALTH_WEIGHTS.items()))
+
+
+def memory_health_label(score: int, total_items: int) -> str:
+    """Метка качества памяти. Пустая память — НЕ «здорова» (отдельный label)."""
+    if total_items == 0:
+        return "empty"
+    return "good" if score >= 80 else "ok" if score >= 50 else "poor"
+
+
+def memory_health_weak_spots(components: dict[str, int]) -> list[str]:
+    """Человекочитаемые слабые места — компоненты ниже порога."""
+    return [
+        MEMORY_HEALTH_WEAK_LABELS[k]
+        for k in MEMORY_HEALTH_WEIGHTS
+        if components.get(k, 0) < WEAK_SPOT_THRESHOLD
+    ]
 
 
 def _pct(part: int, whole: int) -> int:
@@ -208,6 +254,68 @@ async def get_stats(
     }
     health_score = compute_health(components)
 
+    # --- Memory Health: качество памяти (memory_items, active) ---
+    active = MemoryItem.status == MEMORY_ACTIVE
+    content_ok = func.length(func.btrim(MemoryItem.content)) > 0
+    mi_total = await _count(
+        session, select(func.count()).select_from(MemoryItem).where(active)
+    )
+    if mi_total:
+        async def _mi(*conds) -> int:
+            return await _count(
+                session,
+                select(func.count()).select_from(MemoryItem).where(active, *conds),
+            )
+
+        link_exists = (
+            select(MemoryLink.id)
+            .where(
+                or_(
+                    and_(
+                        MemoryLink.source_kind == LINK_KIND_ITEM,
+                        MemoryLink.source_id == MemoryItem.id,
+                    ),
+                    and_(
+                        MemoryLink.target_kind == LINK_KIND_ITEM,
+                        MemoryLink.target_id == MemoryItem.id,
+                    ),
+                )
+            )
+            .exists()
+        )
+        mi = {
+            "summary": _pct(
+                await _mi(
+                    MemoryItem.summary.is_not(None),
+                    func.length(func.btrim(MemoryItem.summary)) > 0,
+                ),
+                mi_total,
+            ),
+            "tags": _pct(
+                await _mi(func.jsonb_array_length(MemoryItem.tags) > 0), mi_total
+            ),
+            "project": _pct(await _mi(MemoryItem.project_id.is_not(None)), mi_total),
+            "linked": _pct(await _mi(link_exists), mi_total),
+            "importance": _pct(
+                await _mi(MemoryItem.importance >= IMPORTANCE_OK), mi_total
+            ),
+            "retrieval": _pct(
+                await _mi(MemoryItem.content_tsv.is_not(None), content_ok), mi_total
+            ),
+            "content": _pct(await _mi(content_ok), mi_total),
+        }
+        mh_score = compute_memory_health(mi)
+    else:
+        mi = {k: 0 for k in MEMORY_HEALTH_WEIGHTS}
+        mh_score = 0
+    memory_health = {
+        "score": mh_score,
+        "label": memory_health_label(mh_score, mi_total),
+        "total_items": mi_total,
+        "components": mi,
+        "weak_spots": memory_health_weak_spots(mi) if mi_total else [],
+    }
+
     return {
         "days": days,
         "memory": {
@@ -242,4 +350,5 @@ async def get_stats(
             "label": health_label(health_score),
             "components": components,
         },
+        "memory_health": memory_health,
     }

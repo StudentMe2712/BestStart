@@ -2,7 +2,12 @@
 
 import { useEffect, useState } from "react"
 
-import { getStats, type Stats, type StatsHealth } from "../../lib/api"
+import {
+  getStats,
+  type Stats,
+  type StatsHealth,
+  type StatsMemoryHealth
+} from "../../lib/api"
 import { getCache, setCache } from "../../lib/cache"
 import RefreshButton from "../refresh-button"
 
@@ -57,6 +62,7 @@ export default function DiagPage() {
       ) : (
         <>
           <HealthHero health={stats.health} />
+          <MemoryHealthHero mh={stats.memory_health} />
           <div className="grid gap-6 lg:grid-cols-2">
             <MemorySection memory={stats.memory} />
             <LecturerSection lecturer={stats.lecturer} />
@@ -144,6 +150,89 @@ function HealthBar({ label, value }: { label: string; value: number }) {
         />
       </div>
     </div>
+  )
+}
+
+// ── Качество памяти (Memory Health — отдельно от system health) ────────────
+
+const MH_LABEL: Record<StatsMemoryHealth["label"], string> = {
+  good: "в норме",
+  ok: "удовлетворительно",
+  poor: "требует внимания",
+  empty: "пусто"
+}
+
+const MH_TONE: Record<StatsMemoryHealth["label"], Tone> = {
+  good: "lime",
+  ok: "amber",
+  poor: "red",
+  empty: "muted"
+}
+
+const MH_COMPONENTS: Array<[keyof StatsMemoryHealth["components"], string]> = [
+  ["summary", "Summary"],
+  ["tags", "Теги"],
+  ["project", "Проект"],
+  ["linked", "Связи"],
+  ["importance", "Важность"],
+  ["retrieval", "Retrieval"],
+  ["content", "Контент"]
+]
+
+function MemoryHealthHero({ mh }: { mh: StatsMemoryHealth }) {
+  const tone = MH_TONE[mh.label]
+  return (
+    <section className="border border-neutral-800 rounded-sm p-5 mb-6">
+      <div className="flex items-end justify-between gap-4 flex-wrap mb-5">
+        <div>
+          <div className="text-[11px] uppercase tracking-widest text-neutral-500 mb-2">
+            Качество памяти
+          </div>
+          <div className="flex items-baseline gap-3">
+            <span
+              className={`text-5xl font-semibold tabular-nums ${TONE_TEXT[tone]}`}>
+              {mh.score}
+            </span>
+            <span className={`text-sm font-sans ${TONE_TEXT[tone]}`}>
+              {MH_LABEL[mh.label]}
+            </span>
+            <span className="text-xs text-neutral-600 font-sans tabular-nums">
+              {mh.total_items.toLocaleString("ru")} элем.
+            </span>
+          </div>
+        </div>
+      </div>
+      {mh.total_items === 0 ? (
+        <p className="text-neutral-600 text-sm font-sans">
+          Память пуста — добавьте заметки (Telegram, файлы, чат), и здесь появится
+          оценка её качества.
+        </p>
+      ) : (
+        <>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {MH_COMPONENTS.map(([k, label]) => (
+              <HealthBar key={k} label={label} value={mh.components[k]} />
+            ))}
+          </div>
+          {mh.weak_spots.length > 0 && (
+            <div className="mt-4">
+              <div className="text-[11px] uppercase tracking-wider text-neutral-600 mb-2">
+                Слабые места
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {mh.weak_spots.map((w, i) => (
+                  <span
+                    key={i}
+                    className="text-[11px] font-sans px-2 py-0.5 rounded border border-amber-400/30 bg-amber-400/10 text-amber-400">
+                    {w}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+        </>
+      )}
+    </section>
   )
 }
 

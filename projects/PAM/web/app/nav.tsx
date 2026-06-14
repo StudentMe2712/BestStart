@@ -10,6 +10,7 @@ export default function Nav() {
   const onHistory = pathname === "/history" || pathname.startsWith("/c/")
   const onSaved = pathname === "/saved"
   const onLearn = pathname === "/learn"
+  const onTimeline = pathname === "/timeline"
   const onDiag = pathname === "/diag"
   const onCatalog = pathname === "/catalog"
 
@@ -43,6 +44,9 @@ export default function Nav() {
           </Tab>
           <Tab href="/learn" active={onLearn}>
             Лектор
+          </Tab>
+          <Tab href="/timeline" active={onTimeline}>
+            Хронология
           </Tab>
           <Tab href="/diag" active={onDiag}>
             Диагностика

@@ -317,6 +317,17 @@ async def patch_item(
         await _tsv_update(session, item.id)
     await session.commit()
     await session.refresh(item)
+    # Пересчёт авто-связей, если изменились сигналы (content/tags/type/project).
+    relink = (
+        content_changed
+        or payload.tags is not None
+        or payload.item_type is not None
+        or payload.project_id is not None
+    )
+    if relink and item.status == MEMORY_ACTIVE:
+        from ..linking import schedule_autolink  # ленивый импорт рвёт цикл
+
+        schedule_autolink(item.id)
     return MemoryItemOut.model_validate(item)
 
 
