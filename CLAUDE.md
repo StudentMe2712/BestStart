@@ -29,7 +29,8 @@ start/
 │   └── <your projects>  # each has .claude/ + CLAUDE.md + LESSONS.md
 ├── scripts/
 │   ├── new-project.ps1  # scaffold a project + copy chosen tools
-│   └── add-tools.ps1    # add more tools to an existing project
+│   ├── add-tools.ps1    # add more tools to an existing project
+│   └── install-global.ps1  # install curated core (orchestrator + core cmds) into ~/.claude/
 └── _sources/            # raw upstream clones (provenance; gitignored, deletable)
 ```
 
@@ -39,6 +40,21 @@ start/
 ./scripts/new-project.ps1 -Name myapp -Preset lean       # minimal, add per task
 ./scripts/new-project.ps1 -Name shop -Template vibe -Mcp starter -Preset lean
 ```
+
+## Global install (per-PC, optional)
+To make the **orchestrator + the tool-selection gate** available in **any** folder on a PC
+(not just under `start/`), run once per machine after cloning:
+```powershell
+./scripts/install-global.ps1
+```
+It installs a **curated core** into `~/.claude/`: the generic orchestrator
+(`rules/orchestrator.md` + a managed block in `~/.claude/CLAUDE.md`) and the three core
+commands (`start-task` / `add-tools` / `lesson`), plus a `skeleton-root` marker so the gate
+can reach this `library/` from anywhere. The 600+ catalog is **not** copied globally — it
+stays here and is pulled per-project by the gate (that's the point of `add-tools.ps1`).
+`~/.claude/` is outside this repo, so `git pull` does **not** update it — re-run the script
+after pulling. Project-specific orchestration (e.g. `projects/PAM/ORCHESTRATOR.md`) stays
+in the project and layers on top of the generic one.
 
 ## 🤖 Autonomous workflow (the owner's standing instructions)
 The owner uses this repo as a launcher: they open the root, write a prompt (or drop a `.md`),
