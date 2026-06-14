@@ -700,7 +700,7 @@ export async function streamChat(
       conversation_id: conversationId,
       attachments: attachments && attachments.length ? attachments : undefined,
       use_memory: ctx ? ctx.memory : true,
-      use_materials: ctx ? ctx.materials : false,
+      use_materials: ctx ? ctx.materials : true,
       use_courses: ctx ? ctx.courses : false,
       use_saved: ctx ? ctx.saved : false,
       multimodal: multimodal || undefined

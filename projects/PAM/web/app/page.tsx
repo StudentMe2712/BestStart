@@ -55,7 +55,7 @@ export default function ChatPage() {
   const [attachments, setAttachments] = useState<Attach[]>([])
   // Контекстные переключатели ввода (UI-уровень; на бэкенд пока не уходят).
   const [useMemory, setUseMemory] = useState(true)
-  const [ctxMaterials, setCtxMaterials] = useState(false)
+  const [ctxMaterials, setCtxMaterials] = useState(true)
   const [ctxCourses, setCtxCourses] = useState(false)
   const [ctxSaved, setCtxSaved] = useState(false)
   // True-multimodal: приложенную картинку отправить прямо в vision-модель.

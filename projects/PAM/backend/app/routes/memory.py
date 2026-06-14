@@ -12,7 +12,7 @@ import re
 import uuid
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
-from sqlalchemy import func, or_, select, update
+from sqlalchemy import and_, func, or_, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -21,6 +21,7 @@ from ..db import get_session
 from ..llm import complete
 from ..models import (
     ITEM_TYPES,
+    LINK_KIND_ITEM,
     LINK_KINDS,
     MEMORY_ACTIVE,
     MEMORY_STATUSES,
@@ -66,6 +67,112 @@ async def _get_item(session: AsyncSession, item_id: uuid.UUID) -> MemoryItem:
     if item is None:
         raise HTTPException(status_code=404, detail="Memory item not found")
     return item
+
+
+# ── reusable retrieval (recall + chat memory) ───────────────────────────────
+# Единый источник правды для НЕ-векторного поиска по memory_items: полнотекст
+# (content_tsv, словарь simple) ∪ совпадение тега с токеном запроса, importance в
+# сортировке, мягкий ILIKE-фолбэк. Работает без Ollama. Использует и `/recall`, и
+# память чата (`routes/chat.py`).
+
+async def search_memory_items(
+    session: AsyncSession,
+    query: str,
+    *,
+    project_id: uuid.UUID | None = None,
+    status: str = MEMORY_ACTIVE,
+    limit: int = 10,
+) -> list[MemoryItem]:
+    """Найти memory_items по запросу (full-text ∪ теги, importance-boost, ILIKE-fallback)."""
+    q = (query or "").strip()
+    if not q:
+        return []
+    tsq = func.plainto_tsquery("simple", q)
+    tokens = [t.lower() for t in re.findall(r"\w+", q, flags=re.UNICODE) if len(t) >= 3][:8]
+    match = [MemoryItem.content_tsv.op("@@")(tsq)]
+    match += [MemoryItem.tags.contains([tok]) for tok in tokens]
+    stmt = select(MemoryItem).where(MemoryItem.status == status, or_(*match))
+    if project_id is not None:
+        stmt = stmt.where(MemoryItem.project_id == project_id)
+    stmt = stmt.order_by(
+        func.ts_rank(MemoryItem.content_tsv, tsq).desc(),
+        MemoryItem.importance.desc(),
+        MemoryItem.created_at.desc(),
+    ).limit(limit)
+    rows = list((await session.execute(stmt)).scalars().all())
+    if rows:
+        return rows
+    # Фолбэк: мягкий ILIKE по содержимому/заголовку (морфология без стемминга).
+    like = f"%{q}%"
+    fb = select(MemoryItem).where(
+        MemoryItem.status == status,
+        or_(MemoryItem.content.ilike(like), MemoryItem.title.ilike(like)),
+    )
+    if project_id is not None:
+        fb = fb.where(MemoryItem.project_id == project_id)
+    fb = fb.order_by(MemoryItem.importance.desc(), MemoryItem.created_at.desc()).limit(limit)
+    return list((await session.execute(fb)).scalars().all())
+
+
+async def expand_memory_links(
+    session: AsyncSession,
+    item_ids: list[uuid.UUID],
+    *,
+    limit: int = 3,
+    status: str = MEMORY_ACTIVE,
+) -> list[tuple[MemoryItem, str]]:
+    """Один переход по memory_links к связанным memory_items (обе стороны связи).
+
+    Возвращает (item, relation) для активных элементов, ещё НЕ входящих в `item_ids`.
+    Ровно один уровень — без рекурсии и без построения графа.
+    """
+    if not item_ids:
+        return []
+    ids = set(item_ids)
+    links = (
+        await session.execute(
+            select(MemoryLink).where(
+                or_(
+                    and_(
+                        MemoryLink.source_kind == LINK_KIND_ITEM,
+                        MemoryLink.source_id.in_(ids),
+                    ),
+                    and_(
+                        MemoryLink.target_kind == LINK_KIND_ITEM,
+                        MemoryLink.target_id.in_(ids),
+                    ),
+                )
+            )
+        )
+    ).scalars().all()
+    # Противоположный конец каждой связи (только memory_item, не наш исходный набор).
+    neighbor_rel: dict[uuid.UUID, str] = {}
+    for ln in links:
+        if (
+            ln.source_kind == LINK_KIND_ITEM
+            and ln.source_id in ids
+            and ln.target_kind == LINK_KIND_ITEM
+            and ln.target_id not in ids
+        ):
+            neighbor_rel.setdefault(ln.target_id, ln.relation)
+        if (
+            ln.target_kind == LINK_KIND_ITEM
+            and ln.target_id in ids
+            and ln.source_kind == LINK_KIND_ITEM
+            and ln.source_id not in ids
+        ):
+            neighbor_rel.setdefault(ln.source_id, ln.relation)
+    if not neighbor_rel:
+        return []
+    items = (
+        await session.execute(
+            select(MemoryItem).where(
+                MemoryItem.id.in_(list(neighbor_rel.keys())),
+                MemoryItem.status == status,
+            )
+        )
+    ).scalars().all()
+    return [(it, neighbor_rel.get(it.id, "related_to")) for it in items][:limit]
 
 
 # ── memory items ───────────────────────────────────────────────────────────
@@ -306,40 +413,9 @@ async def recall(
     ответа LLM поверх найденных элементов. Векторный RAG по разговорам/материалам
     остаётся в `/chat` и здесь не дублируется."""
     q = payload.query.strip()
-    tsq = func.plainto_tsquery("simple", q)
-    # Полнотекст (content_tsv) ИЛИ совпадение тега с любым токеном запроса
-    # (решение P2: «full-text + теги»). Словарь simple без стемминга — теги
-    # компенсируют морфологию (фаервол/фаервола и т.п.).
-    tokens = [t.lower() for t in re.findall(r"\w+", q, flags=re.UNICODE) if len(t) >= 3][:8]
-    match = [MemoryItem.content_tsv.op("@@")(tsq)]
-    match += [MemoryItem.tags.contains([tok]) for tok in tokens]
-    stmt = select(MemoryItem).where(
-        MemoryItem.status == MEMORY_ACTIVE,
-        or_(*match),
+    rows = await search_memory_items(
+        session, q, project_id=payload.project_id, limit=payload.limit
     )
-    if payload.project_id is not None:
-        stmt = stmt.where(MemoryItem.project_id == payload.project_id)
-    stmt = stmt.order_by(
-        func.ts_rank(MemoryItem.content_tsv, tsq).desc(),
-        MemoryItem.importance.desc(),
-        MemoryItem.created_at.desc(),
-    ).limit(payload.limit)
-    rows = (await session.execute(stmt)).scalars().all()
-
-    # Фолбэк: если полнотекст ничего не дал — мягкий ILIKE по содержимому/заголовку.
-    if not rows:
-        like = f"%{q}%"
-        fb = select(MemoryItem).where(
-            MemoryItem.status == MEMORY_ACTIVE,
-            or_(MemoryItem.content.ilike(like), MemoryItem.title.ilike(like)),
-        )
-        if payload.project_id is not None:
-            fb = fb.where(MemoryItem.project_id == payload.project_id)
-        fb = fb.order_by(MemoryItem.importance.desc(), MemoryItem.created_at.desc()).limit(
-            payload.limit
-        )
-        rows = (await session.execute(fb)).scalars().all()
-
     items = [MemoryItemOut.model_validate(r) for r in rows]
 
     answer: str | None = None
