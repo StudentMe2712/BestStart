@@ -51,6 +51,11 @@ class Settings(BaseSettings):
     # ОДНОЙ (основной) машине.
     TELEGRAM_BOT_OWNER: bool = False
 
+    # Project Knowledge — каталог с документацией проекта, монтируется read-only в
+    # backend (docker-compose). Сид (app/project_docs.py) индексирует доки как обычные
+    # материалы. Если каталога нет (не примонтирован) — сид тихо пропускается.
+    PROJECT_DOCS_DIR: str = "/app/project-docs"
+
     @property
     def cors_origins_list(self) -> list[str]:
         return [o.strip() for o in self.CORS_ORIGINS.split(",") if o.strip()]

@@ -143,6 +143,30 @@ async def add_text(
     return src
 
 
+@router.post("/project-docs/reindex")
+async def reindex_project_docs(
+    force: bool = True,
+    session: AsyncSession = Depends(get_session),
+) -> dict:
+    """Re-index PAM's own documentation into memory (Project Knowledge).
+
+    Idempotent; `force=true` (default) re-ingests even unchanged docs. 404 if the docs
+    dir isn't mounted into the backend container. Реюз обычного pipeline материалов —
+    никакого второго RAG/таблицы (см. app/project_docs.py).
+    """
+    from pathlib import Path
+
+    from ..config import settings
+    from ..project_docs import seed_project_docs
+
+    docs_dir = Path(settings.PROJECT_DOCS_DIR)
+    if not docs_dir.is_dir():
+        raise HTTPException(
+            status_code=404, detail=f"project docs dir not mounted: {docs_dir}"
+        )
+    return await seed_project_docs(session, docs_dir, force=force)
+
+
 @router.post("/remember", response_model=ContentSourceOut)
 async def remember(
     payload: RememberIn,

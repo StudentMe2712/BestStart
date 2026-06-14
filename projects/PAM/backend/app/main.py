@@ -56,17 +56,40 @@ async def _embed_worker() -> None:
         await asyncio.sleep(15)
 
 
+async def _seed_docs_once() -> None:
+    """Best-effort: index PAM's own docs into memory on startup (Project Knowledge).
+
+    Idempotent (skips unchanged docs). Never blocks or fails startup; if the docs dir
+    isn't mounted, silently does nothing. See `project_docs.seed_project_docs`.
+    """
+    try:
+        from pathlib import Path
+
+        from .project_docs import seed_project_docs
+
+        docs_dir = Path(settings.PROJECT_DOCS_DIR)
+        if not docs_dir.is_dir():
+            return
+        async with AsyncSessionLocal() as session:
+            await seed_project_docs(session, docs_dir)
+    except Exception as e:  # noqa: BLE001 — сид не на критическом пути старта
+        _worker_log.warning("project docs seed failed: %s", e)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     task = asyncio.create_task(_embed_worker())
+    seed_task = asyncio.create_task(_seed_docs_once())
     try:
         yield
     finally:
         task.cancel()
-        try:
-            await task
-        except asyncio.CancelledError:
-            pass
+        seed_task.cancel()
+        for t in (task, seed_task):
+            try:
+                await t
+            except asyncio.CancelledError:
+                pass
 
 
 app = FastAPI(

@@ -48,6 +48,14 @@ services:
       - ./backend/alembic.ini:/app/alembic.ini
       - ./backend/tests:/app/tests
       - ./backend/pyproject.toml:/app/pyproject.toml
+      # Project Knowledge: курируемые доки проекта read-only → сид индексирует их как
+      # обычные материалы (app/project_docs.py). Имена внутри контейнера плоские.
+      - ./CLAUDE.md:/app/project-docs/CLAUDE.md:ro
+      - ./PROJECT_OVERVIEW.md:/app/project-docs/PROJECT_OVERVIEW.md:ro
+      - ./ORCHESTRATOR.md:/app/project-docs/ORCHESTRATOR.md:ro
+      - ./TODO.md:/app/project-docs/TODO.md:ro
+      - ./README.md:/app/project-docs/README.md:ro
+      - ./docs/STATE_CURRENT.md:/app/project-docs/STATE_CURRENT.md:ro
     command: >
       sh -c "alembic upgrade head &&
              uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"

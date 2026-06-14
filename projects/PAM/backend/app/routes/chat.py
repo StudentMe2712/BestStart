@@ -164,8 +164,8 @@ def _sse(obj: dict) -> bytes:
 # конкурентно (одна AsyncSession не потокобезопасна для параллельных запросов).
 # Это сокращает время до первого токена. Все retriever'ы возвращают
 # list[SimpleNamespace(content, title, source, d[, key])], d меньше = релевантнее;
-# `key` — стабильный id для дедупа в project-first. Разговоры — вектор со строгим
-# текстовым fallback; Материалы — вектор; Избранное/Курсы — полнотекст.
+# `key` — стабильный id для дедупа в project-first. Разговоры и Материалы — вектор со
+# строгим текстовым fallback; Избранное/Курсы — полнотекст.
 TEXT_HIT_LIMIT = 3
 
 
@@ -256,6 +256,44 @@ async def _retrieve_content(qvec, k: int, *, project_id=None):
     ]
 
 
+async def _retrieve_content_text(query: str, k: int, *, project_id=None):
+    """Top-k материалов полнотекстом — строгий fallback, когда вектор недоступен/пуст.
+
+    Зеркало `_retrieve_messages_text` для материалов Лектора: OR-запрос по значимым
+    токенам (а не websearch AND по всем словам), релевантность через ts_rank, словарь
+    simple. tsvector считается на лету (как в `_retrieve_saved`/`_retrieve_courses`) —
+    отдельной хранимой колонки у content_chunks нет. Делает материалы (в т.ч.
+    документацию проекта) доступными в Unified Retrieval даже без Ollama.
+    """
+    tokens = [t.lower() for t in re.findall(r"\w+", query, flags=re.UNICODE) if len(t) >= 3][:10]
+    if not tokens:
+        return []
+    tsv = func.to_tsvector("simple", ContentChunk.content)
+    tsq = func.to_tsquery("simple", " | ".join(tokens))
+    rank = func.ts_rank(tsv, tsq)
+    stmt = (
+        select(
+            ContentChunk.content, ContentSource.title, ContentSource.kind,
+            ContentChunk.id.label("cid"), rank.label("r"),
+        )
+        .join(ContentSource, ContentSource.id == ContentChunk.source_id)
+        .where(tsv.op("@@")(tsq))
+        .order_by(rank.desc())
+        .limit(k)
+    )
+    if project_id is not None:
+        stmt = stmt.where(ContentSource.project_id == project_id)
+    async with AsyncSessionLocal() as session:
+        rows = (await session.execute(stmt)).all()
+    return [
+        SimpleNamespace(
+            content=(r.content or "")[:1500], title=r.title, source=r.kind,
+            d=1.0 - float(r.r), key=r.cid,
+        )
+        for r in rows
+    ]
+
+
 async def _project_first(fetch, k: int, project_id):
     """Project-first: записи проекта впереди, затем глобальные для добивки до k.
 
@@ -334,8 +372,8 @@ async def _retrieve(
 ):
     """Единая память: собрать контекст из выбранных источников.
 
-    Разговоры — вектор со строгим текстовым fallback (работает без Ollama).
-    Материалы — вектор. memory_items — полнотекст + 1-hop по связям (без Ollama).
+    Разговоры и материалы — вектор со строгим текстовым fallback (работает без Ollama).
+    memory_items — полнотекст + 1-hop по связям (без Ollama).
     Избранное/Курсы — полнотекст. При заданном проекте каждый источник идёт
     project-first. Возвращает .context (блок <context>) и .items (блок <memory_items>).
     Память (разговоры + memory_items) едет на флаге `memory`.
@@ -364,9 +402,13 @@ async def _retrieve(
         return await _retrieve_messages_text(query, lim, project_id=pid)
 
     async def mat_fetch(pid, lim):
-        if qvec is None:
-            return []  # материалы только векторные (текстового индекса нет)
-        return await _retrieve_content(qvec, lim, project_id=pid)
+        # Вектор — основной путь; строгий fallback на полнотекст, когда вектора нет/пусто
+        # (делает материалы, включая документацию проекта, доступными без Ollama).
+        if qvec is not None:
+            rows = await _retrieve_content(qvec, lim, project_id=pid)
+            if rows:
+                return rows
+        return await _retrieve_content_text(query, lim, project_id=pid)
 
     async def items_fetch(pid, lim):
         async with AsyncSessionLocal() as session:
