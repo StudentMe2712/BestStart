@@ -941,6 +941,41 @@ export async function draftSolutionFromConversation(
   return r.json()
 }
 
+// ---- Recall (Knowledge Hub «Спросить память») ----
+
+export interface RecallResult {
+  query: string
+  /** Синтез LLM поверх найденных элементов (null, если синтез выкл./нет элементов). */
+  answer: string | null
+  items: MemoryItem[]
+}
+
+/**
+ * POST /memory/recall — полнотекст+теги по memory_items + опциональный синтез
+ * ответа LLM поверх найденного. Один запрос → один ответ (НЕ чат). Endpoint и
+ * вся логика ретрива уже существуют (routes/memory.py) — это только клиент.
+ */
+export async function recall(
+  query: string,
+  opts?: { limit?: number; projectId?: string; synthesize?: boolean }
+): Promise<RecallResult> {
+  const r = await fetch(`${BACKEND_URL}/memory/recall`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      query,
+      limit: opts?.limit ?? 8,
+      project_id: opts?.projectId,
+      synthesize: opts?.synthesize ?? true
+    })
+  })
+  if (!r.ok) {
+    const d = await r.json().catch(() => ({}))
+    throw new Error(d.detail || `recall failed: ${r.status}`)
+  }
+  return r.json()
+}
+
 /** POST /chat and consume the SSE stream (data: {...}\n\n). */
 export async function streamChat(
   message: string,
