@@ -30,7 +30,11 @@ export const CATEGORY_LABEL: Record<string, string> = Object.fromEntries(
 )
 
 // ── Статусы ──────────────────────────────────────────────────────────────────
-export type SolutionStatus = "resolved" | "in_progress" | "unresolved"
+export type SolutionStatus =
+  | "unresolved"
+  | "in_progress"
+  | "deferred"
+  | "resolved"
 
 export interface SolutionStatusMeta {
   key: SolutionStatus
@@ -40,15 +44,17 @@ export interface SolutionStatusMeta {
   dot: string
 }
 
+// Порядок = порядок в форме: Не решено · В работе · Отложено · Решено.
 export const SOLUTION_STATUSES: SolutionStatusMeta[] = [
-  { key: "resolved", label: "Решено", text: "text-lime-400", dot: "bg-lime-400" },
+  { key: "unresolved", label: "Не решено", text: "text-red-400", dot: "bg-red-400" },
   {
     key: "in_progress",
-    label: "В процессе",
+    label: "В работе",
     text: "text-amber-400",
     dot: "bg-amber-400"
   },
-  { key: "unresolved", label: "Не решено", text: "text-red-400", dot: "bg-red-400" }
+  { key: "deferred", label: "Отложено", text: "text-sky-400", dot: "bg-sky-400" },
+  { key: "resolved", label: "Решено", text: "text-lime-400", dot: "bg-lime-400" }
 ]
 
 export const STATUS_META: Record<SolutionStatus, SolutionStatusMeta> =
@@ -72,9 +78,18 @@ export function catOf(tags: string[]): string {
 export function statusOf(tags: string[]): SolutionStatus {
   const t = (tags || []).find((x) => x.startsWith(ST_PREFIX))
   const s = t ? t.slice(ST_PREFIX.length) : ""
-  return s === "resolved" || s === "in_progress" || s === "unresolved"
+  return s === "resolved" ||
+    s === "in_progress" ||
+    s === "deferred" ||
+    s === "unresolved"
     ? s
     : "unresolved"
+}
+
+/** Теги нового решения: только статус. Категорию (cat:) и навигационные теги
+    дозаполнит AI-теггер после сохранения (см. tagging.py::_merge_ai_tags). */
+export function newSolutionTags(status: SolutionStatus): string[] {
+  return [`${ST_PREFIX}${status}`]
 }
 
 /** Свободные (навигационные) теги — без cat:/st:. */

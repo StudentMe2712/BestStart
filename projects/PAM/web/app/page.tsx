@@ -8,6 +8,7 @@ import {
   streamChat,
   uploadChatAttachment,
   rememberAttachment,
+  draftSolutionFromConversation,
   type ChatMeta,
   type ConversationSummary,
   type SourceRef
@@ -16,6 +17,7 @@ import { getCache, setCache } from "../lib/cache"
 import ChatSidebar from "./chat-sidebar"
 import HomeDashboard from "./home-dashboard"
 import Markdown from "./markdown"
+import SolutionEditor, { type SolutionDraftInit } from "./solutions/editor"
 
 interface Attach {
   id: string
@@ -60,6 +62,10 @@ export default function ChatPage() {
   const [ctxSaved, setCtxSaved] = useState(false)
   // True-multimodal: приложенную картинку отправить прямо в vision-модель.
   const [multimodal, setMultimodal] = useState(false)
+  // «Сохранить как решение»: черновик из текущего разговора (1 вызов LLM) →
+  // предзаполненный редактор решения. memory_item создаётся только по подтверждению.
+  const [drafting, setDrafting] = useState(false)
+  const [draftInit, setDraftInit] = useState<SolutionDraftInit | null>(null)
 
   const loadChats = () =>
     listConversations({ source: "pam", limit: 50 })
@@ -235,6 +241,33 @@ export default function ChatPage() {
     }
   }
 
+  // «Сохранить как решение»: явное действие пользователя. Берём ЧЕРНОВИК из
+  // существующего разговора (1 вызов LLM) и открываем редактор для проверки.
+  async function saveAsSolution() {
+    if (!convId || drafting || busy) return
+    setDrafting(true)
+    setError(null)
+    try {
+      const d = await draftSolutionFromConversation(convId)
+      setDraftInit({
+        title: d.title,
+        status: "resolved",
+        fields: {
+          problem: d.problem,
+          cause: d.cause,
+          solution: d.solution,
+          notes: d.notes
+        },
+        source: "chat",
+        sourceRef: convId
+      })
+    } catch (e) {
+      setError(String(e))
+    } finally {
+      setDrafting(false)
+    }
+  }
+
   return (
     <div className="flex h-[calc(100vh-3.5rem)]">
       <ChatSidebar
@@ -263,6 +296,17 @@ export default function ChatPage() {
             className={`mx-auto px-4 md:px-6 py-4 space-y-6 ${
               messages.length === 0 ? "max-w-[1100px]" : "max-w-3xl"
             }`}>
+            {messages.length > 0 && (
+              <div className="flex justify-end">
+                <button
+                  onClick={saveAsSolution}
+                  disabled={!convId || busy || drafting}
+                  title="Собрать черновик решения из этого разговора"
+                  className="text-xs font-sans px-3 py-1.5 rounded-lg border border-neutral-700 text-neutral-300 hover:text-lime-400 hover:border-lime-400/50 disabled:opacity-40 disabled:hover:text-neutral-300 disabled:hover:border-neutral-700 transition-colors">
+                  {drafting ? "Готовлю черновик…" : "＋ Сохранить как решение"}
+                </button>
+              </div>
+            )}
             {messages.length === 0 ? (
               <HomeDashboard chats={chats} />
             ) : (
@@ -451,6 +495,17 @@ export default function ChatPage() {
           </div>
         </div>
       </main>
+
+      {/* «Сохранить как решение»: проверка/правка черновика перед созданием. */}
+      {draftInit && (
+        <SolutionEditor
+          initial={draftInit}
+          projects={[]}
+          onClose={() => setDraftInit(null)}
+          onSaved={() => setDraftInit(null)}
+          onError={setError}
+        />
+      )}
     </div>
   )
 }

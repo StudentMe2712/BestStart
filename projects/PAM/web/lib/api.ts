@@ -914,6 +914,33 @@ export async function getSimilarMemoryItems(
   return r.json()
 }
 
+/** Черновик решения, собранный из разговора (секции карточки решения). */
+export interface SolutionDraft {
+  title: string
+  problem: string
+  cause: string
+  solution: string
+  notes: string
+}
+
+/** POST /memory/solutions/draft — один вызов LLM по существующему разговору →
+    структурированный черновик решения. Ничего не сохраняет (память создаётся
+    только после подтверждения пользователя через createMemoryItem). */
+export async function draftSolutionFromConversation(
+  conversationId: string
+): Promise<SolutionDraft> {
+  const r = await fetch(`${BACKEND_URL}/memory/solutions/draft`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ conversation_id: conversationId })
+  })
+  if (!r.ok) {
+    const d = await r.json().catch(() => ({}))
+    throw new Error(d.detail || `draft solution failed: ${r.status}`)
+  }
+  return r.json()
+}
+
 /** POST /chat and consume the SSE stream (data: {...}\n\n). */
 export async function streamChat(
   message: string,

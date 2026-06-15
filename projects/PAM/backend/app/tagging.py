@@ -116,6 +116,35 @@ def _normalize(data: dict) -> dict:
     }
 
 
+_RESERVED_TAG_PREFIXES = ("cat:", "st:")
+
+
+def _merge_ai_tags(
+    existing: list[str] | None,
+    ai_tags: list[str],
+    category: str | None,
+    *,
+    is_solution: bool,
+) -> list[str]:
+    """Слить теги элемента с предложениями AI-теггера (чистая функция, без БД).
+
+    - Свободные AI-теги добавляем, ТОЛЬКО если у элемента ещё нет своих свободных
+      тегов (служебные cat:/st: за свободные не считаем — иначе решение, у которого
+      есть только st:<status>, никогда не получило бы навигационные теги).
+    - cat:<slug> добавляем для решений, если категории ещё нет.
+    - Существующие теги (пользовательские и служебные) сохраняем. Дедуп, кап 8.
+    """
+    tags = list(existing or [])
+    has_free = any(not t.lower().startswith(_RESERVED_TAG_PREFIXES) for t in tags)
+    if not has_free and ai_tags:
+        tags += list(ai_tags)
+    if category and is_solution and not any(
+        t.lower().startswith("cat:") for t in tags
+    ):
+        tags.append(f"cat:{category}")
+    return list(dict.fromkeys(tags))[:8]
+
+
 async def tag_content(content: str, title: str | None = None) -> dict | None:
     """Классифицировать текст элемента → {summary, tags, item_type, importance}.
 
@@ -163,17 +192,13 @@ async def apply_tags(item_id: uuid.UUID, *, override_type: bool = True) -> None:
         item.importance = result["importance"]
         if override_type:
             item.item_type = result["item_type"]
-            if not item.tags:  # не затираем теги, заданные пользователем
-                item.tags = result["tags"]
-        elif not item.tags:
-            item.tags = result["tags"]
-        # Категория для решений: дозаполняем тег `cat:<slug>`, только если его ещё
-        # нет (не перетираем выбор пользователя). Свободные теги выше не трогаем.
-        cat = result.get("category")
-        if cat and item.item_type == ITEM_SOLUTION:
-            tags = list(item.tags or [])
-            if not any(t.startswith("cat:") for t in tags):
-                item.tags = (tags + [f"cat:{cat}"])[:8]
+        # Навигационные теги + cat:<slug> дозаполняем, не перетирая пользовательские
+        # (служебные cat:/st: за пользовательские свободные теги не считаем — иначе
+        # решение со статусом st: не получит теги). См. _merge_ai_tags.
+        item.tags = _merge_ai_tags(
+            item.tags, result["tags"], result.get("category"),
+            is_solution=item.item_type == ITEM_SOLUTION,
+        )
         await session.commit()
     # Авто-связи после тегирования: tags/summary/type уже заполнены → лучше кандидаты.
     # Ленивый импорт рвёт цикл tagging→linking→routes.memory→tagging.

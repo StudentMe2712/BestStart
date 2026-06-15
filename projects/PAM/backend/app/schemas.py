@@ -324,6 +324,23 @@ class RecallOut(BaseModel):
     items: list[MemoryItemOut]
 
 
+# ---- Save Conversation As Solution (V1.2) — черновик решения из разговора ----
+
+class SolutionDraftIn(BaseModel):
+    conversation_id: uuid.UUID
+
+
+class SolutionDraftOut(BaseModel):
+    """Структурированный черновик решения (секции карточки). Ничего не сохраняет —
+    пользователь правит и подтверждает создание memory_item на фронте."""
+
+    title: str = ""
+    problem: str = ""
+    cause: str = ""
+    solution: str = ""
+    notes: str = ""
+
+
 # ---- Timeline (P2.3) — read-only производный поток событий памяти ----
 
 class TimelineRelated(BaseModel):
