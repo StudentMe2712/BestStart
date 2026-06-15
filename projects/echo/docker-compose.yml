@@ -1,0 +1,10 @@
+name: echo
+services:
+  app:
+    build: .
+    container_name: echo-app
+    restart: unless-stopped
+    env_file: .env
+    # Telegram long-polling — no inbound port needed.
+    volumes:
+      - ./data:/app/data

@@ -1,0 +1,42 @@
+"""Quality gate tests (spec §16.2)."""
+from app.quality import check, jaccard, normalize_words
+
+
+def test_accepts_a_good_message():
+    ok, reason = check("Что ты сейчас делаешь по инерции?", "provocateur", [])
+    assert ok and reason == "ok"
+
+
+def test_rejects_banal_cliche():
+    ok, reason = check("Верь в себя, и всё получится!", "friend", [])
+    assert not ok and reason == "banal"
+
+
+def test_rejects_too_long():
+    ok, reason = check("а" * 400, "coach", [])
+    assert not ok and reason == "too_long"
+
+
+def test_rejects_too_short():
+    ok, reason = check(" ", "friend", [])
+    assert not ok and reason == "too_short"
+
+
+def test_rejects_toxic():
+    ok, reason = check("ты тупой и ничтожество", "friend", [])
+    assert not ok and reason == "toxic"
+
+
+def test_rejects_message_too_similar_to_recent():
+    recent = ["Что ты сейчас делаешь только по привычке сегодня вечером"]
+    ok, reason = check("Что ты сейчас делаешь только по привычке сегодня вечером", "provocateur", recent)
+    assert not ok and reason == "repetitive"
+
+
+def test_jaccard_identical_is_one():
+    words = normalize_words("одна и та же мысль")
+    assert jaccard(words, words) == 1.0
+
+
+def test_jaccard_disjoint_is_zero():
+    assert jaccard(normalize_words("утро день"), normalize_words("вечер ночь")) == 0.0

@@ -1,0 +1,1 @@
+# Keeps the data/ directory in git. The SQLite db (echo.db) is git-ignored.
