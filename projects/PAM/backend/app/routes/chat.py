@@ -31,6 +31,7 @@ from ..llm import model_for, route_provider, stream_chat, stream_vision, vision_
 from ..metrics import record_event
 from ..models import (
     ACCEPTED_FACT_STATUSES,
+    ITEM_SOLUTION,
     Chunk,
     ContentChunk,
     ContentSource,
@@ -50,6 +51,7 @@ TOP_K = 6           # разговоры (вектор / текстовый fall
 MAX_PROFILE_FACTS = 40
 MAT_K = 3            # материалы Лектора в одном ответе
 MEM_ITEM_K = 5      # memory_items (заметки/идеи/решения) в одном ответе
+SOLUTION_SLOTS = 2  # из MEM_ITEM_K зарезервировано под решения (retrieval priority, V1.1)
 LINK_K = 3          # +элементов из 1-hop расширения по memory_links
 MEM_ITEM_CHARS = 800  # обрезка содержимого элемента под лимит контекста
 
@@ -313,6 +315,36 @@ async def _project_first(fetch, k: int, project_id):
     return (proj + extra)[:k]
 
 
+def _reserve_solution_slots(
+    primary: list,
+    solutions: list,
+    *,
+    total: int = MEM_ITEM_K,
+    reserve: int = SOLUTION_SLOTS,
+) -> list:
+    """Retrieval priority: гарантировать до `reserve` решений в выдаче memory_items.
+
+    `solutions` — отдельная полнотекст-подвыборка (`item_type=solution`): КАЖДЫЙ её
+    элемент уже совпал с запросом, поэтому добавление нерелевантного исключено.
+    Недостающие решения добавляются за счёт вытеснения наименее релевантных
+    НЕ-решений из `primary`. Если добавлять нечего (решений уже ≥ reserve или
+    подвыборка пуста) — `primary` возвращается без изменений (поведение идентично
+    прежнему ретриву). Итог никогда не длиннее `total`.
+    """
+    present = sum(1 for r in primary if r.item_type == ITEM_SOLUTION)
+    need = max(0, reserve - present)
+    if need <= 0:
+        return primary[:total]
+    keys = {r.key for r in primary}
+    inject = [s for s in solutions if s.key not in keys][:need]
+    if not inject:
+        return primary[:total]
+    keep_sol = [r for r in primary if r.item_type == ITEM_SOLUTION]
+    non_sol = [r for r in primary if r.item_type != ITEM_SOLUTION]
+    room = max(0, total - len(keep_sol) - len(inject))
+    return keep_sol + inject + non_sol[:room]
+
+
 async def _retrieve_saved(query: str, k: int):
     """Избранное (saved_messages) — полнотекстовый матч (без эмбеддингов)."""
     tsv = func.to_tsvector("simple", SavedMessage.content)
@@ -410,32 +442,39 @@ async def _retrieve(
                 return rows
         return await _retrieve_content_text(query, lim, project_id=pid)
 
+    def _item_ns(it, rel=None):
+        return SimpleNamespace(
+            key=it.id, item_type=it.item_type, title=it.title,
+            content=(it.summary or it.content or "")[:MEM_ITEM_CHARS], rel=rel,
+        )
+
     async def items_fetch(pid, lim):
         async with AsyncSessionLocal() as session:
             rows = await search_memory_items(session, query, project_id=pid, limit=lim)
-        return [
-            SimpleNamespace(
-                key=it.id, item_type=it.item_type, title=it.title,
-                content=(it.summary or it.content or "")[:MEM_ITEM_CHARS], rel=None,
+        return [_item_ns(it) for it in rows]
+
+    async def items_solution_fetch(pid, lim):
+        # Та же полнотекст-подвыборка, но только решения — для резерва solution-слотов.
+        async with AsyncSessionLocal() as session:
+            rows = await search_memory_items(
+                session, query, project_id=pid, item_type=ITEM_SOLUTION, limit=lim
             )
-            for it in rows
-        ]
+        return [_item_ns(it) for it in rows]
 
     async def items_pipeline():
         primary = await _project_first(items_fetch, MEM_ITEM_K, project_id)
+        # Retrieval priority: до SOLUTION_SLOTS мест отдаём решениям. Подвыборка
+        # solution-only содержит только совпавшие элементы → нерелевантного не
+        # добавляем, бюджет MEM_ITEM_K неизменен (см. _reserve_solution_slots).
+        sols = await _project_first(items_solution_fetch, SOLUTION_SLOTS, project_id)
+        primary = _reserve_solution_slots(primary, sols)
         if not primary:
             return []
         async with AsyncSessionLocal() as session:
             linked = await expand_memory_links(
                 session, [r.key for r in primary], limit=LINK_K
             )
-        return primary + [
-            SimpleNamespace(
-                key=it.id, item_type=it.item_type, title=it.title,
-                content=(it.summary or it.content or "")[:MEM_ITEM_CHARS], rel=rel,
-            )
-            for it, rel in linked
-        ]
+        return primary + [_item_ns(it, rel) for it, rel in linked]
 
     tasks: dict = {}
     if memory:

@@ -51,10 +51,26 @@ MAX_NEW_LINKS = 3     # не захламлять: максимум новых �
 MIN_CONFIDENCE = 0.6  # ниже — связь не создаём
 
 
+# Служебные теги решений (`cat:<slug>` / `st:<status>`) — навигационные, НЕ
+# смысловые: две несвязанные docker-заметки делят `cat:docker`+`st:resolved` и без
+# этого фильтра получали ложный `related_to`. Из расчёта похожести их исключаем
+# (зеркало `freeTags` в web/lib/solutions.ts).
+_RESERVED_TAG_PREFIXES = ("cat:", "st:")
+
+
+def _free_tags(tags) -> set[str]:
+    """Смысловые теги (нижний регистр), без служебных cat:/st:."""
+    return {
+        t.lower()
+        for t in (tags or [])
+        if not t.lower().startswith(_RESERVED_TAG_PREFIXES)
+    }
+
+
 def _shared_tags(a, b) -> int:
-    ta = {t.lower() for t in (getattr(a, "tags", None) or [])}
-    tb = {t.lower() for t in (getattr(b, "tags", None) or [])}
-    return len(ta & tb)
+    return len(
+        _free_tags(getattr(a, "tags", None)) & _free_tags(getattr(b, "tags", None))
+    )
 
 
 def score_candidate(item, cand) -> tuple[str | None, float]:

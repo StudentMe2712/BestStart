@@ -767,6 +767,153 @@ export async function listProjects(): Promise<Project[]> {
   return r.json()
 }
 
+// ---- Memory items (Project Memory P2) — used by /solutions (item_type=solution) ----
+
+/**
+ * Универсальный контейнер знаний. Для раздела «Решения» это item_type="solution";
+ * категория и статус живут в `tags` как `cat:<slug>` / `st:<status>` (см.
+ * web/lib/solutions.ts). NB: поле `status` ниже — это lifecycle элемента
+ * (active|archived), НЕ статус решения.
+ */
+export interface MemoryItem {
+  id: string
+  project_id: string | null
+  source: string
+  source_ref: string | null
+  title: string | null
+  content: string
+  summary: string | null
+  item_type: string
+  importance: number
+  tags: string[]
+  status: "active" | "archived"
+  created_at: string
+  updated_at: string
+}
+
+export interface MemoryLink {
+  id: string
+  source_kind: string
+  source_id: string
+  target_kind: string
+  target_id: string
+  relation: string
+  confidence: number
+  created_at: string
+}
+
+/** GET /memory/items. `status` = lifecycle (active|archived); `tag` фильтрует по
+    одному тегу (включая cat:/st:); сортировка/мультитег — на клиенте. */
+export async function listMemoryItems(opts?: {
+  item_type?: string
+  q?: string
+  tag?: string
+  project_id?: string
+  status?: "active" | "archived"
+  limit?: number
+  offset?: number
+}): Promise<MemoryItem[]> {
+  const p = new URLSearchParams()
+  if (opts?.item_type) p.set("item_type", opts.item_type)
+  if (opts?.q) p.set("q", opts.q)
+  if (opts?.tag) p.set("tag", opts.tag)
+  if (opts?.project_id) p.set("project_id", opts.project_id)
+  if (opts?.status) p.set("status", opts.status)
+  p.set("limit", String(opts?.limit ?? 50))
+  if (opts?.offset) p.set("offset", String(opts.offset))
+  const r = await fetch(`${BACKEND_URL}/memory/items?${p}`, { cache: "no-store" })
+  if (!r.ok) throw new Error(`list memory items failed: ${r.status}`)
+  return r.json()
+}
+
+export async function getMemoryItem(id: string): Promise<MemoryItem> {
+  const r = await fetch(`${BACKEND_URL}/memory/items/${id}`, { cache: "no-store" })
+  if (!r.ok) throw new Error(`get memory item failed: ${r.status}`)
+  return r.json()
+}
+
+export interface MemoryItemInput {
+  content: string
+  title?: string | null
+  source?: string
+  source_ref?: string | null
+  project_id?: string | null
+  item_type?: string | null
+  tags?: string[] | null
+}
+
+export async function createMemoryItem(
+  body: MemoryItemInput
+): Promise<MemoryItem> {
+  const r = await fetch(`${BACKEND_URL}/memory/items`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(body)
+  })
+  if (!r.ok) {
+    const d = await r.json().catch(() => ({}))
+    throw new Error(d.detail || `create memory item failed: ${r.status}`)
+  }
+  return r.json()
+}
+
+export interface MemoryItemPatch {
+  title?: string | null
+  content?: string
+  summary?: string | null
+  item_type?: string
+  importance?: number
+  tags?: string[]
+  project_id?: string | null
+  status?: "active" | "archived"
+}
+
+export async function patchMemoryItem(
+  id: string,
+  body: MemoryItemPatch
+): Promise<MemoryItem> {
+  const r = await fetch(`${BACKEND_URL}/memory/items/${id}`, {
+    method: "PATCH",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(body)
+  })
+  if (!r.ok) {
+    const d = await r.json().catch(() => ({}))
+    throw new Error(d.detail || `patch memory item failed: ${r.status}`)
+  }
+  return r.json()
+}
+
+export async function deleteMemoryItem(id: string): Promise<void> {
+  const r = await fetch(`${BACKEND_URL}/memory/items/${id}`, { method: "DELETE" })
+  if (!r.ok && r.status !== 204)
+    throw new Error(`delete memory item failed: ${r.status}`)
+}
+
+/** GET /memory/links?node_id= — связи, где узел источник ИЛИ цель (read-only). */
+export async function listMemoryLinks(nodeId?: string): Promise<MemoryLink[]> {
+  const p = new URLSearchParams()
+  if (nodeId) p.set("node_id", nodeId)
+  const r = await fetch(`${BACKEND_URL}/memory/links?${p}`, { cache: "no-store" })
+  if (!r.ok) throw new Error(`list memory links failed: ${r.status}`)
+  return r.json()
+}
+
+/** GET /memory/items/{id}/similar — похожие элементы того же типа (реюз серверного
+    search_memory_items: полнотекст ∪ теги). Бэкенд исключает сам элемент и уже
+    связанные — без LLM/эмбеддингов. */
+export async function getSimilarMemoryItems(
+  id: string,
+  limit = 5
+): Promise<MemoryItem[]> {
+  const p = new URLSearchParams({ limit: String(limit) })
+  const r = await fetch(`${BACKEND_URL}/memory/items/${id}/similar?${p}`, {
+    cache: "no-store"
+  })
+  if (!r.ok) throw new Error(`similar memory items failed: ${r.status}`)
+  return r.json()
+}
+
 /** POST /chat and consume the SSE stream (data: {...}\n\n). */
 export async function streamChat(
   message: string,

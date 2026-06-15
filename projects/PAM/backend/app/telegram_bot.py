@@ -47,14 +47,37 @@ def _denied(message) -> bool:
     return not settings.TELEGRAM_ALLOWED_USER_ID or uid != settings.TELEGRAM_ALLOWED_USER_ID
 
 
-async def _post_text(content: str, source_ref: str) -> bool:
+async def _post_text(
+    content: str, source_ref: str, item_type: str | None = None
+) -> bool:
+    body: dict = {"source": "telegram", "source_ref": source_ref, "content": content}
+    if item_type:
+        body["item_type"] = item_type  # явный тип теггер не перетрёт
     async with httpx.AsyncClient(timeout=_TIMEOUT) as client:
-        r = await client.post(
-            f"{settings.BACKEND_URL}/memory/items",
-            json={"source": "telegram", "source_ref": source_ref, "content": content},
-        )
+        r = await client.post(f"{settings.BACKEND_URL}/memory/items", json=body)
         r.raise_for_status()
     return True
+
+
+# Префиксы быстрого захвата решения. Текст после префикса (markdown-структура
+# Проблема/Причина/Решение/Команды) уходит в content как есть; AI-теггер
+# предложит категорию (cat:<slug>). Остальной захват и /ask не меняются.
+_SOLUTION_TRIGGERS = ("#solution", "/solution")
+
+
+def _parse_solution_prefix(text: str) -> str | None:
+    """Если текст начинается с #solution//solution — вернуть тело без префикса.
+
+    Иначе None (обычный захват). Префикс должен быть отдельным токеном (за ним
+    пробел/перенос или конец строки), чтобы не ловить слова вроде '/solutions'.
+    """
+    low = text.lstrip()
+    for trig in _SOLUTION_TRIGGERS:
+        if low[: len(trig)].lower() == trig and (
+            len(low) == len(trig) or low[len(trig)] in " \t\n\r"
+        ):
+            return low[len(trig):].strip()
+    return None
 
 
 async def _post_file(data: bytes, filename: str, source_ref: str) -> bool:
@@ -122,6 +145,10 @@ def build_dispatcher():
             "PAM на связи.\n"
             "• Текст / ссылка / код / файл / фото — сохраню в память "
             "(теги и тип проставлю автоматически).\n"
+            "• #solution (или /solution) + текст — сохраню как решение в раздел "
+            "«Решения». Формат:\n"
+            "  #solution\n  Проблема:\n  …\n  Причина:\n  …\n  Решение:\n  …\n"
+            "  Команды:\n  …\n"
             "• /ask <вопрос> — отвечу с учётом всей твоей памяти PAM "
             "(синхронизируется с веб-чатом).\n"
             "• /new — начать новый тред чата.\n"
@@ -208,9 +235,28 @@ def build_dispatcher():
         text = (message.text or "").strip()
         if not text:
             return
+        # Быстрый захват решения: #solution / /solution → item_type=solution.
+        body = _parse_solution_prefix(text)
+        is_solution = body is not None
+        if is_solution:
+            if not body:
+                await message.answer(
+                    "Пустое решение. Формат:\n#solution\nПроблема:\n…\nПричина:\n…\n"
+                    "Решение:\n…\nКоманды:\n…"
+                )
+                return
+            text = body
         try:
-            await _post_text(text, str(message.message_id))
-            await message.answer("Сохранил в память ✓ (теги и тип проставлю автоматически)")
+            await _post_text(
+                text,
+                str(message.message_id),
+                item_type="solution" if is_solution else None,
+            )
+            await message.answer(
+                "Сохранил решение ✓ (категорию предложу автоматически)"
+                if is_solution
+                else "Сохранил в память ✓ (теги и тип проставлю автоматически)"
+            )
         except Exception as e:  # noqa: BLE001
             log.warning("text capture failed: %s", e)
             await message.answer(f"Не удалось сохранить: {e}")

@@ -447,10 +447,20 @@ ITEM_TOOL = "tool"
 ITEM_CODE = "code"
 ITEM_PROMPT = "prompt"
 ITEM_LEARNING = "learning"
-ITEM_DECISION = "decision"
+ITEM_DECISION = "decision"   # общее: архитектурное/продуктовое решение
+ITEM_SOLUTION = "solution"   # troubleshooting: решённая проблема / найденный ответ
 ITEM_TYPES = (
     ITEM_IDEA, ITEM_NOTE, ITEM_ARTICLE, ITEM_TOOL,
-    ITEM_CODE, ITEM_PROMPT, ITEM_LEARNING, ITEM_DECISION,
+    ITEM_CODE, ITEM_PROMPT, ITEM_LEARNING, ITEM_DECISION, ITEM_SOLUTION,
+)
+
+# Раздел «Решения» (item_type=solution). Категория и статус хранятся НЕ в новых
+# колонках, а как зарезервированные теги в `tags`: `cat:<slug>` и `st:<status>`
+# (см. web/lib/solutions.ts — там же лейблы для UI). Фиксированный набор категорий
+# — AI-теггер выбирает slug из него и не плодит новые. Slug всегда в нижнем
+# регистре (patch_item лоуэркейзит теги — поэтому держим slug'и, а не лейблы).
+SOLUTION_CATEGORY_SLUGS = (
+    "postgresql", "docker", "1c", "pam", "windows", "mikrotik", "python", "ai", "other",
 )
 
 # memory_items lifecycle (НЕ review-гейт — захват пользователя доверенный;

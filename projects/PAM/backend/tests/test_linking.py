@@ -50,3 +50,34 @@ def test_confidence_capped_at_one():
         _item("decision", ["a", "b", "c", "d"], project_id=p),
     )
     assert conf <= 1.0
+
+
+# ── V1.1: служебные теги cat:/st: не считаются общими (фикс шума автолинка) ──
+
+
+def test_reserved_tags_alone_not_shared():
+    # одинаковые cat:/st:, но смысловых общих тегов нет → НЕ related_to
+    rel, conf = score_candidate(
+        _item("solution", ["cat:docker", "st:resolved"]),
+        _item("solution", ["cat:docker", "st:resolved"]),
+    )
+    assert rel is None and conf == 0.0
+
+
+def test_reserved_tags_do_not_inflate_shared_count():
+    # 1 смысловой общий тег + общие служебные = всё ещё 1 смысловой → None (нужно ≥2)
+    rel, conf = score_candidate(
+        _item("solution", ["cat:docker", "st:resolved", "nginx"]),
+        _item("solution", ["cat:docker", "st:resolved", "nginx"]),
+    )
+    assert rel is None and conf == 0.0
+
+
+def test_two_free_tags_with_reserved_still_related():
+    # 2 смысловых общих тега (служебные игнорируются) → related_to
+    rel, conf = score_candidate(
+        _item("solution", ["cat:docker", "st:resolved", "nginx", "tls"]),
+        _item("solution", ["cat:docker", "st:resolved", "nginx", "tls"]),
+    )
+    assert rel == "related_to"
+    assert conf >= MIN_CONFIDENCE

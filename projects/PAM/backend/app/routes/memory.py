@@ -80,10 +80,16 @@ async def search_memory_items(
     query: str,
     *,
     project_id: uuid.UUID | None = None,
+    item_type: str | None = None,
     status: str = MEMORY_ACTIVE,
     limit: int = 10,
 ) -> list[MemoryItem]:
-    """Найти memory_items по запросу (full-text ∪ теги, importance-boost, ILIKE-fallback)."""
+    """Найти memory_items по запросу (full-text ∪ теги, importance-boost, ILIKE-fallback).
+
+    `item_type` (опц.) сужает поиск до одного типа — используется «Похожими
+    решениями» и резервом solution-слотов в чат-ретриве; по умолчанию None = все типы
+    (поведение прежних вызовов не меняется).
+    """
     q = (query or "").strip()
     if not q:
         return []
@@ -94,6 +100,8 @@ async def search_memory_items(
     stmt = select(MemoryItem).where(MemoryItem.status == status, or_(*match))
     if project_id is not None:
         stmt = stmt.where(MemoryItem.project_id == project_id)
+    if item_type is not None:
+        stmt = stmt.where(MemoryItem.item_type == item_type)
     stmt = stmt.order_by(
         func.ts_rank(MemoryItem.content_tsv, tsq).desc(),
         MemoryItem.importance.desc(),
@@ -110,6 +118,8 @@ async def search_memory_items(
     )
     if project_id is not None:
         fb = fb.where(MemoryItem.project_id == project_id)
+    if item_type is not None:
+        fb = fb.where(MemoryItem.item_type == item_type)
     fb = fb.order_by(MemoryItem.importance.desc(), MemoryItem.created_at.desc()).limit(limit)
     return list((await session.execute(fb)).scalars().all())
 
@@ -277,6 +287,40 @@ async def get_item(
     item_id: uuid.UUID, session: AsyncSession = Depends(get_session)
 ) -> MemoryItemOut:
     return MemoryItemOut.model_validate(await _get_item(session, item_id))
+
+
+# запас в пуле, чтобы после отсева self + уже связанных осталось чем добить до limit.
+_SIMILAR_POOL_EXTRA = 10
+
+
+@router.get("/items/{item_id}/similar", response_model=list[MemoryItemOut])
+async def similar_items(
+    item_id: uuid.UUID,
+    limit: int = Query(5, ge=1, le=20),
+    session: AsyncSession = Depends(get_session),
+) -> list[MemoryItemOut]:
+    """Похожие элементы того же типа — реюз `search_memory_items` (полнотекст ∪ теги).
+
+    Без LLM/эмбеддингов/новых алгоритмов похожести: поисковый запрос строится из
+    сигналов элемента (title + summary + смысловые теги, без служебных cat:/st:),
+    ранжирование — существующее (ts_rank → importance). Исключаются сам элемент и
+    уже связанные (memory_links), чтобы не дублировать блок «Связанные решения».
+    """
+    item = await _get_item(session, item_id)
+    free = [t for t in (item.tags or []) if not t.lower().startswith(("cat:", "st:"))]
+    query = " ".join(
+        p for p in (item.title, item.summary, " ".join(free)) if p
+    ).strip() or (item.content or "")[:200]
+    rows = await search_memory_items(
+        session, query, item_type=item.item_type, status=item.status,
+        limit=limit + _SIMILAR_POOL_EXTRA,
+    )
+    # уже связанные считаем переиспользуемой логикой автолинка (ленивый импорт рвёт цикл)
+    from ..linking import _existing_neighbors
+
+    linked = await _existing_neighbors(session, item_id)
+    out = [r for r in rows if r.id != item_id and r.id not in linked][:limit]
+    return [MemoryItemOut.model_validate(r) for r in out]
 
 
 @router.patch("/items/{item_id}", response_model=MemoryItemOut)
