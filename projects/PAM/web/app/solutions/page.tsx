@@ -36,89 +36,19 @@ import {
 import { fmtDate } from "../../lib/material-ui"
 import Markdown from "../markdown"
 import SolutionEditor from "./editor"
-import AllLens from "./all-lens"
 import RecallModal from "./recall"
 
 /**
- * Knowledge Hub (V1) — единый раздел знаний поверх `memory_items` с двумя линзами,
- * переключаемыми ВНУТРИ страницы (без отдельных маршрутов): «Все» (generic-браузер
- * по всем типам) и «Решения» (специализированная база решений ниже — без изменений,
- * чтобы Solutions V1.0–V1.2 работали без регрессий). Плюс «Спросить память» (Recall).
- * Вкладка в навигации пока остаётся «Решения» (переименование в «Знания» — отдельный
- * шаг). Реюз: один backend, компоненты Solutions, memory_links.
- */
-export default function KnowledgeHubPage() {
-  // По умолчанию «Все» — это и есть раскрытие уже накопленного слоя знаний.
-  const [lens, setLens] = useState<"all" | "solutions">("all")
-  // Прыжок из линзы «Все» к конкретному решению (клик по solution-карточке).
-  const [solutionFocus, setSolutionFocus] = useState<string | null>(null)
-  const [recallOpen, setRecallOpen] = useState(false)
-
-  return (
-    <div className="h-[calc(100vh-3.5rem)] flex flex-col">
-      <div className="shrink-0 flex items-center gap-1 px-6 h-12 border-b border-neutral-800">
-        <LensButton active={lens === "all"} onClick={() => setLens("all")}>
-          Все
-        </LensButton>
-        <LensButton
-          active={lens === "solutions"}
-          onClick={() => {
-            setSolutionFocus(null)
-            setLens("solutions")
-          }}>
-          Решения
-        </LensButton>
-        <button
-          onClick={() => setRecallOpen(true)}
-          className="ml-auto text-sm font-sans px-3 py-1.5 rounded-lg border border-neutral-700 text-neutral-300 hover:text-lime-400 hover:border-lime-400/50 transition-colors">
-          Спросить память
-        </button>
-      </div>
-      <div className="flex-1 min-h-0">
-        {lens === "solutions" ? (
-          <SolutionsLens initialSelectedId={solutionFocus} />
-        ) : (
-          <AllLens
-            onOpenSolution={(id) => {
-              setSolutionFocus(id)
-              setLens("solutions")
-            }}
-          />
-        )}
-      </div>
-      {recallOpen && <RecallModal onClose={() => setRecallOpen(false)} />}
-    </div>
-  )
-}
-
-function LensButton({
-  active,
-  onClick,
-  children
-}: {
-  active: boolean
-  onClick: () => void
-  children: ReactNode
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className={`text-sm font-sans px-3 py-1.5 rounded-lg transition-colors ${
-        active
-          ? "bg-neutral-800 text-neutral-100"
-          : "text-neutral-400 hover:text-neutral-100 hover:bg-neutral-900"
-      }`}>
-      {children}
-    </button>
-  )
-}
-
-/**
- * Линза «Решения» — личная база решённых проблем поверх `memory_items`
+ * /solutions — личная база решённых проблем поверх `memory_items`
  * (item_type="solution"). Три колонки: фильтры (статус+категория) · список
  * карточек · detail выбранного. Категория/статус — теги cat:/st:; секции
  * Проблема/Причина/Решение/Команды/Заметки — markdown в content; связанные
  * решения — из memory_links (без графа). Никакой отдельной таблицы.
+ *
+ * Solutions-first: это ЕДИНСТВЕННАЯ пользовательская витрина знаний. Прочие
+ * memory_items (заметки/идеи/промпты из Telegram и т.п.) — внутренний слой,
+ * доступный через Chat / Recall / Unified Retrieval, без generic-браузера.
+ * «Спросить память» (Recall) — AI-first доступ к этому слою прямо отсюда.
  */
 
 const PAGE_SIZE = 20
@@ -129,11 +59,7 @@ const SORTS: { key: SortKey; label: string }[] = [
 ]
 type SortKey = "new" | "old" | "importance"
 
-function SolutionsLens({
-  initialSelectedId
-}: {
-  initialSelectedId?: string | null
-}) {
+export default function SolutionsPage() {
   const [items, setItems] = useState<MemoryItem[]>([])
   const [projects, setProjects] = useState<Project[]>([])
   const [loading, setLoading] = useState(true)
@@ -148,6 +74,7 @@ function SolutionsLens({
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [editing, setEditing] = useState<MemoryItem | null>(null)
   const [creating, setCreating] = useState(false)
+  const [recallOpen, setRecallOpen] = useState(false)
   const searchRef = useRef<HTMLInputElement>(null)
 
   const load = useCallback(async () => {
@@ -173,11 +100,6 @@ function SolutionsLens({
       .then(setProjects)
       .catch(() => {})
   }, [load])
-
-  // Knowledge Hub: внешний выбор — прыжок из линзы «Все» к конкретному решению.
-  useEffect(() => {
-    if (initialSelectedId) setSelectedId(initialSelectedId)
-  }, [initialSelectedId])
 
   // ⌘/Ctrl+K фокусирует поиск (как в каталоге).
   useEffect(() => {
@@ -303,8 +225,8 @@ function SolutionsLens({
   }
 
   return (
-    <div className="h-full flex flex-col">
-      {/* Тулбар: заголовок · поиск (⌘K) · новое решение */}
+    <main className="h-[calc(100vh-3.5rem)] flex flex-col">
+      {/* Тулбар: заголовок · поиск (⌘K) · спросить память · новое решение */}
       <div className="shrink-0 flex items-center gap-4 px-6 h-16 border-b border-neutral-800">
         <div className="flex items-baseline gap-2.5">
           <h1 className="text-lg font-semibold">Решения</h1>
@@ -327,6 +249,12 @@ function SolutionsLens({
             ⌘K
           </span>
         </div>
+        <button
+          onClick={() => setRecallOpen(true)}
+          title="AI-доступ ко всей памяти (заметки, идеи, решения)"
+          className="shrink-0 text-sm font-sans px-3 py-2 rounded-lg border border-neutral-700 text-neutral-300 hover:text-lime-400 hover:border-lime-400/50 transition-colors">
+          Спросить память
+        </button>
         <button
           onClick={() => {
             setEditing(null)
@@ -500,7 +428,9 @@ function SolutionsLens({
           onError={setError}
         />
       )}
-    </div>
+
+      {recallOpen && <RecallModal onClose={() => setRecallOpen(false)} />}
+    </main>
   )
 }
 

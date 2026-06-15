@@ -3,14 +3,41 @@
 import { useState } from "react"
 
 import { recall, type RecallResult } from "../../lib/api"
-import { itemTypeLabel, itemPreview } from "../../lib/knowledge"
 import Markdown from "../markdown"
 
 /**
  * «Спросить память» — тонкая обёртка над существующим POST /memory/recall.
  * Один запрос → один ответ (синтез LLM) + найденные элементы. Это НЕ чат: нет
  * истории, нет многошаговости, нет стриминга. Ретрив/синтез целиком на бэкенде.
+ *
+ * Recall — AI-first доступ к внутреннему слою памяти (memory_items: заметки/идеи/
+ * промпты/решения из Telegram, чата и т.п.), а НЕ браузер заметок: результаты
+ * показываются только для чтения, без CRUD. Витрина знаний для пользователя —
+ * только раздел «Решения».
  */
+
+// Русские лейблы типов memory_items (для бейджа в результатах). Локально —
+// чтобы Recall был самодостаточным после удаления generic-слоя UI.
+const ITEM_TYPE_LABEL: Record<string, string> = {
+  idea: "Идея",
+  note: "Заметка",
+  article: "Статья",
+  tool: "Инструмент",
+  code: "Код",
+  prompt: "Промпт",
+  learning: "Обучение",
+  decision: "Решение (общее)",
+  solution: "Решение"
+}
+
+const itemTypeLabel = (t: string) => ITEM_TYPE_LABEL[t] || t
+
+const itemPreview = (content: string, max = 80) =>
+  (content || "")
+    .replace(/[#>*`_~]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, max)
 export default function RecallModal({ onClose }: { onClose: () => void }) {
   const [q, setQ] = useState("")
   const [loading, setLoading] = useState(false)
