@@ -36,4 +36,4 @@ def test_presence_prompt_forbids_questions():
     window = WINDOWS[0]
     presence_prompt = _user_prompt(ROLES["presence"], window, [])
     # Presence is statement-only; its directive must explicitly bar a question.
-    assert "Никогда не вопрос" in presence_prompt
+    assert "Без вопроса" in presence_prompt

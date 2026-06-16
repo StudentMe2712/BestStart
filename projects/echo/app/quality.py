@@ -55,12 +55,62 @@ BANNED_CLICHES = (
     "всё происходит не случайно",
     "все происходит не случайно",
     "в жизни бывает",
+    # ECHO HUMANITY V3 — fitness-tracker / coach / motivation / assistant tells. Echo's
+    # caring register now says "сделай паузу", never these.
+    "выпей воды",
+    "пей воду",
+    "попей воды",
+    "разомнись",
+    "разомни",
+    "размяться",
+    "потянись",
+    "потянуться",
+    "сделай зарядку",
+    "сделай разминку",
+    "ты молодец",
+    "так держать",
+    "ты справишься",
+    "горжусь тобой",
+    "продуктивного дня",
+    "продуктивного вечера",
+    "заряд бодрости",
+    "позитивного настроя",
+    "чем могу помочь",
+    "готов помочь",
+    "рад помочь",
+    # The Challenger's old broken-record line — banned so it must find a fresh angle.
+    "ничего не менять",
 )
 
 # Aphorism openers: a message that *starts* with one of these is almost always a
 # generalisation addressed to no one in particular ("Иногда такие события..."). Echo's
-# real registers (Friend/Trainer/Mentor/Challenger) never open this way.
+# action registers never open this way — but the Philosopher's whole job is a short
+# observation, so check() exempts that one role (see below).
 APHORISM_OPENERS = ("иногда", "порой", "зачастую", "не всё", "не все ", "мы редко", "мы боимся")
+
+# Friend (V3) must stop opening with a dezhurny check-in — it reads as a survey, not a
+# friend who is simply around. Only blocked at the start of a Friend message.
+TIRED_FRIEND_OPENERS = (
+    "как дела",
+    "как ты",
+    "как прошёл день",
+    "как прошел день",
+    "как прошёл твой день",
+    "как прошел твой день",
+    "как спал",
+    "как спалось",
+    "как себя чувствуешь",
+    "как ты себя чувствуешь",
+    "как самочувствие",
+    "как настроение",
+    "как день",
+    "как утро",
+)
+
+# The Philosopher may never invent a quote: guillemets or a "— Author" attribution in a
+# generated line means a fabricated quote. Verified quotes are served from the curated base
+# and bypass this gate (they are returned directly, not run through check()).
+_QUOTE_ATTRIBUTION_RE = re.compile(r"[«»]|—\s*[А-ЯЁA-Z][\w’'-]+")
 
 # Minimal toxicity / manipulation guard. Not a content moderator — just a safety net
 # against profanity, self-harm framing and shame-based pushing (spec §19.1).
@@ -115,8 +165,15 @@ def check(text: str, role_key: str, recent: list[str]) -> tuple[bool, str]:
         if cliche in lowered:
             return False, "banal"
 
-    if lowered.startswith(APHORISM_OPENERS):
+    # The Philosopher is allowed a short observation that may open with "иногда/порой".
+    if role_key != "philosopher" and lowered.startswith(APHORISM_OPENERS):
         return False, "banal"
+
+    if role_key == "friend" and lowered.startswith(TIRED_FRIEND_OPENERS):
+        return False, "tired"
+
+    if role_key == "philosopher" and _QUOTE_ATTRIBUTION_RE.search(cleaned):
+        return False, "fabricated_quote"
 
     for word in BANNED_WORDS:
         if word in lowered:

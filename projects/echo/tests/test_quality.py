@@ -60,3 +60,46 @@ def test_jaccard_identical_is_one():
 
 def test_jaccard_disjoint_is_zero():
     assert jaccard(normalize_words("утро день"), normalize_words("вечер ночь")) == 0.0
+
+
+# --- ECHO HUMANITY V3 ---
+
+def test_rejects_tired_friend_opener():
+    ok, reason = check("Как дела?", "friend", [])
+    assert not ok and reason == "tired"
+
+
+def test_tired_opener_block_is_friend_only():
+    # Other registers may still phrase things this way.
+    ok, _ = check("Как там с тем, что застряло?", "mentor", [])
+    assert ok
+
+
+def test_philosopher_may_open_with_inogda():
+    ok, reason = check("Иногда ожидание тяжелее самого события.", "philosopher", [])
+    assert ok and reason == "ok"
+
+
+def test_friend_still_blocked_on_aphorism_opener():
+    ok, reason = check("Иногда всё меняется само собой.", "friend", [])
+    assert not ok and reason == "banal"
+
+
+def test_philosopher_fabricated_quote_with_guillemets_rejected():
+    ok, reason = check("«Время — деньги.» — Бенджамин Франклин", "philosopher", [])
+    assert not ok and reason == "fabricated_quote"
+
+
+def test_philosopher_fabricated_quote_with_attribution_rejected():
+    ok, reason = check("Жизнь коротка. — Сенека", "philosopher", [])
+    assert not ok and reason == "fabricated_quote"
+
+
+def test_coach_fitness_tracker_phrase_banned():
+    ok, reason = check("Выпей воды и разомнись.", "coach", [])
+    assert not ok and reason == "banal"
+
+
+def test_challenger_do_nothing_loop_banned():
+    ok, reason = check("А если ничего не менять?", "challenger", [])
+    assert not ok and reason == "banal"
