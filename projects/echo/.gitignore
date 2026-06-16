@@ -3,6 +3,9 @@
 data/*
 !data/.gitkeep
 
+# Benchmark output (generated artifacts)
+eval/reports/
+
 # Python
 __pycache__/
 *.py[cod]

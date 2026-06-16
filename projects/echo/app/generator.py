@@ -71,7 +71,8 @@ def _pick_template(role_key: str, recent: list[str]) -> str:
 
 
 async def generate_message(
-    settings: Settings, role_key: str, window: Window, recent: list[str]
+    settings: Settings, role_key: str, window: Window, recent: list[str],
+    temperature: float = 0.9,
 ) -> tuple[str, str]:
     """Return (text, source). Source is 'llm-groq' / 'llm-openrouter' / 'template'."""
     role = ROLES[role_key]
@@ -82,7 +83,7 @@ async def generate_message(
         for _ in range(ATTEMPTS_PER_PROVIDER):
             text = await llm.chat(
                 base_url=base_url, api_key=api_key, model=model,
-                system=system, user=user, title="Echo companion",
+                system=system, user=user, temperature=temperature, title="Echo companion",
             )
             if not text:
                 break  # provider unavailable — move to the next one
@@ -95,7 +96,9 @@ async def generate_message(
     return _pick_template(role_key, recent), "template"
 
 
-async def generate_followup(settings: Settings, user_message: str) -> str | None:
+async def generate_followup(
+    settings: Settings, user_message: str, temperature: float = 0.8
+) -> str | None:
     """React to something the user said. None -> caller stays silent.
 
     Character Bible priority #1: when the user shares about his life, Echo reacts as a
@@ -118,7 +121,7 @@ async def generate_followup(settings: Settings, user_message: str) -> str | None
     for _source, base_url, api_key, model in _providers(settings):
         text = await llm.chat(
             base_url=base_url, api_key=api_key, model=model,
-            system=system, user=user, temperature=0.8, title="Echo companion",
+            system=system, user=user, temperature=temperature, title="Echo companion",
         )
         if text:
             text = text.strip().strip('"').strip()
