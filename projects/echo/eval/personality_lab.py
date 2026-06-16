@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import itertools
 import os
 from collections import Counter
 from dataclasses import dataclass
@@ -35,6 +36,8 @@ DEFAULT_TEMPERATURE = 0.9
 DEFAULT_TOP = 20
 # Looser than the production gate (0.55) so near-duplicates merge into one pattern.
 DEFAULT_SIMILARITY = 0.5
+# A role pair above this share of mutually-confusable messages is "not unique".
+OVERLAP_LIMIT_PCT = 30.0
 
 
 @dataclass(frozen=True)
@@ -74,6 +77,42 @@ def cluster_messages(messages: list[str], threshold: float) -> list[Pattern]:
     ]
     patterns.sort(key=lambda p: (-p.count, p.text))
     return patterns
+
+
+@dataclass(frozen=True)
+class PairOverlap:
+    role_a: str
+    role_b: str
+    pct: float          # share of the two roles' messages that are mutually confusable
+    unique: bool        # True when pct <= OVERLAP_LIMIT_PCT
+
+
+def pair_overlap(msgs_a: list[str], msgs_b: list[str], threshold: float) -> float:
+    """Percent of the two roles' messages that have a near-twin in the *other* role.
+
+    A message is "confusable" with the other role if some message there shares >= threshold
+    Jaccard word overlap. This is the single-message-identifiability metric: if a large share
+    of two roles' lines could pass for each other, you can't tell the roles apart unlabeled.
+    """
+    if not msgs_a or not msgs_b:
+        return 0.0
+    wa = [normalize_words(m) for m in msgs_a]
+    wb = [normalize_words(m) for m in msgs_b]
+    conf_a = sum(1 for x in wa if any(jaccard(x, y) >= threshold for y in wb))
+    conf_b = sum(1 for y in wb if any(jaccard(y, x) >= threshold for x in wa))
+    return 100.0 * (conf_a + conf_b) / (len(wa) + len(wb))
+
+
+def overlap_matrix(results: dict[str, list[str]], threshold: float) -> list[PairOverlap]:
+    """Pairwise overlap for every role pair, worst first."""
+    roles = [r for r in ROLE_ORDER if results.get(r)]
+    pairs = [
+        PairOverlap(a, b, round(pct, 1), pct <= OVERLAP_LIMIT_PCT)
+        for a, b in itertools.combinations(roles, 2)
+        if (pct := pair_overlap(results[a], results[b], threshold)) is not None
+    ]
+    pairs.sort(key=lambda p: p.pct, reverse=True)
+    return pairs
 
 
 async def generate_for_role(
@@ -120,7 +159,48 @@ def build_markdown(
             lines.append(f"{i}. «{p.text}» — {p.count}{tail}")
         lines.append("")
 
+    lines.extend(_uniqueness_section(results, threshold))
     return "\n".join(lines)
+
+
+def _uniqueness_section(results: dict[str, list[str]], threshold: float) -> list[str]:
+    """Pairwise overlap matrix + verdict on which roles fail the <=30% bar."""
+    roles = [r for r in ROLE_ORDER if results.get(r)]
+    pairs = overlap_matrix(results, threshold)
+    by_pair = {(p.role_a, p.role_b): p.pct for p in pairs}
+
+    header = ["роль"] + [r.capitalize() for r in roles]
+    lines = [
+        "# Различимость ролей (пересечение паттернов)",
+        "",
+        f"Доля взаимно спутываемых сообщений (Jaccard ≥ {threshold}). "
+        f"Порог уникальности: ≤ {OVERLAP_LIMIT_PCT:.0f}%.",
+        "",
+        "| " + " | ".join(header) + " |",
+        "| " + " | ".join("---" for _ in header) + " |",
+    ]
+    for a in roles:
+        cells = [a.capitalize()]
+        for b in roles:
+            if a == b:
+                cells.append("—")
+            else:
+                key = (a, b) if (a, b) in by_pair else (b, a)
+                cells.append(f"{by_pair.get(key, 0.0):.1f}%")
+        lines.append("| " + " | ".join(cells) + " |")
+    lines.append("")
+
+    failed = [p for p in pairs if not p.unique]
+    if failed:
+        lines.append(f"**Неуникальные пары (> {OVERLAP_LIMIT_PCT:.0f}%):**")
+        lines += [f"- {p.role_a.capitalize()} ↔ {p.role_b.capitalize()}: {p.pct:.1f}%" for p in failed]
+    else:
+        lines.append(
+            f"**Все пары ≤ {OVERLAP_LIMIT_PCT:.0f}% — каждую роль можно определить "
+            "по одному сообщению без подписи.**"
+        )
+    lines.append("")
+    return lines
 
 
 def _parse_args() -> argparse.Namespace:
@@ -163,6 +243,18 @@ async def _main() -> None:
         for i, p in enumerate(patterns, 1):
             print(f"  {i:2}. «{p.text}» — {p.count}")
         print()
+
+    pairs = overlap_matrix(results, args.similarity)
+    print(f"# Различимость ролей (порог ≤ {OVERLAP_LIMIT_PCT:.0f}%)")
+    for p in pairs:
+        mark = "ok" if p.unique else "НЕ УНИКАЛЬНА"
+        print(f"  {p.role_a.capitalize():12} ↔ {p.role_b.capitalize():12} {p.pct:5.1f}%  {mark}")
+    failed = [p for p in pairs if not p.unique]
+    print(
+        "\nИТОГ: все пары различимы ≤ 30%."
+        if not failed
+        else f"\nИТОГ: {len(failed)} пар(ы) выше порога — роли пока неуникальны."
+    )
 
 
 def main() -> None:

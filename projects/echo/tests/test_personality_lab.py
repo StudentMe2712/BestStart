@@ -57,6 +57,34 @@ def test_build_markdown_has_english_role_headers_and_patterns_section():
     # Patterns section is present with per-role subsections.
     assert "# Паттерны" in md
     assert "## Friend" in md
+    # Uniqueness section is present.
+    assert "# Различимость ролей" in md
+
+
+def test_pair_overlap_disjoint_roles_is_zero():
+    a = ["Воды попей.", "Встань разомнись."]
+    b = ["«Я знаю, что ничего не знаю.» — Сократ.", "«Счастье зависит от нас.» — Аристотель."]
+    assert lab.pair_overlap(a, b, threshold=0.5) == 0.0
+
+
+def test_pair_overlap_identical_roles_is_total():
+    a = ["Как прошёл день?", "Что нового у тебя?"]
+    b = ["Как прошёл день?", "Что нового у тебя?"]
+    # Every message on both sides has an exact twin in the other role → 100%.
+    assert lab.pair_overlap(a, b, threshold=0.5) == 100.0
+
+
+def test_overlap_matrix_flags_pairs_over_limit():
+    results = {
+        "friend": ["Как прошёл день?", "Как прошёл день?"],
+        "mentor": ["Как прошёл день?", "Как прошёл день?"],   # collapses into friend
+        "coach": ["Воды.", "Встань."],                          # disjoint from both
+    }
+    pairs = {(p.role_a, p.role_b): p for p in lab.overlap_matrix(results, threshold=0.5)}
+    assert pairs[("friend", "mentor")].pct == 100.0
+    assert pairs[("friend", "mentor")].unique is False
+    assert pairs[("friend", "coach")].pct == 0.0
+    assert pairs[("friend", "coach")].unique is True
 
 
 def test_generate_for_role_returns_exact_count(monkeypatch):

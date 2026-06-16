@@ -26,7 +26,8 @@ def _system_prompt(role: RoleSpec) -> str:
         f"Сейчас твоя интонация — «{role.name}»: {role.persona}.\n"
         "Правила:\n"
         f"- Коротко. Одна мысль или один вопрос. Часто — одно предложение. {role.length_hint}.\n"
-        "- Чаще проявляй интерес к его жизни, чем высказывай свои мысли.\n"
+        "- Точно держись своей интонации: по форме и теме это сообщение должно быть ни с "
+        "чем не спутать. Не превращай его в обычный дружеский вопрос, если роль другая.\n"
         "- По-русски, разговорно и тепло, без приторности и без робота.\n"
         "- Не мотивационный мусор, не коуч из интернета, не выдуманная псевдоглубина.\n"
         "- Пустые афоризмы без автора — нет. Реальную цитату с именем автора можно ТОЛЬКО Философу.\n"
@@ -43,10 +44,9 @@ def _user_prompt(role: RoleSpec, window: Window, recent: list[str]) -> str:
     if recent:
         joined = " | ".join(recent[:4])
         lines.append(f"Недавно уже было: {joined}. Не повторяй эти темы и формулировки.")
-    if role.asks_question:
-        lines.append("Напиши одно короткое сообщение в этой интонации — лучше вопрос про его жизнь, чем свою мысль.")
-    else:
-        lines.append("Напиши одну очень короткую фразу-присутствие — просто отметься рядом, без вопроса и без мысли.")
+    # The role's form is the only role-specific instruction — it decides topic and shape,
+    # so each register stays identifiable from a single message (no Friend-ward drift).
+    lines.append(role.form)
     return "\n".join(lines)
 
 

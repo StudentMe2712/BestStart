@@ -20,10 +20,20 @@ def test_presence_templates_pass_the_quality_gate():
         assert ok, f"{text!r} rejected as {reason}"
 
 
-def test_user_prompt_drops_question_push_for_presence():
+def test_every_role_defines_a_form_signal():
+    # The form is what makes a register identifiable from one message — none may be blank.
+    for key, spec in ROLES.items():
+        assert spec.form.strip(), f"{key} must define a form signal"
+
+
+def test_user_prompt_carries_the_role_form():
     window = WINDOWS[0]
-    friend_prompt = _user_prompt(ROLES["friend"], window, [])
+    for key, spec in ROLES.items():
+        assert spec.form in _user_prompt(spec, window, []), key
+
+
+def test_presence_prompt_forbids_questions():
+    window = WINDOWS[0]
     presence_prompt = _user_prompt(ROLES["presence"], window, [])
-    assert "лучше вопрос" in friend_prompt
-    assert "без вопроса" in presence_prompt
-    assert "лучше вопрос" not in presence_prompt
+    # Presence is statement-only; its directive must explicitly bar a question.
+    assert "Никогда не вопрос" in presence_prompt
