@@ -8,9 +8,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# Friend / Trainer / Mentor go out on a schedule. Challenger is enabled but reactive
-# only (roles.py marks it scheduled=False) — it never auto-sends, only via /now or reaction.
-DEFAULT_ROLES = ["friend", "coach", "mentor", "challenger"]
+DEFAULT_ROLES = ["friend", "coach", "mentor", "challenger", "philosopher"]
 
 
 def _int(name: str, default: int) -> int:
@@ -65,11 +63,12 @@ def load_settings() -> Settings:
         openrouter_api_key=os.getenv("OPENROUTER_API_KEY", ""),
         openrouter_model=os.getenv("OPENROUTER_MODEL", "meta-llama/llama-3.3-70b-instruct"),
         openrouter_base_url=os.getenv("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1"),
-        max_per_day=_int("MAX_PER_DAY", 3),
-        min_gap_minutes=_int("MIN_GAP_MINUTES", 90),
+        # Echo writes through the day now (~25–35/day): high cap, short floating gaps.
+        max_per_day=_int("MAX_PER_DAY", 32),
+        min_gap_minutes=_int("MIN_GAP_MINUTES", 18),
         quiet_start=_int("QUIET_START", 23),
         quiet_end=_int("QUIET_END", 8),
-        tick_minutes=_int("TICK_MINUTES", 20),
+        tick_minutes=_int("TICK_MINUTES", 10),
         enabled_roles=_csv("ENABLED_ROLES", DEFAULT_ROLES),
         log_level=os.getenv("LOG_LEVEL", "INFO"),
     )

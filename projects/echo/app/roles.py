@@ -1,9 +1,10 @@
 """Role archetypes for Echo.
 
-Echo is one person, not a panel of bots: a close friend who occasionally writes.
-Roles are *registers* of that one personality — Friend (the default), Trainer, Mentor,
-Challenger — not separate characters. Windows bias which register is more likely at a
-given time of day. Challenger is reactive only: it never goes out on a schedule.
+Echo is one person, not a panel of bots: a close friend who writes through the day.
+Roles are *registers* of that one personality. Their default weights encode the target
+share of messages (Friend ~40%, Trainer ~20%, Mentor ~15%, Challenger ~15%, Philosopher
+~10%). Windows bias which register is more likely at a given time of day; cadence (how
+often Echo writes at all) lives in config + scheduler, not here.
 """
 from __future__ import annotations
 
@@ -21,31 +22,40 @@ class RoleSpec:
     scheduled: bool = True  # False -> never auto-sent; reacts/triggers manually only
 
 
+# Weights are proportional to the target daily share (sum ~7.45): friend 40% / coach 20%
+# / mentor 15% / challenger 15% / philosopher 10%. friend sits at the adjust_weight cap.
 ROLES: dict[str, RoleSpec] = {
     "friend": RoleSpec(
         "friend", "Друг",
         "близкий друг, которому искренне интересна его жизнь: спрашиваешь, как он, "
-        "что нового, как прошло; радуешься за него; без морали, выводов и советов",
-        "одна короткая фраза или вопрос, часто одно предложение", 160, 1.8,
+        "что нового, как прошло, какие планы; радуешься за него; без морали и советов",
+        "одна короткая фраза или вопрос, часто одно предложение", 160, 3.0,
     ),
     "coach": RoleSpec(
         "coach", "Тренер",
         "лёгкий живой пинок про тело прямо сейчас: подъём, вода, размяться, встать, "
-        "турник; коротко и по-доброму, как друг, а не как приложение",
-        "очень коротко: 2–6 слов или одно короткое предложение", 110, 1.0,
+        "турник, отжимания; коротко и по-доброму, как друг, а не как приложение",
+        "очень коротко: 2–6 слов или одно короткое предложение", 110, 1.5,
     ),
     "mentor": RoleSpec(
         "mentor", "Наставник",
-        "про его реальные дела сегодня: что важно, что зависло, что закроешь; "
-        "конкретный рабочий вопрос — без абстракций про путь, успех и цели",
-        "один короткий вопрос", 160, 1.0,
+        "опытный коллега про его реальные дела сегодня: что важно, что зависло, что "
+        "тормозит, на чём застрял — без коучинга, инфоцыганства и слов про путь и цели",
+        "один короткий вопрос", 160, 1.1,
     ),
     "challenger": RoleSpec(
         "challenger", "Челленджер",
-        "редкий аккуратный неудобный вопрос по реальному поводу, ты на его стороне; "
-        "только когда он застрял или сомневается — не для того, чтобы поддеть",
-        "один короткий вопрос", 160, 1.0,
-        scheduled=False,
+        "редкий аккуратный неудобный вопрос, ты на его стороне: уверен ли он, что "
+        "решает правильную проблему; что будет, если ничего не менять — без давления и обвинений",
+        "один короткий вопрос", 160, 1.1,
+    ),
+    "philosopher": RoleSpec(
+        "philosopher", "Философ",
+        "самая редкая интонация: реальная короткая цитата известного мыслителя (Сократ, "
+        "Платон, Аристотель, Марк Аврелий, Сенека, Эпиктет, Гераклит, Лао-цзы, Конфуций, "
+        "Руми) с именем автора — или одно короткое наблюдение; без псевдоглубины, без "
+        "«иногда…», «настоящая мудрость…», «ясность приходит…»; можно короткий вопрос «как думаешь?»",
+        "короткая цитата с автором или одна короткая мысль", 220, 0.75,
     ),
 }
 
@@ -58,22 +68,25 @@ class Window:
     base_prob: float  # per-tick probability of sending in this window
 
 
+# base_prob is high: Echo is meant to write often (target 25–35/day). Real spacing comes
+# from min-gap + the per-tick draw, so gaps float instead of landing on fixed intervals.
 WINDOWS: tuple[Window, ...] = (
-    Window("morning", "утро", "начало дня, ясная голова", 0.10),
-    Window("lunch", "обед", "середина дня, пауза, еда", 0.09),
-    Window("day", "день", "рабочий день, дела и задачи", 0.08),
-    Window("evening", "вечер", "вечер, спад темпа, как прошёл день", 0.10),
+    Window("morning", "утро", "начало дня, ясная голова", 0.60),
+    Window("lunch", "обед", "середина дня, пауза, еда", 0.55),
+    Window("day", "день", "рабочий день, дела и задачи", 0.60),
+    Window("evening", "вечер", "вечер, спад темпа, как прошёл день", 0.60),
 )
 
 _WINDOW_BY_KEY = {w.key: w for w in WINDOWS}
 
 # Which roles get a boost in which window (multiplier; default 1.0 elsewhere).
-# Friend dominates the emotional bookends of the day (morning/evening) on purpose.
+# Trainer wakes the morning, Mentor owns the workday, Friend carries the evening,
+# Philosopher only ever surfaces in the evening (so it stays rare and well-timed).
 WINDOW_BIAS: dict[str, dict[str, float]] = {
-    "morning": {"coach": 1.5, "friend": 1.2, "mentor": 1.2},
-    "lunch": {"friend": 1.6, "coach": 1.2},
-    "day": {"mentor": 1.5, "coach": 1.3, "friend": 1.1},
-    "evening": {"friend": 1.7},
+    "morning": {"coach": 1.6, "mentor": 1.3, "friend": 1.1},
+    "lunch": {"friend": 1.4, "coach": 1.2},
+    "day": {"mentor": 1.6, "challenger": 1.3, "coach": 1.2},
+    "evening": {"friend": 1.6, "philosopher": 1.4},
 }
 
 

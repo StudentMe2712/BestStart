@@ -47,8 +47,8 @@ def _chosen_keyboard(reaction: str) -> InlineKeyboardMarkup:
         InlineKeyboardButton(text=_CHOSEN_LABEL[reaction], callback_data=f"rx:{reaction}")
     ]])
 
-MAX_PER_DAY_CAP = 6
-MIN_GAP_FLOOR = 45
+MAX_PER_DAY_CAP = 40
+MIN_GAP_FLOOR = 10
 MIN_GAP_CAP = 240
 
 GREETING = (

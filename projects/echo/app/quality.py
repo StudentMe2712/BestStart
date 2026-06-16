@@ -43,6 +43,11 @@ BANNED_CLICHES = (
     "иногда люди",
     "иногда именно",
     "новых знакомств",
+    # Pseudo-depth the Philosopher must never produce (real attributed quotes only).
+    "настоящая мудрость",
+    "всё происходит не случайно",
+    "все происходит не случайно",
+    "в жизни бывает",
 )
 
 # Aphorism openers: a message that *starts* with one of these is almost always a

@@ -125,8 +125,10 @@ async def maybe_send(bot: Bot, settings: Settings) -> None:
         if gap_minutes < user["min_gap_minutes"]:
             return
 
+    # Gentle back-off: at high cadence not every message earns a reaction, so the penalty
+    # is mild and floored (~0.5 at worst) — Echo eases off if fully ignored, never goes mute.
     ignore_streak = db.trailing_unanswered()
-    ignore_penalty = 1.0 / (1.0 + 0.5 * ignore_streak)
+    ignore_penalty = 1.0 / (1.0 + 0.15 * min(ignore_streak, 8))
     probability = window.base_prob * ignore_penalty
     if random.random() >= probability:
         return
