@@ -12,13 +12,23 @@ from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
 
 from aiogram import Bot
+from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
 from . import db
 from .config import Settings
 from .generator import generate_message
-from .roles import WINDOW_BIAS, Window, window_for_hour
+from .roles import ROLES, WINDOW_BIAS, Window, window_for_hour
 
 logger = logging.getLogger(__name__)
+
+
+def feedback_keyboard() -> InlineKeyboardMarkup:
+    """The 👍 / 👎 / 🤔 row under every Echo message — the main learning signal."""
+    return InlineKeyboardMarkup(inline_keyboard=[[
+        InlineKeyboardButton(text="👍 Понравилось", callback_data="rx:like"),
+        InlineKeyboardButton(text="👎 Не зашло", callback_data="rx:dislike"),
+        InlineKeyboardButton(text="🤔 Нормально", callback_data="rx:neutral"),
+    ]])
 
 
 def now_local(tz_name: str) -> datetime:
@@ -52,7 +62,7 @@ def choose_role(window_key: str, last_role: str | None) -> str | None:
     weighted = {
         key: state["weight"] * bias.get(key, 1.0)
         for key, state in roles.items()
-        if state["enabled"]
+        if state["enabled"] and key in ROLES and ROLES[key].scheduled
     }
     if not weighted:
         return None
@@ -68,7 +78,7 @@ async def _compose_and_send(
     recent = db.recent_contents()
     text, source = await generate_message(settings, role_key, window, recent)
     try:
-        sent = await bot.send_message(settings.owner_id, text)
+        sent = await bot.send_message(settings.owner_id, text, reply_markup=feedback_keyboard())
     except Exception as exc:  # noqa: BLE001 — Telegram send can fail many ways; log and skip
         logger.error("Failed to send message: %s", exc)
         return False

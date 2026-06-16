@@ -11,29 +11,51 @@ import random
 
 from aiogram import Bot, Dispatcher, F
 from aiogram.filters import Command, CommandObject, CommandStart
-from aiogram.types import Message, MessageReactionUpdated, ReactionTypeEmoji
+from aiogram.types import (
+    CallbackQuery,
+    InlineKeyboardButton,
+    InlineKeyboardMarkup,
+    Message,
+    MessageReactionUpdated,
+    ReactionTypeEmoji,
+)
 
 from . import db, preferences
 from .config import Settings
 from .generator import generate_followup
 from .roles import ROLES
-from .scheduler import force_send, now_local, utc_iso
+from .scheduler import feedback_keyboard, force_send, now_local, utc_iso
 
 logger = logging.getLogger(__name__)
 
-FOLLOWUP_PROBABILITY = 0.7
+# Reaction is priority #1 (Character Bible): when the owner shares about his life,
+# Echo almost always reacts with curiosity rather than staying silent.
+FOLLOWUP_PROBABILITY = 0.9
 POSITIVE = {"👍", "❤", "❤️", "🔥", "🙏", "😍", "👏", "🤝", "💯", "🥰", "😎", "⚡"}
 NEGATIVE = {"👎", "💩", "🤮", "😡", "🤬"}
+
+_CHOSEN_LABEL = {
+    "like": "✓ 👍 Понравилось",
+    "dislike": "✓ 👎 Не зашло",
+    "neutral": "✓ 🤔 Нормально",
+}
+
+
+def _chosen_keyboard(reaction: str) -> InlineKeyboardMarkup:
+    """Collapse the feedback row to the choice the owner just made."""
+    return InlineKeyboardMarkup(inline_keyboard=[[
+        InlineKeyboardButton(text=_CHOSEN_LABEL[reaction], callback_data=f"rx:{reaction}")
+    ]])
 
 MAX_PER_DAY_CAP = 6
 MIN_GAP_FLOOR = 45
 MIN_GAP_CAP = 240
 
 GREETING = (
-    "Привет. Я Echo — пишу первым, сам, в осмысленный момент: вопрос, мысль, "
-    "брейншторм, иногда — напоминание встать и подышать.\n\n"
-    "Я стараюсь не спамить и умею молчать. Со временем подстраиваюсь под то, "
-    "на что ты отвечаешь.\n\n"
+    "Привет. Я Echo. Буду иногда писать тебе сам — спросить, как ты, что нового, "
+    "иногда мягко напомнить встать и подышать.\n\n"
+    "Не спамлю и умею молчать. Под каждым моим сообщением есть 👍 / 👎 / 🤔 — "
+    "так я понимаю, что тебе заходит, а что нет.\n\n"
     "Команды: /help"
 )
 
@@ -192,19 +214,56 @@ async def cmd_stats(message: Message, settings: Settings) -> None:
 
 
 async def on_text(message: Message, settings: Settings) -> None:
-    """A plain reply from the owner: record engagement, maybe follow up in-role."""
+    """The owner wrote something: record engagement, then react with curiosity (not wisdom)."""
     if not _is_owner(message.from_user.id if message.from_user else None, settings):
         return
+    text = message.text or ""
     last = db.last_message()
-    if last is None:
-        return
-    db.set_reply(last["id"], message.text or "", utc_iso())
-    preferences.on_reply(last["role"])
+    if last is not None:
+        db.set_reply(last["id"], text, utc_iso())
+        preferences.on_reply(last["role"])
 
-    if random.random() < FOLLOWUP_PROBABILITY:
-        followup = await generate_followup(settings, last["role"], last["content"], message.text or "")
-        if followup:
-            await message.answer(followup)
+    if not text or random.random() >= FOLLOWUP_PROBABILITY:
+        return
+    followup = await generate_followup(settings, text)
+    if not followup:
+        return
+    sent = await message.answer(followup, reply_markup=feedback_keyboard())
+    # Log it so its 👍/👎/🤔 maps to a row; reactions feed the Friend register.
+    db.log_message(utc_iso(), "friend", "llm-followup", followup, sent.message_id)
+
+
+async def on_feedback(callback: CallbackQuery, settings: Settings) -> None:
+    """Inline 👍/👎/🤔 under an Echo message — the main learning signal (spec change №2)."""
+    if not _is_owner(callback.from_user.id if callback.from_user else None, settings):
+        await callback.answer()
+        return
+    data = callback.data or ""
+    reaction = data.split(":", 1)[1] if data.startswith("rx:") else ""
+    if reaction not in _CHOSEN_LABEL or callback.message is None:
+        await callback.answer()
+        return
+
+    msg = db.message_by_tg(callback.message.message_id)
+    if msg is None:
+        await callback.answer("Не нашёл это сообщение")
+        return
+
+    changed = msg["reaction"] != reaction
+    db.set_reaction(msg["id"], reaction)
+    if changed:
+        if reaction == "like":
+            preferences.on_reaction(msg["role"], liked=True)
+        elif reaction == "dislike":
+            preferences.on_reaction(msg["role"], liked=False)
+        # neutral: recorded (counts as engagement), but does not move role weights.
+
+    toast = {"like": "Рад, что зашло", "dislike": "Понял, учту", "neutral": "Ок"}[reaction]
+    await callback.answer(toast)
+    try:
+        await callback.message.edit_reply_markup(reply_markup=_chosen_keyboard(reaction))
+    except Exception as exc:  # noqa: BLE001 — editing an old/identical markup can fail harmlessly
+        logger.debug("Could not update feedback markup: %s", exc)
 
 
 async def on_reaction(event: MessageReactionUpdated, settings: Settings) -> None:
@@ -239,5 +298,6 @@ def build_dispatcher(settings: Settings) -> Dispatcher:
     dp.message.register(cmd_now, Command("now"))
     dp.message.register(cmd_stats, Command("stats"))
     dp.message.register(on_text, F.text & ~F.text.startswith("/"))
+    dp.callback_query.register(on_feedback, F.data.startswith("rx:"))
     dp.message_reaction.register(on_reaction)
     return dp

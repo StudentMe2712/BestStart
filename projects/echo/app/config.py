@@ -8,7 +8,9 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-DEFAULT_ROLES = ["mentor", "provocateur", "brainstorm", "friend", "inspirer", "coach"]
+# Friend / Trainer / Mentor go out on a schedule. Challenger is enabled but reactive
+# only (roles.py marks it scheduled=False) — it never auto-sends, only via /now or reaction.
+DEFAULT_ROLES = ["friend", "coach", "mentor", "challenger"]
 
 
 def _int(name: str, default: int) -> int:

@@ -101,6 +101,14 @@ def ensure_user(settings: Settings, now_iso: str) -> None:
             "INSERT OR IGNORE INTO role_state (user_id, role, enabled, weight) VALUES (?, ?, ?, ?)",
             (settings.owner_id, key, enabled, ROLES[key].default_weight),
         )
+    # Drop weights for roles that no longer exist (e.g. removed inspirer/observer/...),
+    # so get_roles() never hands the scheduler a key that isn't in ROLES.
+    if ROLES:
+        placeholders = ",".join("?" for _ in ROLES)
+        conn.execute(
+            f"DELETE FROM role_state WHERE user_id = ? AND role NOT IN ({placeholders})",
+            (settings.owner_id, *ROLES.keys()),
+        )
     conn.commit()
 
 

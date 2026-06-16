@@ -3,8 +3,13 @@ from app.quality import check, jaccard, normalize_words
 
 
 def test_accepts_a_good_message():
-    ok, reason = check("Что ты сейчас делаешь по инерции?", "provocateur", [])
+    ok, reason = check("Как вообще день?", "friend", [])
     assert ok and reason == "ok"
+
+
+def test_rejects_aphorism_opener():
+    ok, reason = check("Иногда такие события приводят к чему-то новому.", "friend", [])
+    assert not ok and reason == "banal"
 
 
 def test_rejects_banal_cliche():
@@ -29,7 +34,7 @@ def test_rejects_toxic():
 
 def test_rejects_message_too_similar_to_recent():
     recent = ["Что ты сейчас делаешь только по привычке сегодня вечером"]
-    ok, reason = check("Что ты сейчас делаешь только по привычке сегодня вечером", "provocateur", recent)
+    ok, reason = check("Что ты сейчас делаешь только по привычке сегодня вечером", "challenger", recent)
     assert not ok and reason == "repetitive"
 
 

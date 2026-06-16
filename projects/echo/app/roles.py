@@ -1,8 +1,9 @@
 """Role archetypes for Echo.
 
-Each role defines the voice, length and quality bounds of a message. Roles are the
-unit the scheduler picks and the generator writes in. Windows bias which roles are
-more likely at a given time of day.
+Echo is one person, not a panel of bots: a close friend who occasionally writes.
+Roles are *registers* of that one personality — Friend (the default), Trainer, Mentor,
+Challenger — not separate characters. Windows bias which register is more likely at a
+given time of day. Challenger is reactive only: it never goes out on a schedule.
 """
 from __future__ import annotations
 
@@ -17,48 +18,34 @@ class RoleSpec:
     length_hint: str   # length instruction handed to the model
     max_chars: int     # hard cap enforced by the quality gate
     default_weight: float
+    scheduled: bool = True  # False -> never auto-sent; reacts/triggers manually only
 
 
 ROLES: dict[str, RoleSpec] = {
-    "mentor": RoleSpec(
-        "mentor", "Наставник",
-        "спокойный наставник: даёшь направление мысли, без давления и нравоучений",
-        "2–3 коротких предложения", 320, 1.0,
-    ),
-    "provocateur": RoleSpec(
-        "provocateur", "Провокатор",
-        "мягкий интеллектуальный провокатор: задаёшь неудобный, но честный вопрос",
-        "1–2 предложения, заканчивай вопросом", 240, 1.0,
-    ),
-    "brainstorm": RoleSpec(
-        "brainstorm", "Брейнштормер",
-        "запускаешь мысль гипотезой «а что если…», открываешь неожиданный угол",
-        "1–2 предложения", 260, 1.0,
-    ),
     "friend": RoleSpec(
         "friend", "Друг",
-        "тёплый, человечный, поддерживающий — без приторности и пафоса",
-        "1–2 коротких предложения", 220, 1.0,
-    ),
-    "inspirer": RoleSpec(
-        "inspirer", "Вдохновитель",
-        "краткая собственная мысль-наблюдение, не цитата и не лозунг",
-        "1–2 предложения", 240, 1.0,
+        "близкий друг, которому искренне интересна его жизнь: спрашиваешь, как он, "
+        "что нового, как прошло; радуешься за него; без морали, выводов и советов",
+        "одна короткая фраза или вопрос, часто одно предложение", 160, 1.8,
     ),
     "coach": RoleSpec(
         "coach", "Тренер",
-        "про тело и действие: вода, движение, пауза, дыхание; мягко зовёшь сделать что-то прямо сейчас",
-        "1–2 очень коротких предложения", 180, 1.0,
+        "лёгкий живой пинок про тело прямо сейчас: подъём, вода, размяться, встать, "
+        "турник; коротко и по-доброму, как друг, а не как приложение",
+        "очень коротко: 2–6 слов или одно короткое предложение", 110, 1.0,
     ),
-    "observer": RoleSpec(
-        "observer", "Наблюдатель",
-        "короткое точное наблюдение про привычки, внимание, ритм дня",
-        "одно предложение", 200, 0.7,
+    "mentor": RoleSpec(
+        "mentor", "Наставник",
+        "про его реальные дела сегодня: что важно, что зависло, что закроешь; "
+        "конкретный рабочий вопрос — без абстракций про путь, успех и цели",
+        "один короткий вопрос", 160, 1.0,
     ),
-    "philosopher": RoleSpec(
-        "philosopher", "Философ",
-        "глубокая, но ясная мысль; без пафоса и заумности",
-        "1–2 предложения", 280, 0.7,
+    "challenger": RoleSpec(
+        "challenger", "Челленджер",
+        "редкий аккуратный неудобный вопрос по реальному поводу, ты на его стороне; "
+        "только когда он застрял или сомневается — не для того, чтобы поддеть",
+        "один короткий вопрос", 160, 1.0,
+        scheduled=False,
     ),
 }
 
@@ -75,17 +62,18 @@ WINDOWS: tuple[Window, ...] = (
     Window("morning", "утро", "начало дня, ясная голова", 0.10),
     Window("lunch", "обед", "середина дня, пауза, еда", 0.09),
     Window("day", "день", "рабочий день, дела и задачи", 0.08),
-    Window("evening", "вечер", "вечер, спад темпа, время подумать", 0.10),
+    Window("evening", "вечер", "вечер, спад темпа, как прошёл день", 0.10),
 )
 
 _WINDOW_BY_KEY = {w.key: w for w in WINDOWS}
 
 # Which roles get a boost in which window (multiplier; default 1.0 elsewhere).
+# Friend dominates the emotional bookends of the day (morning/evening) on purpose.
 WINDOW_BIAS: dict[str, dict[str, float]] = {
-    "morning": {"provocateur": 1.4, "brainstorm": 1.4, "mentor": 1.2, "observer": 1.2},
-    "lunch": {"friend": 1.6, "coach": 1.3},
-    "day": {"coach": 1.6, "mentor": 1.2, "friend": 1.1, "observer": 1.1},
-    "evening": {"philosopher": 1.6, "inspirer": 1.5, "mentor": 1.2},
+    "morning": {"coach": 1.5, "friend": 1.2, "mentor": 1.2},
+    "lunch": {"friend": 1.6, "coach": 1.2},
+    "day": {"mentor": 1.5, "coach": 1.3, "friend": 1.1},
+    "evening": {"friend": 1.7},
 }
 
 
