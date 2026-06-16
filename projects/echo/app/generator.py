@@ -38,12 +38,15 @@ def _system_prompt(role: RoleSpec) -> str:
     )
 
 
-def _user_prompt(window: Window, recent: list[str]) -> str:
+def _user_prompt(role: RoleSpec, window: Window, recent: list[str]) -> str:
     lines = [f"Время суток: {window.label}. Контекст: {window.hint}."]
     if recent:
         joined = " | ".join(recent[:4])
         lines.append(f"Недавно уже было: {joined}. Не повторяй эти темы и формулировки.")
-    lines.append("Напиши одно короткое сообщение в этой интонации — лучше вопрос про его жизнь, чем свою мысль.")
+    if role.asks_question:
+        lines.append("Напиши одно короткое сообщение в этой интонации — лучше вопрос про его жизнь, чем свою мысль.")
+    else:
+        lines.append("Напиши одну очень короткую фразу-присутствие — просто отметься рядом, без вопроса и без мысли.")
     return "\n".join(lines)
 
 
@@ -73,7 +76,7 @@ async def generate_message(
     """Return (text, source). Source is 'llm-groq' / 'llm-openrouter' / 'template'."""
     role = ROLES[role_key]
     system = _system_prompt(role)
-    user = _user_prompt(window, recent)
+    user = _user_prompt(role, window, recent)
 
     for source, base_url, api_key, model in _providers(settings):
         for _ in range(ATTEMPTS_PER_PROVIDER):

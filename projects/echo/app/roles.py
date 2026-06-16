@@ -2,9 +2,10 @@
 
 Echo is one person, not a panel of bots: a close friend who writes through the day.
 Roles are *registers* of that one personality. Their default weights encode the target
-share of messages (Friend ~40%, Trainer ~20%, Mentor ~15%, Challenger ~15%, Philosopher
-~10%). Windows bias which register is more likely at a given time of day; cadence (how
-often Echo writes at all) lives in config + scheduler, not here.
+share of messages (Friend ~35%, Trainer ~17%, Presence ~13%, Mentor ~13%, Challenger
+~13%, Philosopher ~9%). Presence is the Bible V2 register that just *is there* — a short
+ambient statement, never a question. Windows bias which register is more likely at a given
+time of day; cadence (how often Echo writes at all) lives in config + scheduler, not here.
 """
 from __future__ import annotations
 
@@ -20,10 +21,12 @@ class RoleSpec:
     max_chars: int     # hard cap enforced by the quality gate
     default_weight: float
     scheduled: bool = True  # False -> never auto-sent; reacts/triggers manually only
+    asks_question: bool = True  # False -> a plain statement (Presence), prompt won't push a question
 
 
-# Weights are proportional to the target daily share (sum ~7.45): friend 40% / coach 20%
-# / mentor 15% / challenger 15% / philosopher 10%. friend sits at the adjust_weight cap.
+# Weights are proportional to the target daily share (sum ~8.55): friend 35% / coach 18%
+# / presence 13% / mentor 13% / challenger 13% / philosopher 9%. friend sits at the
+# adjust_weight cap; presence is friend-adjacent, so it dilutes friend's share, not the rest.
 ROLES: dict[str, RoleSpec] = {
     "friend": RoleSpec(
         "friend", "Друг",
@@ -57,6 +60,14 @@ ROLES: dict[str, RoleSpec] = {
         "«иногда…», «настоящая мудрость…», «ясность приходит…»; можно короткий вопрос «как думаешь?»",
         "короткая цитата с автором или одна короткая мысль", 220, 0.75,
     ),
+    "presence": RoleSpec(
+        "presence", "Присутствие",
+        "просто короткое присутствие рядом, без вопроса и без мысли: бытовая фраза про "
+        "сам момент — время дня, погоду, «надеюсь, поел», «тут бы кофе» — как будто "
+        "человек рядом обронил пару слов; не учишь, не спрашиваешь, не философствуешь",
+        "одна очень короткая фраза-присутствие, без вопроса", 90, 1.1,
+        asks_question=False,
+    ),
 }
 
 
@@ -82,11 +93,13 @@ _WINDOW_BY_KEY = {w.key: w for w in WINDOWS}
 # Which roles get a boost in which window (multiplier; default 1.0 elsewhere).
 # Trainer wakes the morning, Mentor owns the workday, Friend carries the evening,
 # Philosopher only ever surfaces in the evening (so it stays rare and well-timed).
+# Presence drifts in around the lunch lull and the evening wind-down — the moments a
+# person nearby would just say "уже вечер" without asking anything.
 WINDOW_BIAS: dict[str, dict[str, float]] = {
     "morning": {"coach": 1.6, "mentor": 1.3, "friend": 1.1},
-    "lunch": {"friend": 1.4, "coach": 1.2},
+    "lunch": {"friend": 1.4, "coach": 1.2, "presence": 1.3},
     "day": {"mentor": 1.6, "challenger": 1.3, "coach": 1.2},
-    "evening": {"friend": 1.6, "philosopher": 1.4},
+    "evening": {"friend": 1.6, "philosopher": 1.4, "presence": 1.4},
 }
 
 

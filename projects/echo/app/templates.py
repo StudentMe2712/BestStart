@@ -51,6 +51,18 @@ TEMPLATES: dict[str, list[str]] = {
         "Что будет, если оставить всё как есть?",
         "Ты точно решаешь правильную проблему?",
     ],
+    # Presence — ambient "I'm here" statements, never a question. Just a person nearby
+    # noticing the moment (Bible V2: presence is often better than any question).
+    "presence": [
+        "Уже вечер.",
+        "День какой-то длинный сегодня.",
+        "Пятница всё ближе 🙂",
+        "Тут бы сейчас кофе.",
+        "Уже почти обед.",
+        "Что-то сегодня жарко.",
+        "Надеюсь, успел поесть.",
+        "Тихо сегодня.",
+    ],
     # Philosopher — rarest. Real attributed quotes or one short observation only.
     "philosopher": [
         "«Мы страдаем чаще в воображении, чем в реальности.» — Сенека. Как думаешь, правда?",
