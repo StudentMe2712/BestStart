@@ -17,6 +17,18 @@ def test_rejects_banal_cliche():
     assert not ok and reason == "banal"
 
 
+def test_rejects_bible_forbidden_phrases():
+    # Forbidden "ЗАПРЕЩЕНО" tells from the Personality Bible V2 that the gate must catch.
+    forbidden = [
+        "Что если посмотреть под другим углом на эту задачу.",
+        "Время не уходит, оно остаётся в нас.",
+        "Сегодня есть шанс увидеть мир иначе.",
+    ]
+    for text in forbidden:
+        ok, reason = check(text, "philosopher", [])
+        assert not ok and reason == "banal", text
+
+
 def test_rejects_too_long():
     ok, reason = check("а" * 400, "coach", [])
     assert not ok and reason == "too_long"
