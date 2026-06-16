@@ -6,7 +6,7 @@
 Имя приложения (FastAPI title): Personal AI Memory.
 Версия: 0.2.0.
 Описание (app.description): Phase 2 — collect conversations, full-text + semantic search..
-Структурная сводка: таблиц БД — 13; эндпоинтов API — 66; провайдеры LLM — groq, openrouter, ollama; default provider (config) — hybrid.
+Структурная сводка: таблиц БД — 13; эндпоинтов API — 68; провайдеры LLM — groq, openrouter, ollama; default provider (config) — hybrid.
 
 ## Таблицы базы данных (database tables)
 Какие таблицы есть в БД: всего 13.
@@ -47,8 +47,8 @@ Migration head: c8d9e0f1a2b3.
 - c8d9e0f1a2b3: memory_links: links between knowledge objects (Project Memory P2, stag
 
 ## API / роуты (endpoints)
-Какие эндпоинты существуют: всего 66 эндпоинтов API.
-Группы (router prefix): /chat=2, /conversations=5, /facts=7, /health=1, /index=1, /learn=19, /memory=11, /projects=10, /saved=3, /search=3, /stats=2, /timeline=1.
+Какие эндпоинты существуют: всего 68 эндпоинтов API.
+Группы (router prefix): /chat=2, /conversations=5, /facts=7, /health=1, /index=1, /learn=19, /memory=13, /projects=10, /saved=3, /search=3, /stats=2, /timeline=1.
 Маршруты (метод путь):
 - GET /
 - POST /chat
@@ -92,11 +92,13 @@ Migration head: c8d9e0f1a2b3.
 - DELETE /memory/items/{item_id}
 - GET /memory/items/{item_id}
 - PATCH /memory/items/{item_id}
+- GET /memory/items/{item_id}/similar
 - POST /memory/items/{item_id}/tag
 - GET /memory/links
 - POST /memory/links
 - DELETE /memory/links/{link_id}
 - POST /memory/recall
+- POST /memory/solutions/draft
 - GET /projects
 - POST /projects
 - DELETE /projects/{project_id}
@@ -138,8 +140,8 @@ Fallback цепочка: provider-to-provider переключения НЕТ (�
 Как работает Telegram Bot (бот PAM):
 - Команды: /ask, /new.
 - Режимы: захват (текст/ссылка/код/файл/фото → memory item) и чат (/ask → POST /chat, RAG по всей памяти PAM).
-- Configured (token + allowed user заданы): True.
-- Polling на этой машине (config TELEGRAM_BOT_OWNER): True.
+- Configured (token + allowed user заданы): False.
+- Polling на этой машине (config TELEGRAM_BOT_OWNER): False.
 - Запуск: отдельный процесс (python -m app.telegram_bot), long polling без webhook.
 - Голосовые/аудио: не поддерживаются (V1).
 
