@@ -1,17 +1,29 @@
-"""One-time interactive Telethon login. Run once before /parse can work:
+"""One-time interactive Telethon login — explicit, verbose flow.
 
+Run once before /parse can work:
     python -m parsertg.login
 
-It asks for your phone number and the login code Telegram sends you (plus your 2FA
-password if you have one), then writes the session file referenced by SESSION_PATH.
-After that the bot reuses the session — no further prompts."""
+It asks for your phone number and the login code Telegram sends (plus your 2FA password
+if you have one), writes the session file referenced by SESSION_PATH, then the bot reuses
+that session with no further prompts.
+
+We deliberately use the explicit connect -> send_code_request -> sign_in flow (NOT
+client.start), so every step is logged and we can guarantee a USER login: a bot session
+can't read channel history, which defeats the whole purpose."""
 from __future__ import annotations
 
 import asyncio
 import logging
+from getpass import getpass
+
+from telethon.errors import SessionPasswordNeededError
 
 from . import parser
 from .config import load_settings
+
+
+def _mask(phone: str) -> str:
+    return phone[:4] + "…" + phone[-2:] if len(phone) > 6 else phone
 
 
 async def _main() -> None:
@@ -21,21 +33,53 @@ async def _main() -> None:
             "Сначала заполни TELETHON_API_ID и TELETHON_API_HASH в .env "
             "(получить на https://my.telegram.org → API development tools)."
         )
+
     client = parser.build_client(settings)
-    # Force a phone login. A bot can't read channel history, so we must NOT log in with a
-    # bot token here — that's the whole reason for a user session.
-    await client.start(phone=lambda: input("Номер телефона (+7…), НЕ токен бота: "))
+
+    # 1) Connect (does not sign in by itself).
+    await client.connect()
+    print("Connected: OK")
+
+    # Reuse an existing valid USER session if there is one.
+    if await client.is_user_authorized():
+        me = await client.get_me()
+        if me.bot:
+            await client.log_out()  # disconnects + removes the wrong bot session file
+            raise SystemExit(
+                "Существующая сессия — БОТ, она удалена. Запусти снова и введи номер телефона."
+            )
+        print(f"Уже авторизован как {me.first_name} (id={me.id}) — новый логин не нужен.")
+        await client.disconnect()
+        return
+
+    print("User login flow")
+    phone = input("Номер телефона (+7…), НЕ токен бота: ").strip()
+    if ":" in phone:
+        await client.disconnect()
+        raise SystemExit("Это похоже на токен бота. Нужен НОМЕР ТЕЛЕФОНА твоего аккаунта.")
+
+    # 2) Request the login code.
+    print(f"Sending code to {_mask(phone)}")
+    sent = await client.send_code_request(phone)
+    # 3) Confirm Telegram returned a phone_code_hash (needed to complete sign-in).
+    print(f"Code hash received: {'есть' if sent.phone_code_hash else 'нет'}")
+
+    # 4) Sign in with the code (+ 2FA password if the account has one).
+    code = input("Код из Telegram: ").strip()
+    try:
+        await client.sign_in(phone=phone, code=code, phone_code_hash=sent.phone_code_hash)
+    except SessionPasswordNeededError:
+        print("Включена 2FA — нужен облачный пароль.")
+        await client.sign_in(password=getpass("Пароль 2FA: "))
+
     me = await client.get_me()
     if me.bot:
-        await client.log_out()  # disconnects and deletes the (wrong) bot session file
-        raise SystemExit(
-            "Вход выполнен как БОТ — так нельзя: бот не может читать историю каналов.\n"
-            "Сессия удалена. Запусти снова и введи НОМЕР ТЕЛЕФОНА своего аккаунта, а не токен бота."
-        )
+        await client.log_out()
+        raise SystemExit("Вход выполнен как БОТ — сессия удалена. Перелогинься номером телефона.")
     print(f"OK — авторизован как {me.first_name} (id={me.id}). Сессия: {settings.session_path}.session")
     await client.disconnect()
 
 
 if __name__ == "__main__":
-    logging.basicConfig(level="INFO")
+    logging.basicConfig(level="INFO")  # keep Telethon's own connection logs visible
     asyncio.run(_main())
