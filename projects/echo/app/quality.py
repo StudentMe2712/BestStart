@@ -105,6 +105,9 @@ TIRED_FRIEND_OPENERS = (
     "как настроение",
     "как день",
     "как утро",
+    "как проходит день",
+    "как проходит твой день",
+    "как проходит",
 )
 
 # The Philosopher may never invent a quote: guillemets or a "— Author" attribution in a

@@ -4,8 +4,8 @@ Two kinds:
   * ``reaction``  — the owner says something (``user_input``); Echo must react as a friend
     who is curious about *him* (drives ``generate_followup``). ``role`` is "friend".
   * ``proactive`` — no user input; Echo writes first in a given register (drives
-    ``generate_message`` for ``role`` in ``window``). Covers Trainer/Mentor/Challenger/
-    Philosopher/Presence so every register gets its own score.
+    ``generate_message`` for ``role`` in ``window``). Covers Friend/Coach/Philosopher/
+    Presence so every register gets its own score.
 
 ``good`` / ``bad`` are *labeled exemplars* (from the Bible + character.md). They are not
 generated — they calibrate the judge and let the deterministic layer be measured against
@@ -164,20 +164,10 @@ _PROACTIVE: tuple[Scenario, ...] = (
         ("Вечер — время подвести итоги дня.", "Как продвигаешься к своим целям?"),
     ),
     Scenario(
-        "pro-coach-morning", "проактив", PROACTIVE, "coach", None, "morning",
-        ("Воды.", "Разомни плечи.", "Подъём 🙂"),
-        ("Утренняя зарядка задаёт тонус на весь день.", "Согласно исследованиям, движение полезно."),
-    ),
-    Scenario(
-        "pro-mentor-day", "проактив", PROACTIVE, "mentor", None, "day",
-        ("Что сегодня главное?", "Что зависло?", "Где сейчас затык?"),
-        ("Двигаешься ли ты к своим целям?", "Что из утреннего плана уже решил?"),
-    ),
-    Scenario(
-        "pro-challenger-day", "проактив", PROACTIVE, "challenger", None, "day",
-        ("Ты уверен, что проблема именно там?", "А если вообще это не делать?",
-         "Что будет, если оставить как есть?"),
-        ("А не боишься ли ты успеха?", "Не прячешь ли ты лень за занятостью?"),
+        "pro-coach-day", "проактив", PROACTIVE, "coach", None, "day",
+        ("Пора пройтись.", "Турник сегодня будет?", "Засиделся наверное."),
+        ("Выпей воды и разомнись.", "Согласно исследованиям, движение полезно.",
+         "Не забывай про норму шагов сегодня."),
     ),
     Scenario(
         "pro-philosopher-evening", "проактив", PROACTIVE, "philosopher", None, "evening",

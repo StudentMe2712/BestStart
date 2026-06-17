@@ -8,8 +8,10 @@ from __future__ import annotations
 
 import os
 import sqlite3
+from datetime import datetime
 from typing import Any
 
+from . import quality
 from .config import Settings
 from .roles import ROLES
 
@@ -54,6 +56,12 @@ CREATE TABLE IF NOT EXISTS messages (
     reaction TEXT,
     reply TEXT,
     replied_at TEXT
+);
+CREATE TABLE IF NOT EXISTS facts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    text TEXT NOT NULL,
+    created_at TEXT NOT NULL
 );
 """
 
@@ -218,6 +226,20 @@ def last_message() -> sqlite3.Row | None:
     ).fetchone()
 
 
+def minutes_since_role(role: str, now_utc: datetime) -> float | None:
+    """Minutes since Echo last sent in `role`, or None if it never has (per-role cooldown)."""
+    row = _db().execute(
+        "SELECT MAX(ts) AS m FROM messages WHERE user_id = ? AND role = ?", (_owner_id, role)
+    ).fetchone()
+    if row is None or row["m"] is None:
+        return None
+    try:
+        last = datetime.fromisoformat(row["m"])
+    except ValueError:
+        return None
+    return (now_utc - last).total_seconds() / 60
+
+
 def trailing_unanswered(limit: int = 12) -> int:
     """Count the most recent consecutive messages that got neither a reply nor a reaction."""
     rows = _db().execute(
@@ -262,3 +284,53 @@ def stats() -> dict[str, Any]:
         "SELECT COUNT(*) c FROM messages WHERE user_id = ? AND reaction = 'like'", (_owner_id,)
     ).fetchone()["c"]
     return {"total": total, "replied": replied, "liked": liked}
+
+
+# --- facts (life-memory the Friend register references) --------------------
+
+# Keep at most this many auto-learned facts; the oldest are pruned so the store can't grow
+# without bound for a long-running single user.
+MAX_FACTS = 40
+
+
+def add_fact(text: str, created_at: str) -> int | None:
+    """Store a life-fact, skipping blanks and near-duplicates. Returns the new id or None."""
+    cleaned = text.strip()
+    if not cleaned:
+        return None
+    if quality.is_too_similar(cleaned, fact_texts()):
+        return None
+    cur = _db().execute(
+        "INSERT INTO facts (user_id, text, created_at) VALUES (?, ?, ?)",
+        (_owner_id, cleaned, created_at),
+    )
+    _db().execute(
+        """DELETE FROM facts WHERE user_id = ? AND id NOT IN (
+               SELECT id FROM facts WHERE user_id = ? ORDER BY id DESC LIMIT ?
+           )""",
+        (_owner_id, _owner_id, MAX_FACTS),
+    )
+    _db().commit()
+    return int(cur.lastrowid)
+
+
+def list_facts() -> list[sqlite3.Row]:
+    return _db().execute(
+        "SELECT id, text FROM facts WHERE user_id = ? ORDER BY id", (_owner_id,)
+    ).fetchall()
+
+
+def delete_fact(fact_id: int) -> bool:
+    cur = _db().execute("DELETE FROM facts WHERE user_id = ? AND id = ?", (_owner_id, fact_id))
+    _db().commit()
+    return cur.rowcount > 0
+
+
+def fact_texts(limit: int | None = None) -> list[str]:
+    """Stored facts, most recent first (for dedupe and for injecting into the Friend prompt)."""
+    sql = "SELECT text FROM facts WHERE user_id = ? ORDER BY id DESC"
+    params: list[Any] = [_owner_id]
+    if limit is not None:
+        sql += " LIMIT ?"
+        params.append(limit)
+    return [r["text"] for r in _db().execute(sql, params).fetchall()]

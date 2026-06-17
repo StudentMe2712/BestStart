@@ -32,9 +32,9 @@ from app.generator import generate_message
 from app.quality import jaccard, normalize_words
 from app.roles import ROLES, WINDOWS
 
-# Same six roles, but Presence first — it is the primary register in V3.
+# V4 registers, Presence first — it is the primary register.
 ROLE_ORDER: tuple[str, ...] = (
-    "presence", "friend", "mentor", "challenger", "coach", "philosopher",
+    "presence", "friend", "coach", "philosopher",
 )
 
 DEFAULT_COUNT = 20

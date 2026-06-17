@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-DEFAULT_ROLES = ["friend", "coach", "mentor", "challenger", "philosopher", "presence"]
+DEFAULT_ROLES = ["presence", "friend", "coach", "philosopher"]
 
 
 def _int(name: str, default: int) -> int:

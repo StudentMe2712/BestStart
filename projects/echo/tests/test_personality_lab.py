@@ -48,7 +48,7 @@ def test_build_markdown_has_english_role_headers_and_patterns_section():
     md = lab.build_markdown(results, top_n=20, threshold=0.5)
 
     # Every role gets an English H1 section, in the requested order.
-    for header in ("# Friend", "# Presence", "# Coach", "# Mentor", "# Challenger", "# Philosopher"):
+    for header in ("# Friend", "# Presence", "# Coach", "# Philosopher"):
         assert header in md
     assert md.index("# Friend") < md.index("# Presence") < md.index("# Coach")
     # No scoring / judge language leaks into the report.
@@ -77,12 +77,12 @@ def test_pair_overlap_identical_roles_is_total():
 def test_overlap_matrix_flags_pairs_over_limit():
     results = {
         "friend": ["Как прошёл день?", "Как прошёл день?"],
-        "mentor": ["Как прошёл день?", "Как прошёл день?"],   # collapses into friend
-        "coach": ["Воды.", "Встань."],                          # disjoint from both
+        "presence": ["Как прошёл день?", "Как прошёл день?"],   # collapses into friend
+        "coach": ["Воды.", "Встань."],                           # disjoint from both
     }
     pairs = {(p.role_a, p.role_b): p for p in lab.overlap_matrix(results, threshold=0.5)}
-    assert pairs[("friend", "mentor")].pct == 100.0
-    assert pairs[("friend", "mentor")].unique is False
+    assert pairs[("friend", "presence")].pct == 100.0
+    assert pairs[("friend", "presence")].unique is False
     assert pairs[("friend", "coach")].pct == 0.0
     assert pairs[("friend", "coach")].unique is True
 

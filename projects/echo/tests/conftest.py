@@ -24,7 +24,7 @@ def make_settings(**overrides) -> Settings:
         quiet_start=23,
         quiet_end=8,
         tick_minutes=20,
-        enabled_roles=["mentor", "friend"],
+        enabled_roles=["friend", "presence"],
         log_level="INFO",
     )
     base.update(overrides)

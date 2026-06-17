@@ -49,7 +49,7 @@ def test_rejects_toxic():
 
 def test_rejects_message_too_similar_to_recent():
     recent = ["Что ты сейчас делаешь только по привычке сегодня вечером"]
-    ok, reason = check("Что ты сейчас делаешь только по привычке сегодня вечером", "challenger", recent)
+    ok, reason = check("Что ты сейчас делаешь только по привычке сегодня вечером", "friend", recent)
     assert not ok and reason == "repetitive"
 
 
@@ -69,9 +69,15 @@ def test_rejects_tired_friend_opener():
     assert not ok and reason == "tired"
 
 
+def test_rejects_kak_prohodit_den_opener():
+    # V4 rule №2: this exact survey opener must be blocked for the Friend register.
+    ok, reason = check("Как проходит день?", "friend", [])
+    assert not ok and reason == "tired"
+
+
 def test_tired_opener_block_is_friend_only():
     # Other registers may still phrase things this way.
-    ok, _ = check("Как там с тем, что застряло?", "mentor", [])
+    ok, _ = check("Как там с тем, что застряло?", "presence", [])
     assert ok
 
 
@@ -100,6 +106,6 @@ def test_coach_fitness_tracker_phrase_banned():
     assert not ok and reason == "banal"
 
 
-def test_challenger_do_nothing_loop_banned():
-    ok, reason = check("А если ничего не менять?", "challenger", [])
+def test_do_nothing_loop_phrase_banned():
+    ok, reason = check("А если ничего не менять?", "friend", [])
     assert not ok and reason == "banal"

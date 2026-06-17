@@ -22,7 +22,7 @@ from aiogram.types import (
 
 from . import db, preferences
 from .config import Settings
-from .generator import generate_followup
+from .generator import extract_and_store_facts, generate_followup
 from .roles import ROLES
 from .scheduler import feedback_keyboard, force_send, now_local, utc_iso
 
@@ -67,6 +67,8 @@ HELP = (
     "/mode <роль> on|off — включить/выключить роль\n"
     "/more — чаще   /less — реже\n"
     "/quiet [часы] — помолчи (по умолчанию 4 ч)\n"
+    "/facts — что я про тебя помню\n"
+    "/forget <номер> — забыть факт\n"
     "/pause — выключить   /resume — включить\n"
     "/stats — статистика\n\n"
     f"Роли: {', '.join(f'{r.key} ({r.name})' for r in ROLES.values())}"
@@ -196,6 +198,30 @@ async def cmd_now(message: Message, command: CommandObject, settings: Settings) 
         await message.answer("Сейчас не получилось — нет активных ролей? Проверь /mode.")
 
 
+async def cmd_facts(message: Message, settings: Settings) -> None:
+    if not _is_owner(message.from_user.id if message.from_user else None, settings):
+        return
+    facts = db.list_facts()
+    if not facts:
+        await message.answer("Пока ничего про тебя не запомнил. Расскажешь о себе — запомню.")
+        return
+    lines = "\n".join(f"{f['id']}. {f['text']}" for f in facts)
+    await message.answer(f"Что я про тебя помню:\n{lines}\n\nУбрать ненужное: /forget <номер>")
+
+
+async def cmd_forget(message: Message, command: CommandObject, settings: Settings) -> None:
+    if not _is_owner(message.from_user.id if message.from_user else None, settings):
+        return
+    arg = (command.args or "").strip()
+    if not arg.isdigit():
+        await message.answer("Напиши номер факта: /forget 2 (список — /facts).")
+        return
+    if db.delete_fact(int(arg)):
+        await message.answer("Забыл.")
+    else:
+        await message.answer("Нет такого факта. Список — /facts.")
+
+
 async def cmd_stats(message: Message, settings: Settings) -> None:
     if not _is_owner(message.from_user.id if message.from_user else None, settings):
         return
@@ -214,7 +240,7 @@ async def cmd_stats(message: Message, settings: Settings) -> None:
 
 
 async def on_text(message: Message, settings: Settings) -> None:
-    """The owner wrote something: record engagement, then react with curiosity (not wisdom)."""
+    """The owner wrote something: record engagement, react with curiosity, and quietly learn facts."""
     if not _is_owner(message.from_user.id if message.from_user else None, settings):
         return
     text = message.text or ""
@@ -223,14 +249,22 @@ async def on_text(message: Message, settings: Settings) -> None:
         db.set_reply(last["id"], text, utc_iso())
         preferences.on_reply(last["role"])
 
-    if not text or random.random() >= FOLLOWUP_PROBABILITY:
+    if not text:
         return
-    followup = await generate_followup(settings, text)
-    if not followup:
-        return
-    sent = await message.answer(followup, reply_markup=feedback_keyboard())
-    # Log it so its 👍/👎/🤔 maps to a row; reactions feed the Friend register.
-    db.log_message(utc_iso(), "friend", "llm-followup", followup, sent.message_id)
+
+    # React first (user-facing), so fact-learning never delays the reply.
+    if random.random() < FOLLOWUP_PROBABILITY:
+        followup = await generate_followup(settings, text)
+        if followup:
+            sent = await message.answer(followup, reply_markup=feedback_keyboard())
+            # Log it so its 👍/👎/🤔 maps to a row; reactions feed the Friend register.
+            db.log_message(utc_iso(), "friend", "llm-followup", followup, sent.message_id)
+
+    # Auto-learn durable life-facts from what he said (no-op without API keys).
+    try:
+        await extract_and_store_facts(settings, text, utc_iso())
+    except Exception as exc:  # noqa: BLE001 — learning is best-effort, never break the chat
+        logger.debug("Fact extraction failed: %s", exc)
 
 
 async def on_feedback(callback: CallbackQuery, settings: Settings) -> None:
@@ -296,6 +330,8 @@ def build_dispatcher(settings: Settings) -> Dispatcher:
     dp.message.register(cmd_less, Command("less"))
     dp.message.register(cmd_mode, Command("mode"))
     dp.message.register(cmd_now, Command("now"))
+    dp.message.register(cmd_facts, Command("facts"))
+    dp.message.register(cmd_forget, Command("forget"))
     dp.message.register(cmd_stats, Command("stats"))
     dp.message.register(on_text, F.text & ~F.text.startswith("/"))
     dp.callback_query.register(on_feedback, F.data.startswith("rx:"))

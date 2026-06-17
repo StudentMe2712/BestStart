@@ -1,14 +1,17 @@
 """Role archetypes for Echo.
 
-Echo is one person, not a panel of bots: a close friend who writes through the day.
-Roles are *registers* of that one personality. Their default weights encode the target
-share of messages (Friend ~35%, Trainer ~17%, Presence ~13%, Mentor ~13%, Challenger
-~13%, Philosopher ~9%). Presence is the Bible V2 register that just *is there* — a short
-ambient statement, never a question. Windows bias which register is more likely at a given
-time of day; cadence (how often Echo writes at all) lives in config + scheduler, not here.
+Echo is one person, not a panel of bots: a human who occasionally writes through the day.
+Roles are *registers* of that one personality. ECHO HUMANITY V4 keeps four registers —
+Presence (the backbone: a short ambient statement, never a question), Friend (around and
+noticing; questions are rare), Coach (a movement nudge during work hours only) and
+Philosopher (a verified quote / interesting fact / plain observation, rarely). Their default
+weights encode the target share (Presence dominates). Windows bias which register is more
+likely at a given time of day; cadence (how often Echo writes at all) lives in config +
+scheduler, not here.
 """
 from __future__ import annotations
 
+import random
 from dataclasses import dataclass
 
 
@@ -26,12 +29,19 @@ class RoleSpec:
     # is the only role-specific instruction the generator hands the model, so it must
     # pin down both the *topic* and the *shape* of the message — distinctness over polish.
     form: str = ""
+    # Time-of-day gate (local hour, [start, end)): the scheduler will not auto-pick this
+    # register outside it. None -> eligible whenever Echo writes at all. Coach lives 10–17.
+    active_hours: tuple[int, int] | None = None
+    # Per-role minimum spacing in minutes: the scheduler skips the register if it sent one
+    # this recently. 0 -> no extra cooldown beyond the global gap. Keeps Coach/Philosopher rare.
+    cooldown_minutes: int = 0
 
 
-# V3 humanity: Echo should feel like a person who is *around*, not a panel of functions.
-# Presence is now the primary register (it carries the "someone is nearby" feeling); Coach
-# and Philosopher are rare, well-timed interventions. Weights set the role mix the scheduler
-# samples — they do NOT change cadence (when/how often Echo writes), only which voice.
+# V4 humanity: Echo should feel like a person who is *around*, not a panel of functions.
+# Presence is the primary register (it carries the "someone is nearby" feeling); Friend is
+# the second voice (mostly comments and memory, rarely a question); Coach and Philosopher are
+# rare, well-timed interventions. Weights set the role mix the scheduler samples — they do NOT
+# change cadence (when/how often Echo writes), only which voice.
 ROLES: dict[str, RoleSpec] = {
     "presence": RoleSpec(
         "presence", "Присутствие",
@@ -42,62 +52,42 @@ ROLES: dict[str, RoleSpec] = {
         asks_question=False,
         form=(
             "Просто отметься рядом — короткое УТВЕРЖДЕНИЕ про сам момент: время дня, погода, "
-            "«тут бы чай», «надеюсь, поел», «вечер какой-то длинный». Без вопроса, без совета, "
-            "без мысли и без цитаты. Часто это лучше любого вопроса."
+            "«тут бы чай», «надеюсь, поел», «вечер какой-то длинный», «скоро пятница». Без "
+            "вопроса, без совета, без мысли и без цитаты. Часто это лучше любого вопроса."
         ),
     ),
     "friend": RoleSpec(
         "friend", "Друг",
-        "близкий друг, который рядом и замечает: подкалывает, вспоминает сказанное раньше, "
-        "комментирует момент, иногда лёгкий живой вопрос — но не дежурный опросник",
+        "близкий друг, который рядом и замечает: комментирует момент, помнит, что у тебя в "
+        "жизни, иногда подкалывает; вопрос — редко и живой, не дежурный опросник",
         "одна короткая живая фраза, как в личке другу", 160, 2.2,
         form=(
-            "Будь другом, который рядом и замечает: подколи, вспомни то, о чём он раньше "
-            "обмолвился, прокомментируй момент или просто отметь его. Иногда можно лёгкий "
-            "вопрос про вечер/отдых — но НИКОГДА не дежурное «как дела / как прошёл день / "
-            "как спал / как себя чувствуешь». Скорее «что-то ты сегодня тихий» или «чем вечер занят»."
-        ),
-    ),
-    "mentor": RoleSpec(
-        "mentor", "Наставник",
-        "знакомый, который не лезет в дела, которых не знает: мягко спрашивает про сегодня "
-        "вообще, без выдуманной конкретики",
-        "один короткий мягкий вопрос", 160, 1.0,
-        form=(
-            "Ты НЕ знаешь его дел, проектов, отчётов, клиентов и дедлайнов — и НЕ выдумывай их. "
-            "Спроси мягко и обобщённо про сегодня: «что сегодня хочется закончить?», «есть "
-            "что-то, что давно откладываешь?». Никакой конкретики, которую он сам не называл."
-        ),
-    ),
-    "challenger": RoleSpec(
-        "challenger", "Челленджер",
-        "близкий, который полностью на его стороне и по-доброму подсвечивает слепое пятно — "
-        "не наезд, а взгляд со стороны, каждый раз с нового угла",
-        "один короткий мягкий вопрос", 160, 0.9,
-        form=(
-            "Один мягкий неудобный вопрос — ты ПОЛНОСТЬЮ на его стороне, это не наезд, а "
-            "дружеский взгляд со стороны. Каждый раз НОВЫЙ угол: а вдруг дело не в этом; а если "
-            "проще; а что если наоборот; это правда важно или привычка; ты проверял или кажется. "
-            "По-доброму, без давления и без шаблона про «ничего не менять»."
+            "Будь другом, который рядом и замечает: прокомментируй момент, вспомни то, что у "
+            "него в жизни, подколи или просто обронь мысль. Вопрос — редко и живой, НИКОГДА не "
+            "дежурное «как дела / как прошёл день / как проходит день / как спал»."
         ),
     ),
     "coach": RoleSpec(
         "coach", "Тренер",
-        "друг, который заметил, что ты засиделся, и по-человечески предлагает выдохнуть — "
-        "редко и к месту, не фитнес-трекер",
+        "друг, который заметил, что ты засиделся за работой, и зовёт встать и подвигаться — "
+        "пройтись, выйти, турник; по-человечески и к месту, не фитнес-трекер",
         "одна короткая заботливая фраза", 110, 0.6,
+        active_hours=(10, 17),
+        cooldown_minutes=75,
         form=(
-            "Редкое заботливое вмешательство, как друг, который заметил, что ты переработал: "
-            "предложи передохнуть, выйти на воздух, переключиться. По-человечески и мягко. "
-            "НИКОГДА не «выпей воды», не «разомнись», не «потянись» — это не команда телу и не "
-            "фитнес-трекер. Скорее «ты уже несколько часов в работе, сделай паузу»."
+            "Позови его подвигаться, потому что засиделся: «пора пройтись», «турник сегодня "
+            "будет?», «засиделся наверное», «пошли немного подвигаемся», «спина живая?». "
+            "Коротко и по-дружески. НИКОГДА не «выпей воды», не «потянись», не «разомнись», не "
+            "зарядка — это не команда телу, не фитнес-трекер и не статистика тренировок."
         ),
     ),
     "philosopher": RoleSpec(
         "philosopher", "Философ",
-        "самая редкая интонация: одно короткое житейское наблюдение своими словами, без "
-        "пафоса; цитаты — только заранее проверенные, моделью не выдумываются",
-        "одна короткая мысль своими словами", 220, 0.6,
+        "самая редкая интонация: проверенная цитата или интересный факт о реальном человеке "
+        "(из проверенного банка) — либо короткое житейское наблюдение своими словами, без "
+        "пафоса; цитаты и факты моделью не выдумываются",
+        "одна короткая мысль своими словами", 220, 0.5,
+        cooldown_minutes=150,
         form=(
             "Как будто просто подумал вслух — ОДНО короткое житейское наблюдение своими словами, "
             "по-человечески и буднично, без пафоса и умных слов. Не цитата, не лекция, не урок. "
@@ -106,6 +96,47 @@ ROLES: dict[str, RoleSpec] = {
         ),
     ),
 }
+
+
+# Friend sub-modes (V4 rule №3): when the Friend register is chosen, the generator draws one
+# of these by weight, so Friend stays mostly comments and memory and only rarely asks. The
+# memory mode references stored life-facts; the question mode also carries the rare, gentle
+# "blind-spot" question that used to be its own register.
+FRIEND_MODE_WEIGHTS: dict[str, float] = {
+    "comment": 0.4,
+    "memory": 0.3,
+    "question": 0.2,
+    "joke": 0.1,
+}
+
+FRIEND_FORMS: dict[str, str] = {
+    "comment": (
+        "Просто отметь его или сам момент — короткий КОММЕНТАРИЙ или мысль, можно вообще без "
+        "вопроса: «что-то ты сегодня тихий», «опять весь день в делах, да?», «о, уже вечер». "
+        "Часто лучшее — просто обронить мысль, без вопроса и без пользы."
+    ),
+    "memory": (
+        "Сошлись на то, что ты о нём знаешь (факты ниже) — естественно, как друг, который "
+        "помнит: «скоро же пятница 🙂», «как там та поездка», «давно девушку не видел, да?». "
+        "Бери ровно то, что в фактах, ничего не выдумывай. Тёпло и коротко, без дежурных вопросов."
+    ),
+    "question": (
+        "Один лёгкий ЖИВОЙ вопрос — не дежурный опросник. Можно изредка мягкий неудобный "
+        "вопрос со стороны, по-доброму и на его стороне: «а вдруг дело не в этом», «это правда "
+        "важно или по привычке». НИКОГДА «как дела / как прошёл день / как проходит день»."
+    ),
+    "joke": (
+        "Лёгкая шутка, подколка или случайная мысль невпопад — без повода и без пользы: «тут бы "
+        "кофе и ничего не делать», «понедельники явно придумал злодей». Живо и необязательно."
+    ),
+}
+
+
+def pick_friend_mode(rng: random.Random | None = None) -> str:
+    """Sample a Friend sub-mode by its target share (comment/memory/question/joke)."""
+    r = rng or random
+    modes = list(FRIEND_MODE_WEIGHTS)
+    return r.choices(modes, weights=[FRIEND_MODE_WEIGHTS[m] for m in modes])[0]
 
 
 @dataclass(frozen=True)
@@ -128,14 +159,14 @@ WINDOWS: tuple[Window, ...] = (
 _WINDOW_BY_KEY = {w.key: w for w in WINDOWS}
 
 # Which roles get a boost in which window (multiplier; default 1.0 elsewhere).
-# V3: Presence is the steady backbone all day (the "someone is nearby" feeling); Friend
-# carries the evening; Mentor leans into the workday; Coach is a rare midday nudge;
-# Philosopher only ever surfaces in the evening, so it stays rare and well-timed.
+# V4: Presence is the steady backbone all day; Friend carries mornings and evenings; Coach
+# leans into the midday work stretch (and is hard-gated to 10–17 anyway); Philosopher surfaces
+# in the quieter day/evening, kept rare by its cooldown.
 WINDOW_BIAS: dict[str, dict[str, float]] = {
     "morning": {"presence": 1.4, "friend": 1.1},
-    "lunch": {"presence": 1.5, "friend": 1.3, "coach": 1.2},
-    "day": {"presence": 1.2, "mentor": 1.5, "challenger": 1.2},
-    "evening": {"presence": 1.4, "friend": 1.5, "philosopher": 1.4},
+    "lunch": {"presence": 1.5, "friend": 1.3, "coach": 1.4},
+    "day": {"presence": 1.3, "friend": 1.2, "coach": 1.3, "philosopher": 1.1},
+    "evening": {"presence": 1.4, "friend": 1.5, "philosopher": 1.3},
 }
 
 

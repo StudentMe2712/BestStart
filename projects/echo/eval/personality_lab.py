@@ -27,7 +27,7 @@ from app.roles import WINDOWS
 
 # Roles in the order the spec lists them (English headers, matching the request).
 ROLE_ORDER: tuple[str, ...] = (
-    "friend", "presence", "coach", "mentor", "challenger", "philosopher",
+    "friend", "presence", "coach", "philosopher",
 )
 
 DEFAULT_COUNT = 100
