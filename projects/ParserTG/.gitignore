@@ -1,0 +1,16 @@
+# Secrets & local state — NEVER commit these.
+.env
+data/*
+!data/.gitkeep
+
+# Telethon session files (hold a logged-in user session — treat as a secret)
+*.session
+*.session-journal
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+*.egg-info/
