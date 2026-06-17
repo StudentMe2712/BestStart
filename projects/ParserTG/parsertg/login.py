@@ -22,8 +22,16 @@ async def _main() -> None:
             "(получить на https://my.telegram.org → API development tools)."
         )
     client = parser.build_client(settings)
-    await client.start()  # prompts for phone + code (+ 2FA password if set)
+    # Force a phone login. A bot can't read channel history, so we must NOT log in with a
+    # bot token here — that's the whole reason for a user session.
+    await client.start(phone=lambda: input("Номер телефона (+7…), НЕ токен бота: "))
     me = await client.get_me()
+    if me.bot:
+        await client.log_out()  # disconnects and deletes the (wrong) bot session file
+        raise SystemExit(
+            "Вход выполнен как БОТ — так нельзя: бот не может читать историю каналов.\n"
+            "Сессия удалена. Запусти снова и введи НОМЕР ТЕЛЕФОНА своего аккаунта, а не токен бота."
+        )
     print(f"OK — авторизован как {me.first_name} (id={me.id}). Сессия: {settings.session_path}.session")
     await client.disconnect()
 

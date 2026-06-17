@@ -128,6 +128,12 @@ async def cmd_parse(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "Telethon не авторизован. Один раз выполни в терминале: python -m parsertg.login"
         )
         return
+    if (await client.get_me()).bot:
+        await update.message.reply_text(
+            "Telethon вошёл как бот — история каналов недоступна. "
+            "Перелогинься своим аккаунтом: удали data/*.session и запусти python -m parsertg.login"
+        )
+        return
 
     await update.message.reply_text(f"Парсю следующие {n} сообщений из каждого канала…")
     try:
@@ -164,10 +170,17 @@ async def _on_startup(app: Application) -> None:
     client = parser.build_client(settings)
     await client.connect()
     app.bot_data["client"] = client
-    if await client.is_user_authorized():
-        log.info("Telethon connected and authorized.")
-    else:
+    if not await client.is_user_authorized():
         log.warning("Telethon session not authorized — run once: python -m parsertg.login")
+        return
+    me = await client.get_me()
+    if me.bot:
+        log.warning(
+            "Telethon вошёл как БОТ — история каналов недоступна, /parse вернёт пусто. "
+            "Перелогинься своим аккаунтом: удали data/*.session и запусти python -m parsertg.login"
+        )
+    else:
+        log.info("Telethon connected as %s.", me.username or me.id)
 
 
 async def _on_shutdown(app: Application) -> None:

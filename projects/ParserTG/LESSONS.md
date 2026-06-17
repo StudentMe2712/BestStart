@@ -17,3 +17,10 @@ Add entries with the `/lesson` command, or by hand. Newest on top.
 - **Scope:** this-project | all-projects
 -->
 
+### 2026-06-17 — Telethon login silently logged in as the bot
+- **Problem:** `python -m parsertg.login` authorized the **bot** (`id=8957872046`) instead of the user account; parsing would then silently return nothing.
+- **Root cause:** Telethon's `client.start()` default prompt is "enter your phone (or bot token)" and treats any input containing `:` as a bot token. Pasting the bot token logged in as a bot — and bots can't read channel history (`getHistory` returns empty for bots, even as channel admin).
+- **Fix:** `login.py` now forces a phone prompt and, after login, checks `me.bot` — if it's a bot it `log_out()`s (deletes the session) and aborts with a clear message. `bot.py` also warns on startup and rejects `/parse` when the session is a bot.
+- **Rule:** for "read channel history" you need a **user** session; never accept a bot token at the Telethon phone prompt — verify `me.bot is False` after login.
+- **Scope:** all-projects (any Telethon-based parser)
+
