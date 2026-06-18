@@ -1,0 +1,9 @@
+{
+  "//": "Project MCP servers. context7 = live docs (Chrome MV3, WXT, idb, flexsearch). Playwright deferred per owner.",
+  "mcpServers": {
+    "context7": {
+      "command": "cmd",
+      "args": ["/c", "npx", "-y", "@upstash/context7-mcp"]
+    }
+  }
+}

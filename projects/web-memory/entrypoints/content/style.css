@@ -1,0 +1,9 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Everything we render lives inside a shadow root, so these resets stay scoped to our UI
+   and never leak onto the host page. */
+:host {
+  all: initial;
+}
