@@ -1,0 +1,45 @@
+<Window x:Class="SelectCast.Prototype.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="SelectCast — прототип захвата (Этап 0)"
+        Width="620" Height="640"
+        WindowStartupLocation="CenterScreen"
+        Topmost="True">
+    <Grid Margin="14">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <TextBlock Grid.Row="0" TextWrapping="Wrap" Margin="0,0,0,8" Foreground="#444">
+            Инструкция: оставь это окно открытым, перейди в другое приложение (Word, Chrome, PDF,
+            мессенджер, 1С), выдели текст и нажми <Bold>Ctrl+Alt+C</Bold>. Результат появится ниже.
+        </TextBlock>
+
+        <Border Grid.Row="1" Background="#F2F2F2" CornerRadius="4" Padding="8" Margin="0,0,0,8">
+            <TextBlock x:Name="HotkeyStatus" Text="Инициализация…" FontWeight="SemiBold"/>
+        </Border>
+
+        <TextBlock Grid.Row="2" x:Name="StatusText" FontSize="20" FontWeight="Bold"
+                   Margin="0,0,0,4" Text="Ожидание хоткея…"/>
+
+        <TextBlock Grid.Row="3" x:Name="TimingText" Foreground="#666" Margin="0,0,0,8"
+                   Text="Тайминг буфера: —"/>
+
+        <TextBlock Grid.Row="4" Text="Захваченный текст:" FontWeight="SemiBold" Margin="0,0,0,4"/>
+        <TextBox Grid.Row="5" x:Name="CapturedText" Height="120" Margin="0,0,0,10"
+                 IsReadOnly="True" TextWrapping="Wrap"
+                 VerticalScrollBarVisibility="Auto" AcceptsReturn="True"/>
+
+        <GroupBox Grid.Row="6" Header="Диагностика (для отчёта)">
+            <TextBox x:Name="LogBox" IsReadOnly="True" FontFamily="Consolas" FontSize="12"
+                     TextWrapping="NoWrap"
+                     VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto"/>
+        </GroupBox>
+    </Grid>
+</Window>
