@@ -6,6 +6,13 @@ Add entries with `/lesson` (Scope: all-projects). Newest on top.
 
 ## Log
 
+### 2026-06-25 — System.Text.Json drops a Dictionary's custom comparer on round-trip
+- **Problem:** SelectCast's currency converter worked on the first launch but silently returned "нет данных для USD" on every launch afterward and offline. Unit tests (with a hand-built dictionary) were all green and missed it.
+- **Root cause:** the live rates fetch built `Rates` as `Dictionary<string,decimal>(StringComparer.OrdinalIgnoreCase)` with lower-case keys, and the converter looks codes up upper-cased (`USD`, `KZT`). On the cache path, `JsonSerializer.Deserialize<RateTable>` rebuilds `Rates` as a **default, case-sensitive** dictionary — STJ does not (and cannot) preserve a custom `IEqualityComparer`. So upper-case lookups missed the lower-case keys. The bug only ever appears after the value crosses the JSON boundary, never on first fetch — which is exactly why mocked tests didn't catch it but an end-to-end run did.
+- **Fix:** normalize at the deserialization boundary — `table with { Rates = new Dictionary<…>(table.Rates, StringComparer.OrdinalIgnoreCase) }` right after `Deserialize`. Added a regression test that drives the real cache path (write JSON → load via a fresh service with no network → convert).
+- **Rule:** a `Dictionary` with a non-default comparer loses that comparer through any serializer round-trip. If lookup correctness depends on the comparer (case-insensitive keys, culture), re-impose it after deserialization — and test the *deserialized* path, not just an in-memory instance.
+- **Scope:** all-projects
+
 ### 2026-06-10 — Smart App Control silently blocks unsigned `.exe`s (ffmpeg) even after a clean install
 - **Problem:** `winget install Gyan.FFmpeg` succeeded and `ffmpeg.exe` was on PATH, but running it failed with *"An Application Control policy has blocked this file."* `bun` and `python` from the same winget batch ran fine.
 - **Root cause:** Windows 11 **Smart App Control** is ENFORCED on this machine (`HKLM\SYSTEM\CurrentControlSet\Control\CI\Policy\VerifiedAndReputablePolicyState = 1`). SAC blocks *unsigned / un-reputable* standalone executables; the GyanD ffmpeg build is `NotSigned`. Signed runtimes (node, python, git, bun) pass. Confirmed via `Microsoft-Windows-CodeIntegrity/Operational` event **3118** "Smart App Control Block" firing at the exact run time.
