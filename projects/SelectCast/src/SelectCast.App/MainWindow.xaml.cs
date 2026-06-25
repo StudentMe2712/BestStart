@@ -1,15 +1,19 @@
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Interop;
+using System.Windows.Media;
 using SelectCast.App.Interop;
 using SelectCast.Core;
 using SelectCast.Core.Capture;
+using SelectCast.Core.Conversion;
+using SelectCast.Core.Detect;
 
 namespace SelectCast.App;
 
 public partial class MainWindow : Window
 {
     private readonly SelectionCaptureService _capture = new();
+    private readonly TypeDetector _detector = new();
     private HotkeyService? _hotkey;
     private bool _busy;
 
@@ -49,7 +53,7 @@ public partial class MainWindow : Window
         try
         {
             CaptureResult result = await _capture.CaptureAsync();
-            ShowResult(result);
+            ShowCapture(result);
         }
         catch (Exception ex)
         {
@@ -62,15 +66,16 @@ public partial class MainWindow : Window
         }
     }
 
-    private void ShowResult(CaptureResult r)
+    private void ShowCapture(CaptureResult r)
     {
         if (r.HasText)
         {
-            StatusLine.Text = "Захвачено:";
             InputBox.Text = r.Text;
+            Convert(r.Text!);
         }
         else
         {
+            InputBox.Text = string.Empty;
             StatusLine.Text = r.Status switch
             {
                 CaptureStatus.NoSelection => "Нет выделения — введите текст вручную:",
@@ -78,12 +83,47 @@ public partial class MainWindow : Window
                 CaptureStatus.Blocked => "Ввод заблокирован — введите текст вручную:",
                 _ => "Не удалось захватить — введите текст вручную:",
             };
-            InputBox.Text = string.Empty;
+            ClearResults();
         }
 
         ShowLauncher();
         InputBox.Focus();
         InputBox.SelectAll();
+    }
+
+    private void Convert(string text)
+    {
+        ConversionResult res = _detector.Detect(text);
+        StatusLine.Text = res.Type == ValueKind.Unknown
+            ? "Не распознано — проверьте ввод:"
+            : res.Title;
+
+        ResultsList.ItemsSource = res.Lines;
+
+        if (res.Swatch is ColorSwatch sw)
+        {
+            Swatch.Background = new SolidColorBrush(Color.FromRgb(sw.R, sw.G, sw.B));
+            Swatch.Visibility = Visibility.Visible;
+        }
+        else
+        {
+            Swatch.Visibility = Visibility.Collapsed;
+        }
+    }
+
+    private void ClearResults()
+    {
+        ResultsList.ItemsSource = null;
+        Swatch.Visibility = Visibility.Collapsed;
+    }
+
+    private void InputBox_KeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Enter)
+        {
+            Convert(InputBox.Text);
+            e.Handled = true;
+        }
     }
 
     private void ShowLauncher()
