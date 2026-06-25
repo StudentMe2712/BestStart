@@ -14,6 +14,8 @@ public class TypeDetectorTests
     [InlineData("72 °F", ValueKind.Unit)]
     [InlineData("5 ft 9", ValueKind.Unit)]
     [InlineData("10км", ValueKind.Unit)]
+    [InlineData("3 PM EST", ValueKind.Time)]
+    [InlineData("20:00 GMT+3", ValueKind.Time)]
     [InlineData("абракадабра", ValueKind.Unknown)]
     [InlineData("", ValueKind.Unknown)]
     public void Detects_type(string input, ValueKind expected)

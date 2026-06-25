@@ -21,7 +21,8 @@ public sealed class TypeDetector
     {
         new ColorConverter(),
         new UnitConverter(),
-        // IMPORTANT: append Time/Currency AFTER Unit, so "-32F" routes to Unit and "$5" to Currency.
+        new TimeConverter(),
+        // IMPORTANT: append Currency AFTER these, so "-32F" routes to Unit and "$5" to Currency.
     };
 
     public ConversionResult Detect(string? input)
