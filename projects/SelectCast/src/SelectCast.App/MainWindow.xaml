@@ -3,19 +3,18 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="SelectCast"
         Icon="Assets/selectcast.ico"
-        Width="560" Height="240"
+        Width="560" Height="280"
         WindowStartupLocation="CenterScreen"
         ResizeMode="NoResize"
         Topmost="True">
-    <Border Background="White" Padding="28">
+    <Border Background="White" Padding="24">
         <StackPanel VerticalAlignment="Center">
-            <TextBlock Text="SelectCast" FontSize="34" FontWeight="Bold" Foreground="#3A7BD5"/>
-            <TextBlock x:Name="Tagline" FontSize="15" Foreground="#555" Margin="0,4,0,16"/>
-            <TextBlock TextWrapping="Wrap" Foreground="#333" FontSize="14">
-                Выделите текст в любом приложении и нажмите
-                <Bold>Ctrl+Alt+C</Bold> — здесь появится конвертация.
-            </TextBlock>
-            <TextBlock Text="Esc — скрыть окно" FontSize="12" Foreground="#999" Margin="0,14,0,0"/>
+            <TextBlock Text="SelectCast" FontSize="28" FontWeight="Bold" Foreground="#3A7BD5"/>
+            <TextBlock x:Name="StatusLine" FontSize="13" Foreground="#666" Margin="0,2,0,12"/>
+            <TextBox x:Name="InputBox" FontSize="16" Padding="8" MinHeight="38"
+                     TextWrapping="Wrap" AcceptsReturn="False"
+                     VerticalContentAlignment="Center"/>
+            <TextBlock Text="Esc — скрыть окно" FontSize="12" Foreground="#999" Margin="0,12,0,0"/>
         </StackPanel>
     </Border>
 </Window>
