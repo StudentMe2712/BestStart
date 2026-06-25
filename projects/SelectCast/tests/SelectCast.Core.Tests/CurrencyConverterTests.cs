@@ -1,3 +1,4 @@
+using System.Text.Json;
 using SelectCast.Core.Conversion;
 using SelectCast.Core.Converters;
 using SelectCast.Core.Rates;
@@ -104,5 +105,30 @@ public class CurrencyConverterTests
 
         Assert.NotNull(r);
         Assert.Contains("возможно устарел", Line(r!, "Курс на"));
+    }
+
+    [Fact]
+    public void Converts_from_json_cache_not_only_live_fetch()
+    {
+        // Reproduces the cache path: rates written to disk, then loaded by a fresh RatesService
+        // with no network sources. System.Text.Json drops the OrdinalIgnoreCase comparer on the
+        // Rates dictionary, so without normalization the converter (which looks up upper-cased
+        // codes) would find nothing — the bug only ever appears from cache, never on first fetch.
+        string tmp = Path.Combine(Path.GetTempPath(), $"selectcast_rates_{Guid.NewGuid():N}.json");
+        File.WriteAllText(tmp, JsonSerializer.Serialize(Table));
+        try
+        {
+            var svc = new RatesService(tmp, Array.Empty<Func<CancellationToken, Task<RateTable?>>>());
+            var conv = new CurrencyConverter(svc);
+
+            ConversionResult? r = conv.TryConvert("$100");
+
+            Assert.NotNull(r);
+            Assert.Equal("50,000.00 KZT", Line(r!, "KZT")); // 100 * 500, must work from cache too
+        }
+        finally
+        {
+            File.Delete(tmp);
+        }
     }
 }

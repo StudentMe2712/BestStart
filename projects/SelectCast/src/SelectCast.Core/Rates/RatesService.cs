@@ -70,7 +70,19 @@ public sealed class RatesService : IRatesProvider
         {
             if (!File.Exists(_cachePath))
                 return null;
-            return JsonSerializer.Deserialize<RateTable>(File.ReadAllText(_cachePath));
+
+            RateTable? table = JsonSerializer.Deserialize<RateTable>(File.ReadAllText(_cachePath));
+            if (table is null)
+                return null;
+
+            // JSON deserialization rebuilds Rates with a case-sensitive comparer. The converter
+            // looks codes up upper-cased (USD, KZT) against the source's lower-case keys, so the
+            // cached table must keep the OrdinalIgnoreCase lookup the live fetch gives it —
+            // otherwise conversion silently breaks on every run after the first (and offline).
+            return table with
+            {
+                Rates = new Dictionary<string, decimal>(table.Rates, StringComparer.OrdinalIgnoreCase),
+            };
         }
         catch
         {
