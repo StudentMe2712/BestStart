@@ -9,4 +9,9 @@
     <UseWPF>true</UseWPF>
   </PropertyGroup>
 
+  <ItemGroup>
+    <!-- Pure XML parsers (ParseNbk/ParseCbr) are internal but unit-tested directly. -->
+    <InternalsVisibleTo Include="SelectCast.Core.Tests" />
+  </ItemGroup>
+
 </Project>

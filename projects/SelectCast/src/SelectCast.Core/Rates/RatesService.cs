@@ -1,6 +1,9 @@
+using System.Globalization;
 using System.IO;
 using System.Net.Http;
+using System.Text;
 using System.Text.Json;
+using System.Xml.Linq;
 
 namespace SelectCast.Core.Rates;
 
@@ -37,8 +40,9 @@ public sealed class RatesService : IRatesProvider
 
     public async Task RefreshAsync(CancellationToken ct = default)
     {
-        // Daily data — skip if we already have a fresh (non-stale) table from today.
-        if (Current is { Stale: false } cur && cur.Date == DateOnly.FromDateTime(DateTime.UtcNow))
+        // Daily data — skip if we already have a fresh (non-stale) table from today (or later:
+        // national banks publish the next business day's rate ahead of UTC midnight).
+        if (Current is { Stale: false } cur && cur.Date >= DateOnly.FromDateTime(DateTime.UtcNow))
             return;
 
         foreach (Func<CancellationToken, Task<RateTable?>> source in _sources)
@@ -103,12 +107,135 @@ public sealed class RatesService : IRatesProvider
         }
     }
 
+    // CIS national banks first (per the product's CIS focus — KZT/RUB), then the worldwide
+    // fawazahmed0 API as a fallback. Each source is normalised to base USD; the first that
+    // returns a table wins.
     private static IReadOnlyList<Func<CancellationToken, Task<RateTable?>>> DefaultSources() =>
         new Func<CancellationToken, Task<RateTable?>>[]
         {
+            ct => FetchNbkAsync("https://nationalbank.kz/rss/rates_all.xml", ct),
+            ct => FetchCbrAsync("https://www.cbr.ru/scripts/XML_daily.asp", ct),
             ct => FetchFawazAsync("https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/usd.min.json", ct),
             ct => FetchFawazAsync("https://latest.currency-api.pages.dev/v1/currencies/usd.min.json", ct),
         };
+
+    /// <summary>National Bank of Kazakhstan RSS (base KZT, dot decimals).</summary>
+    private static async Task<RateTable?> FetchNbkAsync(string url, CancellationToken ct)
+    {
+        string xml = await Http.GetStringAsync(url, ct).ConfigureAwait(false);
+        return ParseNbk(xml);
+    }
+
+    /// <summary>Central Bank of Russia XML_daily (base RUB, windows-1251, comma decimals).</summary>
+    private static async Task<RateTable?> FetchCbrAsync(string url, CancellationToken ct)
+    {
+        // CBR serves windows-1251. Codes and numbers are ASCII, so decode as Latin1 to avoid a
+        // System.Text.Encoding.CodePages dependency — the Cyrillic <Name> garbles but is unused.
+        byte[] bytes = await Http.GetByteArrayAsync(url, ct).ConfigureAwait(false);
+        return ParseCbr(Encoding.Latin1.GetString(bytes));
+    }
+
+    /// <summary>
+    /// Parses NBK RSS: each &lt;item&gt; has &lt;title&gt;CODE&lt;/title&gt;,
+    /// &lt;description&gt;price&lt;/description&gt; (KZT per &lt;quant&gt; units), &lt;pubDate&gt;dd.MM.yyyy&lt;/pubDate&gt;.
+    /// </summary>
+    internal static RateTable? ParseNbk(string xml)
+    {
+        try
+        {
+            XDocument doc = XDocument.Parse(xml);
+            var kztPerUnit = new Dictionary<string, decimal>(StringComparer.OrdinalIgnoreCase);
+            DateOnly date = DateOnly.FromDateTime(DateTime.UtcNow);
+            bool dateSet = false;
+
+            foreach (XElement item in doc.Descendants("item"))
+            {
+                string code = (item.Element("title")?.Value ?? string.Empty).Trim();
+                if (code.Length != 3 ||
+                    !decimal.TryParse(item.Element("description")?.Value, NumberStyles.Float, CultureInfo.InvariantCulture, out decimal price) ||
+                    price <= 0)
+                    continue;
+
+                int quant = int.TryParse(item.Element("quant")?.Value, NumberStyles.Integer, CultureInfo.InvariantCulture, out int q) && q > 0 ? q : 1;
+                kztPerUnit[code] = price / quant;
+
+                if (!dateSet)
+                {
+                    date = ParseDmy(item.Element("pubDate")?.Value);
+                    dateSet = true;
+                }
+            }
+
+            return BuildUsdBase(kztPerUnit, "KZT", date);
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Parses CBR XML_daily: &lt;ValCurs Date="dd.MM.yyyy"&gt; with &lt;Valute&gt;&lt;CharCode&gt;,
+    /// &lt;Nominal&gt;, &lt;Value&gt; (RUB per Nominal units, comma decimal).
+    /// </summary>
+    internal static RateTable? ParseCbr(string xml)
+    {
+        try
+        {
+            XDocument doc = XDocument.Parse(xml);
+            var rubPerUnit = new Dictionary<string, decimal>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (XElement v in doc.Descendants("Valute"))
+            {
+                string code = (v.Element("CharCode")?.Value ?? string.Empty).Trim();
+                string value = (v.Element("Value")?.Value ?? string.Empty).Replace(',', '.');
+                if (code.Length != 3 ||
+                    !decimal.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out decimal price) ||
+                    price <= 0)
+                    continue;
+
+                int nominal = int.TryParse(v.Element("Nominal")?.Value, NumberStyles.Integer, CultureInfo.InvariantCulture, out int n) && n > 0 ? n : 1;
+                rubPerUnit[code] = price / nominal;
+            }
+
+            DateOnly date = ParseDmy(doc.Root?.Attribute("Date")?.Value);
+            return BuildUsdBase(rubPerUnit, "RUB", date);
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Normalises a national table — <paramref name="localPerUnit"/>[code] = how many units of
+    /// <paramref name="localCode"/> equal 1 unit of <c>code</c> — to base USD (1 USD = Rates[code]).
+    /// Needs a USD anchor in the table; returns null otherwise so the next source is tried.
+    /// </summary>
+    private static RateTable? BuildUsdBase(Dictionary<string, decimal> localPerUnit, string localCode, DateOnly date)
+    {
+        if (!localPerUnit.TryGetValue("USD", out decimal usdInLocal) || usdInLocal <= 0)
+            return null;
+
+        var rates = new Dictionary<string, decimal>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["usd"] = 1m,
+            [localCode] = usdInLocal, // 1 USD = usdInLocal units of the bank's own currency
+        };
+
+        foreach ((string code, decimal local) in localPerUnit)
+        {
+            if (local > 0)
+                rates[code] = usdInLocal / local; // 1 USD = (usdInLocal / local) units of `code`
+        }
+
+        return new RateTable(date, "usd", rates);
+    }
+
+    private static DateOnly ParseDmy(string? s) =>
+        DateOnly.TryParseExact(s, "dd.MM.yyyy", CultureInfo.InvariantCulture, DateTimeStyles.None, out DateOnly d)
+            ? d
+            : DateOnly.FromDateTime(DateTime.UtcNow);
 
     /// <summary>Parses the fawazahmed0 schema: { "date": "...", "usd": { code: rate, … } }.</summary>
     private static async Task<RateTable?> FetchFawazAsync(string url, CancellationToken ct)
