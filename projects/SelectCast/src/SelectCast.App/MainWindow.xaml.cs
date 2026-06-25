@@ -7,13 +7,15 @@ using SelectCast.Core;
 using SelectCast.Core.Capture;
 using SelectCast.Core.Conversion;
 using SelectCast.Core.Detect;
+using SelectCast.Core.Rates;
 
 namespace SelectCast.App;
 
 public partial class MainWindow : Window
 {
     private readonly SelectionCaptureService _capture = new();
-    private readonly TypeDetector _detector = new();
+    private readonly RatesService _rates = new();
+    private readonly TypeDetector _detector;
     private HotkeyService? _hotkey;
     private bool _busy;
 
@@ -21,6 +23,9 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
         StatusLine.Text = SelectCastInfo.Tagline;
+
+        _detector = TypeDetector.CreateDefault(_rates);
+        RefreshRates(); // background: fetch today's rates if stale; offline falls back to cache
 
         Deactivated += (_, _) => Hide();
         PreviewKeyDown += OnPreviewKeyDown;
@@ -39,6 +44,23 @@ public partial class MainWindow : Window
             MessageBox.Show(
                 "Не удалось зарегистрировать хоткей Ctrl+Alt+C (возможно, он занят другим приложением).",
                 SelectCastInfo.ProductName, MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+    }
+
+    // Fetch today's rates in the background. Offline or a failed fetch is non-fatal: the
+    // converter falls back to the cached table (or reports "недоступен"), so nothing is
+    // surfaced here. If a currency result is already on screen, re-run it once fresh rates land.
+    private async void RefreshRates()
+    {
+        try
+        {
+            await _rates.RefreshAsync();
+            if (!string.IsNullOrWhiteSpace(InputBox.Text))
+                Convert(InputBox.Text);
+        }
+        catch
+        {
+            // Best-effort warm-up; offline is an expected state, not an error to report.
         }
     }
 

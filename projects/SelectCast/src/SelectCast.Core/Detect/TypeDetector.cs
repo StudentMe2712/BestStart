@@ -1,5 +1,6 @@
 using SelectCast.Core.Conversion;
 using SelectCast.Core.Converters;
+using SelectCast.Core.Rates;
 
 namespace SelectCast.Core.Detect;
 
@@ -15,6 +16,25 @@ public sealed class TypeDetector
 
     public TypeDetector(IEnumerable<IValueConverter>? converters = null)
         => _converters = converters?.ToList() ?? DefaultConverters();
+
+    /// <summary>
+    /// Builds the full converter set in priority order. Currency is included only when a rates
+    /// provider is supplied (it needs cached rates); it is appended last, after Color/Unit/Time.
+    /// </summary>
+    public static TypeDetector CreateDefault(IRatesProvider? rates = null)
+    {
+        var list = new List<IValueConverter>
+        {
+            new ColorConverter(),
+            new UnitConverter(),
+            new TimeConverter(),
+        };
+
+        if (rates is not null)
+            list.Add(new CurrencyConverter(rates));
+
+        return new TypeDetector(list);
+    }
 
     /// <summary>Default priority order. Time and Currency are appended in later stages.</summary>
     private static List<IValueConverter> DefaultConverters() => new()
