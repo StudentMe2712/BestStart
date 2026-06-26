@@ -1,0 +1,30 @@
+<Window x:Class="SelectCast.App.SettingsWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="SelectCast — Настройки"
+        Icon="Assets/selectcast.ico"
+        Width="440" Height="260"
+        WindowStartupLocation="CenterScreen"
+        ResizeMode="NoResize">
+    <Border Background="White" Padding="22">
+        <StackPanel>
+            <TextBlock Text="Настройки" FontSize="20" FontWeight="Bold" Foreground="#3A7BD5"/>
+
+            <TextBlock Text="Горячая клавиша захвата" Margin="0,16,0,4" Foreground="#444444"/>
+            <TextBox x:Name="HotkeyBox" IsReadOnly="True" IsReadOnlyCaretVisible="False"
+                     FontSize="15" Padding="8" MinHeight="36" Cursor="Hand"
+                     VerticalContentAlignment="Center"
+                     GotFocus="HotkeyBox_GotFocus"
+                     PreviewKeyDown="HotkeyBox_PreviewKeyDown"/>
+            <TextBlock Text="Кликните в поле и нажмите комбинацию (минимум один модификатор + клавиша)."
+                       FontSize="11" Foreground="#999999" Margin="0,4,0,0" TextWrapping="Wrap"/>
+            <TextBlock x:Name="ErrorText" Foreground="#C0392B" FontSize="12" Margin="0,8,0,0"
+                       TextWrapping="Wrap" Visibility="Collapsed"/>
+
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,22,0,0">
+                <Button Content="Отмена" Width="90" Height="30" Margin="0,0,8,0" Click="Cancel_Click"/>
+                <Button x:Name="SaveButton" Content="Сохранить" Width="110" Height="30" Click="Save_Click"/>
+            </StackPanel>
+        </StackPanel>
+    </Border>
+</Window>

@@ -8,6 +8,7 @@ using SelectCast.Core.Capture;
 using SelectCast.Core.Conversion;
 using SelectCast.Core.Detect;
 using SelectCast.Core.Rates;
+using SelectCast.Core.Settings;
 
 namespace SelectCast.App;
 
@@ -15,7 +16,9 @@ public partial class MainWindow : Window
 {
     private readonly SelectionCaptureService _capture = new();
     private readonly RatesService _rates = new();
+    private readonly SettingsService _settings = new();
     private readonly TypeDetector _detector;
+    private AppSettings _appSettings;
     private HotkeyService? _hotkey;
     private bool _busy;
 
@@ -24,6 +27,7 @@ public partial class MainWindow : Window
         InitializeComponent();
         StatusLine.Text = SelectCastInfo.Tagline;
 
+        _appSettings = _settings.Load();
         _detector = TypeDetector.CreateDefault(_rates);
         RefreshRates(); // background: fetch today's rates if stale; offline falls back to cache
 
@@ -35,16 +39,29 @@ public partial class MainWindow : Window
         _hotkey = new HotkeyService(hwnd);
         _hotkey.Pressed += OnHotkeyPressed;
 
-        bool ok = _hotkey.Register(
-            NativeMethods.MOD_CONTROL | NativeMethods.MOD_ALT | NativeMethods.MOD_NOREPEAT,
-            NativeMethods.VK_C);
-
-        if (!ok)
+        if (!ApplyHotkey(_appSettings.HotkeyModifiers, _appSettings.HotkeyVk))
         {
             MessageBox.Show(
-                "Не удалось зарегистрировать хоткей Ctrl+Alt+C (возможно, он занят другим приложением).",
+                $"Не удалось зарегистрировать хоткей {HotkeyCapture.Format(_appSettings.HotkeyModifiers, _appSettings.HotkeyVk)} "
+                + "(возможно, он занят другим приложением). Измените его в настройках.",
                 SelectCastInfo.ProductName, MessageBoxButton.OK, MessageBoxImage.Warning);
         }
+    }
+
+    /// <summary>(Re)registers the global hotkey; MOD_NOREPEAT is an implementation detail added here.</summary>
+    private bool ApplyHotkey(uint modifiers, uint vk)
+    {
+        bool ok = _hotkey is not null && _hotkey.Reregister(modifiers | NativeMethods.MOD_NOREPEAT, vk);
+        if (ok)
+            _appSettings = _appSettings with { HotkeyModifiers = modifiers, HotkeyVk = vk };
+        return ok;
+    }
+
+    private void SettingsButton_Click(object sender, RoutedEventArgs e)
+    {
+        var window = new SettingsWindow(_appSettings, ApplyHotkey, _settings);
+        window.ShowDialog();
+        _appSettings = _settings.Load(); // re-sync in case settings changed
     }
 
     // Fetch today's rates in the background. Offline or a failed fetch is non-fatal: the

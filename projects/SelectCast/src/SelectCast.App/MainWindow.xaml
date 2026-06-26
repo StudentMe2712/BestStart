@@ -32,8 +32,13 @@
                 </ItemsControl>
             </StackPanel>
 
-            <TextBlock Text="Enter — конвертировать введённое · Esc — скрыть"
-                       FontSize="12" Foreground="#999999" Margin="0,18,0,0"/>
+            <DockPanel Margin="0,18,0,0" LastChildFill="False">
+                <TextBlock DockPanel.Dock="Left" VerticalAlignment="Center"
+                           Text="Enter — конвертировать · Esc — скрыть"
+                           FontSize="12" Foreground="#999999"/>
+                <Button DockPanel.Dock="Right" x:Name="SettingsButton" Content="⚙ Настройки"
+                        Padding="10,3" Focusable="False" Click="SettingsButton_Click"/>
+            </DockPanel>
         </StackPanel>
     </Border>
 </Window>

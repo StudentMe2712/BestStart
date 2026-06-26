@@ -34,6 +34,21 @@ public sealed class HotkeyService : IDisposable
         return _registered;
     }
 
+    /// <summary>
+    /// Replaces the current registration with a new combination. Returns false (and leaves no
+    /// hotkey registered) if the OS rejects the new combo, e.g. it is taken by another app.
+    /// </summary>
+    public bool Reregister(uint modifiers, uint vk)
+    {
+        if (_registered)
+        {
+            NativeMethods.UnregisterHotKey(_hwnd, Id);
+            _registered = false;
+        }
+
+        return Register(modifiers, vk);
+    }
+
     private nint WndProc(nint hwnd, int msg, nint wParam, nint lParam, ref bool handled)
     {
         if (msg == NativeMethods.WM_HOTKEY && wParam.ToInt32() == Id)
