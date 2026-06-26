@@ -30,6 +30,11 @@ public partial class MainWindow : Window
         StatusLine.Text = SelectCastInfo.Tagline;
 
         _appSettings = _settings.Load();
+        // Keep the Run key in sync with the saved preference — writes it on first run, since
+        // Autostart defaults on (the chosen "tray + autostart" model).
+        if (AutostartService.IsEnabled() != _appSettings.Autostart)
+            AutostartService.SetEnabled(_appSettings.Autostart);
+
         _detector = TypeDetector.CreateDefault(_rates);
         RefreshRates(); // background: fetch today's rates if stale; offline falls back to cache
 
@@ -84,6 +89,16 @@ public partial class MainWindow : Window
     {
         _exiting = true;
         Application.Current.Shutdown();
+    }
+
+    public bool IsAutostartEnabled() => AutostartService.IsEnabled();
+
+    /// <summary>Toggles launch-at-sign-in (tray "Автозапуск"): updates the registry and the saved setting.</summary>
+    public void SetAutostart(bool enabled)
+    {
+        AutostartService.SetEnabled(enabled);
+        _appSettings = _appSettings with { Autostart = enabled };
+        _settings.Save(_appSettings);
     }
 
     // Fetch today's rates in the background. Offline or a failed fetch is non-fatal: the

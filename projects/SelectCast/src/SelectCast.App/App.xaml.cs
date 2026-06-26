@@ -33,6 +33,7 @@ public partial class App : Application
                 onOpen: () => _window!.ShowForManualEntry(),
                 onSettings: () => _window!.OpenSettings(),
                 onExit: () => _window!.ExitApp());
+            _tray.AddAutostartToggle(() => _window!.IsAutostartEnabled(), on => _window!.SetAutostart(on));
         }
         catch (Exception ex)
         {
