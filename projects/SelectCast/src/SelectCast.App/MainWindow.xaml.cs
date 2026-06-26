@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Interop;
@@ -21,6 +22,7 @@ public partial class MainWindow : Window
     private AppSettings _appSettings;
     private HotkeyService? _hotkey;
     private bool _busy;
+    private bool _exiting;
 
     public MainWindow()
     {
@@ -57,11 +59,31 @@ public partial class MainWindow : Window
         return ok;
     }
 
-    private void SettingsButton_Click(object sender, RoutedEventArgs e)
+    private void SettingsButton_Click(object sender, RoutedEventArgs e) => OpenSettings();
+
+    /// <summary>Opens the settings dialog (also called from the tray menu).</summary>
+    public void OpenSettings()
     {
         var window = new SettingsWindow(_appSettings, ApplyHotkey, _settings);
         window.ShowDialog();
         _appSettings = _settings.Load(); // re-sync in case settings changed
+    }
+
+    /// <summary>Shows the launcher with an empty input for manual entry (tray "Открыть").</summary>
+    public void ShowForManualEntry()
+    {
+        StatusLine.Text = "Введите текст для конвертации:";
+        InputBox.Text = string.Empty;
+        ClearResults();
+        ShowLauncher();
+        InputBox.Focus();
+    }
+
+    /// <summary>Real shutdown (tray "Выход"); lets <see cref="OnClosing"/> through.</summary>
+    public void ExitApp()
+    {
+        _exiting = true;
+        Application.Current.Shutdown();
     }
 
     // Fetch today's rates in the background. Offline or a failed fetch is non-fatal: the
@@ -179,6 +201,19 @@ public partial class MainWindow : Window
             Hide();
             e.Handled = true;
         }
+    }
+
+    // Closing (X / Alt+F4) hides to the tray instead of exiting: the global hotkey lives on this
+    // window's HWND, so the window must survive. Real exit goes through the tray (ExitApp).
+    protected override void OnClosing(CancelEventArgs e)
+    {
+        if (!_exiting)
+        {
+            e.Cancel = true;
+            Hide();
+        }
+
+        base.OnClosing(e);
     }
 
     protected override void OnClosed(EventArgs e)

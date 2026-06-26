@@ -6,9 +6,18 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
+    <!-- Tray icon uses System.Windows.Forms.NotifyIcon (framework ref, not a NuGet dependency). -->
+    <UseWindowsForms>true</UseWindowsForms>
     <AssemblyName>SelectCast</AssemblyName>
     <ApplicationIcon>Assets\selectcast.ico</ApplicationIcon>
   </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Keep WinForms out of global usings so Application/MessageBox/Clipboard stay WPF-only;
+         TrayIcon.cs imports System.Windows.Forms explicitly. -->
+    <Using Remove="System.Windows.Forms" />
+    <Using Remove="System.Drawing" />
+  </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\SelectCast.Core\SelectCast.Core.csproj" />
