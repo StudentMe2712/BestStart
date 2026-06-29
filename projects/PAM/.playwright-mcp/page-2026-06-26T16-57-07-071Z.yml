@@ -1,0 +1,108 @@
+- generic [ref=e1]:
+  - generic [ref=e3]: ▁▂▃
+  - text: Enabled Enabled
+  - button "Показать панель" [ref=e4] [cursor=pointer]:
+    - img [ref=e5]
+  - text: New
+  - navigation "Sidebar" [ref=e6]:
+    - generic "New chat" [ref=e9] [cursor=pointer]:
+      - generic [ref=e10]: Odysseus
+    - generic [ref=e11]:
+      - button "Новый чат" [ref=e12] [cursor=pointer]:
+        - img [ref=e13]
+        - generic [ref=e14]: Новый чат
+      - button "Поиск" [ref=e15] [cursor=pointer]:
+        - img [ref=e16]
+        - generic [ref=e19]: Поиск
+      - generic [ref=e21] [cursor=pointer]:
+        - generic "Open email inbox" [ref=e22]:
+          - img [ref=e23]
+          - generic [ref=e26]: Email
+        - button "new" [ref=e27]:
+          - img [ref=e28]
+          - generic: new
+      - generic [ref=e29]:
+        - generic [ref=e30] [cursor=pointer]:
+          - generic [ref=e31]:
+            - img [ref=e32]
+            - text: Tools
+          - button "Collapse section" [ref=e34]:
+            - img [ref=e35]
+        - button "Brain" [ref=e37] [cursor=pointer]:
+          - img [ref=e38]
+          - generic [ref=e42]: Brain
+        - button "Calendar" [ref=e43] [cursor=pointer]:
+          - img [ref=e44]
+          - generic [ref=e46]: Calendar
+        - button "Compare" [ref=e47] [cursor=pointer]:
+          - img [ref=e48]
+          - generic [ref=e53]: Compare
+        - button "Cookbook" [ref=e54] [cursor=pointer]:
+          - img [ref=e55]
+          - generic [ref=e57]: Cookbook
+        - button "Deep Research" [ref=e58] [cursor=pointer]:
+          - img [ref=e59]
+          - generic [ref=e62]: Deep Research
+        - button "Gallery" [ref=e63] [cursor=pointer]:
+          - img [ref=e64]
+          - generic [ref=e68]: Gallery
+        - generic [ref=e69] [cursor=pointer]:
+          - img [ref=e70]
+          - generic [ref=e74]: Library
+          - button "document" [ref=e75]:
+            - img [ref=e76]
+            - generic: document
+        - button "Notes" [ref=e77] [cursor=pointer]:
+          - img [ref=e78]
+          - generic [ref=e82]: Notes
+        - button "Tasks" [ref=e83] [cursor=pointer]:
+          - img [ref=e84]
+          - generic [ref=e87]: Tasks
+        - button "Theme" [ref=e88] [cursor=pointer]:
+          - img [ref=e89]
+          - generic [ref=e95]: Theme
+    - generic [ref=e96]:
+      - button "User" [ref=e97] [cursor=pointer]:
+        - generic [ref=e99]: User
+      - button "Settings" [ref=e101] [cursor=pointer]:
+        - img [ref=e102]
+  - main "Chat area" [ref=e105]:
+    - heading "Odysseus" [level=1] [ref=e106]
+    - generic [ref=e107]:
+      - generic:
+        - generic [ref=e108] [cursor=pointer]: Odysseus Chat
+        - button "More" [ref=e110] [cursor=pointer]:
+          - img [ref=e111]
+    - generic:
+      - generic:
+        - img
+        - text: Odysseus
+      - generic: Добро пожаловать! Введите /setup, чтобы начать.
+      - generic: Add an AI endpoint from Settings in the sidebar, or paste an endpoint/API key into the chat.
+      - button "Nobody" [ref=e113] [cursor=pointer]:
+        - img [ref=e114]
+        - generic [ref=e117]: Nobody
+    - log [ref=e118]
+    - generic [ref=e119]:
+      - generic [ref=e120]:
+        - textbox "Поле ввода сообщения" [active] [ref=e121]:
+          - /placeholder: Message Odysseus...
+        - button "Select model" [ref=e123] [cursor=pointer]:
+          - generic [ref=e124]: Select model
+          - img [ref=e125]
+      - generic [ref=e127]:
+        - generic [ref=e128]:
+          - button "More tools" [ref=e130] [cursor=pointer]:
+            - img [ref=e131]
+          - button "Web search" [ref=e133] [cursor=pointer]:
+            - img [ref=e134]
+          - button "Shell access" [ref=e137] [cursor=pointer]:
+            - img [ref=e138]
+        - generic [ref=e140]:
+          - generic [ref=e141]:
+            - button "Agent" [ref=e142] [cursor=pointer]
+            - button "Chat" [pressed] [ref=e143]
+          - button "New chat" [ref=e144] [cursor=pointer]:
+            - img [ref=e145]
+  - button "▼"
+  - status

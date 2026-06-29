@@ -4,5 +4,121 @@
              xmlns:local="clr-namespace:SelectCast.App"
              ShutdownMode="OnExplicitShutdown">
     <Application.Resources>
+        <ResourceDictionary>
+            <!-- ── Palette (light frosted glass; translucent whites let the acrylic blur show) ── -->
+            <SolidColorBrush x:Key="AccentBrush"          Color="#3A7BD5"/>
+            <SolidColorBrush x:Key="AccentHoverBrush"     Color="#2E63AC"/>
+            <SolidColorBrush x:Key="GlassCardBrush"       Color="#B8FFFFFF"/>
+            <SolidColorBrush x:Key="GlassEdgeBrush"       Color="#80FFFFFF"/>
+            <SolidColorBrush x:Key="GlassInputBrush"      Color="#73FFFFFF"/>
+            <SolidColorBrush x:Key="GlassInputBorder"     Color="#33203A5C"/>
+            <SolidColorBrush x:Key="TextPrimaryBrush"     Color="#1B2330"/>
+            <SolidColorBrush x:Key="TextSecondaryBrush"   Color="#5A6172"/>
+            <SolidColorBrush x:Key="TextMutedBrush"       Color="#8A93A6"/>
+
+            <!-- ── Frosted text box ── -->
+            <Style x:Key="GlassTextBox" TargetType="TextBox">
+                <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+                <Setter Property="CaretBrush" Value="{StaticResource AccentBrush}"/>
+                <Setter Property="SelectionBrush" Value="{StaticResource AccentBrush}"/>
+                <Setter Property="BorderThickness" Value="1"/>
+                <Setter Property="Padding" Value="10,8"/>
+                <Setter Property="FontSize" Value="16"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="TextBox">
+                            <Border x:Name="bd" CornerRadius="8"
+                                    Background="{StaticResource GlassInputBrush}"
+                                    BorderBrush="{StaticResource GlassInputBorder}"
+                                    BorderThickness="{TemplateBinding BorderThickness}">
+                                <ScrollViewer x:Name="PART_ContentHost"
+                                              Margin="{TemplateBinding Padding}"
+                                              VerticalAlignment="Center"/>
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsKeyboardFocused" Value="True">
+                                    <Setter TargetName="bd" Property="BorderBrush" Value="{StaticResource AccentBrush}"/>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
+            <!-- ── Ghost (translucent) button ── -->
+            <Style x:Key="GhostButton" TargetType="Button">
+                <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
+                <Setter Property="FontSize" Value="13"/>
+                <Setter Property="Padding" Value="12,6"/>
+                <Setter Property="Cursor" Value="Hand"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="Button">
+                            <Border x:Name="bd" CornerRadius="8" BorderThickness="1"
+                                    Background="#59FFFFFF" BorderBrush="#40FFFFFF"
+                                    Padding="{TemplateBinding Padding}">
+                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="bd" Property="Background" Value="#99FFFFFF"/>
+                                </Trigger>
+                                <Trigger Property="IsPressed" Value="True">
+                                    <Setter TargetName="bd" Property="Background" Value="#BFFFFFFF"/>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
+            <!-- ── Accent (filled) button ── -->
+            <Style x:Key="AccentButton" TargetType="Button">
+                <Setter Property="Foreground" Value="White"/>
+                <Setter Property="FontSize" Value="14"/>
+                <Setter Property="FontWeight" Value="SemiBold"/>
+                <Setter Property="Cursor" Value="Hand"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="Button">
+                            <Border x:Name="bd" CornerRadius="8"
+                                    Background="{StaticResource AccentBrush}"
+                                    Padding="{TemplateBinding Padding}">
+                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="bd" Property="Background" Value="{StaticResource AccentHoverBrush}"/>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
+            <!-- ── Round close (✕) button ── -->
+            <Style x:Key="CloseButton" TargetType="Button">
+                <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
+                <Setter Property="FontSize" Value="14"/>
+                <Setter Property="Width" Value="30"/>
+                <Setter Property="Height" Value="30"/>
+                <Setter Property="Cursor" Value="Hand"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="Button">
+                            <Border x:Name="bd" CornerRadius="15" Background="Transparent">
+                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="bd" Property="Background" Value="#26C0392B"/>
+                                    <Setter Property="Foreground" Value="#C0392B"/>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+        </ResourceDictionary>
     </Application.Resources>
 </Application>

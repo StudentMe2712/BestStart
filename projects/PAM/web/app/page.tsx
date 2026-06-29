@@ -10,6 +10,7 @@ import {
   rememberAttachment,
   draftSolutionFromConversation,
   type ChatMeta,
+  type ChatProvider,
   type ConversationSummary,
   type SourceRef
 } from "../lib/api"
@@ -62,6 +63,10 @@ export default function ChatPage() {
   const [ctxSaved, setCtxSaved] = useState(false)
   // True-multimodal: приложенную картинку отправить прямо в vision-модель.
   const [multimodal, setMultimodal] = useState(false)
+  // Модель ответа по умолчанию. «Авто» = серверный дефолт (hybrid). Выбор хранится
+  // в localStorage и переживает перезагрузку; читаем его в useEffect (на сервере
+  // localStorage нет — иначе ломается SSR/гидратация).
+  const [provider, setProvider] = useState<ChatProvider>("auto")
   // «Сохранить как решение»: черновик из текущего разговора (1 вызов LLM) →
   // предзаполненный редактор решения. memory_item создаётся только по подтверждению.
   const [drafting, setDrafting] = useState(false)
@@ -81,6 +86,27 @@ export default function ChatPage() {
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth" })
   }, [messages])
+  // Восстанавливаем выбранную модель из localStorage (после монтирования).
+  useEffect(() => {
+    const saved = localStorage.getItem("pam-chat-provider")
+    if (
+      saved === "auto" ||
+      saved === "groq" ||
+      saved === "openrouter" ||
+      saved === "ollama"
+    ) {
+      setProvider(saved)
+    }
+  }, [])
+
+  function changeProvider(p: ChatProvider) {
+    setProvider(p)
+    try {
+      localStorage.setItem("pam-chat-provider", p)
+    } catch {
+      /* localStorage недоступен — выбор просто не переживёт перезагрузку */
+    }
+  }
 
   function growTextarea() {
     const el = taRef.current
@@ -234,7 +260,8 @@ export default function ChatPage() {
           courses: ctxCourses,
           saved: ctxSaved
         },
-        multimodal
+        multimodal,
+        provider
       )
     } finally {
       setBusy(false)
@@ -445,6 +472,8 @@ export default function ChatPage() {
                     className="hidden"
                   />
                   <span className="text-white/10 px-0.5 select-none">|</span>
+                  <ModelSelect value={provider} onChange={changeProvider} />
+                  <span className="text-white/10 px-0.5 select-none">|</span>
                   <CtxToggle
                     icon={<MemoryIcon />}
                     label="Использовать память"
@@ -561,6 +590,56 @@ function CtxToggle({
       <span>{label}</span>
       {chevron && <ChevronDownIcon />}
     </button>
+  )
+}
+
+/** Выбор модели ответа: «Авто» (серверный hybrid) / Groq / OpenRouter / локальная Ollama. */
+function ModelSelect({
+  value,
+  onChange
+}: {
+  value: ChatProvider
+  onChange: (v: ChatProvider) => void
+}) {
+  const active = value !== "auto"
+  return (
+    <label
+      title="Модель ответа"
+      className={`shrink-0 inline-flex items-center gap-1.5 rounded-full pl-2.5 pr-1.5 py-1 text-[12px] font-sans transition-all duration-[180ms] whitespace-nowrap border backdrop-blur-[12px] cursor-pointer ${
+        active
+          ? "text-lime-400 bg-lime-400/10 border-lime-400/30"
+          : "text-neutral-300 bg-white/[0.05] border-white/[0.08] hover:text-neutral-100 hover:border-lime-400/30"
+      }`}>
+      <CpuIcon />
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value as ChatProvider)}
+        aria-label="Модель ответа"
+        className="bg-transparent outline-none cursor-pointer appearance-none pr-3 [background-position:right_center] [background-repeat:no-repeat] text-current [&>option]:bg-neutral-900 [&>option]:text-neutral-100">
+        <option value="auto">Авто</option>
+        <option value="groq">Groq</option>
+        <option value="openrouter">OpenRouter</option>
+        <option value="ollama">Локальная (Ollama)</option>
+      </select>
+      <ChevronDownIcon />
+    </label>
+  )
+}
+
+function CpuIcon() {
+  return (
+    <svg
+      width="13"
+      height="13"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round">
+      <rect x="6" y="6" width="12" height="12" rx="1.5" />
+      <path d="M9 2v2M15 2v2M9 20v2M15 20v2M2 9h2M2 15h2M20 9h2M20 15h2" />
+    </svg>
   )
 }
 

@@ -3,27 +3,47 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="SelectCast — Настройки"
         Icon="Assets/selectcast.ico"
-        Width="440" Height="260"
+        Width="440" Height="270"
         WindowStartupLocation="CenterScreen"
-        ResizeMode="NoResize">
-    <Border Background="White" Padding="22">
-        <StackPanel>
-            <TextBlock Text="Настройки" FontSize="20" FontWeight="Bold" Foreground="#3A7BD5"/>
+        ResizeMode="NoResize"
+        WindowStyle="None"
+        AllowsTransparency="False"
+        Background="Transparent"
+        FontFamily="Segoe UI Variable Text, Segoe UI">
+    <WindowChrome.WindowChrome>
+        <WindowChrome CaptionHeight="36" CornerRadius="0" GlassFrameThickness="0"
+                      ResizeBorderThickness="0" UseAeroCaptionButtons="False"/>
+    </WindowChrome.WindowChrome>
 
-            <TextBlock Text="Горячая клавиша захвата" Margin="0,16,0,4" Foreground="#444444"/>
-            <TextBox x:Name="HotkeyBox" IsReadOnly="True" IsReadOnlyCaretVisible="False"
-                     FontSize="15" Padding="8" MinHeight="36" Cursor="Hand"
-                     VerticalContentAlignment="Center"
+    <Border Background="{StaticResource GlassCardBrush}"
+            BorderBrush="{StaticResource GlassEdgeBrush}" BorderThickness="1"
+            Padding="22,14,22,18">
+        <StackPanel>
+            <Grid>
+                <TextBlock Text="Настройки" FontSize="20" FontWeight="Bold"
+                           Foreground="{StaticResource AccentBrush}" VerticalAlignment="Center"/>
+                <Button x:Name="CloseButton" Style="{StaticResource CloseButton}" Content="✕"
+                        HorizontalAlignment="Right" VerticalAlignment="Top"
+                        WindowChrome.IsHitTestVisibleInChrome="True" Click="CloseButton_Click"/>
+            </Grid>
+
+            <TextBlock Text="Горячая клавиша захвата" Margin="0,16,0,4"
+                       Foreground="{StaticResource TextSecondaryBrush}"/>
+            <TextBox x:Name="HotkeyBox" Style="{StaticResource GlassTextBox}"
+                     IsReadOnly="True" IsReadOnlyCaretVisible="False" Cursor="Hand"
+                     WindowChrome.IsHitTestVisibleInChrome="True"
                      GotFocus="HotkeyBox_GotFocus"
                      PreviewKeyDown="HotkeyBox_PreviewKeyDown"/>
             <TextBlock Text="Кликните в поле и нажмите комбинацию (минимум один модификатор + клавиша)."
-                       FontSize="11" Foreground="#999999" Margin="0,4,0,0" TextWrapping="Wrap"/>
+                       FontSize="11" Foreground="{StaticResource TextMutedBrush}" Margin="0,4,0,0" TextWrapping="Wrap"/>
             <TextBlock x:Name="ErrorText" Foreground="#C0392B" FontSize="12" Margin="0,8,0,0"
                        TextWrapping="Wrap" Visibility="Collapsed"/>
 
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,22,0,0">
-                <Button Content="Отмена" Width="90" Height="30" Margin="0,0,8,0" Click="Cancel_Click"/>
-                <Button x:Name="SaveButton" Content="Сохранить" Width="110" Height="30" Click="Save_Click"/>
+                <Button Content="Отмена" Style="{StaticResource GhostButton}" Padding="22,7" Margin="0,0,8,0"
+                        WindowChrome.IsHitTestVisibleInChrome="True" Click="Cancel_Click"/>
+                <Button x:Name="SaveButton" Content="Сохранить" Style="{StaticResource AccentButton}" Padding="26,7"
+                        WindowChrome.IsHitTestVisibleInChrome="True" Click="Save_Click"/>
             </StackPanel>
         </StackPanel>
     </Border>

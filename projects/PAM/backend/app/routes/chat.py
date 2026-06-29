@@ -149,6 +149,11 @@ class ChatIn(BaseModel):
     # True-multimodal: приложенную картинку отправить прямо в vision-модель и
     # стримить ответ (вместо ответа текстовой модели по pre-pass транскрипции).
     multimodal: bool = False
+    # Выбор модели из UI. "auto" — серверный дефолт (settings.LLM_PROVIDER, обычно
+    # hybrid); иначе принудительный провайдер ТОЛЬКО для этого запроса (даёт тест
+    # локальной модели без смены серверной настройки). Неизвестное значение
+    # деградирует в "auto" (см. резолв в chat()).
+    provider: str = "auto"
 
 
 def _safe_name(name: str) -> str:
@@ -724,9 +729,12 @@ async def chat(payload: ChatIn):
         marker = "📎 " + ", ".join(_safe_name(a.name) for a in payload.attachments)
         persisted_user = f"{marker}\n{user_msg}" if user_msg else marker
 
-    # Гибрид-роутер: на «тяжёлый» запрос берём мощную модель, иначе быструю.
-    cfg = settings.LLM_PROVIDER.lower()
-    chosen = route_provider(query) if cfg == "hybrid" else cfg
+    # Выбор провайдера: явный из UI переопределяет серверный LLM_PROVIDER только
+    # для этого запроса; "auto" (и любое неизвестное значение) — серверный дефолт.
+    # Гибрид-роутер на «тяжёлый» запрос берёт мощную модель, иначе быструю.
+    sel = (payload.provider or "auto").lower()
+    base = sel if sel in {"groq", "openrouter", "ollama", "hybrid"} else settings.LLM_PROVIDER.lower()
+    chosen = route_provider(query) if base == "hybrid" else base
     vprov, vmodel = vision_target() if use_vision else (chosen, model_for(chosen))
 
     async def gen() -> AsyncIterator[bytes]:

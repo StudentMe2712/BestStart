@@ -26,6 +26,15 @@ public partial class SettingsWindow : Window
         HotkeyBox.Text = HotkeyCapture.Format(_modifiers, _vk);
     }
 
+    protected override void OnSourceInitialized(EventArgs e)
+    {
+        base.OnSourceInitialized(e);
+        GlassChrome.Apply(this); // Win11 acrylic backdrop behind the frosted-glass panels
+    }
+
+    // Custom chrome has no system close box; ✕ closes the dialog without saving (like Отмена).
+    private void CloseButton_Click(object sender, RoutedEventArgs e) => Close();
+
     private void HotkeyBox_GotFocus(object sender, RoutedEventArgs e)
         => HotkeyBox.Text = "Нажмите комбинацию…";
 

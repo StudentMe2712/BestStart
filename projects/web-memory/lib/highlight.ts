@@ -1,14 +1,31 @@
 import type { Memory } from './types';
 import { cssEscape, findElement, findTextRange } from './anchor';
+import { hexToRgba } from './color';
 
 // In-page rendering of saved memories: wrap text passages in <mark> and provide
 // scroll-to / flash helpers. Marks live in the page DOM (unavoidable to wrap text), so
 // they use inline styles + a unique class to minimise clashes with page CSS.
 
 export const HL_CLASS = 'wm-hl';
+const STYLE_ID = 'wm-hl-style';
 
 function markSelector(id: string): string {
   return `mark.${HL_CLASS}[data-wm-id="${cssEscape(id)}"]`;
+}
+
+/** The first <mark> of a text memory on the page (used to anchor its on-page note pin). */
+export function findHighlightEl(id: string): HTMLElement | null {
+  return document.querySelector<HTMLElement>(markSelector(id));
+}
+
+// :hover can't be expressed inline, so inject one tiny rule (once) that deepens the tint.
+// `!important` lets it win over the inline base background on hover only.
+function ensureHoverStyle(): void {
+  if (document.getElementById(STYLE_ID)) return;
+  const style = document.createElement('style');
+  style.id = STYLE_ID;
+  style.textContent = `mark.${HL_CLASS}:hover{background-color:var(--wm-tint-strong) !important;}`;
+  (document.head ?? document.documentElement).appendChild(style);
 }
 
 export function isApplied(id: string): boolean {
@@ -22,6 +39,7 @@ export function applyHighlight(mem: Memory): boolean {
   const range = findTextRange(mem.anchor);
   if (!range || range.collapsed) return false;
   try {
+    ensureHoverStyle();
     wrapRange(range, mem);
     return true;
   } catch {
@@ -32,13 +50,18 @@ export function applyHighlight(mem: Memory): boolean {
 function styleMark(mark: HTMLElement, mem: Memory): void {
   mark.className = HL_CLASS;
   mark.dataset.wmId = mem.id;
-  mark.style.backgroundColor = mem.color || '#fff3a3';
+  // Soft, low-opacity tint (reader-friendly) that deepens on hover; not a solid marker.
+  const color = mem.color || '#fff3a3';
+  mark.style.setProperty('--wm-tint-strong', hexToRgba(color, 0.55));
+  mark.style.backgroundColor = hexToRgba(color, 0.3);
   mark.style.color = 'inherit';
   mark.style.borderRadius = '2px';
   mark.style.padding = '0';
   mark.style.cursor = 'pointer';
-  if (mem.important) mark.style.boxShadow = 'inset 0 -0.5em 0 rgba(245,158,11,.4)';
-  else if (mem.note) mark.style.boxShadow = 'inset 0 -2px 0 rgba(0,0,0,.32)';
+  mark.style.transition = 'background-color .15s ease, box-shadow .15s ease';
+  // Thin underline accent (instead of a heavy bar) to flag important / noted fragments.
+  if (mem.important) mark.style.boxShadow = 'inset 0 -2px 0 rgba(245,158,11,.6)';
+  else if (mem.note) mark.style.boxShadow = 'inset 0 -2px 0 rgba(100,116,139,.55)';
   else mark.style.boxShadow = 'none';
   mark.title = mem.note ? `📝 ${mem.note}` : 'Web Memory';
 }

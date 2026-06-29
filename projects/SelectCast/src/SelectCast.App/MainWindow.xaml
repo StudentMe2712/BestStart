@@ -6,39 +6,71 @@
         Width="560" Height="360"
         WindowStartupLocation="CenterScreen"
         ResizeMode="NoResize"
-        Topmost="True">
-    <Border Background="White" Padding="24">
-        <StackPanel VerticalAlignment="Top">
-            <TextBlock Text="SelectCast" FontSize="26" FontWeight="Bold" Foreground="#3A7BD5"/>
-            <TextBlock x:Name="StatusLine" FontSize="13" Foreground="#666" Margin="0,2,0,10"/>
-            <TextBox x:Name="InputBox" FontSize="16" Padding="8" MinHeight="38"
-                     TextWrapping="Wrap" AcceptsReturn="False"
-                     VerticalContentAlignment="Center"
-                     KeyDown="InputBox_KeyDown"/>
+        WindowStyle="None"
+        AllowsTransparency="False"
+        Background="Transparent"
+        Topmost="True"
+        FontFamily="Segoe UI Variable Text, Segoe UI">
+    <WindowChrome.WindowChrome>
+        <WindowChrome CaptionHeight="40" CornerRadius="0" GlassFrameThickness="0"
+                      ResizeBorderThickness="0" UseAeroCaptionButtons="False"/>
+    </WindowChrome.WindowChrome>
 
-            <StackPanel Orientation="Horizontal" Margin="0,16,0,0">
-                <Border x:Name="Swatch" Width="56" Height="56" CornerRadius="6"
-                        BorderBrush="#DDDDDD" BorderThickness="1"
+    <Border Background="{StaticResource GlassCardBrush}"
+            BorderBrush="{StaticResource GlassEdgeBrush}" BorderThickness="1"
+            Padding="24,16,24,20">
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <!-- Title row (drag handle + close) -->
+            <Grid Grid.Row="0">
+                <TextBlock Text="SelectCast" FontSize="22" FontWeight="Bold"
+                           Foreground="{StaticResource AccentBrush}" VerticalAlignment="Center"/>
+                <Button x:Name="CloseButton" Style="{StaticResource CloseButton}" Content="✕"
+                        HorizontalAlignment="Right" VerticalAlignment="Top"
+                        WindowChrome.IsHitTestVisibleInChrome="True" Click="CloseButton_Click"/>
+            </Grid>
+
+            <StackPanel Grid.Row="1">
+                <TextBlock x:Name="StatusLine" FontSize="13"
+                           Foreground="{StaticResource TextSecondaryBrush}" Margin="0,2,0,10"/>
+                <TextBox x:Name="InputBox" Style="{StaticResource GlassTextBox}" MinHeight="40"
+                         TextWrapping="Wrap" AcceptsReturn="False"
+                         WindowChrome.IsHitTestVisibleInChrome="True"
+                         KeyDown="InputBox_KeyDown"/>
+            </StackPanel>
+
+            <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,16,0,0" VerticalAlignment="Top">
+                <Border x:Name="Swatch" Width="56" Height="56" CornerRadius="10"
+                        BorderBrush="{StaticResource GlassEdgeBrush}" BorderThickness="1"
                         Visibility="Collapsed" Margin="0,0,14,0"/>
                 <ItemsControl x:Name="ResultsList" VerticalAlignment="Center">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
                             <StackPanel Orientation="Horizontal" Margin="0,3">
-                                <TextBlock Text="{Binding Label}" Width="120" Foreground="#888888"/>
-                                <TextBlock Text="{Binding Value}" FontWeight="SemiBold" FontSize="15"/>
+                                <TextBlock Text="{Binding Label}" Width="120"
+                                           Foreground="{StaticResource TextMutedBrush}"/>
+                                <TextBlock Text="{Binding Value}" FontWeight="SemiBold" FontSize="15"
+                                           Foreground="{StaticResource TextPrimaryBrush}"/>
                             </StackPanel>
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
             </StackPanel>
 
-            <DockPanel Margin="0,18,0,0" LastChildFill="False">
+            <DockPanel Grid.Row="3" Margin="0,18,0,0" LastChildFill="False">
                 <TextBlock DockPanel.Dock="Left" VerticalAlignment="Center"
                            Text="Enter — конвертировать · Esc — скрыть"
-                           FontSize="12" Foreground="#999999"/>
-                <Button DockPanel.Dock="Right" x:Name="SettingsButton" Content="⚙ Настройки"
-                        Padding="10,3" Focusable="False" Click="SettingsButton_Click"/>
+                           FontSize="12" Foreground="{StaticResource TextMutedBrush}"/>
+                <Button DockPanel.Dock="Right" x:Name="SettingsButton" Style="{StaticResource GhostButton}"
+                        Content="⚙ Настройки" Focusable="False"
+                        WindowChrome.IsHitTestVisibleInChrome="True" Click="SettingsButton_Click"/>
             </DockPanel>
-        </StackPanel>
+        </Grid>
     </Border>
 </Window>

@@ -3,7 +3,10 @@
 @tailwind utilities;
 
 /* Everything we render lives inside a shadow root, so these resets stay scoped to our UI
-   and never leak onto the host page. */
+   and never leak onto the host page. We also pin our own font so the UI looks consistent
+   regardless of the host page's typography. */
 :host {
   all: initial;
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
 }

@@ -12,10 +12,7 @@ public sealed class SettingsService
 
     public SettingsService(string? path = null) => _path = path ?? DefaultPath();
 
-    public static string DefaultPath() => Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-        "SelectCast",
-        "settings.json");
+    public static string DefaultPath() => Path.Combine(AppPaths.DataDir(), "settings.json");
 
     /// <summary>Returns saved settings, or defaults if the file is missing/corrupt.</summary>
     public AppSettings Load()

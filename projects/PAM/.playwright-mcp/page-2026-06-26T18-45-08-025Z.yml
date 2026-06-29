@@ -1,0 +1,18 @@
+- generic [ref=e1]:
+  - main [ref=e2]:
+    - heading "Odysseus" [level=1] [ref=e3]:
+      - img [ref=e4]
+      - text: Odysseus
+    - generic [ref=e8]:
+      - generic [ref=e9]: Username
+      - generic [ref=e10]:
+        - textbox "Username" [active] [ref=e11]
+        - generic "Remember me" [ref=e12] [cursor=pointer]:
+          - checkbox "Remember me" [checked] [ref=e13]
+      - generic [ref=e15]: Password
+      - generic [ref=e16]:
+        - textbox "Password" [ref=e17]
+        - button "Show password" [ref=e18] [cursor=pointer]:
+          - img [ref=e19]
+      - button "Sign In" [ref=e23] [cursor=pointer]
+  - contentinfo: v1.0.1

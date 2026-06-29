@@ -84,6 +84,22 @@ projects never clash. When building a project:
 - Machine-level shared services (one n8n, a scratch Postgres) live in
   `library/docker/local-services.yml` — don't duplicate those per project.
 
+## 🧪 End-to-end tests are MANDATORY (every project — new and existing)
+Unit tests are not enough. **Every** project must ship at least one automated **end-to-end (E2E)**
+test that drives the **real primary user flow through the real entry point** and asserts the
+user-visible outcome of the main happy path. "E2E" = start the actual app / CLI / server (or its
+top-level handler) and check what the user would actually get — don't mock the thing under test.
+1. **New projects:** scaffold the E2E test in the **first** milestone, before features pile up.
+   A milestone isn't "done" until its E2E test exists and passes.
+2. **Existing projects:** add the missing E2E test the next time you touch the project.
+3. **Definition of done:** the E2E suite **runs and passes** locally (and in CI if present) before
+   you commit/push. If it can't run in this environment, **say so explicitly** — never claim green.
+4. **Honest & minimal:** one solid happy-path E2E beats ten brittle ones. Add error-path E2E only
+   where the flow's real failure modes matter.
+5. **Pick the lightest tool that hits the real boundary:** HTTP calls for a server, CLI invocation
+   for a CLI, UI automation for a GUI (Playwright for web; FlaUI / WinAppDriver for desktop), or a
+   top-level "run the whole pipeline" test when full UI automation is impractical.
+
 ## ⛔ Tool-selection gate (MANDATORY before building anything)
 When I give you a new task or paste a prompt (mine or from another AI) inside a project,
 **do not start coding immediately.** First run the gate (also available as `/start-task`):

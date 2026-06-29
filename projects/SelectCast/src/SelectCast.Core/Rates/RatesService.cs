@@ -30,13 +30,7 @@ public sealed class RatesService : IRatesProvider
         Current = LoadCache();
     }
 
-    public static string DefaultCachePath()
-    {
-        string dir = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-            "SelectCast");
-        return Path.Combine(dir, "rates.json");
-    }
+    public static string DefaultCachePath() => Path.Combine(AppPaths.DataDir(), "rates.json");
 
     public async Task RefreshAsync(CancellationToken ct = default)
     {

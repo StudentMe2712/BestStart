@@ -43,6 +43,7 @@ public partial class MainWindow : Window
 
         // Force the HWND now so the global hotkey can register while the window stays hidden.
         nint hwnd = new WindowInteropHelper(this).EnsureHandle();
+        GlassChrome.Apply(hwnd); // Win11 acrylic backdrop behind the frosted-glass panels
         _hotkey = new HotkeyService(hwnd);
         _hotkey.Pressed += OnHotkeyPressed;
 
@@ -65,6 +66,9 @@ public partial class MainWindow : Window
     }
 
     private void SettingsButton_Click(object sender, RoutedEventArgs e) => OpenSettings();
+
+    // Custom chrome has no system close box; ✕ routes through OnClosing, which hides to the tray.
+    private void CloseButton_Click(object sender, RoutedEventArgs e) => Close();
 
     /// <summary>Opens the settings dialog (also called from the tray menu).</summary>
     public void OpenSettings()

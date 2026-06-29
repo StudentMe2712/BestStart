@@ -1,7 +1,7 @@
 {
   "name": "web-memory",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.2.2",
   "description": "Сохраняйте важные фрагменты страниц, а не страницы целиком. Локально, offline-first.",
   "type": "module",
   "scripts": {
@@ -16,6 +16,7 @@
   "dependencies": {
     "flexsearch": "^0.7.43",
     "idb": "^8.0.0",
+    "lucide-react": "^1.21.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },

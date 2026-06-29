@@ -1,0 +1,225 @@
+- generic [active] [ref=e1]:
+  - banner [ref=e2]:
+    - generic [ref=e3]:
+      - link [ref=e4] [cursor=pointer]:
+        - /url: /
+      - navigation [ref=e5]:
+        - link "Чат" [ref=e6] [cursor=pointer]:
+          - /url: /
+          - text: Чат
+        - link "История" [ref=e8] [cursor=pointer]:
+          - /url: /history
+        - link "Избранное" [ref=e9] [cursor=pointer]:
+          - /url: /saved
+        - link "Лектор" [ref=e10] [cursor=pointer]:
+          - /url: /learn
+        - link "Решения" [ref=e11] [cursor=pointer]:
+          - /url: /solutions
+        - link "Хронология" [ref=e12] [cursor=pointer]:
+          - /url: /timeline
+        - link "Диагностика" [ref=e13] [cursor=pointer]:
+          - /url: /diag
+        - link "Каталог" [ref=e15] [cursor=pointer]:
+          - /url: /catalog
+  - generic [ref=e16]:
+    - complementary [ref=e17]:
+      - generic [ref=e18]:
+        - button "Новый чат ⌘K" [ref=e19]:
+          - img [ref=e21]
+          - generic [ref=e23]: Новый чат
+          - generic [ref=e24]: ⌘K
+        - button "Искать чаты" [ref=e25]:
+          - img [ref=e27]
+          - generic [ref=e30]: Искать чаты
+        - button "Проекты" [ref=e31]:
+          - img [ref=e33]
+          - generic [ref=e35]: Проекты
+      - generic [ref=e36]:
+        - generic [ref=e126]:
+          - generic [ref=e127]: Закреплённые
+          - button "Я ранее спрашивал про настройку принтера к каакому решению м" [ref=e129] [cursor=pointer]:
+            - generic [ref=e130]: Я ранее спрашивал про настройку принтера к каакому решению м
+            - generic [ref=e131]:
+              - button "Открепить" [ref=e132]:
+                - img [ref=e133]
+              - button "Ещё" [ref=e135]:
+                - img [ref=e136]
+        - generic [ref=e140]:
+          - generic [ref=e141]: Сегодня
+          - generic [ref=e142]:
+            - 'button "Ответь одним словом: столица Франции?" [ref=e143] [cursor=pointer]':
+              - generic [ref=e144]: "Ответь одним словом: столица Франции?"
+              - generic [ref=e145]:
+                - button "Закрепить" [ref=e146]:
+                  - img [ref=e147]
+                - button "Ещё" [ref=e149]:
+                  - img [ref=e150]
+            - button "вот тут нужно добавить функцию которая выводить в консоли ну" [ref=e154] [cursor=pointer]:
+              - generic [ref=e155]: вот тут нужно добавить функцию которая выводить в консоли ну
+              - generic [ref=e156]:
+                - button "Закрепить" [ref=e157]:
+                  - img [ref=e158]
+                - button "Ещё" [ref=e160]:
+                  - img [ref=e161]
+        - generic [ref=e165]:
+          - generic [ref=e166]: Ранее
+          - generic [ref=e167]:
+            - 'button "Привет! Коротко: что ты помнишь про мои инструменты?" [ref=e168] [cursor=pointer]':
+              - generic [ref=e169]: "Привет! Коротко: что ты помнишь про мои инструменты?"
+              - generic [ref=e170]:
+                - button "Закрепить" [ref=e171]:
+                  - img [ref=e172]
+                - button "Ещё" [ref=e174]:
+                  - img [ref=e175]
+            - button "Что такое ping?" [ref=e179] [cursor=pointer]:
+              - generic [ref=e180]: Что такое ping?
+              - generic [ref=e181]:
+                - button "Закрепить" [ref=e182]:
+                  - img [ref=e183]
+                - button "Ещё" [ref=e185]:
+                  - img [ref=e186]
+            - button "Спасибо!" [ref=e190] [cursor=pointer]:
+              - generic [ref=e191]: Спасибо!
+              - generic [ref=e192]:
+                - button "Закрепить" [ref=e193]:
+                  - img [ref=e194]
+                - button "Ещё" [ref=e196]:
+                  - img [ref=e197]
+            - button "Что такое DHCP? Одно предложение." [ref=e201] [cursor=pointer]:
+              - generic [ref=e202]: Что такое DHCP? Одно предложение.
+              - generic [ref=e203]:
+                - button "Закрепить" [ref=e204]:
+                  - img [ref=e205]
+                - button "Ещё" [ref=e207]:
+                  - img [ref=e208]
+            - button "Что я обычно использую и на чём работаю? Коротко, по памяти." [ref=e212] [cursor=pointer]:
+              - generic [ref=e213]: Что я обычно использую и на чём работаю? Коротко, по памяти.
+              - generic [ref=e214]:
+                - button "Закрепить" [ref=e215]:
+                  - img [ref=e216]
+                - button "Ещё" [ref=e218]:
+                  - img [ref=e219]
+            - 'button "Скажи коротко: 2+2 и что такое ping." [ref=e223] [cursor=pointer]':
+              - generic [ref=e224]: "Скажи коротко: 2+2 и что такое ping."
+              - generic [ref=e225]:
+                - button "Закрепить" [ref=e226]:
+                  - img [ref=e227]
+                - button "Ещё" [ref=e229]:
+                  - img [ref=e230]
+            - 'button "Кратко: как посмотреть открытые порты в Windows?" [ref=e234] [cursor=pointer]':
+              - generic [ref=e235]: "Кратко: как посмотреть открытые порты в Windows?"
+              - generic [ref=e236]:
+                - button "Закрепить" [ref=e237]:
+                  - img [ref=e238]
+                - button "Ещё" [ref=e240]:
+                  - img [ref=e241]
+            - button "Назови 2 факта что ты помнишь обо мне, очень коротко." [ref=e245] [cursor=pointer]:
+              - generic [ref=e246]: Назови 2 факта что ты помнишь обо мне, очень коротко.
+              - generic [ref=e247]:
+                - button "Закрепить" [ref=e248]:
+                  - img [ref=e249]
+                - button "Ещё" [ref=e251]:
+                  - img [ref=e252]
+            - button "Привет" [ref=e256] [cursor=pointer]:
+              - generic [ref=e257]: Привет
+              - generic [ref=e258]:
+                - button "Закрепить" [ref=e259]:
+                  - img [ref=e260]
+                - button "Ещё" [ref=e262]:
+                  - img [ref=e263]
+            - 'button "Коротко: какую ОС, СУБД и какие инструменты я обычно использ" [ref=e267] [cursor=pointer]':
+              - generic [ref=e268]: "Коротко: какую ОС, СУБД и какие инструменты я обычно использ"
+              - generic [ref=e269]:
+                - button "Закрепить" [ref=e270]:
+                  - img [ref=e271]
+                - button "Ещё" [ref=e273]:
+                  - img [ref=e274]
+            - button "Что я спрашивал про 1С?" [ref=e278] [cursor=pointer]:
+              - generic [ref=e279]: Что я спрашивал про 1С?
+              - generic [ref=e280]:
+                - button "Закрепить" [ref=e281]:
+                  - img [ref=e282]
+                - button "Ещё" [ref=e284]:
+                  - img [ref=e285]
+    - main [ref=e41]:
+      - generic [ref=e44]:
+        - generic [ref=e45]:
+          - generic [ref=e46]:
+            - heading "С возвращением" [level=1] [ref=e47]
+            - paragraph [ref=e48]: Продолжи с того места, где остановился — или задай вопрос ниже.
+          - complementary [ref=e289]:
+            - generic [ref=e290]:
+              - generic [ref=e291]: Память
+              - generic [ref=e292]: хорошо
+            - generic [ref=e293]:
+              - generic [ref=e294]: "98"
+              - generic [ref=e295]: /100
+            - generic [ref=e296]:
+              - generic [ref=e297]:
+                - term [ref=e298]: Фактов
+                - definition [ref=e299]: "61"
+              - generic [ref=e300]:
+                - term [ref=e301]: На проверке
+                - definition [ref=e302]: "7"
+              - generic [ref=e303]:
+                - term [ref=e304]: Обновлено
+                - definition [ref=e305]: 05.06.2026
+        - generic [ref=e49]:
+          - heading "Быстрые действия" [level=2] [ref=e50]
+          - generic [ref=e51]:
+            - link "Добавить материал Статья, PDF, видео или файл в память Создать" [ref=e52] [cursor=pointer]:
+              - /url: /learn
+              - img [ref=e54]
+              - generic [ref=e57]: Добавить материал
+              - generic [ref=e58]: Статья, PDF, видео или файл в память
+              - generic [ref=e59]: Создать
+            - link "Проверить факты Очередь фактов на проверку Открыть" [ref=e60] [cursor=pointer]:
+              - /url: /me
+              - img [ref=e62]
+              - generic [ref=e65]: Проверить факты
+              - generic [ref=e66]: Очередь фактов на проверку
+              - generic [ref=e67]: Открыть
+            - link "Диагностика Состояние и здоровье памяти Открыть" [ref=e68] [cursor=pointer]:
+              - /url: /diag
+              - img [ref=e70]
+              - generic [ref=e72]: Диагностика
+              - generic [ref=e73]: Состояние и здоровье памяти
+              - generic [ref=e74]: Открыть
+            - link "Избранное Сохранённые сообщения и факты Открыть" [ref=e75] [cursor=pointer]:
+              - /url: /saved
+              - img [ref=e77]
+              - generic [ref=e79]: Избранное
+              - generic [ref=e80]: Сохранённые сообщения и факты
+              - generic [ref=e81]: Открыть
+      - generic [ref=e84]:
+        - textbox "Напиши сообщение..." [ref=e85]
+        - generic [ref=e86]:
+          - generic [ref=e87]:
+            - button "Прикрепить" [ref=e88]:
+              - img [ref=e89]
+            - generic [ref=e91]: "|"
+            - generic "Модель ответа" [ref=e92] [cursor=pointer]:
+              - img [ref=e93]
+              - combobox "Модель ответа" [ref=e96]:
+                - option "Авто"
+                - option "Groq"
+                - option "OpenRouter"
+                - option "Локальная (Ollama)" [selected]
+              - img [ref=e97]
+            - generic [ref=e99]: "|"
+            - button "Использовать память" [pressed] [ref=e100]:
+              - img [ref=e101]
+              - generic [ref=e105]: Использовать память
+              - img [ref=e106]
+            - button "Материалы" [pressed] [ref=e108]:
+              - img [ref=e109]
+              - generic [ref=e112]: Материалы
+            - button "Курсы" [ref=e113]:
+              - img [ref=e114]
+              - generic [ref=e117]: Курсы
+            - button "Избранное" [ref=e118]:
+              - img [ref=e119]
+              - generic [ref=e121]: Избранное
+          - button "Отправить" [disabled] [ref=e122]:
+            - img [ref=e123]
+  - alert [ref=e125]

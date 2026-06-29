@@ -549,6 +549,12 @@ export interface ChatCtx {
   saved: boolean
 }
 
+/**
+ * Выбор модели ответа. "auto" — серверный дефолт (LLM_PROVIDER, обычно hybrid);
+ * иначе принудительный провайдер для запроса. "ollama" — локальная модель.
+ */
+export type ChatProvider = "auto" | "groq" | "openrouter" | "ollama"
+
 /** POST /learn/remember — сохранить распознанный текст вложения как материал. */
 export async function rememberAttachment(input: {
   title: string
@@ -984,7 +990,8 @@ export async function streamChat(
   signal?: AbortSignal,
   attachments?: ChatAttachment[],
   ctx?: ChatCtx,
-  multimodal?: boolean
+  multimodal?: boolean,
+  provider?: ChatProvider
 ): Promise<void> {
   const r = await fetch(`${BACKEND_URL}/chat`, {
     method: "POST",
@@ -997,7 +1004,9 @@ export async function streamChat(
       use_materials: ctx ? ctx.materials : true,
       use_courses: ctx ? ctx.courses : false,
       use_saved: ctx ? ctx.saved : false,
-      multimodal: multimodal || undefined
+      multimodal: multimodal || undefined,
+      // "auto" не шлём — бэкенд сам подставит серверный дефолт.
+      provider: provider && provider !== "auto" ? provider : undefined
     }),
     signal
   })
