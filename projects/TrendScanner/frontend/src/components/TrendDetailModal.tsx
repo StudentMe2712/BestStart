@@ -15,6 +15,8 @@ import {
   FileText,
   AlertTriangle,
   BookOpen,
+  Heart,
+  ThumbsDown,
 } from 'lucide-react';
 import { Trend } from '../types';
 import { ScoreBadge, ScamBadge, SourceBadge, TrendIndicator } from './Badges';
@@ -25,6 +27,7 @@ interface TrendDetailModalProps {
   isOpen: boolean;
   onClose: () => void;
   onToggleReview: (trend: Trend) => Promise<void>;
+  onFeedback?: (trend: Trend, score: number) => Promise<void>;
   onDeleteTrend: (trendId: number) => Promise<void>;
 }
 
@@ -33,6 +36,7 @@ export const TrendDetailModal: React.FC<TrendDetailModalProps> = ({
   isOpen,
   onClose,
   onToggleReview,
+  onFeedback,
   onDeleteTrend,
 }) => {
   const [copiedOriginal, setCopiedOriginal] = useState(false);
@@ -470,7 +474,68 @@ export const TrendDetailModal: React.FC<TrendDetailModalProps> = ({
           </button>
 
           {/* Right: Actions */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* Dislike / RLHF -1 */}
+            <button
+              type="button"
+              onClick={async () => {
+                const isCurrentlyDisliked = trend.user_feedback === -1;
+                const nextScore = isCurrentlyDisliked ? 0 : -1;
+                if (onFeedback) {
+                  await onFeedback(trend, nextScore);
+                }
+              }}
+              className={`flex items-center gap-1.5 px-3 py-2 rounded-lg font-medium transition-all cursor-pointer border ${
+                trend.user_feedback === -1
+                  ? 'bg-amber-500/20 text-amber-400 border-amber-500/40 shadow-sm shadow-amber-500/20'
+                  : 'bg-app-elevated hover:bg-app-hover border-app-border text-content-secondary hover:text-amber-500'
+              }`}
+              title={trend.user_feedback === -1 ? 'Убрать дизлайк (RLHF -1)' : 'Дизлайк / Мусор (RLHF -1)'}
+            >
+              <ThumbsDown
+                className={`w-3.5 h-3.5 ${
+                  trend.user_feedback === -1 ? 'fill-amber-500/30 text-amber-400' : ''
+                }`}
+              />
+              <span>{trend.user_feedback === -1 ? 'Дизлайк (-1)' : 'Дизлайк (-1)'}</span>
+            </button>
+
+            {/* Like / RLHF +1 */}
+            <button
+              type="button"
+              onClick={async () => {
+                const isCurrentlyLiked =
+                  trend.user_feedback === 1 || (trend.user_feedback === undefined && !!trend.is_liked);
+                const nextScore = isCurrentlyLiked ? 0 : 1;
+                if (onFeedback) {
+                  await onFeedback(trend, nextScore);
+                }
+              }}
+              className={`flex items-center gap-1.5 px-3.5 py-2 rounded-lg font-medium transition-all cursor-pointer border ${
+                trend.user_feedback === 1 || (trend.user_feedback === undefined && !!trend.is_liked)
+                  ? 'bg-status-danger/20 text-status-danger border-status-danger/40 shadow-sm shadow-status-danger/20 font-semibold'
+                  : 'bg-app-elevated hover:bg-app-hover border-app-border text-content-secondary hover:text-status-danger'
+              }`}
+              title={
+                trend.user_feedback === 1 || (trend.user_feedback === undefined && !!trend.is_liked)
+                  ? 'Убрать лайк (RLHF +1)'
+                  : 'Лайк (RLHF +1)'
+              }
+            >
+              <Heart
+                className={`w-3.5 h-3.5 ${
+                  trend.user_feedback === 1 || (trend.user_feedback === undefined && !!trend.is_liked)
+                    ? 'fill-status-danger text-status-danger'
+                    : ''
+                }`}
+              />
+              <span>
+                {trend.user_feedback === 1 || (trend.user_feedback === undefined && !!trend.is_liked)
+                  ? 'В избранном (+1)'
+                  : 'Лайк (+1)'}
+              </span>
+            </button>
+
             {trend.source_url && (
               <a
                 href={trend.source_url}

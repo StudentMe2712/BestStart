@@ -36,6 +36,7 @@ CREATE TABLE IF NOT EXISTS trends (
     mention_count INTEGER NOT NULL DEFAULT 1,
     detailed_report TEXT NULL,
     is_liked INTEGER NOT NULL DEFAULT 0,
+    user_feedback INTEGER NOT NULL DEFAULT 0,
     is_new INTEGER NOT NULL DEFAULT 1,
     FOREIGN KEY (source_id) REFERENCES sources(id) ON DELETE CASCADE
 );
@@ -47,6 +48,7 @@ CREATE INDEX IF NOT EXISTS idx_trends_ai_score ON trends(ai_score);
 CREATE INDEX IF NOT EXISTS idx_trends_parsed_date ON trends(parsed_date);
 CREATE INDEX IF NOT EXISTS idx_trends_mention_count ON trends(mention_count);
 CREATE INDEX IF NOT EXISTS idx_trends_is_liked ON trends(is_liked);
+CREATE INDEX IF NOT EXISTS idx_trends_user_feedback ON trends(user_feedback);
 CREATE INDEX IF NOT EXISTS idx_trends_is_new ON trends(is_new);
 """
 
@@ -221,6 +223,7 @@ def init_db(seed_default_sources: bool = True) -> None:
             conn.executescript(DDL_BASE_TABLES)
             conn.execute("CREATE INDEX IF NOT EXISTS idx_trends_ai_status ON trends(ai_status);")
             conn.execute("CREATE INDEX IF NOT EXISTS idx_trends_is_new ON trends(is_new);")
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_trends_user_feedback ON trends(user_feedback);")
         else:
             # Ensure sources table exists
             conn.execute("""
@@ -234,7 +237,7 @@ def init_db(seed_default_sources: bool = True) -> None:
                 );
             """)
 
-            # Ensure ai_status, mention_count, detailed_report, is_liked, and is_new columns exist in trends table
+            # Ensure ai_status, mention_count, detailed_report, is_liked, user_feedback, and is_new columns exist in trends table
             cols = [row["name"] for row in conn.execute("PRAGMA table_info(trends)").fetchall()]
             if "ai_status" not in cols:
                 conn.execute("ALTER TABLE trends ADD COLUMN ai_status TEXT NOT NULL DEFAULT 'pending';")
@@ -244,8 +247,13 @@ def init_db(seed_default_sources: bool = True) -> None:
                 conn.execute("ALTER TABLE trends ADD COLUMN detailed_report TEXT NULL;")
             if "is_liked" not in cols:
                 conn.execute("ALTER TABLE trends ADD COLUMN is_liked INTEGER NOT NULL DEFAULT 0;")
+            if "user_feedback" not in cols:
+                conn.execute("ALTER TABLE trends ADD COLUMN user_feedback INTEGER NOT NULL DEFAULT 0;")
             if "is_new" not in cols:
                 conn.execute("ALTER TABLE trends ADD COLUMN is_new INTEGER NOT NULL DEFAULT 1;")
+
+            # Migration: Convert existing is_liked = 1 rows to user_feedback = 1
+            conn.execute("UPDATE trends SET user_feedback = 1 WHERE is_liked = 1 AND user_feedback = 0;")
 
             # Safe index creation
             conn.execute("CREATE INDEX IF NOT EXISTS idx_trends_source_id ON trends(source_id);")
@@ -256,6 +264,7 @@ def init_db(seed_default_sources: bool = True) -> None:
             conn.execute("CREATE INDEX IF NOT EXISTS idx_trends_ai_status ON trends(ai_status);")
             conn.execute("CREATE INDEX IF NOT EXISTS idx_trends_mention_count ON trends(mention_count);")
             conn.execute("CREATE INDEX IF NOT EXISTS idx_trends_is_liked ON trends(is_liked);")
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_trends_user_feedback ON trends(user_feedback);")
             conn.execute("CREATE INDEX IF NOT EXISTS idx_trends_is_new ON trends(is_new);")
 
         # 2. Seed sources

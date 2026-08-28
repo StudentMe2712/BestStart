@@ -8,6 +8,7 @@ import {
   Inbox,
   Database,
   Heart,
+  ThumbsDown,
   ChevronLeft,
   ChevronRight,
   Trash2,
@@ -22,7 +23,8 @@ interface TrendsGridProps {
   currentTab?: 'inbox' | 'liked' | 'database' | 'all' | string;
   onSelectTrend: (trend: Trend) => void;
   onToggleReview: (trend: Trend) => Promise<void>;
-  onToggleLike: (trend: Trend) => Promise<void>;
+  onToggleLike?: (trend: Trend) => Promise<void>;
+  onFeedback: (trend: Trend, score: number) => Promise<void>;
   onDeleteTrend: (trendId: number) => Promise<void>;
   currentPage: number;
   pageSize: number;
@@ -37,6 +39,7 @@ export const TrendsGrid: React.FC<TrendsGridProps> = ({
   onSelectTrend,
   onToggleReview,
   onToggleLike,
+  onFeedback,
   onDeleteTrend,
   currentPage,
   pageSize,
@@ -73,7 +76,7 @@ export const TrendsGrid: React.FC<TrendsGridProps> = ({
               <th className="py-3 px-4 min-w-[280px] text-xs font-medium text-content-muted">Тренд и Выжимка ИИ</th>
               <th className="py-3 px-4 w-28 text-center text-xs font-medium text-content-muted">Скор ИИ</th>
               <th className="py-3 px-4 w-32 text-center text-xs font-medium text-content-muted">Риск скама</th>
-              <th className="py-3 px-4 w-32 text-right text-xs font-medium text-content-muted">Действия</th>
+              <th className="py-3 px-4 w-36 text-right text-xs font-medium text-content-muted">Действия</th>
             </tr>
           </thead>
 
@@ -101,7 +104,7 @@ export const TrendsGrid: React.FC<TrendsGridProps> = ({
                     <div className="h-5 bg-app-elevated rounded w-16 mx-auto" />
                   </td>
                   <td className="py-3.5 px-4 align-middle text-right">
-                    <div className="h-6 bg-app-elevated rounded w-20 ml-auto" />
+                    <div className="h-6 bg-app-elevated rounded w-24 ml-auto" />
                   </td>
                 </tr>
               ))
@@ -151,6 +154,8 @@ export const TrendsGrid: React.FC<TrendsGridProps> = ({
               trends.map((trend) => {
                 const isConfirmed = trend.is_trend;
                 const isReviewed = trend.is_reviewed;
+                const isLiked = trend.user_feedback === 1 || (trend.user_feedback === undefined && !!trend.is_liked);
+                const isDisliked = trend.user_feedback === -1;
 
                 return (
                   <tr
@@ -230,20 +235,50 @@ export const TrendsGrid: React.FC<TrendsGridProps> = ({
                     {/* Actions */}
                     <td className="py-3.5 px-4 align-middle text-right">
                       <div className="flex items-center justify-end gap-2">
-                        {/* Toggle Like / Inbox Zero */}
+                        {/* Toggle Like / RLHF +1 */}
                         <button
                           type="button"
-                          onClick={() => onToggleLike(trend)}
+                          onClick={() => {
+                            const nextScore = isLiked ? 0 : 1;
+                            if (onFeedback) {
+                              onFeedback(trend, nextScore);
+                            } else if (onToggleLike) {
+                              onToggleLike(trend);
+                            }
+                          }}
                           className={`p-1 transition-colors cursor-pointer ${
-                            trend.is_liked
+                            isLiked
                               ? 'text-status-danger hover:text-status-danger'
                               : 'text-content-muted hover:text-status-danger'
                           }`}
-                          title={trend.is_liked ? 'Убрать из понравившегося' : 'Понравилось (сохранить в избранное)'}
+                          title={isLiked ? 'Убрать лайк (RLHF +1)' : 'Лайк (RLHF +1)'}
                         >
                           <Heart
                             className={`w-4 h-4 transition-transform active:scale-125 ${
-                              trend.is_liked ? 'fill-status-danger text-status-danger' : ''
+                              isLiked ? 'fill-status-danger text-status-danger' : ''
+                            }`}
+                          />
+                        </button>
+
+                        {/* Toggle Dislike / RLHF -1 */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const nextScore = isDisliked ? 0 : -1;
+                            if (onFeedback) {
+                              onFeedback(trend, nextScore);
+                            }
+                          }}
+                          className={`p-1 transition-colors cursor-pointer ${
+                            isDisliked
+                              ? 'text-amber-500 hover:text-amber-400'
+                              : 'text-content-muted hover:text-amber-500'
+                          }`}
+                          title={isDisliked ? 'Убрать дизлайк (RLHF -1)' : 'Дизлайк / Мусор (RLHF -1)'}
+                        >
+                          <ThumbsDown
+                            className={`w-4 h-4 transition-transform active:scale-125 ${
+                              isDisliked ? 'fill-amber-500/20 text-amber-500' : ''
                             }`}
                           />
                         </button>

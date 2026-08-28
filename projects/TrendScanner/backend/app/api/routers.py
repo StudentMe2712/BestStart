@@ -12,6 +12,8 @@ from app.models.schemas import (
     SourceResponse,
     SourceUpdate,
     SystemStatusResponse,
+    TrendFeedbackResponse,
+    TrendFeedbackUpdate,
     TrendLikeResponse,
     TrendLikeUpdate,
     TrendReportResponse,
@@ -42,8 +44,9 @@ async def get_trends(
     status: Optional[str] = Query(None, pattern="^(new|reviewed)$", description="Filter by review status"),
     source_id: Optional[int] = Query(None, description="Filter by source ID"),
     only_trends: Optional[bool] = Query(None, description="Filter confirmed trends only (is_trend=1)"),
-    tab: Optional[str] = Query(None, pattern="^(inbox|liked|database|history|archive|all)$", description="Filter by tab: inbox (default), liked, database, history, archive, all"),
+    tab: Optional[str] = Query(None, pattern="^(inbox|liked|disliked|database|history|archive|all)$", description="Filter by tab: inbox (default), liked, disliked, database, history, archive, all"),
     is_liked: Optional[bool] = Query(None, description="Filter by liked status"),
+    user_feedback: Optional[int] = Query(None, ge=-1, le=1, description="Filter by user feedback score: 1 (Like), -1 (Dislike), 0 (Neutral)"),
     is_new: Optional[bool] = Query(None, description="Filter by new inbox status"),
     search: Optional[str] = Query(None, description="Search term in trend name, summary, or text"),
 ):
@@ -58,6 +61,7 @@ async def get_trends(
         only_trends=only_trends,
         tab=tab,
         is_liked=is_liked,
+        user_feedback=user_feedback,
         is_new=is_new,
         search_query=search,
     )
@@ -159,22 +163,22 @@ async def deep_research_trend(trend_id: int):
 
 
 @router.patch(
-    "/trends/{trend_id}/like",
-    response_model=TrendLikeResponse,
+    "/trends/{trend_id}/feedback",
+    response_model=TrendFeedbackResponse,
     tags=["Trends"],
-    summary="Toggle or set like/favorite status for a trend",
+    summary="Set user feedback score for a trend (RLHF loop)",
 )
 @router.put(
-    "/trends/{trend_id}/like",
-    response_model=TrendLikeResponse,
+    "/trends/{trend_id}/feedback",
+    response_model=TrendFeedbackResponse,
     tags=["Trends"],
-    summary="Toggle or set like/favorite status for a trend",
+    summary="Set user feedback score for a trend (RLHF loop)",
 )
-async def like_trend(
+async def set_trend_feedback(
     trend_id: int,
-    payload: Optional[TrendLikeUpdate] = None,
+    payload: TrendFeedbackUpdate,
 ):
-    """Toggle like status or set explicitly."""
+    """Set RLHF user feedback rating: 1 (Like), -1 (Dislike), 0 (Neutral)."""
     trend = TrendsDAO.get_by_id(trend_id)
     if not trend:
         raise HTTPException(
@@ -182,13 +186,61 @@ async def like_trend(
             detail=f"Trend with ID #{trend_id} not found.",
         )
 
-    is_liked_val = payload.is_liked if payload else None
-    new_state = TrendsDAO.toggle_like(trend_id, is_liked=is_liked_val)
-    if new_state is None:
+    score = TrendsDAO.set_feedback(trend_id, payload.score)
+    if score is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Trend with ID #{trend_id} not found.",
         )
+
+    return TrendFeedbackResponse(
+        trend_id=trend_id,
+        user_feedback=score,
+        is_liked=(score == 1),
+        updated=True,
+    )
+
+
+@router.patch(
+    "/trends/{trend_id}/like",
+    response_model=TrendLikeResponse,
+    tags=["Trends"],
+    summary="Toggle or set like/favorite status for a trend (backward compatible)",
+)
+@router.put(
+    "/trends/{trend_id}/like",
+    response_model=TrendLikeResponse,
+    tags=["Trends"],
+    summary="Toggle or set like/favorite status for a trend (backward compatible)",
+)
+async def like_trend(
+    trend_id: int,
+    payload: Optional[TrendLikeUpdate] = None,
+):
+    """Toggle like status or set explicitly (backward compatibility)."""
+    trend = TrendsDAO.get_by_id(trend_id)
+    if not trend:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Trend with ID #{trend_id} not found.",
+        )
+
+    if payload is not None and payload.is_liked is not None:
+        score = 1 if payload.is_liked else 0
+        res = TrendsDAO.set_feedback(trend_id, score)
+        if res is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Trend with ID #{trend_id} not found.",
+            )
+        new_state = (res == 1)
+    else:
+        new_state = TrendsDAO.toggle_like(trend_id)
+        if new_state is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Trend with ID #{trend_id} not found.",
+            )
 
     return TrendLikeResponse(
         trend_id=trend_id,

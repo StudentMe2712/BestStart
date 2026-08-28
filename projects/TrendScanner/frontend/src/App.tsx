@@ -191,41 +191,51 @@ export const App: React.FC = () => {
     }
   };
 
-  // Toggle Like / Favorite with Optimistic UI (Inbox Zero & Database)
-  const handleToggleLike = async (trend: Trend) => {
-    const nextLiked = !trend.is_liked;
-
+  // RLHF Feedback (Likes +1, Dislikes -1, Neutral 0) with Optimistic UI
+  const handleFeedback = async (trend: Trend, score: number) => {
     // Optimistic local update
-    if (filters.tab === 'inbox' && nextLiked) {
+    if (filters.tab === 'inbox' && (score === 1 || score === -1)) {
       setTrends((prev) => prev.filter((t) => t.id !== trend.id));
-    } else if (filters.tab === 'liked' && !nextLiked) {
+    } else if (filters.tab === 'liked' && score !== 1) {
       setTrends((prev) => prev.filter((t) => t.id !== trend.id));
     } else {
-      // In 'database' or 'all' tab: update in place without removing from grid
+      // In 'database' or 'all' tab: update user_feedback and is_liked in place
       setTrends((prev) =>
-        prev.map((t) => (t.id === trend.id ? { ...t, is_liked: nextLiked } : t))
+        prev.map((t) =>
+          t.id === trend.id
+            ? { ...t, user_feedback: score, is_liked: score === 1 }
+            : t
+        )
       );
     }
 
     if (selectedTrend?.id === trend.id) {
-      setSelectedTrend((prev) => (prev ? { ...prev, is_liked: nextLiked } : null));
+      setSelectedTrend((prev) =>
+        prev ? { ...prev, user_feedback: score, is_liked: score === 1 } : null
+      );
     }
 
     try {
-      await apiClient.toggleLikeTrend(trend.id, nextLiked);
-      const toastText = nextLiked
-        ? `Запись #${trend.id} сохранена в «Избранное».`
-        : filters.tab === 'liked'
-        ? `Запись #${trend.id} удалена из «Избранного».`
-        : filters.tab === 'database'
-        ? `Запись #${trend.id} удалена из «Избранного».`
-        : `Запись #${trend.id} возвращена во «Входящие».`;
+      await apiClient.setFeedback(trend.id, score);
+      const toastText =
+        score === 1
+          ? `Запись #${trend.id} сохранена в «Избранное» (RLHF +1).`
+          : score === -1
+          ? `Запись #${trend.id} скрыта с оценкой «Дизлайк» (RLHF -1).`
+          : `Оценка тренда #${trend.id} сброшена.`;
       showToast(toastText, 'success');
       fetchStatus();
     } catch (err: any) {
-      showToast(err?.message || 'Не удалось обновить статус лайка', 'error');
+      showToast(err?.message || 'Не удалось сохранить оценку тренда', 'error');
       fetchTrends();
     }
+  };
+
+  // Toggle Like / Favorite for compatibility
+  const handleToggleLike = async (trend: Trend) => {
+    const isCurrentlyLiked =
+      trend.user_feedback === 1 || (trend.user_feedback === undefined && !!trend.is_liked);
+    await handleFeedback(trend, isCurrentlyLiked ? 0 : 1);
   };
 
   // Toggle Review Status
@@ -314,6 +324,7 @@ export const App: React.FC = () => {
             onSelectTrend={(trend) => setSelectedTrend(trend)}
             onToggleReview={handleToggleReview}
             onToggleLike={handleToggleLike}
+            onFeedback={handleFeedback}
             onDeleteTrend={handleDeleteTrend}
             currentPage={currentPage}
             pageSize={filters.limit}
@@ -329,6 +340,7 @@ export const App: React.FC = () => {
         isOpen={Boolean(selectedTrend)}
         onClose={() => setSelectedTrend(null)}
         onToggleReview={handleToggleReview}
+        onFeedback={handleFeedback}
         onDeleteTrend={handleDeleteTrend}
       />
 

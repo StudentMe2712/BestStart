@@ -8,6 +8,7 @@ from app.services.groq_client import (
     AIClassificationResult,
     extract_json_payload,
     has_untranslated_english,
+    get_rlhf_context_prompt,
     SYSTEM_PROMPT,
     DEEP_REPORT_SYSTEM_PROMPT,
 )
@@ -403,6 +404,197 @@ def test_translate_chunks_sync_chunking_large_text(monkeypatch):
     result = gc_module._translate_chunks_sync(large_text)
     assert "[RU]" in result
     assert mock_translator_instance.translate.call_count >= 2
+
+
+def test_get_rlhf_context_prompt_empty(monkeypatch):
+    """Verify get_rlhf_context_prompt returns empty string when no examples exist."""
+    from app.db.dao import TrendsDAO
+
+    monkeypatch.setattr(TrendsDAO, "get_rlhf_examples", lambda **kwargs: {"positive": [], "negative": []})
+    assert get_rlhf_context_prompt() == ""
+
+    monkeypatch.setattr(TrendsDAO, "get_rlhf_examples", lambda **kwargs: None)
+    assert get_rlhf_context_prompt() == ""
+
+
+def test_get_rlhf_context_prompt_with_examples(monkeypatch):
+    """Verify get_rlhf_context_prompt formats positive and negative examples with calibration directives."""
+    from app.db.dao import TrendsDAO
+
+    mock_examples = {
+        "positive": [
+            {
+                "trend_name": "Микро-SaaS для клиник",
+                "ai_summary": "CRM для частных врачей и клиник.",
+                "ai_score": 9,
+            }
+        ],
+        "negative": [
+            {
+                "trend_name": "Крипто спам",
+                "ai_summary": "Пирамида и накрутка токенов.",
+                "ai_score": 1,
+            }
+        ],
+    }
+
+    monkeypatch.setattr(TrendsDAO, "get_rlhf_examples", lambda **kwargs: mock_examples)
+    prompt = get_rlhf_context_prompt()
+
+    assert "ТЕБЕ ДОСТУПЕН ОПЫТ ПОЛЬЗОВАТЕЛЯ (RLHF FEEDBACK):" in prompt
+    assert "Вот примеры хороших трендов (+1, высокая ценность и жизнеспособность):" in prompt
+    assert '- "Микро-SaaS для клиник": CRM для частных врачей и клиник. (Оценка: 9/10)' in prompt
+    assert "Вот примеры мусора / нерелевантного контента (-1, штраф и инфошум):" in prompt
+    assert '- "Крипто спам": Пирамида и накрутка токенов. (Оценка: 1/10)' in prompt
+    assert "Инструкция по калибровке:" in prompt
+    assert "1. Проанализируй новый текст." in prompt
+    assert "2. Если он похож на мусорные примеры (-1)" in prompt
+    assert "3. Если он похож на хорошие примеры (+1)" in prompt
+    assert "4. Верни результат СТРОГО на русском языке в формате JSON." in prompt
+
+
+def test_get_rlhf_context_prompt_only_positive(monkeypatch):
+    """Verify get_rlhf_context_prompt when only positive examples exist."""
+    from app.db.dao import TrendsDAO
+
+    mock_examples = {
+        "positive": [
+            {
+                "trend_name": "B2B парсинг вакансий",
+                "ai_summary": "Парсер контактов HR.",
+                "ai_score": 8,
+            }
+        ],
+        "negative": [],
+    }
+
+    monkeypatch.setattr(TrendsDAO, "get_rlhf_examples", lambda **kwargs: mock_examples)
+    prompt = get_rlhf_context_prompt()
+
+    assert "Вот примеры хороших трендов (+1" in prompt
+    assert "Вот примеры мусора" not in prompt
+    assert "Инструкция по калибровке:" in prompt
+
+
+def test_get_rlhf_context_prompt_only_negative(monkeypatch):
+    """Verify get_rlhf_context_prompt when only negative examples exist."""
+    from app.db.dao import TrendsDAO
+
+    mock_examples = {
+        "positive": [],
+        "negative": [
+            {
+                "trend_name": "Флуд в чате",
+                "ai_summary": "Бессмысленный спор.",
+                "ai_score": 2,
+            }
+        ],
+    }
+
+    monkeypatch.setattr(TrendsDAO, "get_rlhf_examples", lambda **kwargs: mock_examples)
+    prompt = get_rlhf_context_prompt()
+
+    assert "Вот примеры хороших трендов" not in prompt
+    assert "Вот примеры мусора / нерелевантного контента (-1" in prompt
+    assert "Инструкция по калибровке:" in prompt
+
+
+def test_get_rlhf_context_prompt_exception_safety(monkeypatch):
+    """Verify get_rlhf_context_prompt catches exceptions and returns empty string."""
+    from app.db.dao import TrendsDAO
+
+    def mock_broken(**kwargs):
+        raise RuntimeError("Database connection failure")
+
+    monkeypatch.setattr(TrendsDAO, "get_rlhf_examples", mock_broken)
+    assert get_rlhf_context_prompt() == ""
+
+
+@pytest.mark.asyncio
+async def test_classify_text_with_rlhf_and_pretranslation(monkeypatch):
+    """Verify classify_text pre-translates English text and injects RLHF prompt into Groq payload."""
+    import sys
+    from app.db.dao import TrendsDAO
+
+    gc_module = sys.modules["app.services.groq_client"]
+    monkeypatch.setattr(
+        gc_module,
+        "_translate_chunks_sync",
+        lambda text: "Переведенный русский текст о микросервисах."
+    )
+
+    mock_rlhf = {
+        "positive": [
+            {
+                "trend_name": "Пример успеха",
+                "ai_summary": "Отличный SaaS.",
+                "ai_score": 9,
+            }
+        ],
+        "negative": [],
+    }
+    monkeypatch.setattr(TrendsDAO, "get_rlhf_examples", lambda **kwargs: mock_rlhf)
+
+    captured_payloads = []
+
+    class MockAsyncClient:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc_val, exc_tb):
+            pass
+
+        async def post(self, url, **kwargs):
+            captured_payloads.append(kwargs.get("json", {}))
+
+            class MockResponse:
+                status_code = 200
+
+                def raise_for_status(self):
+                    pass
+
+                def json(self):
+                    return {
+                        "choices": [
+                            {
+                                "message": {
+                                    "content": json.dumps(
+                                        {
+                                            "is_trend": True,
+                                            "trend_name": "Микросервисы SaaS",
+                                            "ai_score": 8,
+                                            "scam_probability": 0,
+                                            "ai_summary": "Платформа для мониторинга микросервисов.",
+                                        }
+                                    )
+                                }
+                            }
+                        ]
+                    }
+
+            return MockResponse()
+
+    monkeypatch.setattr(httpx, "AsyncClient", MockAsyncClient)
+
+    client = GroqClient(api_key="gsk_mock_test_key_123")
+    res = await client.classify_text("English text about microservices monitoring tools.")
+
+    assert res is not None
+    assert res.is_trend is True
+    assert res.trend_name == "Микросервисы SaaS"
+    assert res.ai_score == 8
+
+    # Verify captured prompt contained RLHF context and pre-translated text
+    assert len(captured_payloads) == 1
+    sent_messages = captured_payloads[0]["messages"]
+    user_message = next(m["content"] for m in sent_messages if m["role"] == "user")
+    assert "ТЕБЕ ДОСТУПЕН ОПЫТ ПОЛЬЗОВАТЕЛЯ (RLHF FEEDBACK):" in user_message
+    assert "Пример успеха" in user_message
+    assert "Переведенный русский текст о микросервисах." in user_message
+
 
 
 

@@ -580,3 +580,68 @@ def test_trends_dao_delete(isolated_db):
 
     # Delete non-existent ID
     assert TrendsDAO.delete(trend_id) is False
+
+
+def test_trends_dao_get_rlhf_examples(isolated_db):
+    """Verify TrendsDAO.get_rlhf_examples correctly filters and separates positive and negative examples."""
+    source_id = SourcesDAO.create(name="S1", url="https://s1.com", source_type="rss")
+
+    # Positive 1: Liked
+    t1 = TrendsDAO.create(
+        source_id=source_id,
+        original_text="Positive micro-SaaS idea",
+        is_trend=True,
+        trend_name="Микро-SaaS для клиник",
+        ai_score=9,
+        ai_summary="CRM для частных клиник",
+        user_feedback=1,
+        ai_status="processed",
+    )
+
+    # Positive 2: Positive feedback
+    t2 = TrendsDAO.create(
+        source_id=source_id,
+        original_text="High score B2B tool",
+        is_trend=True,
+        trend_name="B2B парсинг лидов",
+        ai_score=8,
+        ai_summary="Сбор контактов рекрутеров",
+        user_feedback=1,
+        ai_status="processed",
+    )
+
+    # Negative 1: Disliked Scam / Spam
+    t3 = TrendsDAO.create(
+        source_id=source_id,
+        original_text="Spam pump and dump crypto",
+        is_trend=False,
+        trend_name="Крипто скам схема",
+        ai_score=1,
+        scam_probability=95,
+        ai_summary="Очевидная финансовая пирамида",
+        user_feedback=-1,
+        ai_status="processed",
+    )
+
+    # Negative 2: Disliked Low score
+    t4 = TrendsDAO.create(
+        source_id=source_id,
+        original_text="Random generic thoughts",
+        is_trend=False,
+        trend_name="Пустые рассуждения",
+        ai_score=2,
+        scam_probability=10,
+        ai_summary="Нет бизнес-модели",
+        user_feedback=-1,
+        ai_status="processed",
+    )
+
+    examples = TrendsDAO.get_rlhf_examples(limit_positive=2, limit_negative=2)
+
+    assert "positive" in examples
+    assert "negative" in examples
+    assert len(examples["positive"]) == 2
+    assert len(examples["negative"]) == 2
+    assert examples["positive"][0]["trend_name"] in ("Микро-SaaS для клиник", "B2B парсинг лидов")
+    assert examples["negative"][0]["trend_name"] in ("Крипто скам схема", "Пустые рассуждения")
+

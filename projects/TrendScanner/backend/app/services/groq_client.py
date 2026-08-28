@@ -341,6 +341,77 @@ async def translate_to_russian(text: str, fallback_client: Optional["GroqClient"
     return text
 
 
+def get_rlhf_context_prompt() -> str:
+    """
+    Build dynamic RLHF context prompt from user feedback (liked trends and garbage/noise items).
+    Returns formatted context string for Groq classification prompt calibration, or "" if no examples exist.
+    """
+    try:
+        from app.db.dao import TrendsDAO
+
+        examples = TrendsDAO.get_rlhf_examples(limit_positive=2, limit_negative=2)
+    except Exception as exc:
+        logger.warning("Failed to retrieve RLHF examples for prompt injection: %s", exc)
+        return ""
+
+    if not examples:
+        return ""
+
+    positive_examples: List[Dict[str, Any]] = []
+    negative_examples: List[Dict[str, Any]] = []
+
+    if isinstance(examples, dict):
+        positive_examples = examples.get("positive") or []
+        negative_examples = examples.get("negative") or []
+    elif isinstance(examples, (list, tuple)) and len(examples) == 2:
+        positive_examples = examples[0] or []
+        negative_examples = examples[1] or []
+
+    if not positive_examples and not negative_examples:
+        return ""
+
+    blocks = ["ТЕБЕ ДОСТУПЕН ОПЫТ ПОЛЬЗОВАТЕЛЯ (RLHF FEEDBACK):"]
+
+    if positive_examples:
+        pos_lines = ["Вот примеры хороших трендов (+1, высокая ценность и жизнеспособность):"]
+        for item in positive_examples:
+            name = item.get("trend_name") or "Перспективный тренд"
+            summary = item.get("ai_summary")
+            if not summary and item.get("original_text"):
+                orig = item["original_text"].strip()
+                summary = orig[:140] + ("..." if len(orig) > 140 else "")
+            if not summary:
+                summary = "Высокий коммерческий потенциал и понятная бизнес-модель."
+            score = item.get("ai_score") if item.get("ai_score") is not None else 8
+            pos_lines.append(f'- "{name}": {summary} (Оценка: {score}/10)')
+        blocks.append("\n".join(pos_lines))
+
+    if negative_examples:
+        neg_lines = ["Вот примеры мусора / нерелевантного контента (-1, штраф и инфошум):"]
+        for item in negative_examples:
+            name = item.get("trend_name") or "Инфошум / Нерелевантно"
+            summary = item.get("ai_summary")
+            if not summary and item.get("original_text"):
+                orig = item["original_text"].strip()
+                summary = orig[:140] + ("..." if len(orig) > 140 else "")
+            if not summary:
+                summary = "Низкая ценность, флуд или отсутствие бизнес-модели."
+            score = item.get("ai_score") if item.get("ai_score") is not None else 1
+            neg_lines.append(f'- "{name}": {summary} (Оценка: {score}/10)')
+        blocks.append("\n".join(neg_lines))
+
+    calibration_instructions = (
+        "Инструкция по калибровке:\n"
+        "1. Проанализируй новый текст.\n"
+        "2. Если он похож на мусорные примеры (-1), содержит спам, пустые рассуждения или нерабочие схемы — ЖЕСТКО СНИЖАЙ ai_score (1-4) и повышай scam_probability.\n"
+        "3. Если он похож на хорошие примеры (+1), содержит реальную микро-SaaS идею, проверенный кейс или растущий рыночный спрос — ПОВЫШАЙ ai_score (7-10).\n"
+        "4. Верни результат СТРОГО на русском языке в формате JSON."
+    )
+    blocks.append(calibration_instructions)
+
+    return "\n\n".join(blocks)
+
+
 class GroqClient:
     """HTTP Client for Groq Cloud API with rate-limiting backoff, Russian language enforcement, and deep report generator."""
 
@@ -477,17 +548,35 @@ class GroqClient:
 
     async def classify_text(self, text: str) -> Optional[AIClassificationResult]:
         """
-        Classify a single text item using Groq API.
+        Classify a single text item using Groq API with Dynamic RLHF context calibration.
         Ensures 100% Russian output via automatic translation if untranslated English is detected.
         """
         if not text or not text.strip():
             return None
 
+        # Pre-translate text to Russian via GoogleTranslator
+        text_for_analysis = await self.translate_to_russian(text)
+
+        # Dynamic RLHF context injection
+        rlhf_context = get_rlhf_context_prompt()
+
+        if rlhf_context:
+            user_content = (
+                f"{rlhf_context}\n\n"
+                f"Проанализируй следующий текст и верни результат СТРОГО на русском языке в формате JSON:\n\n"
+                f"{text_for_analysis}"
+            )
+        else:
+            user_content = (
+                f"Проанализируй следующий текст и верни результат СТРОГО на русском языке в формате JSON:\n\n"
+                f"{text_for_analysis}"
+            )
+
         initial_messages = [
             {"role": "system", "content": SYSTEM_PROMPT},
             {
                 "role": "user",
-                "content": f"Проанализируй следующий текст и верни результат СТРОГО на русском языке в формате JSON:\n\n{text}",
+                "content": user_content,
             },
         ]
 

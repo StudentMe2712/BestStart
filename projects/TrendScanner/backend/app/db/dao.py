@@ -147,19 +147,23 @@ class TrendsDAO:
         ai_status: str = "pending",
         mention_count: int = 1,
         is_liked: bool = False,
+        user_feedback: int = 0,
         is_new: bool = True,
     ) -> int:
         """Insert a single trend record and return its ID."""
         h = content_hash or calculate_text_hash(original_text)
+        computed_user_fb = user_feedback if user_feedback != 0 else (1 if is_liked else 0)
+        computed_is_liked = 1 if (computed_user_fb == 1 or is_liked) else 0
         with get_db_connection() as conn:
             cursor = conn.execute(
                 """
                 INSERT INTO trends (
                     source_id, original_text, content_hash, is_trend,
                     trend_name, ai_score, scam_probability, ai_summary,
-                    source_url, is_reviewed, ai_status, mention_count, is_liked, is_new
+                    source_url, is_reviewed, ai_status, mention_count,
+                    is_liked, user_feedback, is_new
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     source_id,
@@ -174,7 +178,8 @@ class TrendsDAO:
                     1 if is_reviewed else 0,
                     ai_status,
                     max(1, mention_count),
-                    1 if is_liked else 0,
+                    computed_is_liked,
+                    computed_user_fb,
                     1 if is_new else 0,
                 ),
             )
@@ -195,7 +200,8 @@ class TrendsDAO:
                 )
                 ai_status = item.get("ai_status", "pending")
                 mention_count = item.get("mention_count", 1)
-                is_liked = item.get("is_liked", False)
+                user_feedback = 1 if item.get("is_liked") else item.get("user_feedback", 0)
+                is_liked = 1 if (user_feedback == 1 or item.get("is_liked")) else 0
                 is_new = item.get("is_new", True)
                 try:
                     conn.execute(
@@ -203,9 +209,10 @@ class TrendsDAO:
                         INSERT INTO trends (
                             source_id, original_text, content_hash, is_trend,
                             trend_name, ai_score, scam_probability, ai_summary,
-                            source_url, is_reviewed, ai_status, mention_count, is_liked, is_new
+                            source_url, is_reviewed, ai_status, mention_count,
+                            is_liked, user_feedback, is_new
                         )
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                         """,
                         (
                             item["source_id"],
@@ -220,7 +227,8 @@ class TrendsDAO:
                             1 if item.get("is_reviewed") else 0,
                             ai_status,
                             mention_count,
-                            1 if is_liked else 0,
+                            is_liked,
+                            user_feedback,
                             1 if is_new else 0,
                         ),
                     )
@@ -235,7 +243,30 @@ class TrendsDAO:
         """Archive unliked items from previous inbox runs by setting is_new = 0."""
         with get_db_connection() as conn:
             cursor = conn.execute(
-                "UPDATE trends SET is_new = 0 WHERE is_new = 1 AND is_liked = 0"
+                "UPDATE trends SET is_new = 0 WHERE is_new = 1 AND is_liked = 0 AND user_feedback != 1"
+            )
+            return cursor.rowcount
+
+    @staticmethod
+    def set_feedback(trend_id: int, score: int) -> Optional[int]:
+        """Set user feedback score (-1, 0, 1) and synchronize is_liked status. Returns clamped score or None if not found."""
+        clamped_score = max(-1, min(1, score))
+        is_liked = 1 if clamped_score == 1 else 0
+        with get_db_connection() as conn:
+            cursor = conn.execute(
+                "UPDATE trends SET user_feedback = ?, is_liked = ? WHERE id = ?",
+                (clamped_score, is_liked, trend_id),
+            )
+            if cursor.rowcount == 0:
+                return None
+            return clamped_score
+
+    @staticmethod
+    def archive_previous_inbox() -> int:
+        """Archive unreviewed/neutral items from previous inbox runs by setting is_new = 0."""
+        with get_db_connection() as conn:
+            cursor = conn.execute(
+                "UPDATE trends SET is_new = 0 WHERE is_new = 1 AND user_feedback = 0"
             )
             return cursor.rowcount
 
@@ -277,7 +308,7 @@ class TrendsDAO:
         with get_db_connection() as conn:
             cursor = conn.execute(
                 """
-                SELECT id, trend_name, original_text, source_url, content_hash, mention_count, ai_status, is_liked, is_new
+                SELECT id, trend_name, original_text, source_url, content_hash, mention_count, ai_status, is_liked, user_feedback, is_new
                 FROM trends
                 ORDER BY parsed_date DESC, id DESC
                 LIMIT ?
@@ -373,12 +404,13 @@ class TrendsDAO:
         only_trends: Optional[bool] = None,
         tab: Optional[str] = None,
         is_liked: Optional[bool] = None,
+        user_feedback: Optional[int] = None,
         is_new: Optional[bool] = None,
         search_query: Optional[str] = None,
     ) -> List[Dict[str, Any]]:
         """
         Query trends with filters and pagination.
-        Tab: 'inbox' (is_new=1, is_liked=0, default), 'liked' (is_liked=1), 'database'/'history'/'archive' (is_new=0), or 'all'.
+        Tab: 'inbox' (is_new=1, user_feedback=0, default), 'liked' (user_feedback=1), 'disliked' (user_feedback=-1), 'database'/'history'/'archive' (is_new=0), or 'all'.
         Status: 'new' (is_reviewed=0), 'reviewed' (is_reviewed=1), or None (all).
         """
         conditions: List[str] = []
@@ -406,13 +438,15 @@ class TrendsDAO:
         elif only_trends is False:
             conditions.append("t.is_trend = 0")
 
-        # Tab / Inbox Zero / Trend Database filtering
+        # Tab / Inbox Zero / Feedback filtering
         if tab == "inbox":
-            conditions.append("t.is_new = 1 AND t.is_liked = 0")
+            conditions.append("(t.is_new = 1 AND (t.user_feedback = 0 AND t.is_liked = 0))")
         elif tab in ("database", "history", "archive"):
             conditions.append("t.is_new = 0")
-        elif tab == "liked" or is_liked is True:
-            conditions.append("t.is_liked = 1")
+        elif tab == "liked":
+            conditions.append("(t.user_feedback = 1 OR t.is_liked = 1)")
+        elif tab == "disliked":
+            conditions.append("t.user_feedback = -1")
         elif tab == "all":
             # No tab filter
             pass
@@ -420,10 +454,25 @@ class TrendsDAO:
             if is_new is not None:
                 conditions.append(f"t.is_new = {1 if is_new else 0}")
             if is_liked is not None:
-                conditions.append(f"t.is_liked = {1 if is_liked else 0}")
-            if is_new is None and is_liked is None:
-                # Default to Inbox (unliked, new items)
-                conditions.append("t.is_new = 1 AND t.is_liked = 0")
+                if is_liked:
+                    conditions.append("(t.user_feedback = 1 OR t.is_liked = 1)")
+                else:
+                    conditions.append("(t.user_feedback != 1 AND t.is_liked = 0)")
+            if user_feedback is not None:
+                conditions.append("t.user_feedback = ?")
+                params.append(user_feedback)
+            if is_new is None and is_liked is None and user_feedback is None:
+                # Default to Inbox (neutral feedback, new items)
+                conditions.append("(t.is_new = 1 AND (t.user_feedback = 0 AND t.is_liked = 0))")
+
+        if user_feedback is not None and tab is not None:
+            conditions.append("t.user_feedback = ?")
+            params.append(user_feedback)
+        if is_liked is not None and tab is not None:
+            if is_liked:
+                conditions.append("(t.user_feedback = 1 OR t.is_liked = 1)")
+            else:
+                conditions.append("(t.user_feedback != 1 AND t.is_liked = 0)")
 
         if search_query:
             conditions.append("(t.trend_name LIKE ? OR t.ai_summary LIKE ? OR t.original_text LIKE ?)")
@@ -459,17 +508,18 @@ class TrendsDAO:
         """Toggle or set is_liked status for a trend. Returns new boolean state or None if not found."""
         with get_db_connection() as conn:
             if is_liked is None:
-                cursor = conn.execute("SELECT is_liked FROM trends WHERE id = ?", (trend_id,))
+                cursor = conn.execute("SELECT is_liked, user_feedback FROM trends WHERE id = ?", (trend_id,))
                 row = cursor.fetchone()
                 if not row:
                     return None
-                new_status = 0 if row["is_liked"] else 1
+                new_status = 0 if (row["is_liked"] or row["user_feedback"] == 1) else 1
             else:
                 new_status = 1 if is_liked else 0
 
+            user_fb = 1 if new_status == 1 else 0
             cursor = conn.execute(
-                "UPDATE trends SET is_liked = ? WHERE id = ?",
-                (new_status, trend_id),
+                "UPDATE trends SET is_liked = ?, user_feedback = ? WHERE id = ?",
+                (new_status, user_fb, trend_id),
             )
             if cursor.rowcount == 0:
                 return None
@@ -519,8 +569,9 @@ class TrendsDAO:
                     SUM(CASE WHEN is_reviewed = 1 THEN 1 ELSE 0 END) as reviewed_count,
                     SUM(CASE WHEN is_new = 1 THEN 1 ELSE 0 END) as new_count,
                     SUM(CASE WHEN is_trend = 1 THEN 1 ELSE 0 END) as confirmed_trends_count,
-                    SUM(CASE WHEN is_liked = 1 THEN 1 ELSE 0 END) as liked_count,
-                    SUM(CASE WHEN is_new = 1 AND is_liked = 0 THEN 1 ELSE 0 END) as inbox_count,
+                    SUM(CASE WHEN user_feedback = 1 THEN 1 ELSE 0 END) as liked_count,
+                    SUM(CASE WHEN user_feedback = -1 THEN 1 ELSE 0 END) as disliked_count,
+                    SUM(CASE WHEN is_new = 1 AND user_feedback = 0 THEN 1 ELSE 0 END) as inbox_count,
                     SUM(CASE WHEN is_new = 0 THEN 1 ELSE 0 END) as database_count,
                     SUM(CASE WHEN ai_status = 'pending' THEN 1 ELSE 0 END) as pending_ai_count,
                     AVG(ai_score) as avg_score,
@@ -535,12 +586,47 @@ class TrendsDAO:
             stats["new_count"] = stats.get("new_count") or 0
             stats["confirmed_trends_count"] = stats.get("confirmed_trends_count") or 0
             stats["liked_count"] = stats.get("liked_count") or 0
+            stats["disliked_count"] = stats.get("disliked_count") or 0
             stats["inbox_count"] = stats.get("inbox_count") or 0
             stats["database_count"] = stats.get("database_count") or 0
             stats["pending_ai_count"] = stats.get("pending_ai_count") or 0
             stats["avg_score"] = round(stats.get("avg_score") or 0, 1)
             stats["avg_scam_probability"] = round(stats.get("avg_scam_probability") or 0, 1)
             return stats
+
+    @staticmethod
+    def get_rlhf_examples(
+        limit_positive: int = 2, limit_negative: int = 2
+    ) -> Dict[str, List[Dict[str, Any]]]:
+        """
+        Retrieves few-shot positive (+1 / liked) and negative (-1 / disliked / noise) RLHF examples for prompt tuning.
+        """
+        with get_db_connection() as conn:
+            pos_cursor = conn.execute(
+                """
+                SELECT id, trend_name, ai_summary, original_text, ai_score, scam_probability
+                FROM trends
+                WHERE user_feedback = 1 OR is_liked = 1 OR (is_trend = 1 AND ai_score >= 7)
+                ORDER BY (CASE WHEN user_feedback = 1 OR is_liked = 1 THEN 1 ELSE 0 END) DESC, id DESC
+                LIMIT ?
+                """,
+                (limit_positive,),
+            )
+            positive = [dict(row) for row in pos_cursor.fetchall()]
+
+            neg_cursor = conn.execute(
+                """
+                SELECT id, trend_name, ai_summary, original_text, ai_score, scam_probability
+                FROM trends
+                WHERE user_feedback = -1 OR (user_feedback = 0 AND ((ai_score IS NOT NULL AND ai_score <= 3) OR (scam_probability IS NOT NULL AND scam_probability >= 70)))
+                ORDER BY (CASE WHEN user_feedback = -1 THEN 1 ELSE 0 END) DESC, id DESC
+                LIMIT ?
+                """,
+                (limit_negative,),
+            )
+            negative = [dict(row) for row in neg_cursor.fetchall()]
+
+            return {"positive": positive, "negative": negative}
 
     @staticmethod
     def increment_mention_count(trend_id: int, merged_text: Optional[str] = None) -> bool:
@@ -577,3 +663,4 @@ class TrendsDAO:
         with get_db_connection() as conn:
             cursor = conn.execute("DELETE FROM trends WHERE id = ?", (trend_id,))
             return cursor.rowcount > 0
+

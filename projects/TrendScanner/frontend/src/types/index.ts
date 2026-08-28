@@ -44,11 +44,23 @@ export interface Trend {
   mention_count?: number;
   detailed_report?: string | null;
   is_liked?: boolean;
+  user_feedback?: number;
   is_new?: boolean;
 }
 
 export interface TrendLikeResponse {
   trend_id: number;
+  is_liked: boolean;
+  updated: boolean;
+}
+
+export interface TrendFeedbackUpdate {
+  score: number;
+}
+
+export interface TrendFeedbackResponse {
+  trend_id: number;
+  user_feedback: number;
   is_liked: boolean;
   updated: boolean;
 }
@@ -65,6 +77,7 @@ export interface SystemStats {
   new_count: number;
   confirmed_trends_count: number;
   liked_count?: number;
+  disliked_count?: number;
   inbox_count?: number;
   database_count?: number;
   pending_ai_count: number;

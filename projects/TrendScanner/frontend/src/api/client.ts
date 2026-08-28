@@ -12,6 +12,7 @@ import {
   SourceUpdate,
   SystemStatus,
   Trend,
+  TrendFeedbackResponse,
   TrendReviewResponse,
 } from '../types';
 
@@ -119,13 +120,20 @@ export const apiClient = {
   },
 
   /**
+   * Submit RLHF user feedback (1 = Like, -1 = Dislike, 0 = Neutral).
+   */
+  async setFeedback(id: number, score: number): Promise<TrendFeedbackResponse> {
+    return request<TrendFeedbackResponse>(`/trends/${id}/feedback`, {
+      method: 'PATCH',
+      body: JSON.stringify({ score }),
+    });
+  },
+
+  /**
    * Toggle or set liked / favorite status for a trend (Inbox Zero).
    */
-  async toggleLikeTrend(id: number, isLiked?: boolean): Promise<{ trend_id: number; is_liked: boolean; updated: boolean }> {
-    return request<{ trend_id: number; is_liked: boolean; updated: boolean }>(`/trends/${id}/like`, {
-      method: 'PATCH',
-      body: JSON.stringify({ is_liked: isLiked }),
-    });
+  async toggleLikeTrend(id: number, isLiked?: boolean): Promise<TrendFeedbackResponse> {
+    return this.setFeedback(id, isLiked ? 1 : 0);
   },
 
   /**

@@ -48,6 +48,7 @@ class TrendBase(BaseModel):
     mention_count: int = 1
     detailed_report: Optional[str] = None
     is_liked: bool = False
+    user_feedback: int = 0
     is_new: bool = True
 
 
@@ -67,6 +68,7 @@ class TrendResponse(TrendBase):
     mention_count: int = 1
     detailed_report: Optional[str] = None
     is_liked: bool = False
+    user_feedback: int = 0
     is_new: bool = True
 
 
@@ -80,6 +82,17 @@ class TrendLikeUpdate(BaseModel):
 
 class TrendLikeResponse(BaseModel):
     trend_id: int
+    is_liked: bool
+    updated: bool
+
+
+class TrendFeedbackUpdate(BaseModel):
+    score: int = Field(..., description="Feedback score: 1 (Like), -1 (Dislike), 0 (Neutral)")
+
+
+class TrendFeedbackResponse(BaseModel):
+    trend_id: int
+    user_feedback: int
     is_liked: bool
     updated: bool
 
