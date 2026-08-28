@@ -4,7 +4,7 @@ import html
 import re
 import unicodedata
 import urllib.parse
-from typing import Any, Callable, Dict, List, Optional, Pattern, Set
+from typing import Any, Dict, List, Optional, Pattern, Set
 from pydantic import BaseModel, Field
 from bs4 import BeautifulSoup
 

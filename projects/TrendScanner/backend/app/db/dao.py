@@ -51,6 +51,14 @@ class SourcesDAO:
             return cursor.fetchone() is not None
 
     @staticmethod
+    def count_active() -> int:
+        """Count active sources (is_active = 1) in database."""
+        with get_db_connection() as conn:
+            cursor = conn.execute("SELECT COUNT(*) as cnt FROM sources WHERE is_active = 1")
+            row = cursor.fetchone()
+            return row["cnt"] if row else 0
+
+    @staticmethod
     def create(name: str, url: str, source_type: str, is_active: bool = True) -> int:
         """Create a new source record and return its ID."""
         with get_db_connection() as conn:
@@ -240,10 +248,10 @@ class TrendsDAO:
 
     @staticmethod
     def archive_previous_inbox() -> int:
-        """Archive unliked items from previous inbox runs by setting is_new = 0."""
+        """Archive unreviewed/neutral items from previous inbox runs by setting is_new = 0."""
         with get_db_connection() as conn:
             cursor = conn.execute(
-                "UPDATE trends SET is_new = 0 WHERE is_new = 1 AND is_liked = 0 AND user_feedback != 1"
+                "UPDATE trends SET is_new = 0 WHERE is_new = 1 AND user_feedback = 0"
             )
             return cursor.rowcount
 
@@ -262,29 +270,32 @@ class TrendsDAO:
             return clamped_score
 
     @staticmethod
-    def archive_previous_inbox() -> int:
-        """Archive unreviewed/neutral items from previous inbox runs by setting is_new = 0."""
-        with get_db_connection() as conn:
-            cursor = conn.execute(
-                "UPDATE trends SET is_new = 0 WHERE is_new = 1 AND user_feedback = 0"
-            )
-            return cursor.rowcount
-
-    @staticmethod
-    def increment_mention(
+    def increment_mention_count(
         trend_id: int,
+        merged_text: Optional[str] = None,
         additional_text: Optional[str] = None,
         source_name: Optional[str] = None,
     ) -> bool:
-        """Increment mention_count and optionally enrich original_text with context from new source."""
+        """Increment mention count and optionally update original_text with merged context."""
         with get_db_connection() as conn:
-            cursor = conn.execute("SELECT original_text FROM trends WHERE id = ?", (trend_id,))
-            row = cursor.fetchone()
-            if not row:
-                return False
+            if merged_text is not None:
+                cursor = conn.execute(
+                    """
+                    UPDATE trends
+                    SET mention_count = mention_count + 1,
+                        original_text = ?
+                    WHERE id = ?
+                    """,
+                    (merged_text, trend_id),
+                )
+                return cursor.rowcount > 0
+            elif additional_text and source_name:
+                cursor = conn.execute("SELECT original_text FROM trends WHERE id = ?", (trend_id,))
+                row = cursor.fetchone()
+                if not row:
+                    return False
 
-            existing_text = row["original_text"]
-            if additional_text and source_name:
+                existing_text = row["original_text"]
                 enriched_text = f"{existing_text}\n\n[Дополнительное упоминание ({source_name})]:\n{additional_text}"
                 cursor = conn.execute(
                     """
@@ -295,12 +306,16 @@ class TrendsDAO:
                     """,
                     (enriched_text, trend_id),
                 )
+                return cursor.rowcount > 0
             else:
                 cursor = conn.execute(
                     "UPDATE trends SET mention_count = mention_count + 1 WHERE id = ?",
                     (trend_id,),
                 )
-            return cursor.rowcount > 0
+                return cursor.rowcount > 0
+
+    # Backwards compatibility alias
+    increment_mention = increment_mention_count
 
     @staticmethod
     def get_recent_candidates(limit: int = 150) -> List[Dict[str, Any]]:
@@ -627,27 +642,6 @@ class TrendsDAO:
             negative = [dict(row) for row in neg_cursor.fetchall()]
 
             return {"positive": positive, "negative": negative}
-
-    @staticmethod
-    def increment_mention_count(trend_id: int, merged_text: Optional[str] = None) -> bool:
-        """Increment mention count and optionally update original_text with merged context."""
-        with get_db_connection() as conn:
-            if merged_text is not None:
-                cursor = conn.execute(
-                    """
-                    UPDATE trends
-                    SET mention_count = mention_count + 1,
-                        original_text = ?
-                    WHERE id = ?
-                    """,
-                    (merged_text, trend_id),
-                )
-            else:
-                cursor = conn.execute(
-                    "UPDATE trends SET mention_count = mention_count + 1 WHERE id = ?",
-                    (trend_id,),
-                )
-            return cursor.rowcount > 0
 
     @staticmethod
     def get_last_scan_time() -> Optional[str]:

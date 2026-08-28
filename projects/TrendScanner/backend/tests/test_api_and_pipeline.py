@@ -156,8 +156,8 @@ async def test_pipeline_manager_flow(monkeypatch):
     # Mock Extractor
     sample_items = [
         ExtractedItem(
-            title="AI Invoicing Assistant for Solo Freelancers",
-            text="Solo freelancers waste 5 hours per week tracking invoices. An automated WhatsApp bot for invoice reminders solves this with high retention.",
+            title="ИИ Ассистент для счетов фрилансеров",
+            text="Фрилансеры тратят 5 часов в неделю на отслеживание счетов. Автоматизированный бот для напоминаний в WhatsApp решает эту проблему с высоким удержанием клиентов.",
             url="https://news.ycombinator.com/item?id=12345",
             source_type="rss",
         )
@@ -179,7 +179,11 @@ async def test_pipeline_manager_flow(monkeypatch):
             ai_summary="Solves invoice tracking for freelancers via WhatsApp.",
         )
 
+    async def mock_translate(text: str):
+        return text
+
     monkeypatch.setattr("app.services.pipeline.groq_client.classify_text", mock_classify)
+    monkeypatch.setattr("app.services.pipeline.groq_client.translate_to_russian", mock_translate)
 
     # Execute pipeline
     summary = await pipeline_manager.run_all()

@@ -192,6 +192,22 @@ def test_sources_dao_get_all(isolated_db):
     assert [s["id"] for s in active_sources] == [id1, id3]
 
 
+def test_sources_dao_count_active(isolated_db):
+    """Verify SourcesDAO.count_active correctly counts only active sources."""
+    assert SourcesDAO.count_active() == 0
+    SourcesDAO.create(name="Active 1", url="https://active1.com", source_type="rss", is_active=True)
+    SourcesDAO.create(name="Inactive", url="https://inactive.com", source_type="rss", is_active=False)
+    SourcesDAO.create(name="Active 2", url="https://active2.com", source_type="rss", is_active=True)
+    assert SourcesDAO.count_active() == 2
+
+
+def test_sources_url_index_created(isolated_db):
+    """Verify idx_sources_url index is created on sources(url)."""
+    with get_db_connection() as conn:
+        cursor = conn.execute("SELECT name FROM sqlite_master WHERE type='index' AND name='idx_sources_url'")
+        assert cursor.fetchone() is not None
+
+
 def test_sources_dao_get_by_id_not_found(isolated_db):
     """Verify SourcesDAO.get_by_id returns None for non-existent ID."""
     assert SourcesDAO.get_by_id(99999) is None

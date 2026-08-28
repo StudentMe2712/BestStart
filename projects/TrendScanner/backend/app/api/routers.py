@@ -1,7 +1,7 @@
 """FastAPI API Routers for Trends, Sources, System, and Manual Scans."""
 
-from typing import Any, Dict, List, Optional
-from fastapi import APIRouter, BackgroundTasks, HTTPException, Query, status
+from typing import List, Optional
+from fastapi import APIRouter, HTTPException, Query, status
 
 from app.core.settings import settings
 from app.db.dao import SourcesDAO, TrendsDAO
@@ -11,6 +11,7 @@ from app.models.schemas import (
     SourceCreate,
     SourceResponse,
     SourceUpdate,
+    SystemPauseResponse,
     SystemStatusResponse,
     TrendFeedbackResponse,
     TrendFeedbackUpdate,
@@ -23,7 +24,7 @@ from app.models.schemas import (
 from app.services.deep_research import run_deep_research
 from app.services.groq_client import groq_client
 from app.services.pipeline import pipeline_manager
-from app.workers.scheduler import get_scheduler_status
+from app.workers.scheduler import get_scheduler_status, pause_scheduler, resume_scheduler
 
 router = APIRouter(prefix=settings.API_V1_PREFIX)
 
@@ -407,7 +408,7 @@ async def trigger_manual_scan():
 )
 async def get_system_status():
     """System status and aggregate counters for dashboard topbar."""
-    sources = SourcesDAO.get_all(active_only=True)
+    active_sources_cnt = SourcesDAO.count_active()
     stats = TrendsDAO.get_stats()
     sched_info = get_scheduler_status()
 
@@ -421,11 +422,34 @@ async def get_system_status():
     return {
         "status": "operational",
         "scheduler": sched_info,
-        "active_sources_count": len(sources),
+        "is_paused": sched_info.get("is_paused", False),
+        "active_sources_count": active_sources_cnt,
         "pending_ai_count": TrendsDAO.count_pending(),
         "stats": stats,
         "groq_model": settings.GROQ_MODEL,
         "last_scan": pipeline_manager.last_run_summary,
         "last_scan_time": last_scan_time,
-        "next_scan_time": sched_info.get("next_run_time"),
+        "next_scan_time": None if sched_info.get("is_paused") else sched_info.get("next_run_time"),
     }
+
+
+@router.post(
+    "/system/pause",
+    response_model=SystemPauseResponse,
+    tags=["System"],
+    summary="Pause automated scanner scheduler",
+)
+async def pause_system_scheduler():
+    """Pause automated background scanning scheduler."""
+    return pause_scheduler()
+
+
+@router.post(
+    "/system/resume",
+    response_model=SystemPauseResponse,
+    tags=["System"],
+    summary="Resume automated scanner scheduler",
+)
+async def resume_system_scheduler():
+    """Resume automated background scanning scheduler."""
+    return resume_scheduler()

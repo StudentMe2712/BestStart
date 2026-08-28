@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
   Activity,
   Play,
+  Pause,
   RotateCw,
   Inbox,
   Heart,
@@ -15,6 +16,9 @@ interface TopbarProps {
   isScanning: boolean;
   onRefresh: () => void;
   onOpenSources?: () => void;
+  isPaused?: boolean;
+  onTogglePause?: () => Promise<void>;
+  isPausing?: boolean;
 }
 
 function formatCountdown(seconds: number): { totalSeconds: number; formatted: string } {
@@ -87,6 +91,9 @@ export const Topbar: React.FC<TopbarProps> = ({
   isScanning,
   onRefresh,
   onOpenSources,
+  isPaused,
+  onTogglePause,
+  isPausing,
 }) => {
   const stats = systemStatus?.stats;
   const isOperational = systemStatus?.status === 'operational';
@@ -94,6 +101,8 @@ export const Topbar: React.FC<TopbarProps> = ({
   const pendingAiCount =
     systemStatus?.pending_ai_count ?? systemStatus?.stats?.pending_ai_count ?? 0;
   const lastScanFormatted = formatLastScanTime(systemStatus?.last_scan_time);
+
+  const isScannerPaused = isPaused ?? systemStatus?.is_paused ?? systemStatus?.scheduler?.is_paused ?? false;
 
   const nextScanTarget = systemStatus?.next_scan_time || systemStatus?.scheduler?.next_run_time;
   const [countdownText, setCountdownText] = useState<string>(() => calculateTimeLeft(nextScanTarget).formatted);
@@ -139,7 +148,7 @@ export const Topbar: React.FC<TopbarProps> = ({
             </div>
           </div>
 
-          {/* Status line: Radar • In Queue • Last Scan • Next Scan */}
+          {/* Status line: Radar • In Queue • Last Scan • Next Scan / Paused */}
           <div className="flex items-center gap-2 text-xs md:text-sm text-content-muted font-mono flex-wrap">
             <button
               type="button"
@@ -175,10 +184,16 @@ export const Topbar: React.FC<TopbarProps> = ({
 
             <span className="text-app-border">•</span>
 
-            <span className="inline-flex items-center gap-1">
-              <Timer className="w-3.5 h-3.5 text-brand-hover inline" />
-              <span>Следующий скан через: <strong className="text-content-primary font-semibold">{countdownText}</strong></span>
-            </span>
+            {isScannerPaused ? (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                <span>⏸ Скан на паузе</span>
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1">
+                <Timer className="w-3.5 h-3.5 text-brand-hover inline" />
+                <span>Следующий скан через: <strong className="text-content-primary font-semibold">{countdownText}</strong></span>
+              </span>
+            )}
           </div>
         </div>
 
@@ -213,6 +228,38 @@ export const Topbar: React.FC<TopbarProps> = ({
             aria-label="Обновить данные"
           >
             <RotateCw className={`w-3.5 h-3.5 ${isScanning ? 'animate-spin text-content-primary' : ''}`} />
+          </button>
+
+          {/* Pause / Resume Button */}
+          <button
+            type="button"
+            onClick={onTogglePause}
+            disabled={isPausing || isScanning}
+            title={isScannerPaused ? "Возобновить автоматическое сканирование" : "Приостановить автоматический сканер"}
+            className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-md transition-all border ${
+              isPausing || isScanning
+                ? 'bg-app-elevated text-content-muted border-app-border cursor-not-allowed'
+                : isScannerPaused
+                ? 'bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border-amber-500/30 cursor-pointer shadow-sm'
+                : 'bg-app-elevated hover:bg-app-hover text-content-secondary hover:text-content-primary border-app-border cursor-pointer shadow-sm'
+            }`}
+          >
+            {isPausing ? (
+              <>
+                <RotateCw className="w-3.5 h-3.5 animate-spin text-amber-400" />
+                <span>{isScannerPaused ? 'Возобновление...' : 'Пауза...'}</span>
+              </>
+            ) : isScannerPaused ? (
+              <>
+                <Play className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+                <span>▶️ Возобновить</span>
+              </>
+            ) : (
+              <>
+                <Pause className="w-3.5 h-3.5 fill-current text-content-secondary" />
+                <span>⏸ Пауза</span>
+              </>
+            )}
           </button>
 
           {/* AI Brand Scan Button */}

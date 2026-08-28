@@ -23,6 +23,36 @@ JOB_RADAR_INGEST = "radar_periodic_ingest"
 JOB_GROQ_WORKER = "groq_throttled_worker"
 JOB_DEEP_CRAWLER = "deep_web_crawler"
 
+_is_paused: bool = False
+
+
+def pause_scheduler() -> Dict[str, Any]:
+    """Pause APScheduler automated background scan jobs."""
+    global _is_paused
+    if APSCHEDULER_AVAILABLE and scheduler and scheduler.running:
+        scheduler.pause()
+    _is_paused = True
+    logger.info("APScheduler paused.")
+    return {
+        "status": "paused",
+        "is_paused": True,
+        "message": "Автоматическое сканирование приостановлено",
+    }
+
+
+def resume_scheduler() -> Dict[str, Any]:
+    """Resume APScheduler automated background scan jobs."""
+    global _is_paused
+    if APSCHEDULER_AVAILABLE and scheduler and scheduler.running:
+        scheduler.resume()
+    _is_paused = False
+    logger.info("APScheduler resumed.")
+    return {
+        "status": "running",
+        "is_paused": False,
+        "message": "Автоматическое сканирование возобновлено",
+    }
+
 
 async def scheduled_radar_job() -> None:
     """Periodic job that scrapes and queues items from all active radar sources."""
@@ -114,6 +144,7 @@ def get_scheduler_status() -> Dict[str, Any]:
         return {
             "available": False,
             "running": False,
+            "is_paused": _is_paused,
             "job_id": JOB_RADAR_INGEST,
             "interval_minutes": settings.SCAN_INTERVAL_MINUTES,
             "next_run_time": None,
@@ -122,12 +153,13 @@ def get_scheduler_status() -> Dict[str, Any]:
 
     job = scheduler.get_job(JOB_RADAR_INGEST) if scheduler.running else None
     next_run = None
-    if job and job.next_run_time:
+    if not _is_paused and job and job.next_run_time:
         next_run = job.next_run_time.isoformat()
 
     return {
         "available": True,
         "running": scheduler.running,
+        "is_paused": _is_paused,
         "job_id": JOB_RADAR_INGEST,
         "interval_minutes": settings.SCAN_INTERVAL_MINUTES,
         "next_run_time": next_run,

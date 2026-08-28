@@ -13,7 +13,6 @@ from app.services.extractors import get_extractor
 from app.services.groq_client import groq_client
 from app.services.sanitizer import (
     extract_candidate_sources,
-    sanitizer,
     is_predominantly_cyrillic,
     sanitize_and_translate_content,
 )
@@ -198,36 +197,38 @@ class PipelineManager:
 
         async with self._ingest_lock:
             self.is_ingesting = True
-            archived_count = TrendsDAO.archive_previous_inbox()
-            logger.info("Archived %d previous inbox trends to Trend Database.", archived_count)
+            try:
+                archived_count = TrendsDAO.archive_previous_inbox()
+                logger.info("Archived %d previous inbox trends to Trend Database.", archived_count)
 
-            start_time = datetime.now(timezone.utc)
-            sources = SourcesDAO.get_all(active_only=True)
+                start_time = datetime.now(timezone.utc)
+                sources = SourcesDAO.get_all(active_only=True)
 
-            logger.info("Starting Radar ingestion cycle across %d active sources...", len(sources))
-            total_queued = 0
-            reports = []
+                logger.info("Starting Radar ingestion cycle across %d active sources...", len(sources))
+                total_queued = 0
+                reports = []
 
-            for src in sources:
-                try:
-                    src_report = await self.ingest_source(src)
-                    total_queued += src_report.get("queued_pending", 0)
-                    reports.append(src_report)
-                except Exception as src_err:
-                    logger.error("Error in ingestion for source #%s: %s", src.get("id"), src_err)
-                    reports.append({"source_id": src.get("id"), "error": str(src_err)})
+                for src in sources:
+                    try:
+                        src_report = await self.ingest_source(src)
+                        total_queued += src_report.get("queued_pending", 0)
+                        reports.append(src_report)
+                    except Exception as src_err:
+                        logger.error("Error in ingestion for source #%s: %s", src.get("id"), src_err)
+                        reports.append({"source_id": src.get("id"), "error": str(src_err)})
 
-            self.last_ingest_time = start_time
-            self.last_run_summary = {
-                "status": "completed",
-                "scanned_sources": len(sources),
-                "queued_items": total_queued,
-                "pending_queue_size": TrendsDAO.count_pending(),
-                "duration_seconds": (datetime.now(timezone.utc) - start_time).total_seconds(),
-                "reports": reports,
-            }
-            self.is_ingesting = False
-            return self.last_run_summary
+                self.last_ingest_time = start_time
+                self.last_run_summary = {
+                    "status": "completed",
+                    "scanned_sources": len(sources),
+                    "queued_items": total_queued,
+                    "pending_queue_size": TrendsDAO.count_pending(),
+                    "duration_seconds": (datetime.now(timezone.utc) - start_time).total_seconds(),
+                    "reports": reports,
+                }
+                return self.last_run_summary
+            finally:
+                self.is_ingesting = False
 
     async def process_groq_queue(self, batch_size: int = 3) -> Dict[str, Any]:
         """Throttling worker: picks a small batch of pending items and evaluates them via Groq."""
@@ -236,95 +237,96 @@ class PipelineManager:
 
         async with self._groq_lock:
             self.is_classifying = True
-            pending_items = TrendsDAO.get_pending_trends(limit=batch_size)
-            if not pending_items:
+            try:
+                pending_items = TrendsDAO.get_pending_trends(limit=batch_size)
+                if not pending_items:
+                    return {"status": "idle", "processed": 0}
+
+                logger.info("Groq worker processing %d pending items...", len(pending_items))
+                processed_count = 0
+
+                for item in pending_items:
+                    item_id = item["id"]
+                    cleaned_text = item["original_text"]
+
+                    try:
+                        ai_res = await groq_client.classify_text(cleaned_text)
+                        if ai_res:
+                            TrendsDAO.update_ai_classification(
+                                trend_id=item_id,
+                                is_trend=ai_res.is_trend,
+                                trend_name=ai_res.trend_name or item.get("trend_name"),
+                                ai_score=ai_res.ai_score,
+                                scam_probability=ai_res.scam_probability,
+                                ai_summary=ai_res.ai_summary,
+                                ai_status="processed",
+                            )
+                            processed_count += 1
+                            logger.info("Classified trend #%d: score=%s scam=%s", item_id, ai_res.ai_score, ai_res.scam_probability)
+
+                            # Trigger Telegram Push Alert for top-tier trends (ai_score >= 9 and scam < 15)
+                            if ai_res.ai_score >= 9 and ai_res.scam_probability < 15:
+                                logger.info("High-value trend #%d detected! Dispatching Telegram push alert...", item_id)
+                                try:
+                                    await notifier.send_trend_alert(
+                                        trend_name=ai_res.trend_name or item.get("trend_name") or "Перспективный тренд",
+                                        ai_score=ai_res.ai_score,
+                                        scam_probability=ai_res.scam_probability,
+                                        ai_summary=ai_res.ai_summary,
+                                        source_url=item.get("source_url"),
+                                        mention_count=item.get("mention_count", 1),
+                                        is_liked=item.get("is_liked", False),
+                                    )
+                                except Exception as alert_err:
+                                    logger.error("Failed to send Telegram push alert: %s", alert_err)
+                        else:
+                            # Parsing error or unclassified
+                            TrendsDAO.update_ai_classification(
+                                trend_id=item_id,
+                                is_trend=False,
+                                trend_name=item.get("trend_name"),
+                                ai_score=1,
+                                scam_probability=0,
+                                ai_summary="Не удалось классифицировать ответ ИИ.",
+                                ai_status="failed",
+                            )
+
+                    except httpx.HTTPStatusError as http_err:
+                        if http_err.response.status_code == 429:
+                            logger.warning("Groq HTTP 429 Rate Limit encountered! Sleeping worker for 60s...")
+                            # Put worker to sleep for 60 seconds to protect rate limits
+                            await asyncio.sleep(60)
+                            break
+                        else:
+                            logger.error("Groq HTTP error on item #%d: %s", item_id, http_err)
+                            TrendsDAO.update_ai_classification(
+                                trend_id=item_id,
+                                is_trend=False,
+                                trend_name=item.get("trend_name"),
+                                ai_score=1,
+                                scam_probability=0,
+                                ai_summary=f"Ошибка API: {http_err}",
+                                ai_status="failed",
+                            )
+                    except Exception as exc:
+                        logger.error("Unexpected failure evaluating trend #%d: %s", item_id, exc)
+                        TrendsDAO.update_ai_classification(
+                            trend_id=item_id,
+                            is_trend=False,
+                            trend_name=item.get("trend_name"),
+                            ai_score=1,
+                            scam_probability=0,
+                            ai_summary="Сбой воркера классификации.",
+                            ai_status="failed",
+                        )
+
+                return {
+                    "status": "completed",
+                    "processed": processed_count,
+                    "remaining_pending": TrendsDAO.count_pending(),
+                }
+            finally:
                 self.is_classifying = False
-                return {"status": "idle", "processed": 0}
-
-            logger.info("Groq worker processing %d pending items...", len(pending_items))
-            processed_count = 0
-
-            for item in pending_items:
-                item_id = item["id"]
-                cleaned_text = item["original_text"]
-
-                try:
-                    ai_res = await groq_client.classify_text(cleaned_text)
-                    if ai_res:
-                        TrendsDAO.update_ai_classification(
-                            trend_id=item_id,
-                            is_trend=ai_res.is_trend,
-                            trend_name=ai_res.trend_name or item.get("trend_name"),
-                            ai_score=ai_res.ai_score,
-                            scam_probability=ai_res.scam_probability,
-                            ai_summary=ai_res.ai_summary,
-                            ai_status="processed",
-                        )
-                        processed_count += 1
-                        logger.info("Classified trend #%d: score=%s scam=%s", item_id, ai_res.ai_score, ai_res.scam_probability)
-
-                        # Trigger Telegram Push Alert for top-tier trends (ai_score >= 9 and scam < 15)
-                        if ai_res.ai_score >= 9 and ai_res.scam_probability < 15:
-                            logger.info("High-value trend #%d detected! Dispatching Telegram push alert...", item_id)
-                            try:
-                                await notifier.send_trend_alert(
-                                    trend_name=ai_res.trend_name or item.get("trend_name") or "Перспективный тренд",
-                                    ai_score=ai_res.ai_score,
-                                    scam_probability=ai_res.scam_probability,
-                                    ai_summary=ai_res.ai_summary,
-                                    source_url=item.get("source_url"),
-                                    mention_count=item.get("mention_count", 1),
-                                    is_liked=item.get("is_liked", False),
-                                )
-                            except Exception as alert_err:
-                                logger.error("Failed to send Telegram push alert: %s", alert_err)
-                    else:
-                        # Parsing error or unclassified
-                        TrendsDAO.update_ai_classification(
-                            trend_id=item_id,
-                            is_trend=False,
-                            trend_name=item.get("trend_name"),
-                            ai_score=1,
-                            scam_probability=0,
-                            ai_summary="Не удалось классифицировать ответ ИИ.",
-                            ai_status="failed",
-                        )
-
-                except httpx.HTTPStatusError as http_err:
-                    if http_err.response.status_code == 429:
-                        logger.warning("Groq HTTP 429 Rate Limit encountered! Sleeping worker for 60s...")
-                        # Put worker to sleep for 60 seconds to protect rate limits
-                        await asyncio.sleep(60)
-                        break
-                    else:
-                        logger.error("Groq HTTP error on item #%d: %s", item_id, http_err)
-                        TrendsDAO.update_ai_classification(
-                            trend_id=item_id,
-                            is_trend=False,
-                            trend_name=item.get("trend_name"),
-                            ai_score=1,
-                            scam_probability=0,
-                            ai_summary=f"Ошибка API: {http_err}",
-                            ai_status="failed",
-                        )
-                except Exception as exc:
-                    logger.error("Unexpected failure evaluating trend #%d: %s", item_id, exc)
-                    TrendsDAO.update_ai_classification(
-                        trend_id=item_id,
-                        is_trend=False,
-                        trend_name=item.get("trend_name"),
-                        ai_score=1,
-                        scam_probability=0,
-                        ai_summary="Сбой воркера классификации.",
-                        ai_status="failed",
-                    )
-
-            self.is_classifying = False
-            return {
-                "status": "completed",
-                "processed": processed_count,
-                "remaining_pending": TrendsDAO.count_pending(),
-            }
 
     async def run_crawler_cycle(self, queries: Optional[List[str]] = None) -> Dict[str, Any]:
         """Trigger global deep web search crawler cycle."""

@@ -239,4 +239,22 @@ export const apiClient = {
   async getSystemStatus(): Promise<SystemStatus> {
     return request<SystemStatus>('/system/status');
   },
+
+  /**
+   * Pause automated background scanner scheduler.
+   */
+  async pauseScanner(): Promise<{ status: string; is_paused: boolean; message: string }> {
+    return request<{ status: string; is_paused: boolean; message: string }>('/system/pause', {
+      method: 'POST',
+    });
+  },
+
+  /**
+   * Resume automated background scanner scheduler.
+   */
+  async resumeScanner(): Promise<{ status: string; is_paused: boolean; message: string }> {
+    return request<{ status: string; is_paused: boolean; message: string }>('/system/resume', {
+      method: 'POST',
+    });
+  },
 };

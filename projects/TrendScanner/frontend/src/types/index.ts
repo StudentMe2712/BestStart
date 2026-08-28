@@ -93,6 +93,7 @@ export interface SchedulerJobInfo {
 
 export interface SchedulerInfo {
   running: boolean;
+  is_paused?: boolean;
   interval_minutes: number;
   next_run_time?: string | null;
   jobs?: SchedulerJobInfo[];
@@ -108,6 +109,7 @@ export interface LastScanSummary {
 
 export interface SystemStatus {
   status: string;
+  is_paused?: boolean;
   scheduler?: SchedulerInfo;
   active_sources_count: number;
   pending_ai_count: number;

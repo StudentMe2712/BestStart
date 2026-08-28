@@ -117,6 +117,7 @@ class DeepResearchResponse(BaseModel):
 class SystemStatusResponse(BaseModel):
     status: str = "operational"
     scheduler_running: bool = False
+    is_paused: bool = False
     next_run_time: Optional[str] = None
     next_scan_time: Optional[str] = None
     stats: Dict[str, Any] = Field(default_factory=dict)
@@ -124,6 +125,12 @@ class SystemStatusResponse(BaseModel):
     pending_ai_count: int = 0
     groq_model: str = "openai/gpt-oss-20b"
     last_scan_time: Optional[str] = None
+
+
+class SystemPauseResponse(BaseModel):
+    status: str
+    is_paused: bool
+    message: str
 
 
 class ManualScanResponse(BaseModel):

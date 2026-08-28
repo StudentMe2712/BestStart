@@ -105,8 +105,6 @@ def cleanup_old_unliked_trends(
                 "DELETE FROM sources_trends WHERE trend_id NOT IN (SELECT id FROM trends)"
             )
 
-        conn.commit()
-
     logger.info(
         "Successfully removed %d unliked trends older than %d days from %s (date_col: %s)",
         deleted_count,

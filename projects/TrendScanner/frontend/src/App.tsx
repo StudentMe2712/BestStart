@@ -38,6 +38,8 @@ export const App: React.FC = () => {
   // UI / Modal States
   const [loading, setLoading] = useState<boolean>(true);
   const [isScanning, setIsScanning] = useState<boolean>(false);
+  const [isPausing, setIsPausing] = useState<boolean>(false);
+  const [isPaused, setIsPaused] = useState<boolean>(false);
   const [selectedTrend, setSelectedTrend] = useState<Trend | null>(null);
   const [isSourcesModalOpen, setIsSourcesModalOpen] = useState<boolean>(false);
   const [toast, setToast] = useState<Toast | null>(null);
@@ -59,6 +61,7 @@ export const App: React.FC = () => {
     try {
       const status = await apiClient.getSystemStatus();
       setSystemStatus(status);
+      setIsPaused(Boolean(status?.is_paused ?? status?.scheduler?.is_paused));
     } catch (err: any) {
       console.error('Не удалось загрузить статус системы:', err);
     }
@@ -191,6 +194,47 @@ export const App: React.FC = () => {
     }
   };
 
+  // Toggle Scheduler Pause / Resume
+  const handleTogglePause = async () => {
+    if (isPausing) return;
+    const targetAction = isPaused ? 'resume' : 'pause';
+    const nextIsPaused = !isPaused;
+
+    // Optimistic UI update
+    setIsPaused(nextIsPaused);
+    setSystemStatus((prev) =>
+      prev
+        ? {
+            ...prev,
+            is_paused: nextIsPaused,
+            next_scan_time: nextIsPaused ? null : prev.next_scan_time,
+            scheduler: prev.scheduler
+              ? { ...prev.scheduler, is_paused: nextIsPaused, next_run_time: nextIsPaused ? null : prev.scheduler.next_run_time }
+              : prev.scheduler,
+          }
+        : prev
+    );
+
+    try {
+      setIsPausing(true);
+      if (targetAction === 'resume') {
+        const res = await apiClient.resumeScanner();
+        showToast(res.message || 'Автоматическое сканирование возобновлено', 'success');
+      } else {
+        const res = await apiClient.pauseScanner();
+        showToast(res.message || 'Автоматическое сканирование приостановлено', 'info');
+      }
+      await fetchStatus();
+    } catch (err: any) {
+      // Revert optimistic update on error
+      setIsPaused(!nextIsPaused);
+      showToast(err?.message || 'Не удалось изменить состояние планировщика', 'error');
+      await fetchStatus();
+    } finally {
+      setIsPausing(false);
+    }
+  };
+
   // RLHF Feedback (Likes +1, Dislikes -1, Neutral 0) with Optimistic UI
   const handleFeedback = async (trend: Trend, score: number) => {
     // Optimistic local update
@@ -294,6 +338,9 @@ export const App: React.FC = () => {
         systemStatus={systemStatus}
         onScan={handleScan}
         isScanning={isScanning}
+        isPaused={isPaused}
+        onTogglePause={handleTogglePause}
+        isPausing={isPausing}
         onRefresh={() => {
           fetchTrends();
           fetchStatus();

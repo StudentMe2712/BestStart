@@ -11,9 +11,7 @@ import html
 import logging
 import re
 from datetime import datetime, timezone
-from pathlib import Path
 from typing import Any, Dict, List, Optional
-from urllib.parse import urlparse
 
 from bs4 import BeautifulSoup, Tag
 import httpx
@@ -295,14 +293,14 @@ class TelegramExtractor(BaseExtractor):
             self.logger.warning("Telethon library not installed; cannot use Telethon extractor.")
             return []
 
-        client = TelegramClient(
-            session_path,
-            api_id,
-            api_hash,
-            timeout=self.timeout,
-        )
-
+        client = None
         try:
+            client = TelegramClient(
+                session_path,
+                api_id,
+                api_hash,
+                timeout=self.timeout,
+            )
             self.logger.debug("Connecting Telethon client for channel '%s'...", channel_name)
             await asyncio.wait_for(client.connect(), timeout=self.TELETHON_CONNECT_TIMEOUT)
 
@@ -381,11 +379,12 @@ class TelegramExtractor(BaseExtractor):
             self.logger.warning("Telethon extraction failed for channel '%s': %s", channel_name, telethon_err)
             return []
         finally:
-            try:
-                if client.is_connected():
-                    await client.disconnect()
-            except Exception:
-                pass
+            if client is not None:
+                try:
+                    if hasattr(client, "is_connected") and client.is_connected():
+                        await client.disconnect()
+                except Exception as disconnect_err:
+                    self.logger.debug("Error disconnecting Telethon client: %s", disconnect_err)
 
     async def _extract_web_preview(self, channel_name: str) -> List[ExtractedItem]:
         """Scrape messages from public Telegram web preview (https://t.me/s/{channel}).

@@ -4,7 +4,7 @@ import asyncio
 import logging
 import urllib.parse
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from typing import List, Optional
 
 from bs4 import BeautifulSoup
 import httpx
@@ -146,28 +146,32 @@ class AdvancedExtractor(BaseExtractor):
         """Run headless Playwright browser to load and render dynamic JavaScript."""
         from playwright.async_api import async_playwright
 
+        browser = None
+        context = None
+        page = None
+
         async with async_playwright() as p:
-            browser = await p.chromium.launch(
-                headless=True,
-                args=[
-                    "--no-sandbox",
-                    "--disable-setuid-sandbox",
-                    "--disable-dev-shm-usage",
-                    "--disable-gpu",
-                ],
-            )
-            context = await browser.new_context(
-                user_agent=self.user_agent,
-                viewport={"width": 1920, "height": 1080},
-                java_script_enabled=True,
-                locale="en-US",
-            )
-
-            # Inject stealth scripts before any page load
-            await context.add_init_script(STEALTH_JS_INJECTION)
-            page = await context.new_page()
-
             try:
+                browser = await p.chromium.launch(
+                    headless=True,
+                    args=[
+                        "--no-sandbox",
+                        "--disable-setuid-sandbox",
+                        "--disable-dev-shm-usage",
+                        "--disable-gpu",
+                    ],
+                )
+                context = await browser.new_context(
+                    user_agent=self.user_agent,
+                    viewport={"width": 1920, "height": 1080},
+                    java_script_enabled=True,
+                    locale="en-US",
+                )
+
+                # Inject stealth scripts before any page load
+                await context.add_init_script(STEALTH_JS_INJECTION)
+                page = await context.new_page()
+
                 logger.info("Playwright navigating to SPA target: %s", url)
                 await page.goto(url, wait_until=self.wait_until, timeout=int(self.timeout * 1000))
 
@@ -181,9 +185,21 @@ class AdvancedExtractor(BaseExtractor):
                 logger.info("Playwright extracted %d items from '%s'", len(items), url)
                 return items
             finally:
-                await page.close()
-                await context.close()
-                await browser.close()
+                if page is not None:
+                    try:
+                        await page.close()
+                    except Exception as e:
+                        logger.debug("Error closing Playwright page: %s", e)
+                if context is not None:
+                    try:
+                        await context.close()
+                    except Exception as e:
+                        logger.debug("Error closing Playwright context: %s", e)
+                if browser is not None:
+                    try:
+                        await browser.close()
+                    except Exception as e:
+                        logger.debug("Error closing Playwright browser: %s", e)
 
     async def _extract_fallback_httpx(self, url: str) -> List[ExtractedItem]:
         """Fallback to async HTTPX request if Playwright is not available."""

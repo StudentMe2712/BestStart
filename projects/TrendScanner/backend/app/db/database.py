@@ -50,6 +50,7 @@ CREATE INDEX IF NOT EXISTS idx_trends_mention_count ON trends(mention_count);
 CREATE INDEX IF NOT EXISTS idx_trends_is_liked ON trends(is_liked);
 CREATE INDEX IF NOT EXISTS idx_trends_user_feedback ON trends(user_feedback);
 CREATE INDEX IF NOT EXISTS idx_trends_is_new ON trends(is_new);
+CREATE INDEX IF NOT EXISTS idx_sources_url ON sources(url);
 """
 
 DEFAULT_SOURCES = [
@@ -273,6 +274,7 @@ def init_db(seed_default_sources: bool = True) -> None:
             conn.execute("CREATE INDEX IF NOT EXISTS idx_trends_is_liked ON trends(is_liked);")
             conn.execute("CREATE INDEX IF NOT EXISTS idx_trends_user_feedback ON trends(user_feedback);")
             conn.execute("CREATE INDEX IF NOT EXISTS idx_trends_is_new ON trends(is_new);")
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_sources_url ON sources(url);")
 
         # 2. Seed sources
         if seed_default_sources:
