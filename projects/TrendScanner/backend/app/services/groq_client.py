@@ -6,7 +6,10 @@ import logging
 import re
 from typing import Any, Dict, List, Optional
 import httpx
-from deep_translator import GoogleTranslator
+try:
+    from deep_translator import GoogleTranslator
+except ImportError:
+    GoogleTranslator = None
 from langdetect import DetectorFactory, detect
 from langdetect.lang_detect_exception import LangDetectException
 from pydantic import BaseModel, Field, field_validator
@@ -261,6 +264,10 @@ def _translate_chunks_sync(text: str) -> str:
     translates each, and joins with newlines.
     """
     if not text or not text.strip():
+        return text
+
+    if GoogleTranslator is None:
+        logger.warning("deep_translator is not installed, skipping GoogleTranslator.")
         return text
 
     translator = GoogleTranslator(source="auto", target="ru")
