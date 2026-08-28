@@ -1,0 +1,24 @@
+{
+  "mcpServers": {
+    "sqlite": {
+      "command": "uvx",
+      "args": ["mcp-server-sqlite", "--db-path", "projects/TrendScanner/backend/data/trendscanner.db"]
+    },
+    "fetch": {
+      "command": "uvx",
+      "args": ["mcp-server-fetch"]
+    },
+    "playwright": {
+      "command": "npx",
+      "args": ["-y", "@microsoft/playwright-mcp"]
+    },
+    "sequential-thinking": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-sequential-thinking"]
+    },
+    "memory": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-memory"]
+    }
+  }
+}

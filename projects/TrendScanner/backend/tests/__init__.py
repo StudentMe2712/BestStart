@@ -1,0 +1,1 @@
+"""TrendScanner tests package."""

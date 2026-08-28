@@ -1,0 +1,48 @@
+services:
+  backend:
+    container_name: trendscanner-backend
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+    volumes:
+      # Critical: SQLite persistent database & Telethon session storage
+      - ./backend/data:/app/data
+      - ./backend/app:/app/app
+      - ./backend/main.py:/app/main.py
+      - ./backend/login_telegram.py:/app/login_telegram.py
+      - ./TrendScanner_Vault:/app/vault
+    environment:
+      - DATABASE_PATH=/app/data/trendscanner.db
+      - VAULT_DIR=/app/vault
+      - GROQ_API_KEY=${GROQ_API_KEY:-}
+      - GROQ_MODEL=${GROQ_MODEL:-openai/gpt-oss-20b}
+      - TG_API_ID=${TG_API_ID:-}
+      - TG_API_HASH=${TG_API_HASH:-}
+      - TG_PHONE=${TG_PHONE:-}
+      - TG_SESSION_PATH=/app/data/trendscanner.session
+      - TG_BOT_TOKEN=${TG_BOT_TOKEN:-}
+      - TG_CHAT_ID=${TG_CHAT_ID:-}
+      - SCAN_INTERVAL_MINUTES=${SCAN_INTERVAL_MINUTES:-60}
+      - DEBUG=${DEBUG:-true}
+    env_file:
+      - path: .env
+        required: false
+    restart: unless-stopped
+
+  frontend:
+    container_name: trendscanner-frontend
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "${FRONTEND_PORT:-3000}:3000"
+    volumes:
+      - ./frontend/src:/app/src
+      - ./frontend/public:/app/public
+    environment:
+      - VITE_API_URL=http://backend:8000
+    depends_on:
+      - backend
+    restart: unless-stopped
