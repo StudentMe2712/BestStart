@@ -177,6 +177,13 @@ DEFAULT_SOURCES = [
         "telegram",
         1,
     ),
+    # Global Deep Web Crawler
+    (
+        "Глобальный ИИ-Поисковый Краулер (Deep Web)",
+        "https://duckduckgo.com/?q=new+ai+saas+2026",
+        "deep_crawler",
+        1,
+    ),
 ]
 
 

@@ -21,6 +21,7 @@ except ImportError:
 
 JOB_RADAR_INGEST = "radar_periodic_ingest"
 JOB_GROQ_WORKER = "groq_throttled_worker"
+JOB_DEEP_CRAWLER = "deep_web_crawler"
 
 
 async def scheduled_radar_job() -> None:
@@ -31,6 +32,16 @@ async def scheduled_radar_job() -> None:
         logger.info("Radar Ingestion completed: %s", summary)
     except Exception as exc:
         logger.error("Error in scheduled radar job: %s", exc, exc_info=True)
+
+
+async def scheduled_crawler_job() -> None:
+    """Periodic deep web search crawl job."""
+    logger.info("APScheduler: Triggering Deep Web Crawler cycle...")
+    try:
+        summary = await pipeline_manager.run_crawler_cycle()
+        logger.info("Deep Web Crawler completed: %s", summary)
+    except Exception as exc:
+        logger.error("Error in scheduled crawler job: %s", exc, exc_info=True)
 
 
 async def scheduled_groq_worker_job() -> None:
@@ -44,7 +55,7 @@ async def scheduled_groq_worker_job() -> None:
 
 
 def start_scheduler() -> None:
-    """Configure and start background Radar Ingestion and Groq Worker schedulers."""
+    """Configure and start background Radar Ingestion, Deep Crawler, and Groq Worker schedulers."""
     if not APSCHEDULER_AVAILABLE or scheduler is None:
         logger.warning("APScheduler is not installed. Background jobs will be inactive.")
         return
@@ -64,7 +75,16 @@ def start_scheduler() -> None:
         replace_existing=True,
     )
 
-    # 2. Throttled Groq AI Worker Job (every 3 minutes)
+    # 2. Deep Web Crawler Job (e.g. every 90 mins or interval)
+    scheduler.add_job(
+        scheduled_crawler_job,
+        trigger=IntervalTrigger(minutes=max(15, int(interval_minutes * 1.5))),
+        id=JOB_DEEP_CRAWLER,
+        name="Deep Web AI Search Crawler",
+        replace_existing=True,
+    )
+
+    # 3. Throttled Groq AI Worker Job (every 3 minutes)
     scheduler.add_job(
         scheduled_groq_worker_job,
         trigger=IntervalTrigger(minutes=3),
@@ -74,7 +94,11 @@ def start_scheduler() -> None:
     )
 
     scheduler.start()
-    logger.info("APScheduler started: Radar Ingest (%dm) & Groq Worker (3m).", interval_minutes)
+    logger.info(
+        "APScheduler started: Radar Ingest (%dm), Deep Crawler (%dm) & Groq Worker (3m).",
+        interval_minutes,
+        max(15, int(interval_minutes * 1.5)),
+    )
 
 
 def shutdown_scheduler() -> None:

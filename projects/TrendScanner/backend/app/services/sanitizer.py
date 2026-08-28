@@ -4,7 +4,7 @@ import html
 import re
 import unicodedata
 import urllib.parse
-from typing import Dict, List, Optional, Pattern, Set
+from typing import Any, Callable, Dict, List, Optional, Pattern, Set
 from pydantic import BaseModel, Field
 from bs4 import BeautifulSoup
 
@@ -339,4 +339,159 @@ def extract_candidate_sources(raw_content: str) -> List[Dict[str, str]]:
 
 # Global default sanitizer instance for direct usage
 sanitizer = TextSanitizer()
+
+ENGLISH_STOPWORDS_REGEX = re.compile(
+    r"\b(the|and|is|are|was|were|this|that|with|for|from|have|has|had|will|would|can|could|should|been|about|which|their|there|they|what|when|where|who|why|how)\b",
+    re.IGNORECASE,
+)
+
+ENGLISH_STARTER_REGEX = re.compile(
+    r"(?:^|[\.\?!]\s+)(The|This|These|Those|An|A|In|On|It|We|They|There|Here|When|Why|How|You|Our|Their|If|As|With|For|By)\s+",
+    re.IGNORECASE,
+)
+
+
+def is_predominantly_cyrillic(text: str) -> bool:
+    """
+    Check whether text contains predominantly Cyrillic characters or is written in Russian.
+    Allows standard IT abbreviations and terms (SaaS, ARR, MRR, API, Stripe, React, AI).
+    """
+    if not text or not text.strip():
+        return False
+
+    clean = text.strip()
+    cyrillic_chars = len(re.findall(r"[а-яА-ЯёЁ]", clean))
+    latin_chars = len(re.findall(r"[a-zA-Z]", clean))
+    total_letters = cyrillic_chars + latin_chars
+
+    if total_letters == 0:
+        return False
+
+    # Pure Russian / High Cyrillic
+    if cyrillic_chars > 15 and cyrillic_chars >= latin_chars:
+        return True
+
+    # Check ratio: if latin characters exceed 40% and cyrillic count is low (< 20)
+    latin_ratio = latin_chars / total_letters
+    if latin_ratio > 0.40 and cyrillic_chars < 20:
+        return False
+
+    # If cyrillic dominates
+    if cyrillic_chars > latin_chars:
+        return True
+
+    return cyrillic_chars >= latin_chars
+
+
+def has_untranslated_english_markers(text: str) -> bool:
+    """
+    Check if text contains obvious markers of untranslated English sentences.
+    Detects:
+    1. Complete absence of Cyrillic letters in non-empty text.
+    2. English sentence starters when latin >= cyrillic.
+    3. Prominent English grammatical stopwords (the, and, is, for, with...).
+    """
+    if not text or not text.strip():
+        return False
+
+    clean = text.strip()
+    cyrillic_count = len(re.findall(r"[а-яА-ЯёЁ]", clean))
+    latin_count = len(re.findall(r"[a-zA-Z]", clean))
+
+    # If there are no Cyrillic characters at all and has latin words
+    if cyrillic_count == 0 and latin_count >= 10:
+        return True
+
+    # Check English stop words frequency
+    stopwords_matches = ENGLISH_STOPWORDS_REGEX.findall(clean)
+    if len(stopwords_matches) >= 3 and cyrillic_count < latin_count:
+        return True
+
+    if len(stopwords_matches) >= 2 and cyrillic_count == 0:
+        return True
+
+    # Sentence starters with high Latin ratio
+    if ENGLISH_STARTER_REGEX.search(clean) and latin_count >= cyrillic_count:
+        return True
+
+    return False
+
+
+async def translate_to_russian(text: str) -> str:
+    """Helper delegating to groq_client.translate_to_russian."""
+    from app.services.groq_client import translate_to_russian as _trans
+    return await _trans(text)
+
+
+async def sanitize_and_translate_content(
+    text: str,
+    min_length: int = 100,
+    sanitizer_instance: Optional[TextSanitizer] = None,
+    translate_func: Optional[Any] = None,
+) -> SanitizedResult:
+    """
+    Full Ingestion Language Checkpoint (Level 11 'No English' Rule):
+    1. Sanitizes and strips HTML/spam.
+    2. Checks if content is predominantly Russian.
+    3. If not Russian (English / Latin > 40%), executes deep-translator GoogleTranslator.
+    4. Validates translated text: if still containing English markers, DROPS the item (reject_reason='untranslated_english').
+    """
+    san = sanitizer_instance or sanitizer
+    base_res = san.sanitize(text, min_length=min_length)
+    if not base_res.is_valid:
+        return base_res
+
+    cleaned_text = base_res.cleaned_text
+
+    # Check if already clean Russian
+    if is_predominantly_cyrillic(cleaned_text) and not has_untranslated_english_markers(cleaned_text):
+        return SanitizedResult(
+            is_valid=True,
+            cleaned_text=cleaned_text,
+            reject_reason=None,
+        )
+
+    # Enforce translation to Russian
+    try:
+        if translate_func is not None:
+            translated = await translate_func(cleaned_text)
+        elif hasattr(san, "translate_to_russian") and callable(san.translate_to_russian):
+            translated = await san.translate_to_russian(cleaned_text)
+        else:
+            translated = await translate_to_russian(cleaned_text)
+
+        translated_clean = san.clean_text(translated)
+
+        # Verification checkpoint: Must be predominantly Cyrillic and free of English markers
+        if not is_predominantly_cyrillic(translated_clean) or has_untranslated_english_markers(translated_clean):
+            return SanitizedResult(
+                is_valid=False,
+                cleaned_text=translated_clean,
+                reject_reason="untranslated_english",
+            )
+
+        if len(translated_clean) < min_length:
+            return SanitizedResult(
+                is_valid=False,
+                cleaned_text=translated_clean,
+                reject_reason="too_short",
+            )
+
+        return SanitizedResult(
+            is_valid=True,
+            cleaned_text=translated_clean,
+            reject_reason=None,
+        )
+    except Exception as exc:
+        return SanitizedResult(
+            is_valid=False,
+            cleaned_text=cleaned_text,
+            reject_reason="untranslated_english",
+        )
+
+
+TextSanitizer.translate_to_russian = staticmethod(translate_to_russian)
+TextSanitizer.sanitize_and_translate_content = staticmethod(sanitize_and_translate_content)
+
+
 

@@ -6,6 +6,10 @@ from app.services.extractors.base import BaseExtractor, ExtractedItem
 from app.services.extractors.reddit_extractor import RedditExtractor
 from app.services.extractors.rss_extractor import RSSExtractor
 from app.services.extractors.advanced_extractor import AdvancedExtractor
+from app.services.extractors.dynamic_crawler_extractor import (
+    DEFAULT_CRAWLER_QUERIES,
+    DynamicCrawlerExtractor,
+)
 from app.services.extractors.telegram_extractor import TelegramExtractor
 
 # AdvancedWebExtractor alias for web scraping / SPA
@@ -22,6 +26,9 @@ EXTRACTOR_REGISTRY: Dict[str, Type[BaseExtractor]] = {
     "telegram_channel": TelegramExtractor,
     "telegram_html": TelegramExtractor,
     "auto_discovered": RSSExtractor,
+    "deep_crawler": DynamicCrawlerExtractor,
+    "dynamic_crawler": DynamicCrawlerExtractor,
+    "crawler": DynamicCrawlerExtractor,
 }
 
 
@@ -77,6 +84,8 @@ __all__ = [
     "AdvancedExtractor",
     "AdvancedWebExtractor",
     "TelegramExtractor",
+    "DynamicCrawlerExtractor",
+    "DEFAULT_CRAWLER_QUERIES",
     "EXTRACTOR_REGISTRY",
     "get_extractor",
     "get_extractor_for_url",

@@ -11,7 +11,12 @@ from app.core.settings import settings
 from app.db.dao import SourcesDAO, TrendsDAO, calculate_text_hash
 from app.services.extractors import get_extractor
 from app.services.groq_client import groq_client
-from app.services.sanitizer import extract_candidate_sources, sanitizer
+from app.services.sanitizer import (
+    extract_candidate_sources,
+    sanitizer,
+    is_predominantly_cyrillic,
+    sanitize_and_translate_content,
+)
 from app.services.deduplicator import deduplicator
 from app.services.notifier import notifier
 
@@ -137,17 +142,30 @@ class PipelineManager:
             except Exception as disc_err:
                 logger.warning("Error auto-discovering candidate sources: %s", disc_err)
 
-            res = sanitizer.sanitize(item.text, min_length=settings.MIN_TEXT_LENGTH)
+            # Mandatory Level 11 Language Checkpoint & Translation ("No English" Rule)
+            res = await sanitize_and_translate_content(item.text, min_length=settings.MIN_TEXT_LENGTH)
             if not res.is_valid:
                 report["rejected_sanitizer"] += 1
+                if res.reject_reason == "untranslated_english":
+                    logger.info("Source #%d: Dropped item due to untranslated English: '%s...'", source_id, item.text[:60])
             else:
+                # Ensure title is in Russian
+                trend_title = item.title[:120] if item.title else "Сигнал Радара"
+                if not is_predominantly_cyrillic(trend_title):
+                    try:
+                        translated_title = await groq_client.translate_to_russian(trend_title)
+                        if translated_title and is_predominantly_cyrillic(translated_title):
+                            trend_title = translated_title[:120]
+                    except Exception:
+                        pass
+
                 to_queue.append(
                     {
                         "source_id": source_id,
                         "original_text": res.cleaned_text,
                         "content_hash": h,
                         "is_trend": False,
-                        "trend_name": item.title[:120] if item.title else "Incoming Radar Signal",
+                        "trend_name": trend_title,
                         "ai_score": None,
                         "scam_probability": None,
                         "ai_summary": None,
@@ -308,6 +326,28 @@ class PipelineManager:
                 "remaining_pending": TrendsDAO.count_pending(),
             }
 
+    async def run_crawler_cycle(self, queries: Optional[List[str]] = None) -> Dict[str, Any]:
+        """Trigger global deep web search crawler cycle."""
+        crawler_source = None
+        sources = SourcesDAO.get_all()
+        for s in sources:
+            if s.get("source_type") == "deep_crawler":
+                crawler_source = s
+                break
+
+        if not crawler_source:
+            source_id = SourcesDAO.create(
+                name="Глобальный ИИ-Поисковый Краулер (Deep Web)",
+                url="https://duckduckgo.com/?q=new+ai+saas+2026",
+                source_type="deep_crawler",
+                is_active=True,
+            )
+            crawler_source = SourcesDAO.get_by_id(source_id)
+
+        if crawler_source:
+            return await self.ingest_source(crawler_source)
+        return {"status": "error", "message": "Failed to resolve deep crawler source"}
+
     async def run_all(self) -> Dict[str, Any]:
         """Trigger immediate radar ingestion and process first batch through Groq."""
         archived_count = TrendsDAO.archive_previous_inbox()
@@ -325,3 +365,4 @@ class PipelineManager:
 
 
 pipeline_manager = PipelineManager()
+

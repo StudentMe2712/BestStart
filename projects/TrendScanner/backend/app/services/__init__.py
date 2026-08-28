@@ -1,6 +1,11 @@
-"""Services and Business Logic Package."""
-
-from app.services.sanitizer import SanitizedResult, TextSanitizer, sanitizer
+from app.services.sanitizer import (
+    SanitizedResult,
+    TextSanitizer,
+    sanitizer,
+    is_predominantly_cyrillic,
+    has_untranslated_english_markers,
+    sanitize_and_translate_content,
+)
 from app.services.groq_client import (
     GroqClient,
     groq_client,
@@ -20,11 +25,18 @@ from app.services.deep_research import (
     sanitize_vault_filename,
     extract_wikilinks,
 )
+from app.services.extractors.dynamic_crawler_extractor import (
+    DynamicCrawlerExtractor,
+    DEFAULT_CRAWLER_QUERIES,
+)
 
 __all__ = [
     "SanitizedResult",
     "TextSanitizer",
     "sanitizer",
+    "is_predominantly_cyrillic",
+    "has_untranslated_english_markers",
+    "sanitize_and_translate_content",
     "GroqClient",
     "groq_client",
     "AIClassificationResult",
@@ -38,4 +50,6 @@ __all__ = [
     "run_deep_research",
     "sanitize_vault_filename",
     "extract_wikilinks",
+    "DynamicCrawlerExtractor",
+    "DEFAULT_CRAWLER_QUERIES",
 ]
