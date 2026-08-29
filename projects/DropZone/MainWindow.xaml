@@ -1,0 +1,128 @@
+<Window x:Class="DropZone.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:DropZone"
+        mc:Ignorable="d"
+        Title="DropZone"
+        Height="76"
+        Width="480"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Background="Transparent"
+        Topmost="True"
+        ShowInTaskbar="False"
+        Opacity="0"
+        WindowStartupLocation="Manual"
+        AllowDrop="True"
+        Drop="Window_Drop"
+        DragEnter="Window_DragEnter"
+        DragOver="Window_DragOver"
+        MouseDoubleClick="Window_MouseDoubleClick"
+        PreviewKeyDown="Window_PreviewKeyDown">
+    
+    <Grid Margin="10">
+        <!-- Floating Glassmorphic Pocket Container -->
+        <Border CornerRadius="16"
+                Background="#EB151518"
+                BorderBrush="#33FFFFFF"
+                BorderThickness="1"
+                ClipToBounds="False">
+            <Border.Effect>
+                <DropShadowEffect Color="#000000"
+                                  BlurRadius="20"
+                                  ShadowDepth="4"
+                                  Opacity="0.55"
+                                  Direction="270" />
+            </Border.Effect>
+
+            <Grid>
+                <!-- Empty Pocket Placeholder -->
+                <StackPanel x:Name="PlaceholderPanel"
+                            Orientation="Horizontal"
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center"
+                            IsHitTestVisible="False">
+                    <TextBlock Text="📥"
+                               FontSize="15"
+                               Margin="0,0,8,0"
+                               VerticalAlignment="Center" />
+                    <TextBlock Text="Перетащи файлы сюда..."
+                               Foreground="#8E8E9A"
+                               FontSize="13"
+                               FontWeight="Medium"
+                               VerticalAlignment="Center" />
+                </StackPanel>
+
+                <!-- Horizontal Files List -->
+                <ListBox x:Name="FilesList"
+                         Background="Transparent"
+                         BorderThickness="0"
+                         Padding="12,4"
+                         VerticalAlignment="Center"
+                         ScrollViewer.HorizontalScrollBarVisibility="Auto"
+                         ScrollViewer.VerticalScrollBarVisibility="Disabled"
+                         ScrollViewer.CanContentScroll="False"
+                         PreviewMouseLeftButtonDown="FilesList_PreviewMouseLeftButtonDown"
+                         PreviewMouseMove="FilesList_PreviewMouseMove"
+                         MouseRightButtonUp="FilesList_MouseRightButtonUp"
+                         Visibility="Collapsed">
+                    <ListBox.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <StackPanel Orientation="Horizontal" />
+                        </ItemsPanelTemplate>
+                    </ListBox.ItemsPanel>
+                    
+                    <ListBox.ItemContainerStyle>
+                        <Style TargetType="ListBoxItem">
+                            <Setter Property="Padding" Value="0" />
+                            <Setter Property="Margin" Value="4,0" />
+                            <Setter Property="Background" Value="Transparent" />
+                            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+                            <Setter Property="Template">
+                                <Setter.Value>
+                                    <ControlTemplate TargetType="ListBoxItem">
+                                        <ContentPresenter />
+                                    </ControlTemplate>
+                                </Setter.Value>
+                            </Setter>
+                        </Style>
+                    </ListBox.ItemContainerStyle>
+
+                    <ListBox.ItemTemplate>
+                        <DataTemplate>
+                            <Border Background="#25252E"
+                                    BorderBrush="#3D4A5C"
+                                    BorderThickness="1"
+                                    CornerRadius="10"
+                                    Padding="8,5"
+                                    Cursor="Hand"
+                                    ToolTip="{Binding FilePath}">
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                    <Border Background="#3E4256"
+                                            CornerRadius="4"
+                                            Padding="4,1"
+                                            Margin="0,0,6,0"
+                                            VerticalAlignment="Center">
+                                        <TextBlock Text="{Binding Extension}"
+                                                   Foreground="#A5B4FC"
+                                                   FontSize="9"
+                                                   FontWeight="Bold" />
+                                    </Border>
+                                    <TextBlock Text="{Binding FileName}"
+                                               Foreground="#F1F1F5"
+                                               FontSize="12"
+                                               FontWeight="Medium"
+                                               MaxWidth="150"
+                                               TextTrimming="CharacterEllipsis"
+                                               VerticalAlignment="Center" />
+                                </StackPanel>
+                            </Border>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+            </Grid>
+        </Border>
+    </Grid>
+</Window>

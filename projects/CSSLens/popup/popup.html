@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CSS Lens</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="popup-container">
+    <!-- Header -->
+    <header class="header">
+      <div class="logo-group">
+        <div class="logo-icon">
+          <img src="../icons/icon48.png" alt="CSS Lens" width="24" height="24">
+        </div>
+        <div class="logo-text">
+          <span class="app-name">CSS Lens</span>
+          <span class="app-tagline">Style Inspector & Picker</span>
+        </div>
+      </div>
+      <span class="version-badge">v1.0</span>
+    </header>
+
+    <!-- Main Switch Section -->
+    <section class="switch-section">
+      <div class="power-toggle-wrapper">
+        <button id="btn-toggle" class="power-btn" type="button" aria-label="Toggle CSS Lens">
+          <div class="power-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M18.36 6.64a9 9 0 1 1-12.73 0"></path>
+              <line x1="12" y1="2" x2="12" y2="12"></line>
+            </svg>
+          </div>
+        </button>
+      </div>
+      <div class="status-info">
+        <div class="status-title-row">
+          <span id="status-dot" class="status-dot"></span>
+          <span id="status-label" class="status-label">Инспектор выключен</span>
+        </div>
+        <span class="shortcut-hint">Горячая клавиша: <kbd class="kbd">Alt + C</kbd></span>
+      </div>
+    </section>
+
+    <!-- Format Selector -->
+    <section class="format-section">
+      <div class="section-title">Формат копирования:</div>
+      <div class="format-grid">
+        <label class="format-card">
+          <input type="radio" name="copy-format" value="css" checked>
+          <div class="format-card-inner">
+            <span class="format-name">CSS Block</span>
+            <span class="format-desc">Стандартный CSS</span>
+          </div>
+        </label>
+        <label class="format-card">
+          <input type="radio" name="copy-format" value="compact">
+          <div class="format-card-inner">
+            <span class="format-name">Single Line</span>
+            <span class="format-desc">Одна строка</span>
+          </div>
+        </label>
+        <label class="format-card">
+          <input type="radio" name="copy-format" value="tailwind">
+          <div class="format-card-inner">
+            <span class="format-name">Tailwind</span>
+            <span class="format-desc">Utility классы</span>
+          </div>
+        </label>
+        <label class="format-card">
+          <input type="radio" name="copy-format" value="json">
+          <div class="format-card-inner">
+            <span class="format-name">JSON</span>
+            <span class="format-desc">Объект стилей</span>
+          </div>
+        </label>
+      </div>
+    </section>
+
+    <!-- Hotkeys Reference -->
+    <section class="hotkeys-section">
+      <div class="section-title">Управление на странице:</div>
+      <div class="hotkeys-list">
+        <div class="hotkey-item">
+          <kbd class="kbd">Click</kbd>
+          <span>Скопировать стили в буфер</span>
+        </div>
+        <div class="hotkey-item">
+          <kbd class="kbd">Space</kbd> / <kbd class="kbd">Alt</kbd>
+          <span>Заморозить инспекцию</span>
+        </div>
+        <div class="hotkey-item">
+          <kbd class="kbd">C</kbd>
+          <span>Быстрое копирование</span>
+        </div>
+        <div class="hotkey-item">
+          <kbd class="kbd">Esc</kbd>
+          <span>Выйти из режима инспекции</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Recent History Section -->
+    <section class="history-section" id="history-section">
+      <div class="history-header">
+        <span class="section-title">Недавние копирования</span>
+        <button id="btn-clear-history" class="btn-text-action" type="button">Очистить</button>
+      </div>
+      <div id="history-list" class="history-list">
+        <div class="history-empty">История пока пуста. Нажмите на любой элемент на странице!</div>
+      </div>
+    </section>
+
+    <!-- Footer Links -->
+    <footer class="footer">
+      <span>CSS Lens • Level 1 MVP</span>
+      <a href="../demo/demo.html" target="_blank" class="demo-link">Открыть Demo ↗</a>
+    </footer>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

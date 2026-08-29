@@ -1,0 +1,34 @@
+{
+  "manifest_version": 3,
+  "name": "CleanShare URL",
+  "version": "1.0.0",
+  "description": "Автоматическая и контекстная очистка ссылок от UTM-меток, рекламных трекеров (fbclid, gclid, etc.) и параметров слежки.",
+  "permissions": [
+    "storage",
+    "contextMenus",
+    "clipboardWrite",
+    "clipboardRead",
+    "activeTab",
+    "scripting",
+    "notifications"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_title": "CleanShare URL"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "css": ["content.css"],
+      "run_at": "document_idle"
+    }
+  ],
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  }
+}
