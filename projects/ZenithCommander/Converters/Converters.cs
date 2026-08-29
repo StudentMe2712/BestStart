@@ -1,10 +1,10 @@
-﻿using System;
+using System;
 using System.Globalization;
 using System.Windows;
 using System.Windows.Data;
 using System.Windows.Media;
 
-namespace ZenithCommander.Converters;
+namespace NexusCommander.Converters;
 
 public class BoolToVisibilityConverter : IValueConverter
 {
@@ -47,13 +47,11 @@ public class StringNullOrEmptyToVisibilityConverter : IValueConverter
 public class ItemTypeToBrushConverter : IValueConverter
 {
     private static readonly SolidColorBrush FolderBrush = new SolidColorBrush(Color.FromRgb(0xEC, 0xC4, 0x8D)); // #ECC48D
-    private static readonly SolidColorBrush ParentDirBrush = new SolidColorBrush(Color.FromRgb(0x60, 0xA5, 0xFA)); // #60A5FA
-    private static readonly SolidColorBrush FileBrush = new SolidColorBrush(Color.FromRgb(0x89, 0xDD, 0xFF)); // #89DDFF
+    private static readonly SolidColorBrush FileBrush = new SolidColorBrush(Color.FromRgb(0xED, 0xED, 0xED));   // #EDEDED
 
     static ItemTypeToBrushConverter()
     {
         FolderBrush.Freeze();
-        ParentDirBrush.Freeze();
         FileBrush.Freeze();
     }
 
@@ -69,41 +67,32 @@ public class ItemTypeToBrushConverter : IValueConverter
     public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) => Binding.DoNothing;
 }
 
-public class ActiveBorderBrushConverter : IValueConverter
+public class SidebarActiveBrushConverter : IValueConverter
 {
-    private static readonly SolidColorBrush ActiveBrush = new SolidColorBrush(Color.FromRgb(0x3B, 0x82, 0xF6)); // #3B82F6 Accent
-    private static readonly SolidColorBrush InactiveBrush = new SolidColorBrush(Color.FromRgb(0x3E, 0x3E, 0x42)); // #3E3E42 Border
+    private static readonly SolidColorBrush ActiveBgBrush = new SolidColorBrush(Color.FromArgb(0x35, 0x3B, 0x82, 0xF6)); // Semi-transparent accent
+    private static readonly SolidColorBrush InactiveBgBrush = new SolidColorBrush(Colors.Transparent);
 
-    static ActiveBorderBrushConverter()
+    static SidebarActiveBrushConverter()
     {
-        ActiveBrush.Freeze();
-        InactiveBrush.Freeze();
+        ActiveBgBrush.Freeze();
+        InactiveBgBrush.Freeze();
     }
 
     public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
     {
         bool isActive = value is bool b && b;
-        return isActive ? ActiveBrush : InactiveBrush;
+        return isActive ? ActiveBgBrush : InactiveBgBrush;
     }
 
     public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) => Binding.DoNothing;
 }
 
-public class ActivePanelBackgroundConverter : IValueConverter
+public class SidebarIndicatorVisibilityConverter : IValueConverter
 {
-    private static readonly SolidColorBrush ActiveHeaderBrush = new SolidColorBrush(Color.FromRgb(0x25, 0x25, 0x2A)); // Active Header
-    private static readonly SolidColorBrush InactiveHeaderBrush = new SolidColorBrush(Color.FromRgb(0x1F, 0x1F, 0x22)); // Inactive Header
-
-    static ActivePanelBackgroundConverter()
-    {
-        ActiveHeaderBrush.Freeze();
-        InactiveHeaderBrush.Freeze();
-    }
-
     public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
     {
         bool isActive = value is bool b && b;
-        return isActive ? ActiveHeaderBrush : InactiveHeaderBrush;
+        return isActive ? Visibility.Visible : Visibility.Hidden;
     }
 
     public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) => Binding.DoNothing;

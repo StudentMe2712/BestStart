@@ -1,9 +1,10 @@
-﻿using System.Windows;
+using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
-using ZenithCommander.ViewModels;
+using NexusCommander.Models;
+using NexusCommander.ViewModels;
 
-namespace ZenithCommander;
+namespace NexusCommander;
 
 public partial class MainWindow : Window
 {
@@ -53,90 +54,210 @@ public partial class MainWindow : Window
         }
     }
 
+    private void AddressBar_MouseDown(object sender, MouseButtonEventArgs e)
+    {
+        if (DataContext is MainViewModel vm)
+        {
+            vm.StartEditPath();
+            Dispatcher.BeginInvoke(new System.Action(() =>
+            {
+                AddressTextBox.Focus();
+                AddressTextBox.SelectAll();
+            }));
+            e.Handled = true;
+        }
+    }
+
+    private void AddressTextBox_KeyDown(object sender, KeyEventArgs e)
+    {
+        if (DataContext is not MainViewModel vm) return;
+
+        if (e.Key == Key.Enter)
+        {
+            vm.CommitEditPath();
+            FileListView.Focus();
+            e.Handled = true;
+        }
+        else if (e.Key == Key.Escape)
+        {
+            vm.CancelEditPath();
+            FileListView.Focus();
+            e.Handled = true;
+        }
+    }
+
+    private void AddressTextBox_LostFocus(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is MainViewModel vm && vm.IsEditingPath)
+        {
+            vm.CommitEditPath();
+        }
+    }
+
+    private void BtnClearSearch_Click(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is MainViewModel vm)
+        {
+            vm.SearchQuery = string.Empty;
+        }
+    }
+
+    private void FileListView_MouseDoubleClick(object sender, MouseButtonEventArgs e)
+    {
+        if (DataContext is MainViewModel vm && vm.SelectedItem != null)
+        {
+            vm.OpenItem(vm.SelectedItem);
+            e.Handled = true;
+        }
+    }
+
+    private void FileListView_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (DataContext is MainViewModel vm)
+        {
+            var selectedList = FileListView.SelectedItems.Cast<FileSystemItem>();
+            vm.UpdateSelection(selectedList);
+        }
+    }
+
+    private void FileListView_KeyDown(object sender, KeyEventArgs e)
+    {
+        if (DataContext is not MainViewModel vm) return;
+
+        if (e.Key == Key.Enter)
+        {
+            if (vm.SelectedItem != null)
+            {
+                vm.OpenItem(vm.SelectedItem);
+                e.Handled = true;
+            }
+        }
+        else if (e.Key == Key.Back)
+        {
+            vm.NavigateUp();
+            e.Handled = true;
+        }
+        else if (e.Key == Key.F2)
+        {
+            vm.RenameCommand.Execute(null);
+            e.Handled = true;
+        }
+        else if (e.Key == Key.Delete)
+        {
+            vm.DeleteCommand.Execute(null);
+            e.Handled = true;
+        }
+    }
+
     private void Window_PreviewKeyDown(object sender, KeyEventArgs e)
     {
         if (DataContext is not MainViewModel vm) return;
 
-        // Check if focus is inside an editable TextBox
         bool isTextBoxFocused = Keyboard.FocusedElement is TextBox;
 
-        if (e.Key == Key.Tab && (Keyboard.Modifiers == ModifierKeys.None))
+        // Address Bar Shortcut: Ctrl+L or Alt+D
+        if ((e.Key == Key.L && Keyboard.Modifiers.HasFlag(ModifierKeys.Control)) ||
+            (e.Key == Key.D && Keyboard.Modifiers.HasFlag(ModifierKeys.Alt)))
         {
-            // Switch panel focus
-            vm.SwitchActivePanel();
-            if (vm.ActivePanel == vm.LeftPanel)
+            vm.StartEditPath();
+            Dispatcher.BeginInvoke(new System.Action(() =>
             {
-                LeftPanelControl.FocusListView();
-            }
-            else
-            {
-                RightPanelControl.FocusListView();
-            }
+                AddressTextBox.Focus();
+                AddressTextBox.SelectAll();
+            }));
             e.Handled = true;
             return;
         }
 
+        // Search Box Shortcut: Ctrl+F or F3
+        if ((e.Key == Key.F && Keyboard.Modifiers.HasFlag(ModifierKeys.Control)) ||
+            (e.Key == Key.F3 && !isTextBoxFocused))
+        {
+            SearchTextBox.Focus();
+            SearchTextBox.SelectAll();
+            e.Handled = true;
+            return;
+        }
+
+        // Refresh: F5 or Ctrl+R
         if (e.Key == Key.F5 || (e.Key == Key.R && Keyboard.Modifiers.HasFlag(ModifierKeys.Control)))
         {
-            if (Keyboard.Modifiers == ModifierKeys.None && e.Key == Key.F5)
+            _ = vm.RefreshAsync();
+            e.Handled = true;
+            return;
+        }
+
+        // Navigation Shortcuts: Alt+Left (Back), Alt+Right (Forward), Alt+Up (Up)
+        if (Keyboard.Modifiers.HasFlag(ModifierKeys.Alt))
+        {
+            if (e.Key == Key.Left)
             {
-                // In Total Commander / Midnight Commander, F5 is Copy, but user requested:
-                // "Keyboard bindings: F5 / Ctrl+R: refresh active panel" OR Bottom Bar "F5 Copy".
-                // Let's support Ctrl+R for refresh and F5 for Copy, or if Ctrl is held then Refresh.
-                // We'll execute Refresh on Ctrl+R or F5 when requested.
+                vm.GoBack();
+                e.Handled = true;
+                return;
             }
-            if (e.Key == Key.R && Keyboard.Modifiers.HasFlag(ModifierKeys.Control))
+            if (e.Key == Key.Right)
             {
-                _ = vm.ActivePanel.RefreshAsync();
+                vm.GoForward();
+                e.Handled = true;
+                return;
+            }
+            if (e.Key == Key.Up)
+            {
+                vm.NavigateUp();
+                e.Handled = true;
+                return;
+            }
+            if (e.Key == Key.Enter && !isTextBoxFocused)
+            {
+                vm.PropertiesCommand.Execute(null);
                 e.Handled = true;
                 return;
             }
         }
 
+        // Browser Back/Forward Keys
+        if (e.Key == Key.BrowserBack)
+        {
+            vm.GoBack();
+            e.Handled = true;
+            return;
+        }
+        if (e.Key == Key.BrowserForward)
+        {
+            vm.GoForward();
+            e.Handled = true;
+            return;
+        }
+
+        // Ctrl+Shift+N: New Folder
+        if (e.Key == Key.N && Keyboard.Modifiers.HasFlag(ModifierKeys.Control) && Keyboard.Modifiers.HasFlag(ModifierKeys.Shift))
+        {
+            vm.NewFolderCommand.Execute(null);
+            e.Handled = true;
+            return;
+        }
+
+        // File list shortcuts when not typing in text boxes
         if (!isTextBoxFocused)
         {
-            switch (e.Key)
+            if (e.Key == Key.C && Keyboard.Modifiers.HasFlag(ModifierKeys.Control))
             {
-                case Key.F3:
-                    vm.ViewFileCommand.Execute(null);
-                    e.Handled = true;
-                    break;
-                case Key.F4:
-                    vm.EditFileCommand.Execute(null);
-                    e.Handled = true;
-                    break;
-                case Key.F5:
-                    if (Keyboard.Modifiers.HasFlag(ModifierKeys.Control))
-                    {
-                        _ = vm.ActivePanel.RefreshAsync();
-                    }
-                    else
-                    {
-                        vm.CopyItemCommand.Execute(null);
-                    }
-                    e.Handled = true;
-                    break;
-                case Key.F6:
-                    vm.MoveItemCommand.Execute(null);
-                    e.Handled = true;
-                    break;
-                case Key.F7:
-                    vm.NewFolderCommand.Execute(null);
-                    e.Handled = true;
-                    break;
-                case Key.F8:
-                case Key.Delete:
-                    vm.DeleteItemCommand.Execute(null);
-                    e.Handled = true;
-                    break;
-                case Key.Back:
-                    vm.ActivePanel.NavigateUp();
-                    e.Handled = true;
-                    break;
-                case Key.Left when Keyboard.Modifiers.HasFlag(ModifierKeys.Alt):
-                    vm.ActivePanel.NavigateUp();
-                    e.Handled = true;
-                    break;
+                vm.CopyCommand.Execute(null);
+                e.Handled = true;
+                return;
+            }
+            if (e.Key == Key.X && Keyboard.Modifiers.HasFlag(ModifierKeys.Control))
+            {
+                vm.CutCommand.Execute(null);
+                e.Handled = true;
+                return;
+            }
+            if (e.Key == Key.V && Keyboard.Modifiers.HasFlag(ModifierKeys.Control))
+            {
+                vm.PasteCommand.Execute(null);
+                e.Handled = true;
+                return;
             }
         }
     }

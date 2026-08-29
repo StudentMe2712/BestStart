@@ -1,8 +1,8 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 
-namespace ZenithCommander.Helpers;
+namespace NexusCommander.Helpers;
 
 public abstract class ViewModelBase : INotifyPropertyChanged
 {

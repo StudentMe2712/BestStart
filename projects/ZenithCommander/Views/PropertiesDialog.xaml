@@ -1,0 +1,167 @@
+<Window x:Class="NexusCommander.Views.PropertiesDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d"
+        Title="Properties"
+        Height="440" Width="420"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Background="Transparent"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="NoResize"
+        ShowInTaskbar="False">
+
+    <Grid Margin="10">
+        <Border Background="{StaticResource BrushBackground}"
+                BorderBrush="{StaticResource BrushBorderLight}"
+                BorderThickness="1"
+                CornerRadius="8">
+            <Border.Effect>
+                <DropShadowEffect Color="#000000" BlurRadius="20" ShadowDepth="4" Opacity="0.7" />
+            </Border.Effect>
+
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="36" />
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="50" />
+                </Grid.RowDefinitions>
+
+                <!-- Title Bar -->
+                <Border Grid.Row="0"
+                        Background="{StaticResource BrushSecondary}"
+                        BorderBrush="{StaticResource BrushBorder}"
+                        BorderThickness="0,0,0,1"
+                        CornerRadius="8,8,0,0"
+                        MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
+                    <Grid>
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="14,0,0,0">
+                            <TextBlock Text="ℹ️ " FontSize="12" />
+                            <TextBlock Text="Properties"
+                                       FontSize="12"
+                                       FontWeight="SemiBold"
+                                       Foreground="{StaticResource BrushTextPrimary}" />
+                        </StackPanel>
+
+                        <Button Width="36" Height="36"
+                                HorizontalAlignment="Right"
+                                Background="Transparent"
+                                BorderThickness="0"
+                                Foreground="{StaticResource BrushTextSecondary}"
+                                Click="BtnClose_Click"
+                                ToolTip="Close">
+                            <TextBlock Text="✕" FontSize="11" FontWeight="Bold" />
+                        </Button>
+                    </Grid>
+                </Border>
+
+                <!-- Content Area -->
+                <ScrollViewer Grid.Row="1" Margin="16,12" VerticalScrollBarVisibility="Auto">
+                    <StackPanel>
+                        <!-- Header with Icon & Name -->
+                        <Grid Margin="0,0,0,12">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="48" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+
+                            <Border Width="40" Height="40"
+                                    Background="{StaticResource BrushSurface}"
+                                    CornerRadius="6"
+                                    HorizontalAlignment="Left"
+                                    VerticalAlignment="Center">
+                                <TextBlock x:Name="IconTextBlock"
+                                           Text="📄"
+                                           FontSize="22"
+                                           HorizontalAlignment="Center"
+                                           VerticalAlignment="Center" />
+                            </Border>
+
+                            <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                <TextBlock x:Name="NameTextBlock"
+                                           Text="Filename.ext"
+                                           FontSize="13"
+                                           FontWeight="Bold"
+                                           Foreground="{StaticResource BrushTextPrimary}"
+                                           TextTrimming="CharacterEllipsis" />
+                                <TextBlock x:Name="TypeTextBlock"
+                                           Text="File Type"
+                                           FontSize="11"
+                                           Foreground="{StaticResource BrushTextSecondary}"
+                                           Margin="0,2,0,0" />
+                            </StackPanel>
+                        </Grid>
+
+                        <Separator Background="{StaticResource BrushBorder}" Margin="0,0,0,12" />
+
+                        <!-- Details Grid -->
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="90" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+
+                            <!-- Location -->
+                            <TextBlock Grid.Row="0" Grid.Column="0" Text="Location:" Foreground="{StaticResource BrushTextSecondary}" FontSize="11" Margin="0,4" />
+                            <TextBox Grid.Row="0" Grid.Column="1" x:Name="LocationTextBox" IsReadOnly="True" BorderThickness="0" Background="Transparent" Foreground="{StaticResource BrushTextPrimary}" FontSize="11" TextWrapping="Wrap" Margin="0,2" />
+
+                            <!-- Size -->
+                            <TextBlock Grid.Row="1" Grid.Column="0" Text="Size:" Foreground="{StaticResource BrushTextSecondary}" FontSize="11" Margin="0,4" />
+                            <TextBlock Grid.Row="1" Grid.Column="1" x:Name="SizeTextBlock" Foreground="{StaticResource BrushTextPrimary}" FontSize="11" Margin="0,4" />
+
+                            <!-- Contains (for directory) -->
+                            <TextBlock Grid.Row="2" Grid.Column="0" x:Name="ContainsLabel" Text="Contains:" Foreground="{StaticResource BrushTextSecondary}" FontSize="11" Margin="0,4" />
+                            <TextBlock Grid.Row="2" Grid.Column="1" x:Name="ContainsTextBlock" Foreground="{StaticResource BrushTextPrimary}" FontSize="11" Margin="0,4" />
+
+                            <!-- Created -->
+                            <TextBlock Grid.Row="3" Grid.Column="0" Text="Created:" Foreground="{StaticResource BrushTextSecondary}" FontSize="11" Margin="0,4" />
+                            <TextBlock Grid.Row="3" Grid.Column="1" x:Name="CreatedTextBlock" Foreground="{StaticResource BrushTextPrimary}" FontSize="11" Margin="0,4" />
+
+                            <!-- Modified -->
+                            <TextBlock Grid.Row="4" Grid.Column="0" Text="Modified:" Foreground="{StaticResource BrushTextSecondary}" FontSize="11" Margin="0,4" />
+                            <TextBlock Grid.Row="4" Grid.Column="1" x:Name="ModifiedTextBlock" Foreground="{StaticResource BrushTextPrimary}" FontSize="11" Margin="0,4" />
+
+                            <!-- Accessed -->
+                            <TextBlock Grid.Row="5" Grid.Column="0" Text="Accessed:" Foreground="{StaticResource BrushTextSecondary}" FontSize="11" Margin="0,4" />
+                            <TextBlock Grid.Row="5" Grid.Column="1" x:Name="AccessedTextBlock" Foreground="{StaticResource BrushTextPrimary}" FontSize="11" Margin="0,4" />
+
+                            <!-- Attributes -->
+                            <TextBlock Grid.Row="6" Grid.Column="0" Text="Attributes:" Foreground="{StaticResource BrushTextSecondary}" FontSize="11" Margin="0,4" />
+                            <TextBlock Grid.Row="6" Grid.Column="1" x:Name="AttributesTextBlock" Foreground="{StaticResource BrushTextPrimary}" FontSize="11" Margin="0,4" />
+                        </Grid>
+                    </StackPanel>
+                </ScrollViewer>
+
+                <!-- Bottom Button Bar -->
+                <Border Grid.Row="2"
+                        Background="{StaticResource BrushSecondary}"
+                        BorderBrush="{StaticResource BrushBorder}"
+                        BorderThickness="0,1,0,0"
+                        CornerRadius="0,0,8,8"
+                        Padding="12,8">
+                    <Button Content="Close"
+                            Width="80"
+                            Height="28"
+                            HorizontalAlignment="Right"
+                            Background="{StaticResource BrushAccent}"
+                            Foreground="#FFFFFF"
+                            FontWeight="SemiBold"
+                            IsDefault="True"
+                            IsCancel="True"
+                            Click="BtnClose_Click" />
+                </Border>
+            </Grid>
+        </Border>
+    </Grid>
+</Window>

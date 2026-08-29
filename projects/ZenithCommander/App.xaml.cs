@@ -1,6 +1,6 @@
-﻿using System.Windows;
+using System.Windows;
 
-namespace ZenithCommander;
+namespace NexusCommander;
 
 public partial class App : Application
 {

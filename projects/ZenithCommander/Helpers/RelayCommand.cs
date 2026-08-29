@@ -1,7 +1,7 @@
-﻿using System;
+using System;
 using System.Windows.Input;
 
-namespace ZenithCommander.Helpers;
+namespace NexusCommander.Helpers;
 
 public class RelayCommand : ICommand
 {

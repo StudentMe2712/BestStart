@@ -1,15 +1,15 @@
-﻿<Window x:Class="ZenithCommander.MainWindow"
+<Window x:Class="NexusCommander.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:local="clr-namespace:ZenithCommander"
-        xmlns:controls="clr-namespace:ZenithCommander.Controls"
-        xmlns:vm="clr-namespace:ZenithCommander.ViewModels"
+        xmlns:local="clr-namespace:NexusCommander"
+        xmlns:vm="clr-namespace:NexusCommander.ViewModels"
+        xmlns:models="clr-namespace:NexusCommander.Models"
         mc:Ignorable="d"
-        Title="ZENITH COMMANDER"
-        Height="750" Width="1200"
-        MinHeight="450" MinWidth="700"
+        Title="Nexus Commander"
+        Height="780" Width="1280"
+        MinHeight="480" MinWidth="800"
         WindowStyle="None"
         AllowsTransparency="True"
         Background="Transparent"
@@ -21,7 +21,7 @@
         <vm:MainViewModel />
     </Window.DataContext>
 
-    <!-- Outer Container with Rounded Corners and Drop Shadow -->
+    <!-- Outer Window Container with Rounded Corners and Drop Shadow -->
     <Grid Margin="10">
         <Border Background="{StaticResource BrushBackground}"
                 BorderBrush="{StaticResource BrushBorder}"
@@ -30,20 +30,21 @@
                 ClipToBounds="False">
             <Border.Effect>
                 <DropShadowEffect Color="#000000"
-                                  BlurRadius="20"
-                                  ShadowDepth="5"
-                                  Opacity="0.6"
+                                  BlurRadius="22"
+                                  ShadowDepth="6"
+                                  Opacity="0.65"
                                   Direction="270" />
             </Border.Effect>
 
             <Grid>
                 <Grid.RowDefinitions>
-                    <RowDefinition Height="38" />  <!-- Title Bar -->
-                    <RowDefinition Height="*" />   <!-- Dual-Panel File Manager Area -->
-                    <RowDefinition Height="42" />  <!-- Bottom Hotkey Bar -->
+                    <RowDefinition Height="38" />  <!-- 0: Title Bar -->
+                    <RowDefinition Height="88" />  <!-- 1: Navigation & Ribbon Bar -->
+                    <RowDefinition Height="*" />   <!-- 2: Sidebar + Main File View -->
+                    <RowDefinition Height="30" />  <!-- 3: Bottom Status Bar -->
                 </Grid.RowDefinitions>
 
-                <!-- ================= TOP TITLE BAR ================= -->
+                <!-- ================= 0: TOP TITLE BAR ================= -->
                 <Border Grid.Row="0"
                         Background="{StaticResource BrushSecondary}"
                         BorderBrush="{StaticResource BrushBorder}"
@@ -62,38 +63,37 @@
                                     Orientation="Horizontal"
                                     VerticalAlignment="Center"
                                     Margin="12,0,0,0">
-                            <!-- Cyber Shield / Commander Emblem -->
-                            <Border Width="22" Height="22"
+                            <!-- Modern Galaxy / Nexus Icon Badge -->
+                            <Border Width="24" Height="24"
                                     Background="{StaticResource BrushAccent}"
-                                    CornerRadius="5"
-                                    Margin="0,0,8,0">
-                                <TextBlock Text="⚡"
+                                    CornerRadius="6"
+                                    Margin="0,0,9,0">
+                                <TextBlock Text="🌌"
                                            FontSize="13"
-                                           Foreground="#FFFFFF"
                                            HorizontalAlignment="Center"
                                            VerticalAlignment="Center" />
                             </Border>
 
-                            <TextBlock Text="ZENITH COMMANDER"
+                            <TextBlock Text="NEXUS COMMANDER"
                                        FontSize="12"
                                        FontWeight="Bold"
                                        Foreground="{StaticResource BrushTextPrimary}"
                                        VerticalAlignment="Center" />
 
-                            <TextBlock Text=" [Level 1 — Dual-Panel File Manager]"
+                            <TextBlock Text=" [Modern Explorer File Manager]"
                                        FontSize="11"
                                        FontWeight="Normal"
-                                       Foreground="{StaticResource BrushTextSecondary}"
+                                       Foreground="{StaticResource BrushTextMuted}"
                                        VerticalAlignment="Center"
-                                       Margin="6,0,0,0" />
+                                       Margin="8,0,0,0" />
                         </StackPanel>
 
-                        <!-- Window Control Buttons -->
+                        <!-- Window Control Buttons (Minimize, Maximize/Restore, Close) -->
                         <StackPanel Grid.Column="2"
                                     Orientation="Horizontal"
                                     VerticalAlignment="Stretch">
                             <!-- Minimize Button -->
-                            <Button Width="40"
+                            <Button Width="42"
                                     Background="Transparent"
                                     BorderThickness="0"
                                     Foreground="{StaticResource BrushTextSecondary}"
@@ -103,7 +103,7 @@
                             </Button>
 
                             <!-- Maximize/Restore Button -->
-                            <Button Width="40"
+                            <Button Width="42"
                                     Background="Transparent"
                                     BorderThickness="0"
                                     Foreground="{StaticResource BrushTextSecondary}"
@@ -114,7 +114,7 @@
 
                             <!-- Close Button -->
                             <Button x:Name="BtnClose"
-                                    Width="44"
+                                    Width="46"
                                     Background="Transparent"
                                     BorderThickness="0"
                                     Foreground="{StaticResource BrushTextSecondary}"
@@ -146,22 +146,439 @@
                     </Grid>
                 </Border>
 
-                <!-- ================= MAIN DUAL-PANEL AREA ================= -->
-                <Grid Grid.Row="1" Margin="8,8,8,6">
+                <!-- ================= 1: TOP COMMAND & NAVIGATION BAR ================= -->
+                <Border Grid.Row="1"
+                        Background="{StaticResource BrushSecondary}"
+                        BorderBrush="{StaticResource BrushBorder}"
+                        BorderThickness="0,0,0,1"
+                        Padding="10,6">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="36" />  <!-- Navigation Controls & Address Bar & Search -->
+                            <RowDefinition Height="36" />  <!-- Action Ribbon Toolbar -->
+                        </Grid.RowDefinitions>
+
+                        <!-- ROW 1: Navigation + Breadcrumb/Address + Search Box -->
+                        <Grid Grid.Row="0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" /> <!-- Back, Forward, Up, Refresh -->
+                                <ColumnDefinition Width="*" />    <!-- Breadcrumb / Address Bar -->
+                                <ColumnDefinition Width="260" />  <!-- Live Filter / Search Box -->
+                            </Grid.ColumnDefinitions>
+
+                            <!-- Navigation Buttons -->
+                            <StackPanel Grid.Column="0"
+                                        Orientation="Horizontal"
+                                        VerticalAlignment="Center"
+                                        Margin="0,0,8,0">
+                                <Button Style="{StaticResource NavIconButton}"
+                                        Command="{Binding GoBackCommand}"
+                                        ToolTip="Back (Alt+Left)">
+                                    <TextBlock Text="◀" FontSize="11" />
+                                </Button>
+
+                                <Button Style="{StaticResource NavIconButton}"
+                                        Command="{Binding GoForwardCommand}"
+                                        ToolTip="Forward (Alt+Right)">
+                                    <TextBlock Text="▶" FontSize="11" />
+                                </Button>
+
+                                <Button Style="{StaticResource NavIconButton}"
+                                        Command="{Binding NavigateUpCommand}"
+                                        ToolTip="Up to parent folder (Alt+Up / Backspace)">
+                                    <TextBlock Text="⬆" FontSize="12" />
+                                </Button>
+
+                                <Button Style="{StaticResource NavIconButton}"
+                                        Command="{Binding RefreshCommand}"
+                                        ToolTip="Refresh (F5 / Ctrl+R)">
+                                    <TextBlock Text="🔄" FontSize="11" />
+                                </Button>
+                            </StackPanel>
+
+                            <!-- Interactive Breadcrumb / Address Bar -->
+                            <Border Grid.Column="1"
+                                    Background="{StaticResource BrushSurface}"
+                                    BorderBrush="{StaticResource BrushBorder}"
+                                    BorderThickness="1"
+                                    CornerRadius="6"
+                                    Margin="0,0,8,0"
+                                    Padding="4,2"
+                                    VerticalAlignment="Center"
+                                    Height="32">
+                                <Grid>
+                                    <!-- Mode A: Clickable Breadcrumb Segments -->
+                                    <Grid Visibility="{Binding IsEditingPath, Converter={StaticResource InverseBoolToVis}}"
+                                          Background="Transparent"
+                                          MouseDown="AddressBar_MouseDown"
+                                          Cursor="Hand">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+
+                                        <TextBlock Grid.Column="0"
+                                                   Text="📁"
+                                                   FontSize="12"
+                                                   VerticalAlignment="Center"
+                                                   Margin="6,0,4,0" />
+
+                                        <!-- Breadcrumb Segments ItemsControl -->
+                                        <ItemsControl Grid.Column="1"
+                                                      ItemsSource="{Binding Breadcrumbs}"
+                                                      VerticalAlignment="Center">
+                                            <ItemsControl.ItemsPanel>
+                                                <ItemsPanelTemplate>
+                                                    <StackPanel Orientation="Horizontal" />
+                                                </ItemsPanelTemplate>
+                                            </ItemsControl.ItemsPanel>
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                        <Button Content="{Binding Name}"
+                                                                Style="{StaticResource BreadcrumbButton}"
+                                                                Command="{Binding DataContext.NavigateBreadcrumbCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                                CommandParameter="{Binding}"
+                                                                ToolTip="{Binding FullPath}" />
+
+                                                        <!-- Segment Chevron Separator -->
+                                                        <TextBlock Text="›"
+                                                                   Foreground="{StaticResource BrushTextMuted}"
+                                                                   FontSize="13"
+                                                                   FontWeight="Bold"
+                                                                   VerticalAlignment="Center"
+                                                                   Margin="2,0,2,0"
+                                                                   Visibility="{Binding IsLast, Converter={StaticResource InverseBoolToVis}}" />
+                                                    </StackPanel>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+
+                                        <!-- Switch to Edit Mode Icon Button -->
+                                        <Button Grid.Column="2"
+                                                Width="24" Height="24"
+                                                Style="{StaticResource NavIconButton}"
+                                                Command="{Binding StartEditPathCommand}"
+                                                ToolTip="Edit address (Ctrl+L)"
+                                                HorizontalAlignment="Right"
+                                                Margin="0,0,4,0">
+                                            <TextBlock Text="✏️" FontSize="10" />
+                                        </Button>
+                                    </Grid>
+
+                                    <!-- Mode B: Editable Address TextBox -->
+                                    <Grid Visibility="{Binding IsEditingPath, Converter={StaticResource BoolToVis}}">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+
+                                        <TextBox x:Name="AddressTextBox"
+                                                 Grid.Column="0"
+                                                 Text="{Binding PathInputText, UpdateSourceTrigger=PropertyChanged}"
+                                                 BorderThickness="0"
+                                                 Background="Transparent"
+                                                 Foreground="{StaticResource BrushTextPrimary}"
+                                                 VerticalAlignment="Center"
+                                                 FontSize="12"
+                                                 Padding="6,0"
+                                                 KeyDown="AddressTextBox_KeyDown"
+                                                 LostFocus="AddressTextBox_LostFocus" />
+
+                                        <Button Grid.Column="1"
+                                                Width="24" Height="24"
+                                                Style="{StaticResource NavIconButton}"
+                                                Command="{Binding CommitEditPathCommand}"
+                                                ToolTip="Navigate"
+                                                Margin="0,0,2,0">
+                                            <TextBlock Text="➔" FontSize="11" Foreground="{StaticResource BrushAccent}" />
+                                        </Button>
+
+                                        <Button Grid.Column="2"
+                                                Width="24" Height="24"
+                                                Style="{StaticResource NavIconButton}"
+                                                Command="{Binding CancelEditPathCommand}"
+                                                ToolTip="Cancel"
+                                                Margin="0,0,4,0">
+                                            <TextBlock Text="✕" FontSize="10" />
+                                        </Button>
+                                    </Grid>
+                                </Grid>
+                            </Border>
+
+                            <!-- Live Filter / Search Box -->
+                            <Border Grid.Column="2"
+                                    Background="{StaticResource BrushSurface}"
+                                    BorderBrush="{StaticResource BrushBorder}"
+                                    BorderThickness="1"
+                                    CornerRadius="6"
+                                    VerticalAlignment="Center"
+                                    Height="32"
+                                    Padding="4,2">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+
+                                    <TextBlock Grid.Column="0"
+                                               Text="🔍"
+                                               FontSize="11"
+                                               Foreground="{StaticResource BrushTextMuted}"
+                                               VerticalAlignment="Center"
+                                               Margin="4,0,4,0" />
+
+                                    <TextBox x:Name="SearchTextBox"
+                                             Grid.Column="1"
+                                             Text="{Binding SearchQuery, UpdateSourceTrigger=PropertyChanged}"
+                                             BorderThickness="0"
+                                             Background="Transparent"
+                                             Foreground="{StaticResource BrushTextPrimary}"
+                                             VerticalAlignment="Center"
+                                             FontSize="11"
+                                             Padding="2,0" />
+
+                                    <!-- Placeholder text when search box is empty -->
+                                    <TextBlock Grid.Column="1"
+                                               Text="Filter / Search..."
+                                               Foreground="{StaticResource BrushTextMuted}"
+                                               FontSize="11"
+                                               VerticalAlignment="Center"
+                                               IsHitTestVisible="False"
+                                               Margin="4,0,0,0"
+                                               Visibility="{Binding SearchQuery, Converter={StaticResource StringNullOrEmptyToVis}, ConverterParameter=invert}" />
+
+                                    <!-- Clear search button -->
+                                    <Button Grid.Column="2"
+                                            Width="20" Height="20"
+                                            Style="{StaticResource NavIconButton}"
+                                            Click="BtnClearSearch_Click"
+                                            ToolTip="Clear filter"
+                                            Visibility="{Binding SearchQuery, Converter={StaticResource StringNullOrEmptyToVis}}">
+                                        <TextBlock Text="✕" FontSize="9" />
+                                    </Button>
+                                </Grid>
+                            </Border>
+                        </Grid>
+
+                        <!-- ROW 2: Action Ribbon / Toolbar -->
+                        <Grid Grid.Row="1" Margin="0,4,0,0">
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <!-- ➕ New Folder -->
+                                <Button Style="{StaticResource RibbonButton}"
+                                        Command="{Binding NewFolderCommand}"
+                                        ToolTip="Create new folder (Ctrl+Shift+N / F7)">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="➕ " FontSize="11" Foreground="{StaticResource BrushAccent}" />
+                                        <TextBlock Text="New Folder" />
+                                    </StackPanel>
+                                </Button>
+
+                                <Separator Style="{StaticResource {x:Type Separator}}" Margin="6,4" />
+
+                                <!-- 📋 Copy -->
+                                <Button Style="{StaticResource RibbonButton}"
+                                        Command="{Binding CopyCommand}"
+                                        ToolTip="Copy selected item(s) (Ctrl+C)">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="📋 " FontSize="11" />
+                                        <TextBlock Text="Copy" />
+                                    </StackPanel>
+                                </Button>
+
+                                <!-- ✂ Cut -->
+                                <Button Style="{StaticResource RibbonButton}"
+                                        Command="{Binding CutCommand}"
+                                        ToolTip="Cut selected item(s) (Ctrl+X)">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="✂ " FontSize="11" />
+                                        <TextBlock Text="Cut" />
+                                    </StackPanel>
+                                </Button>
+
+                                <!-- 📥 Paste -->
+                                <Button Style="{StaticResource RibbonButton}"
+                                        Command="{Binding PasteCommand}"
+                                        ToolTip="Paste from clipboard (Ctrl+V)">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="📥 " FontSize="11" />
+                                        <TextBlock Text="Paste" />
+                                    </StackPanel>
+                                </Button>
+
+                                <Separator Style="{StaticResource {x:Type Separator}}" Margin="6,4" />
+
+                                <!-- ✏️ Rename -->
+                                <Button Style="{StaticResource RibbonButton}"
+                                        Command="{Binding RenameCommand}"
+                                        ToolTip="Rename selected item (F2)">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="✏️ " FontSize="11" />
+                                        <TextBlock Text="Rename" />
+                                    </StackPanel>
+                                </Button>
+
+                                <!-- 🗑️ Delete -->
+                                <Button Style="{StaticResource RibbonButton}"
+                                        Command="{Binding DeleteCommand}"
+                                        ToolTip="Delete selected item(s) (Delete / F8)">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="🗑️ " FontSize="11" Foreground="{StaticResource BrushError}" />
+                                        <TextBlock Text="Delete" />
+                                    </StackPanel>
+                                </Button>
+
+                                <Separator Style="{StaticResource {x:Type Separator}}" Margin="6,4" />
+
+                                <!-- ℹ️ Properties -->
+                                <Button Style="{StaticResource RibbonButton}"
+                                        Command="{Binding PropertiesCommand}"
+                                        ToolTip="View item properties (Alt+Enter)">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="ℹ️ " FontSize="11" Foreground="{StaticResource BrushAccentHover}" />
+                                        <TextBlock Text="Properties" />
+                                    </StackPanel>
+                                </Button>
+
+                                <!-- 💻 Open in Terminal -->
+                                <Button Style="{StaticResource RibbonButton}"
+                                        Command="{Binding OpenInTerminalCommand}"
+                                        ToolTip="Open PowerShell / Terminal here">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="💻 " FontSize="11" />
+                                        <TextBlock Text="Terminal" />
+                                    </StackPanel>
+                                </Button>
+                            </StackPanel>
+                        </Grid>
+                    </Grid>
+                </Border>
+
+                <!-- ================= 2: SIDEBAR + MAIN FILE VIEW ================= -->
+                <Grid Grid.Row="2">
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" MinWidth="200" />
-                        <ColumnDefinition Width="6" />
-                        <ColumnDefinition Width="*" MinWidth="200" />
+                        <ColumnDefinition Width="240" MinWidth="180" MaxWidth="360" /> <!-- Sidebar Navigation Pane -->
+                        <ColumnDefinition Width="4" />                                   <!-- Grid Splitter -->
+                        <ColumnDefinition Width="*" MinWidth="300" />                   <!-- Main File List View -->
                     </Grid.ColumnDefinitions>
 
-                    <!-- Left File Panel -->
-                    <controls:FilePanelView x:Name="LeftPanelControl"
-                                            Grid.Column="0"
-                                            DataContext="{Binding LeftPanel}" />
+                    <!-- SIDEBAR (Navigation Pane) -->
+                    <Border Grid.Column="0"
+                            Background="{StaticResource BrushSidebar}"
+                            BorderBrush="{StaticResource BrushBorder}"
+                            BorderThickness="0,0,1,0">
+                        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                            <StackPanel Margin="6,8">
+                                <!-- Section 1: Quick Access -->
+                                <TextBlock Text="QUICK ACCESS"
+                                           FontSize="10"
+                                           FontWeight="Bold"
+                                           Foreground="{StaticResource BrushTextMuted}"
+                                           Margin="10,4,0,6" />
 
-                    <!-- Sleek Grid Splitter -->
+                                <ItemsControl ItemsSource="{Binding QuickAccessItems}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Border Background="{Binding IsActive, Converter={StaticResource SidebarActiveBrushConv}}"
+                                                    CornerRadius="6"
+                                                    Margin="2,1">
+                                                <Grid>
+                                                    <!-- Left Active Indicator Bar -->
+                                                    <Border Width="3"
+                                                            HorizontalAlignment="Left"
+                                                            Background="{StaticResource BrushAccent}"
+                                                            CornerRadius="2"
+                                                            Visibility="{Binding IsActive, Converter={StaticResource SidebarIndicatorVisConv}}" />
+
+                                                    <Button Style="{StaticResource SidebarItemButton}"
+                                                            Command="{Binding DataContext.SelectSidebarItemCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                            CommandParameter="{Binding}"
+                                                            ToolTip="{Binding Path}">
+                                                        <StackPanel Orientation="Horizontal" Margin="6,0,0,0">
+                                                            <TextBlock Text="{Binding IconGlyph}"
+                                                                       FontSize="14"
+                                                                       VerticalAlignment="Center"
+                                                                       Margin="0,0,8,0" />
+                                                            <TextBlock Text="{Binding Title}"
+                                                                       FontSize="12"
+                                                                       Foreground="{StaticResource BrushTextPrimary}"
+                                                                       VerticalAlignment="Center" />
+                                                        </StackPanel>
+                                                    </Button>
+                                                </Grid>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+
+                                <Separator Style="{StaticResource {x:Type Separator}}" Margin="8,10" />
+
+                                <!-- Section 2: This PC / Drives -->
+                                <TextBlock Text="THIS PC / DRIVES"
+                                           FontSize="10"
+                                           FontWeight="Bold"
+                                           Foreground="{StaticResource BrushTextMuted}"
+                                           Margin="10,2,0,6" />
+
+                                <ItemsControl ItemsSource="{Binding DriveItems}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Border Background="{Binding IsActive, Converter={StaticResource SidebarActiveBrushConv}}"
+                                                    CornerRadius="6"
+                                                    Margin="2,1">
+                                                <Grid>
+                                                    <!-- Left Active Indicator Bar -->
+                                                    <Border Width="3"
+                                                            HorizontalAlignment="Left"
+                                                            Background="{StaticResource BrushAccent}"
+                                                            CornerRadius="2"
+                                                            Visibility="{Binding IsActive, Converter={StaticResource SidebarIndicatorVisConv}}" />
+
+                                                    <Button Style="{StaticResource SidebarItemButton}"
+                                                            Command="{Binding DataContext.SelectSidebarItemCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                            CommandParameter="{Binding}"
+                                                            ToolTip="{Binding Path}">
+                                                        <Grid Margin="6,0,0,0">
+                                                            <Grid.ColumnDefinitions>
+                                                                <ColumnDefinition Width="Auto" />
+                                                                <ColumnDefinition Width="*" />
+                                                            </Grid.ColumnDefinitions>
+
+                                                            <TextBlock Grid.Column="0"
+                                                                       Text="{Binding IconGlyph}"
+                                                                       FontSize="14"
+                                                                       VerticalAlignment="Center"
+                                                                       Margin="0,0,8,0" />
+
+                                                            <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                                                <TextBlock Text="{Binding Title}"
+                                                                           FontSize="12"
+                                                                           FontWeight="SemiBold"
+                                                                           Foreground="{StaticResource BrushTextPrimary}"
+                                                                           TextTrimming="CharacterEllipsis" />
+                                                                <TextBlock Text="{Binding Subtitle}"
+                                                                           FontSize="10"
+                                                                           Foreground="{StaticResource BrushTextMuted}"
+                                                                           Margin="0,1,0,0"
+                                                                           TextTrimming="CharacterEllipsis" />
+                                                            </StackPanel>
+                                                        </Grid>
+                                                    </Button>
+                                                </Grid>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+                        </ScrollViewer>
+                    </Border>
+
+                    <!-- Splitter between Sidebar & Main List -->
                     <GridSplitter Grid.Column="1"
-                                  Width="6"
+                                  Width="4"
                                   HorizontalAlignment="Stretch"
                                   VerticalAlignment="Stretch"
                                   Background="Transparent"
@@ -171,106 +588,252 @@
                             <ControlTemplate TargetType="{x:Type GridSplitter}">
                                 <Border Background="Transparent">
                                     <Border x:Name="SplitterBar"
-                                            Width="2"
+                                            Width="1"
                                             Background="{StaticResource BrushBorder}"
-                                            CornerRadius="1"
-                                            HorizontalAlignment="Center"
-                                            VerticalAlignment="Stretch" />
+                                            HorizontalAlignment="Center" />
                                 </Border>
                                 <ControlTemplate.Triggers>
                                     <Trigger Property="IsMouseOver" Value="True">
                                         <Setter TargetName="SplitterBar" Property="Background" Value="{StaticResource BrushAccent}" />
-                                        <Setter TargetName="SplitterBar" Property="Width" Value="4" />
+                                        <Setter TargetName="SplitterBar" Property="Width" Value="3" />
                                     </Trigger>
                                 </ControlTemplate.Triggers>
                             </ControlTemplate>
                         </GridSplitter.Template>
                     </GridSplitter>
 
-                    <!-- Right File Panel -->
-                    <controls:FilePanelView x:Name="RightPanelControl"
-                                            Grid.Column="2"
-                                            DataContext="{Binding RightPanel}" />
+                    <!-- MAIN VIEW (File & Folder List) -->
+                    <Grid Grid.Column="2">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" /> <!-- Loading / Error Bar -->
+                            <RowDefinition Height="*" />    <!-- Virtualized ListView -->
+                        </Grid.RowDefinitions>
+
+                        <!-- Loading & Error Banners -->
+                        <StackPanel Grid.Row="0">
+                            <!-- Progress Bar on Loading -->
+                            <ProgressBar Height="2"
+                                         IsIndeterminate="True"
+                                         BorderThickness="0"
+                                         Foreground="{StaticResource BrushAccent}"
+                                         Background="Transparent"
+                                         Visibility="{Binding IsLoading, Converter={StaticResource BoolToVis}}" />
+
+                            <!-- Error Notification Banner -->
+                            <Border Background="#4A1E24"
+                                    BorderBrush="{StaticResource BrushError}"
+                                    BorderThickness="0,0,0,1"
+                                    Padding="10,6"
+                                    Visibility="{Binding ErrorMessage, Converter={StaticResource StringNullOrEmptyToVis}}">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Text="⚠️ " Foreground="{StaticResource BrushError}" FontSize="12" />
+                                    <TextBlock Grid.Column="1"
+                                               Text="{Binding ErrorMessage}"
+                                               Foreground="{StaticResource BrushError}"
+                                               FontSize="11"
+                                               TextTrimming="CharacterEllipsis"
+                                               VerticalAlignment="Center" />
+                                </Grid>
+                            </Border>
+                        </StackPanel>
+
+                        <!-- Spacious Virtualized Modern File & Folder List -->
+                        <ListView x:Name="FileListView"
+                                  Grid.Row="1"
+                                  ItemsSource="{Binding Items}"
+                                  SelectedItem="{Binding SelectedItem, Mode=TwoWay}"
+                                  SelectionMode="Extended"
+                                  VirtualizingStackPanel.IsVirtualizing="True"
+                                  VirtualizingStackPanel.VirtualizationMode="Recycling"
+                                  ScrollViewer.IsDeferredScrollingEnabled="False"
+                                  MouseDoubleClick="FileListView_MouseDoubleClick"
+                                  SelectionChanged="FileListView_SelectionChanged"
+                                  KeyDown="FileListView_KeyDown"
+                                  Padding="6,4">
+
+                            <!-- Empty Area Context Menu (Right Click on Background) -->
+                            <ListView.ContextMenu>
+                                <ContextMenu>
+                                    <MenuItem Header="➕ New Folder"
+                                              InputGestureText="Ctrl+Shift+N"
+                                              Command="{Binding NewFolderCommand}" />
+                                    <MenuItem Header="🔄 Refresh"
+                                              InputGestureText="F5"
+                                              Command="{Binding RefreshCommand}" />
+                                    <MenuItem Header="📥 Paste"
+                                              InputGestureText="Ctrl+V"
+                                              Command="{Binding PasteCommand}" />
+                                    <Separator />
+                                    <MenuItem Header="💻 Open in Terminal"
+                                              Command="{Binding OpenInTerminalCommand}" />
+                                </ContextMenu>
+                            </ListView.ContextMenu>
+
+                            <!-- Item Container Style with Item Context Menu -->
+                            <ListView.ItemContainerStyle>
+                                <Style TargetType="{x:Type ListViewItem}" BasedOn="{StaticResource {x:Type ListViewItem}}">
+                                    <Setter Property="ContextMenu">
+                                        <Setter.Value>
+                                            <ContextMenu>
+                                                <MenuItem Header="⚡ Open"
+                                                          FontWeight="Bold"
+                                                          Command="{Binding DataContext.OpenItemCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                          CommandParameter="{Binding}" />
+                                                <Separator />
+                                                <MenuItem Header="📋 Copy"
+                                                          InputGestureText="Ctrl+C"
+                                                          Command="{Binding DataContext.CopyCommand, RelativeSource={RelativeSource AncestorType=Window}}" />
+                                                <MenuItem Header="✂ Cut"
+                                                          InputGestureText="Ctrl+X"
+                                                          Command="{Binding DataContext.CutCommand, RelativeSource={RelativeSource AncestorType=Window}}" />
+                                                <MenuItem Header="📥 Paste"
+                                                          InputGestureText="Ctrl+V"
+                                                          Command="{Binding DataContext.PasteCommand, RelativeSource={RelativeSource AncestorType=Window}}" />
+                                                <Separator />
+                                                <MenuItem Header="✏️ Rename"
+                                                          InputGestureText="F2"
+                                                          Command="{Binding DataContext.RenameCommand, RelativeSource={RelativeSource AncestorType=Window}}" />
+                                                <MenuItem Header="🗑️ Delete"
+                                                          InputGestureText="Delete"
+                                                          Command="{Binding DataContext.DeleteCommand, RelativeSource={RelativeSource AncestorType=Window}}" />
+                                                <MenuItem Header="📋 Copy Path"
+                                                          Command="{Binding DataContext.CopyPathCommand, RelativeSource={RelativeSource AncestorType=Window}}" />
+                                                <Separator />
+                                                <MenuItem Header="ℹ️ Properties"
+                                                          InputGestureText="Alt+Enter"
+                                                          Command="{Binding DataContext.PropertiesCommand, RelativeSource={RelativeSource AncestorType=Window}}" />
+                                            </ContextMenu>
+                                        </Setter.Value>
+                                    </Setter>
+                                </Style>
+                            </ListView.ItemContainerStyle>
+
+                            <!-- Modern Columns View -->
+                            <ListView.View>
+                                <GridView>
+                                    <!-- 1. Name Column (with semantic category glyph) -->
+                                    <GridViewColumn Width="380">
+                                        <GridViewColumn.Header>
+                                            <TextBlock Text="Name" />
+                                        </GridViewColumn.Header>
+                                        <GridViewColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                    <!-- Icon Glyph -->
+                                                    <TextBlock Text="{Binding IconGlyph}"
+                                                               FontSize="14"
+                                                               VerticalAlignment="Center"
+                                                               Margin="0,0,8,0" />
+
+                                                    <!-- File / Folder Name -->
+                                                    <TextBlock Text="{Binding Name}"
+                                                               Foreground="{Binding IsDirectory, Converter={StaticResource ItemTypeToBrush}}"
+                                                               FontSize="12"
+                                                               TextTrimming="CharacterEllipsis"
+                                                               VerticalAlignment="Center" />
+                                                </StackPanel>
+                                            </DataTemplate>
+                                        </GridViewColumn.CellTemplate>
+                                    </GridViewColumn>
+
+                                    <!-- 2. Date Modified Column -->
+                                    <GridViewColumn Width="150">
+                                        <GridViewColumn.Header>
+                                            <TextBlock Text="Date Modified" />
+                                        </GridViewColumn.Header>
+                                        <GridViewColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <TextBlock Text="{Binding FormattedDate}"
+                                                           Foreground="{StaticResource BrushTextSecondary}"
+                                                           FontSize="11"
+                                                           VerticalAlignment="Center" />
+                                            </DataTemplate>
+                                        </GridViewColumn.CellTemplate>
+                                    </GridViewColumn>
+
+                                    <!-- 3. Type / Category Column -->
+                                    <GridViewColumn Width="180">
+                                        <GridViewColumn.Header>
+                                            <TextBlock Text="Type" />
+                                        </GridViewColumn.Header>
+                                        <GridViewColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <TextBlock Text="{Binding ItemType}"
+                                                           Foreground="{StaticResource BrushTextSecondary}"
+                                                           FontSize="11"
+                                                           TextTrimming="CharacterEllipsis"
+                                                           VerticalAlignment="Center" />
+                                            </DataTemplate>
+                                        </GridViewColumn.CellTemplate>
+                                    </GridViewColumn>
+
+                                    <!-- 4. Size Column (Formatted KB / MB / GB, blank for folders) -->
+                                    <GridViewColumn Width="110">
+                                        <GridViewColumn.Header>
+                                            <TextBlock Text="Size" />
+                                        </GridViewColumn.Header>
+                                        <GridViewColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <TextBlock Text="{Binding FormattedSize}"
+                                                           Foreground="{StaticResource BrushTextSecondary}"
+                                                           FontFamily="{StaticResource MonoFont}"
+                                                           FontSize="11"
+                                                           HorizontalAlignment="Right"
+                                                           VerticalAlignment="Center" />
+                                            </DataTemplate>
+                                        </GridViewColumn.CellTemplate>
+                                    </GridViewColumn>
+                                </GridView>
+                            </ListView.View>
+                        </ListView>
+                    </Grid>
                 </Grid>
 
-                <!-- ================= BOTTOM FUNCTION HOTKEY BAR ================= -->
-                <Border Grid.Row="2"
+                <!-- ================= 3: BOTTOM STATUS BAR ================= -->
+                <Border Grid.Row="3"
                         Background="{StaticResource BrushSecondary}"
                         BorderBrush="{StaticResource BrushBorder}"
                         BorderThickness="0,1,0,0"
                         CornerRadius="0,0,10,10"
-                        Padding="6,4">
-                    <UniformGrid Columns="7" HorizontalAlignment="Stretch">
-                        <!-- F3 View -->
-                        <Button Style="{StaticResource HotkeyActionButton}"
-                                Command="{Binding ViewFileCommand}"
-                                ToolTip="View selected file (F3)">
-                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-                                <TextBlock Text="F3 " Foreground="{StaticResource BrushAccent}" FontWeight="Bold" />
-                                <TextBlock Text="View" Foreground="{StaticResource BrushTextPrimary}" />
-                            </StackPanel>
-                        </Button>
+                        Padding="12,4">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />     <!-- Total Item Count -->
+                            <ColumnDefinition Width="Auto" />  <!-- Selection Info -->
+                            <ColumnDefinition Width="*" />     <!-- Drive Telemetry -->
+                        </Grid.ColumnDefinitions>
 
-                        <!-- F4 Edit -->
-                        <Button Style="{StaticResource HotkeyActionButton}"
-                                Command="{Binding EditFileCommand}"
-                                ToolTip="Edit in Notepad (F4)">
-                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-                                <TextBlock Text="F4 " Foreground="{StaticResource BrushAccent}" FontWeight="Bold" />
-                                <TextBlock Text="Edit" Foreground="{StaticResource BrushTextPrimary}" />
-                            </StackPanel>
-                        </Button>
+                        <!-- Left: Item Count -->
+                        <TextBlock Grid.Column="0"
+                                   Text="{Binding StatusText}"
+                                   FontSize="11"
+                                   Foreground="{StaticResource BrushTextSecondary}"
+                                   TextTrimming="CharacterEllipsis"
+                                   VerticalAlignment="Center" />
 
-                        <!-- F5 Copy -->
-                        <Button Style="{StaticResource HotkeyActionButton}"
-                                Command="{Binding CopyItemCommand}"
-                                ToolTip="Copy to other panel (F5)">
-                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-                                <TextBlock Text="F5 " Foreground="{StaticResource BrushAccent}" FontWeight="Bold" />
-                                <TextBlock Text="Copy" Foreground="{StaticResource BrushTextPrimary}" />
-                            </StackPanel>
-                        </Button>
+                        <!-- Middle: Selection Info -->
+                        <TextBlock Grid.Column="1"
+                                   Text="{Binding SelectedStatusText}"
+                                   FontSize="11"
+                                   Foreground="{StaticResource BrushAccent}"
+                                   FontWeight="Medium"
+                                   TextTrimming="CharacterEllipsis"
+                                   VerticalAlignment="Center"
+                                   Margin="16,0" />
 
-                        <!-- F6 Move -->
-                        <Button Style="{StaticResource HotkeyActionButton}"
-                                Command="{Binding MoveItemCommand}"
-                                ToolTip="Move to other panel (F6)">
-                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-                                <TextBlock Text="F6 " Foreground="{StaticResource BrushAccent}" FontWeight="Bold" />
-                                <TextBlock Text="Move" Foreground="{StaticResource BrushTextPrimary}" />
-                            </StackPanel>
-                        </Button>
-
-                        <!-- F7 NewFolder -->
-                        <Button Style="{StaticResource HotkeyActionButton}"
-                                Command="{Binding NewFolderCommand}"
-                                ToolTip="Create new directory (F7)">
-                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-                                <TextBlock Text="F7 " Foreground="{StaticResource BrushAccent}" FontWeight="Bold" />
-                                <TextBlock Text="NewFolder" Foreground="{StaticResource BrushTextPrimary}" />
-                            </StackPanel>
-                        </Button>
-
-                        <!-- F8 Delete -->
-                        <Button Style="{StaticResource HotkeyActionButton}"
-                                Command="{Binding DeleteItemCommand}"
-                                ToolTip="Delete selected item (F8 / Del)">
-                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-                                <TextBlock Text="F8 " Foreground="{StaticResource BrushError}" FontWeight="Bold" />
-                                <TextBlock Text="Delete" Foreground="{StaticResource BrushTextPrimary}" />
-                            </StackPanel>
-                        </Button>
-
-                        <!-- Alt+F4 Exit -->
-                        <Button Style="{StaticResource HotkeyActionButton}"
-                                Command="{Binding ExitCommand}"
-                                ToolTip="Exit Application (Alt+F4)">
-                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-                                <TextBlock Text="Alt+F4 " Foreground="{StaticResource BrushTextSecondary}" FontWeight="Bold" />
-                                <TextBlock Text="Exit" Foreground="{StaticResource BrushTextPrimary}" />
-                            </StackPanel>
-                        </Button>
-                    </UniformGrid>
+                        <!-- Right: Drive Storage Telemetry -->
+                        <TextBlock Grid.Column="2"
+                                   Text="{Binding DriveSpaceText}"
+                                   FontSize="11"
+                                   Foreground="{StaticResource BrushTextMuted}"
+                                   HorizontalAlignment="Right"
+                                   TextTrimming="CharacterEllipsis"
+                                   VerticalAlignment="Center" />
+                    </Grid>
                 </Border>
             </Grid>
         </Border>

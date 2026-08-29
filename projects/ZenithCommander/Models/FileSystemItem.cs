@@ -1,8 +1,8 @@
-﻿using System;
+using System;
 using System.Globalization;
 using System.IO;
 
-namespace ZenithCommander.Models;
+namespace NexusCommander.Models;
 
 public class FileSystemItem
 {
@@ -16,26 +16,10 @@ public class FileSystemItem
     public string FormattedDate { get; set; } = string.Empty;
     public string Extension { get; set; } = string.Empty;
     public string IconGlyph { get; set; } = "📄";
+    public string ItemType { get; set; } = "File";
     public FileAttributes? Attributes { get; set; }
     public bool IsHidden { get; set; }
     public bool IsSystem { get; set; }
-
-    public static FileSystemItem CreateParentDirectory(string parentPath)
-    {
-        return new FileSystemItem
-        {
-            Name = "[..]",
-            FullPath = parentPath,
-            IsDirectory = true,
-            IsParentDirectory = true,
-            Size = null,
-            FormattedSize = "<UP-DIR>",
-            DateModified = null,
-            FormattedDate = string.Empty,
-            Extension = string.Empty,
-            IconGlyph = "⬆️"
-        };
-    }
 
     public static FileSystemItem FromDirectoryInfo(DirectoryInfo dir)
     {
@@ -49,11 +33,12 @@ public class FileSystemItem
             IsDirectory = true,
             IsParentDirectory = false,
             Size = null,
-            FormattedSize = "<DIR>",
+            FormattedSize = string.Empty,
             DateModified = dir.LastWriteTime,
             FormattedDate = dir.LastWriteTime.ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture),
             Extension = string.Empty,
             IconGlyph = "📁",
+            ItemType = "File folder",
             Attributes = dir.Attributes,
             IsHidden = isHidden,
             IsSystem = isSystem
@@ -86,8 +71,9 @@ public class FileSystemItem
             FormattedSize = FormatFileSize(size),
             DateModified = file.LastWriteTime,
             FormattedDate = file.LastWriteTime.ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture),
-            Extension = ext,
+            Extension = string.IsNullOrEmpty(ext) ? string.Empty : "." + ext.ToLowerInvariant(),
             IconGlyph = ResolveIconGlyph(ext),
+            ItemType = ResolveItemType(ext),
             Attributes = file.Attributes,
             IsHidden = isHidden,
             IsSystem = isSystem
@@ -108,20 +94,77 @@ public class FileSystemItem
         return string.Format(CultureInfo.InvariantCulture, "{0:F2} TB", bytes / (1024.0 * 1024 * 1024 * 1024));
     }
 
-    public static string ResolveIconGlyph(string extensionUpper)
+    public static string ResolveIconGlyph(string extUpper)
     {
-        return extensionUpper switch
+        return extUpper switch
         {
-            "EXE" or "MSI" or "BAT" or "CMD" or "PS1" or "VBS" => "⚡",
-            "DLL" or "SYS" or "INI" or "CFG" or "CONF" => "⚙️",
-            "ZIP" or "RAR" or "7Z" or "TAR" or "GZ" or "BZ2" or "XZ" or "ISO" => "📦",
-            "PNG" or "JPG" or "JPEG" or "GIF" or "BMP" or "WEBP" or "SVG" or "ICO" => "🖼️",
-            "MP3" or "WAV" or "FLAC" or "AAC" or "OGG" or "M4A" or "WMA" => "🎵",
-            "MP4" or "MKV" or "AVI" or "MOV" or "WMV" or "FLV" or "WEBM" => "🎬",
-            "TXT" or "MD" or "LOG" or "NFO" or "RTF" => "📝",
-            "PDF" or "DOC" or "DOCX" or "XLS" or "XLSX" or "PPT" or "PPTX" => "📄",
-            "CS" or "JS" or "TS" or "JSON" or "XML" or "HTML" or "CSS" or "PY" or "CPP" or "C" or "H" or "SQL" => "💻",
+            "EXE" or "MSI" or "BAT" or "CMD" or "PS1" or "VBS" or "COM" => "⚡",
+            "DLL" or "SYS" or "INI" or "CFG" or "CONF" or "ENV" or "CONFIG" => "⚙️",
+            "ZIP" or "RAR" or "7Z" or "TAR" or "GZ" or "BZ2" or "XZ" or "ISO" or "CAB" or "TGZ" => "📦",
+            "PNG" or "JPG" or "JPEG" or "GIF" or "BMP" or "WEBP" or "SVG" or "ICO" or "TIFF" or "PSD" => "🖼️",
+            "MP3" or "WAV" or "FLAC" or "AAC" or "OGG" or "M4A" or "WMA" or "AIFF" or "MID" => "🎵",
+            "MP4" or "MKV" or "AVI" or "MOV" or "WMV" or "FLV" or "WEBM" or "M4V" or "3GP" => "🎬",
+            "TXT" or "MD" or "LOG" or "NFO" or "RTF" or "DOC" or "DOCX" or "ODT" => "📝",
+            "PDF" => "📕",
+            "XLS" or "XLSX" or "CSV" or "TSV" => "📊",
+            "PPT" or "PPTX" => "📽️",
+            "CS" or "JS" or "TS" or "JSON" or "XML" or "HTML" or "CSS" or "SCSS" or "PY" or "CPP" or "C" or "H" or "HPP" or "SQL" or "JAVA" or "GO" or "RS" or "PHP" or "RB" or "SH" or "YAML" or "YML" or "XAML" => "💻",
             _ => "📄"
+        };
+    }
+
+    public static string ResolveItemType(string extUpper)
+    {
+        return extUpper switch
+        {
+            "EXE" => "Application",
+            "MSI" => "Windows Installer Package",
+            "BAT" or "CMD" => "Windows Command Script",
+            "PS1" => "PowerShell Script",
+            "DLL" => "Application Extension (DLL)",
+            "SYS" => "System File",
+            "INI" or "CFG" or "CONF" or "CONFIG" => "Configuration File",
+            "ZIP" => "ZIP Archive",
+            "RAR" => "WinRAR Archive",
+            "7Z" => "7-Zip Archive",
+            "TAR" or "GZ" or "TGZ" => "Compressed Archive",
+            "ISO" => "Disc Image File",
+            "PNG" => "PNG Image",
+            "JPG" or "JPEG" => "JPEG Image",
+            "GIF" => "GIF Image",
+            "SVG" => "SVG Vector Image",
+            "ICO" => "Icon File",
+            "WEBP" => "WEBP Image",
+            "MP3" => "MP3 Audio",
+            "WAV" => "WAV Audio",
+            "FLAC" => "FLAC Audio",
+            "MP4" => "MP4 Video",
+            "MKV" => "MKV Video",
+            "AVI" => "AVI Video",
+            "TXT" => "Text Document",
+            "MD" => "Markdown Document",
+            "LOG" => "Log File",
+            "PDF" => "PDF Document",
+            "DOC" or "DOCX" => "Microsoft Word Document",
+            "XLS" or "XLSX" => "Microsoft Excel Worksheet",
+            "CSV" => "CSV Comma Delimited File",
+            "PPT" or "PPTX" => "Microsoft PowerPoint Presentation",
+            "CS" => "C# Source File",
+            "JS" => "JavaScript File",
+            "TS" => "TypeScript File",
+            "JSON" => "JSON File",
+            "XML" => "XML Document",
+            "HTML" or "HTM" => "HTML Document",
+            "CSS" => "Cascading Style Sheet",
+            "PY" => "Python File",
+            "CPP" or "CXX" => "C++ Source File",
+            "C" => "C Source File",
+            "H" or "HPP" => "C/C++ Header File",
+            "SQL" => "SQL Query / Database Script",
+            "XAML" => "XAML UI File",
+            "CSPROJ" or "SLN" => "Visual Studio Project / Solution",
+            "" => "File",
+            _ => $"{extUpper} File"
         };
     }
 }
