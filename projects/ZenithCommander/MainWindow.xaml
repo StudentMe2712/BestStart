@@ -1,0 +1,278 @@
+﻿<Window x:Class="ZenithCommander.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:ZenithCommander"
+        xmlns:controls="clr-namespace:ZenithCommander.Controls"
+        xmlns:vm="clr-namespace:ZenithCommander.ViewModels"
+        mc:Ignorable="d"
+        Title="ZENITH COMMANDER"
+        Height="750" Width="1200"
+        MinHeight="450" MinWidth="700"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Background="Transparent"
+        ResizeMode="CanResizeWithGrip"
+        WindowStartupLocation="CenterScreen"
+        PreviewKeyDown="Window_PreviewKeyDown">
+
+    <Window.DataContext>
+        <vm:MainViewModel />
+    </Window.DataContext>
+
+    <!-- Outer Container with Rounded Corners and Drop Shadow -->
+    <Grid Margin="10">
+        <Border Background="{StaticResource BrushBackground}"
+                BorderBrush="{StaticResource BrushBorder}"
+                BorderThickness="1"
+                CornerRadius="10"
+                ClipToBounds="False">
+            <Border.Effect>
+                <DropShadowEffect Color="#000000"
+                                  BlurRadius="20"
+                                  ShadowDepth="5"
+                                  Opacity="0.6"
+                                  Direction="270" />
+            </Border.Effect>
+
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="38" />  <!-- Title Bar -->
+                    <RowDefinition Height="*" />   <!-- Dual-Panel File Manager Area -->
+                    <RowDefinition Height="42" />  <!-- Bottom Hotkey Bar -->
+                </Grid.RowDefinitions>
+
+                <!-- ================= TOP TITLE BAR ================= -->
+                <Border Grid.Row="0"
+                        Background="{StaticResource BrushSecondary}"
+                        BorderBrush="{StaticResource BrushBorder}"
+                        BorderThickness="0,0,0,1"
+                        CornerRadius="10,10,0,0"
+                        MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+
+                        <!-- App Icon & Title -->
+                        <StackPanel Grid.Column="0"
+                                    Orientation="Horizontal"
+                                    VerticalAlignment="Center"
+                                    Margin="12,0,0,0">
+                            <!-- Cyber Shield / Commander Emblem -->
+                            <Border Width="22" Height="22"
+                                    Background="{StaticResource BrushAccent}"
+                                    CornerRadius="5"
+                                    Margin="0,0,8,0">
+                                <TextBlock Text="⚡"
+                                           FontSize="13"
+                                           Foreground="#FFFFFF"
+                                           HorizontalAlignment="Center"
+                                           VerticalAlignment="Center" />
+                            </Border>
+
+                            <TextBlock Text="ZENITH COMMANDER"
+                                       FontSize="12"
+                                       FontWeight="Bold"
+                                       Foreground="{StaticResource BrushTextPrimary}"
+                                       VerticalAlignment="Center" />
+
+                            <TextBlock Text=" [Level 1 — Dual-Panel File Manager]"
+                                       FontSize="11"
+                                       FontWeight="Normal"
+                                       Foreground="{StaticResource BrushTextSecondary}"
+                                       VerticalAlignment="Center"
+                                       Margin="6,0,0,0" />
+                        </StackPanel>
+
+                        <!-- Window Control Buttons -->
+                        <StackPanel Grid.Column="2"
+                                    Orientation="Horizontal"
+                                    VerticalAlignment="Stretch">
+                            <!-- Minimize Button -->
+                            <Button Width="40"
+                                    Background="Transparent"
+                                    BorderThickness="0"
+                                    Foreground="{StaticResource BrushTextSecondary}"
+                                    Click="BtnMinimize_Click"
+                                    ToolTip="Minimize">
+                                <TextBlock Text="—" FontSize="11" FontWeight="Bold" />
+                            </Button>
+
+                            <!-- Maximize/Restore Button -->
+                            <Button Width="40"
+                                    Background="Transparent"
+                                    BorderThickness="0"
+                                    Foreground="{StaticResource BrushTextSecondary}"
+                                    Click="BtnMaximize_Click"
+                                    ToolTip="Maximize / Restore">
+                                <TextBlock x:Name="MaximizeIconText" Text="🗖" FontSize="11" />
+                            </Button>
+
+                            <!-- Close Button -->
+                            <Button x:Name="BtnClose"
+                                    Width="44"
+                                    Background="Transparent"
+                                    BorderThickness="0"
+                                    Foreground="{StaticResource BrushTextSecondary}"
+                                    Click="BtnClose_Click"
+                                    ToolTip="Close">
+                                <Button.Template>
+                                    <ControlTemplate TargetType="Button">
+                                        <Border x:Name="closeBorder"
+                                                Background="{TemplateBinding Background}"
+                                                CornerRadius="0,9,0,0"
+                                                SnapsToDevicePixels="True">
+                                            <TextBlock Text="✕"
+                                                       FontSize="11"
+                                                       FontWeight="Bold"
+                                                       Foreground="{TemplateBinding Foreground}"
+                                                       HorizontalAlignment="Center"
+                                                       VerticalAlignment="Center" />
+                                        </Border>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter TargetName="closeBorder" Property="Background" Value="#E81123" />
+                                                <Setter Property="Foreground" Value="#FFFFFF" />
+                                            </Trigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </Button.Template>
+                            </Button>
+                        </StackPanel>
+                    </Grid>
+                </Border>
+
+                <!-- ================= MAIN DUAL-PANEL AREA ================= -->
+                <Grid Grid.Row="1" Margin="8,8,8,6">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" MinWidth="200" />
+                        <ColumnDefinition Width="6" />
+                        <ColumnDefinition Width="*" MinWidth="200" />
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Left File Panel -->
+                    <controls:FilePanelView x:Name="LeftPanelControl"
+                                            Grid.Column="0"
+                                            DataContext="{Binding LeftPanel}" />
+
+                    <!-- Sleek Grid Splitter -->
+                    <GridSplitter Grid.Column="1"
+                                  Width="6"
+                                  HorizontalAlignment="Stretch"
+                                  VerticalAlignment="Stretch"
+                                  Background="Transparent"
+                                  ResizeBehavior="PreviousAndNext"
+                                  ResizeDirection="Columns">
+                        <GridSplitter.Template>
+                            <ControlTemplate TargetType="{x:Type GridSplitter}">
+                                <Border Background="Transparent">
+                                    <Border x:Name="SplitterBar"
+                                            Width="2"
+                                            Background="{StaticResource BrushBorder}"
+                                            CornerRadius="1"
+                                            HorizontalAlignment="Center"
+                                            VerticalAlignment="Stretch" />
+                                </Border>
+                                <ControlTemplate.Triggers>
+                                    <Trigger Property="IsMouseOver" Value="True">
+                                        <Setter TargetName="SplitterBar" Property="Background" Value="{StaticResource BrushAccent}" />
+                                        <Setter TargetName="SplitterBar" Property="Width" Value="4" />
+                                    </Trigger>
+                                </ControlTemplate.Triggers>
+                            </ControlTemplate>
+                        </GridSplitter.Template>
+                    </GridSplitter>
+
+                    <!-- Right File Panel -->
+                    <controls:FilePanelView x:Name="RightPanelControl"
+                                            Grid.Column="2"
+                                            DataContext="{Binding RightPanel}" />
+                </Grid>
+
+                <!-- ================= BOTTOM FUNCTION HOTKEY BAR ================= -->
+                <Border Grid.Row="2"
+                        Background="{StaticResource BrushSecondary}"
+                        BorderBrush="{StaticResource BrushBorder}"
+                        BorderThickness="0,1,0,0"
+                        CornerRadius="0,0,10,10"
+                        Padding="6,4">
+                    <UniformGrid Columns="7" HorizontalAlignment="Stretch">
+                        <!-- F3 View -->
+                        <Button Style="{StaticResource HotkeyActionButton}"
+                                Command="{Binding ViewFileCommand}"
+                                ToolTip="View selected file (F3)">
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                <TextBlock Text="F3 " Foreground="{StaticResource BrushAccent}" FontWeight="Bold" />
+                                <TextBlock Text="View" Foreground="{StaticResource BrushTextPrimary}" />
+                            </StackPanel>
+                        </Button>
+
+                        <!-- F4 Edit -->
+                        <Button Style="{StaticResource HotkeyActionButton}"
+                                Command="{Binding EditFileCommand}"
+                                ToolTip="Edit in Notepad (F4)">
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                <TextBlock Text="F4 " Foreground="{StaticResource BrushAccent}" FontWeight="Bold" />
+                                <TextBlock Text="Edit" Foreground="{StaticResource BrushTextPrimary}" />
+                            </StackPanel>
+                        </Button>
+
+                        <!-- F5 Copy -->
+                        <Button Style="{StaticResource HotkeyActionButton}"
+                                Command="{Binding CopyItemCommand}"
+                                ToolTip="Copy to other panel (F5)">
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                <TextBlock Text="F5 " Foreground="{StaticResource BrushAccent}" FontWeight="Bold" />
+                                <TextBlock Text="Copy" Foreground="{StaticResource BrushTextPrimary}" />
+                            </StackPanel>
+                        </Button>
+
+                        <!-- F6 Move -->
+                        <Button Style="{StaticResource HotkeyActionButton}"
+                                Command="{Binding MoveItemCommand}"
+                                ToolTip="Move to other panel (F6)">
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                <TextBlock Text="F6 " Foreground="{StaticResource BrushAccent}" FontWeight="Bold" />
+                                <TextBlock Text="Move" Foreground="{StaticResource BrushTextPrimary}" />
+                            </StackPanel>
+                        </Button>
+
+                        <!-- F7 NewFolder -->
+                        <Button Style="{StaticResource HotkeyActionButton}"
+                                Command="{Binding NewFolderCommand}"
+                                ToolTip="Create new directory (F7)">
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                <TextBlock Text="F7 " Foreground="{StaticResource BrushAccent}" FontWeight="Bold" />
+                                <TextBlock Text="NewFolder" Foreground="{StaticResource BrushTextPrimary}" />
+                            </StackPanel>
+                        </Button>
+
+                        <!-- F8 Delete -->
+                        <Button Style="{StaticResource HotkeyActionButton}"
+                                Command="{Binding DeleteItemCommand}"
+                                ToolTip="Delete selected item (F8 / Del)">
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                <TextBlock Text="F8 " Foreground="{StaticResource BrushError}" FontWeight="Bold" />
+                                <TextBlock Text="Delete" Foreground="{StaticResource BrushTextPrimary}" />
+                            </StackPanel>
+                        </Button>
+
+                        <!-- Alt+F4 Exit -->
+                        <Button Style="{StaticResource HotkeyActionButton}"
+                                Command="{Binding ExitCommand}"
+                                ToolTip="Exit Application (Alt+F4)">
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                <TextBlock Text="Alt+F4 " Foreground="{StaticResource BrushTextSecondary}" FontWeight="Bold" />
+                                <TextBlock Text="Exit" Foreground="{StaticResource BrushTextPrimary}" />
+                            </StackPanel>
+                        </Button>
+                    </UniformGrid>
+                </Border>
+            </Grid>
+        </Border>
+    </Grid>
+</Window>
