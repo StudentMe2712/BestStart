@@ -6,6 +6,13 @@ Add entries with `/lesson` (Scope: all-projects). Newest on top.
 
 ## Log
 
+### 2026-08-29 — DataTable.Compute is culture-dependent; on ru-RU Windows `.` is a thousands separator
+- **Problem:** In QuickCalc, evaluating `2*15` returned `300` instead of `30` on Russian Windows (`ru-RU` culture).
+- **Root cause:** `DataTable.Compute` evaluates expressions using `Thread.CurrentThread.CurrentCulture`. An integer promotion regex appended `.0` to numbers (`15` -> `15.0`). In `ru-RU` culture, `.` is the thousands/group separator, not the decimal separator (which is `,`). Thus `15.0` was parsed as `150`, yielding `2 * 150 = 300`.
+- **Fix:** Replaced `DataTable.Compute` with a custom, culture-invariant recursive descent parser (`MathEvaluator.cs`) operating strictly on `CultureInfo.InvariantCulture`. Normalizes both `.` and `,` as decimal separators, handles float division, exponents, aliases (`x`, `×`, `÷`), functions, and nested parentheses without culture pollution.
+- **Rule:** Never use `DataTable.Compute` or culture-dependent string parsing for math calculation engines in .NET. Always use a culture-invariant AST/recursive descent parser and test against multi-culture environments (`ru-RU`, `de-DE`, `fr-FR`).
+- **Scope:** all-projects
+
 ### 2026-06-25 — System.Text.Json drops a Dictionary's custom comparer on round-trip
 - **Problem:** SelectCast's currency converter worked on the first launch but silently returned "нет данных для USD" on every launch afterward and offline. Unit tests (with a hand-built dictionary) were all green and missed it.
 - **Root cause:** the live rates fetch built `Rates` as `Dictionary<string,decimal>(StringComparer.OrdinalIgnoreCase)` with lower-case keys, and the converter looks codes up upper-cased (`USD`, `KZT`). On the cache path, `JsonSerializer.Deserialize<RateTable>` rebuilds `Rates` as a **default, case-sensitive** dictionary — STJ does not (and cannot) preserve a custom `IEqualityComparer`. So upper-case lookups missed the lower-case keys. The bug only ever appears after the value crosses the JSON boundary, never on first fetch — which is exactly why mocked tests didn't catch it but an end-to-end run did.

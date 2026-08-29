@@ -1,13 +1,12 @@
 using System;
-using System.Data;
 using System.Globalization;
 using System.Runtime.InteropServices;
-using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
+using QuickCalc.Services;
 
 namespace QuickCalc;
 
@@ -146,47 +145,35 @@ public partial class MainWindow : Window
     {
         try
         {
-            // Normalize expression
-            string normalized = input.Trim()
-                .Replace(',', '.')
-                .Replace('×', '*')
-                .Replace('÷', '/');
-
-            // Replace 'x' or 'X' with '*' when preceded or followed by digits, brackets, or spaces
-            normalized = Regex.Replace(normalized, @"(?<=[\d\)\s])[xX](?=[\d\(\s])", "*");
-
-            // Ensure floating-point division by appending .0 to integer literals without a decimal point
-            // This prevents DataTable.Compute integer division (e.g. 10 / 4 => 2 instead of 2.5)
-            string computeExpr = Regex.Replace(normalized, @"(?<![\d\.])(\d+)(?![\d\.])", "$1.0");
-
-            // Evaluate expression using DataTable
-            using var table = new DataTable();
-            object? resultObj = table.Compute(computeExpr, null);
-
-            if (resultObj != null && resultObj != DBNull.Value)
+            if (MathEvaluator.TryEvaluate(input, out double _, out string? formatted) && formatted != null)
             {
-                if (double.TryParse(resultObj.ToString(), NumberStyles.Any, CultureInfo.InvariantCulture, out double num))
+                ResultTextBlock.Text = $"= {formatted}";
+                ResultTextBlock.Foreground = _validResultColor;
+                _currentResult = formatted;
+            }
+            else
+            {
+                // Check if it's an explicit division by zero or NaN error vs typing in progress
+                try
                 {
-                    if (double.IsInfinity(num) || double.IsNaN(num))
+                    double val = MathEvaluator.Evaluate(input);
+                    if (double.IsInfinity(val) || double.IsNaN(val))
                     {
                         ResultTextBlock.Text = "= Error";
                         ResultTextBlock.Foreground = _pendingResultColor;
                         _currentResult = null;
                         return;
                     }
-
-                    // Format cleanly: remove trailing zeros after decimal point
-                    string formatted = num.ToString("0.##########", CultureInfo.InvariantCulture);
-                    ResultTextBlock.Text = $"= {formatted}";
-                    ResultTextBlock.Foreground = _validResultColor;
-                    _currentResult = formatted;
-                    return;
                 }
-            }
+                catch
+                {
+                    // Expression is incomplete or invalid while typing
+                }
 
-            ResultTextBlock.Text = "= ...";
-            ResultTextBlock.Foreground = _pendingResultColor;
-            _currentResult = null;
+                ResultTextBlock.Text = "= ...";
+                ResultTextBlock.Foreground = _pendingResultColor;
+                _currentResult = null;
+            }
         }
         catch
         {
