@@ -1,12 +1,12 @@
 # QuickCalc — Minimalist Floating Calculator Widget
 
-QuickCalc is a sleek, ultra-fast floating calculator widget for Windows built with .NET 8 and WPF. It operates with a global system hotkey (`Alt + C`), evaluates mathematical expressions in real time, and allows instant copying of calculated results to the clipboard.
+QuickCalc is a sleek, ultra-fast floating calculator widget for Windows built with .NET 8 and WPF. It operates with a global system hotkey (`Alt + Q`), evaluates mathematical expressions in real time, and allows instant copying of calculated results to the clipboard.
 
 ---
 
 ## 🚀 Features
 
-- **Global Hotkey Toggle**: `Alt + C` summons or dismisses the calculator from anywhere in Windows.
+- **Global Hotkey Toggle**: `Alt + Q` summons or dismisses the calculator from anywhere in Windows.
 - **Floating Spotlight-Style UI**: Borderless, semi-transparent window with rounded corners, dark theme (`#252526`), and ambient drop shadow.
 - **Real-Time Evaluation**: Dynamically evaluates standard math expressions as you type without pressing calculate.
 - **Flexible Syntax Support**:
@@ -28,7 +28,7 @@ QuickCalc is a sleek, ultra-fast floating calculator widget for Windows built wi
 - **Target Framework**: `.NET 8.0 Windows` (`net8.0-windows`)
 - **UI Framework**: WPF (Windows Presentation Foundation) with XAML
 - **Interoperability**: Win32 API (`user32.dll`) via `HwndSource` hook:
-  - `RegisterHotKey` / `UnregisterHotKey` (`Alt + C`, `MOD_ALT = 0x0001`, `VK_C = 0x43`)
+  - `RegisterHotKey` / `UnregisterHotKey` (`Alt + Q`, `MOD_ALT = 0x0001`, `VK_Q = 0x51`)
 - **Evaluation Engine**: `System.Data.DataTable.Compute` with regex pre-processing and float literal normalization.
 
 ---
@@ -57,7 +57,7 @@ projects/QuickCalc/
   - [x] Input row: Large `TextBox` (FontSize 22), placeholder text, custom caret, and minimalist close button.
   - [x] Result row: Real-time formatted result `TextBlock` (FontSize 18, `#4EC9B0`) and hotkey tips.
 - [x] Implement `MainWindow.xaml.cs`:
-  - [x] WinAPI global hotkey registration (`Alt + C`) on `OnSourceInitialized` via `HwndSource.AddHook`.
+  - [x] WinAPI global hotkey registration (`Alt + Q`) on `OnSourceInitialized` via `HwndSource.AddHook`.
   - [x] Window visibility & focus toggle on hotkey activation.
   - [x] Real-time math evaluation on `InputTextBox.TextChanged` using `DataTable.Compute`.
   - [x] Float division normalization, decimal conversion (comma to dot), and operator aliases (`x`, `×`, `÷`).
@@ -98,10 +98,10 @@ dotnet run --project projects/QuickCalc/QuickCalc.csproj
    - With a valid expression (e.g. `25 * 4` = `100`), press `Enter`.
    - The window hides automatically.
    - Paste (`Ctrl + V`) in any text editor ➔ `100` is pasted.
-4. **Global Hotkey (`Alt + C`)**:
-   - While QuickCalc is hidden, press `Alt + C` anywhere in Windows.
+4. **Global Hotkey (`Alt + Q`)**:
+   - While QuickCalc is hidden, press `Alt + Q` anywhere in Windows.
    - The widget instantly appears, foregrounds, and focuses the input with text pre-selected for quick replacement.
-   - Press `Alt + C` again while active ➔ Widget hides.
+   - Press `Alt + Q` again while active ➔ Widget hides.
 5. **Escape Key & Window Drag**:
    - Press `Esc` ➔ Widget hides.
    - Click and drag anywhere on the widget border ➔ Widget moves smoothly across the screen.

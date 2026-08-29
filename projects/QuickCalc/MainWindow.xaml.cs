@@ -19,7 +19,7 @@ public partial class MainWindow : Window
     private const int HOTKEY_ID = 9000;
     private const uint MOD_ALT = 0x0001;
     private const uint MOD_NOREPEAT = 0x4000;
-    private const uint VK_C = 0x43;
+    private const uint VK_Q = 0x51;
     private const int WM_HOTKEY = 0x0312;
 
     [DllImport("user32.dll", SetLastError = true)]
@@ -48,11 +48,11 @@ public partial class MainWindow : Window
         _hwndSource = HwndSource.FromHwnd(helper.Handle);
         _hwndSource?.AddHook(HwndHook);
 
-        // Register Alt + C as global hotkey
-        if (!RegisterHotKey(helper.Handle, HOTKEY_ID, MOD_ALT | MOD_NOREPEAT, VK_C))
+        // Register Alt + Q as global hotkey
+        if (!RegisterHotKey(helper.Handle, HOTKEY_ID, MOD_ALT | MOD_NOREPEAT, VK_Q))
         {
             // Fallback without MOD_NOREPEAT if older OS
-            RegisterHotKey(helper.Handle, HOTKEY_ID, MOD_ALT, VK_C);
+            RegisterHotKey(helper.Handle, HOTKEY_ID, MOD_ALT, VK_Q);
         }
     }
 
