@@ -6,8 +6,9 @@ using System.Text;
 namespace QuickCalc.Services;
 
 /// <summary>
-/// A culture-independent, robust recursive descent math expression evaluator.
-/// Always treats both '.' and ',' as decimal separators and parses numbers using CultureInfo.InvariantCulture.
+/// A culture-independent, robust recursive descent math expression evaluator tailored for everyday calculations.
+/// Supports everyday percentage semantics (+%, -%, *%, /%, chained %, 'of'/'от'),
+/// flexible operator aliases (÷, :, \, ×, •, x), thousands separators, and auto-closing parentheses.
 /// </summary>
 public static class MathEvaluator
 {
@@ -119,7 +120,7 @@ public static class MathEvaluator
         Minus,
         Multiply,
         Divide,
-        Modulo,
+        Percent,
         Power,
         OpenParen,
         CloseParen,
@@ -203,12 +204,12 @@ public static class MathEvaluator
                         tokens.Add(new Token(TokenType.Multiply, startPos));
                     }
                 }
-                else if (c == '×' || c == '\u00D7')
+                else if (c == '×' || c == '\u00D7' || c == '•' || c == '\u2022' || c == '∙' || c == '\u2219' || c == '·' || c == '\u00B7' || c == '⋅' || c == '\u22C5')
                 {
                     Advance();
                     tokens.Add(new Token(TokenType.Multiply, startPos));
                 }
-                else if (c == '/' || c == '÷' || c == '\u00F7')
+                else if (c == '/' || c == '÷' || c == '\u00F7' || c == ':' || c == '\\')
                 {
                     Advance();
                     tokens.Add(new Token(TokenType.Divide, startPos));
@@ -216,7 +217,7 @@ public static class MathEvaluator
                 else if (c == '%')
                 {
                     Advance();
-                    tokens.Add(new Token(TokenType.Modulo, startPos));
+                    tokens.Add(new Token(TokenType.Percent, startPos));
                 }
                 else if (c == '^')
                 {
@@ -260,9 +261,33 @@ public static class MathEvaluator
             while (_pos < _text.Length)
             {
                 char c = Peek();
+
                 if (char.IsDigit(c))
                 {
                     sb.Append(Advance());
+                }
+                else if (c == '_')
+                {
+                    // Thousands separator e.g. 10_000
+                    Advance();
+                }
+                else if (IsSpaceChar(c))
+                {
+                    // Thousands separator with space: e.g. 1 000 000
+                    int lookahead = _pos;
+                    while (lookahead < _text.Length && (IsSpaceChar(_text[lookahead]) || _text[lookahead] == '_'))
+                    {
+                        lookahead++;
+                    }
+
+                    if (lookahead < _text.Length && char.IsDigit(_text[lookahead]))
+                    {
+                        _pos = lookahead;
+                    }
+                    else
+                    {
+                        break;
+                    }
                 }
                 else if ((c == '.' || c == ',') && !hasDecimal)
                 {
@@ -276,7 +301,7 @@ public static class MathEvaluator
                 }
             }
 
-            // Check for scientific notation exponent: e.g. 1e5, 1.5e-3, 2E+10
+            // Scientific notation exponent: e.g. 1e5, 1.5e-3, 2E+10
             if (_pos < _text.Length && (Peek() == 'e' || Peek() == 'E'))
             {
                 char next1 = PeekNext();
@@ -305,6 +330,8 @@ public static class MathEvaluator
             return new Token(TokenType.Number, startPos, numberValue: val);
         }
 
+        private static bool IsSpaceChar(char c) => c == ' ' || c == '\t' || c == '\u00A0' || c == '\u202F';
+
         private Token ReadIdentifierOrOperator()
         {
             int startPos = _pos;
@@ -323,8 +350,29 @@ public static class MathEvaluator
                 return new Token(TokenType.Multiply, startPos);
             }
 
+            // Natural language percentage & multiplication aliases: "of" / "от"
+            if (string.Equals(word, "of", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(word, "от", StringComparison.OrdinalIgnoreCase))
+            {
+                return new Token(TokenType.Multiply, startPos);
+            }
+
             return new Token(TokenType.Identifier, startPos, text: word.ToLowerInvariant());
         }
+    }
+
+    private readonly struct EvalResult
+    {
+        public double Value { get; }
+        public bool IsPercent { get; }
+
+        public EvalResult(double value, bool isPercent = false)
+        {
+            Value = value;
+            IsPercent = isPercent;
+        }
+
+        public override string ToString() => IsPercent ? $"{Value * 100}%" : Value.ToString(CultureInfo.InvariantCulture);
     }
 
     private sealed class Parser
@@ -380,75 +428,103 @@ public static class MathEvaluator
                 throw new FormatException("Empty expression.");
             }
 
-            double result = ParseExpression();
+            EvalResult result = ParseExpression();
 
             if (!IsAtEnd())
             {
                 throw new FormatException($"Unexpected token '{Peek()}' at position {Peek().Position}.");
             }
 
-            return result;
+            return result.Value;
         }
 
         // Expression -> Additive
-        private double ParseExpression()
+        private EvalResult ParseExpression()
         {
             return ParseAdditive();
         }
 
         // Additive -> Multiplicative ( ('+' | '-') Multiplicative )*
-        private double ParseAdditive()
+        private EvalResult ParseAdditive()
         {
-            double left = ParseMultiplicative();
+            EvalResult left = ParseMultiplicative();
 
             while (Match(TokenType.Plus, TokenType.Minus))
             {
                 TokenType op = Previous().Type;
-                double right = ParseMultiplicative();
+                EvalResult right = ParseMultiplicative();
 
                 if (op == TokenType.Plus)
                 {
-                    left += right;
+                    left = Add(left, right);
                 }
                 else
                 {
-                    left -= right;
+                    left = Subtract(left, right);
                 }
             }
 
             return left;
         }
 
-        // Multiplicative -> Unary ( ('*' | '/' | '%') Unary | [implicit multiply] Primary )*
-        private double ParseMultiplicative()
+        private static EvalResult Add(EvalResult left, EvalResult right)
         {
-            double left = ParseUnary();
+            // If base + percentage (e.g. 100 + 20% = 120, 2500 + 13% = 2825)
+            if (!left.IsPercent && right.IsPercent)
+            {
+                return new EvalResult(left.Value + (left.Value * right.Value), isPercent: false);
+            }
+            // If direct percentage addition without base (e.g. 20% + 30% = 0.5)
+            if (left.IsPercent && right.IsPercent)
+            {
+                return new EvalResult(left.Value + right.Value, isPercent: true);
+            }
+            // Normal addition (e.g. 100 + 20 = 120, 20% + 10 = 10.2)
+            return new EvalResult(left.Value + right.Value, isPercent: false);
+        }
+
+        private static EvalResult Subtract(EvalResult left, EvalResult right)
+        {
+            // If base - percentage (e.g. 100 - 20% = 80, 1500 - 15% = 1275)
+            if (!left.IsPercent && right.IsPercent)
+            {
+                return new EvalResult(left.Value - (left.Value * right.Value), isPercent: false);
+            }
+            // If direct percentage subtraction (e.g. 50% - 20% = 0.3)
+            if (left.IsPercent && right.IsPercent)
+            {
+                return new EvalResult(left.Value - right.Value, isPercent: true);
+            }
+            // Normal subtraction (e.g. 100 - 20 = 80)
+            return new EvalResult(left.Value - right.Value, isPercent: false);
+        }
+
+        // Multiplicative -> Unary ( ('*' | '/') Unary | [implicit multiply] Power )*
+        private EvalResult ParseMultiplicative()
+        {
+            EvalResult left = ParseUnary();
 
             while (true)
             {
-                if (Match(TokenType.Multiply, TokenType.Divide, TokenType.Modulo))
+                if (Match(TokenType.Multiply, TokenType.Divide))
                 {
                     TokenType op = Previous().Type;
-                    double right = ParseUnary();
+                    EvalResult right = ParseUnary();
 
                     if (op == TokenType.Multiply)
                     {
-                        left *= right;
+                        left = Multiply(left, right);
                     }
-                    else if (op == TokenType.Divide)
+                    else
                     {
-                        left /= right;
-                    }
-                    else // Modulo
-                    {
-                        left %= right;
+                        left = Divide(left, right);
                     }
                 }
                 else if (CanStartPrimary(Peek()))
                 {
                     // Implicit multiplication (e.g. 2(3+4), 2pi, (2)(3), 2sqrt(9))
-                    double right = ParsePower();
-                    left *= right;
+                    EvalResult right = ParsePower();
+                    left = Multiply(left, right);
                 }
                 else
                 {
@@ -459,8 +535,40 @@ public static class MathEvaluator
             return left;
         }
 
+        private static EvalResult Multiply(EvalResult left, EvalResult right)
+        {
+            // If percent * scalar or scalar * percent -> result is value
+            // (e.g. 100 * 20% = 20, 20% * 100 = 20, 20% of 150 = 30)
+            if (left.IsPercent && right.IsPercent)
+            {
+                return new EvalResult(left.Value * right.Value, isPercent: true);
+            }
+            return new EvalResult(left.Value * right.Value, isPercent: false);
+        }
+
+        private static EvalResult Divide(EvalResult left, EvalResult right)
+        {
+            if (right.Value == 0.0)
+            {
+                return new EvalResult(left.Value >= 0 ? double.PositiveInfinity : double.NegativeInfinity, isPercent: false);
+            }
+
+            // e.g. 100 / 20% = 500
+            if (!left.IsPercent && right.IsPercent)
+            {
+                return new EvalResult(left.Value / right.Value, isPercent: false);
+            }
+            // e.g. 20% / 2 = 10% (0.10)
+            if (left.IsPercent && !right.IsPercent)
+            {
+                return new EvalResult(left.Value / right.Value, isPercent: true);
+            }
+            // e.g. 20% / 10% = 2
+            return new EvalResult(left.Value / right.Value, isPercent: false);
+        }
+
         // Unary -> ('+' | '-') Unary | Power
-        private double ParseUnary()
+        private EvalResult ParseUnary()
         {
             if (Match(TokenType.Plus))
             {
@@ -468,21 +576,22 @@ public static class MathEvaluator
             }
             if (Match(TokenType.Minus))
             {
-                return -ParseUnary();
+                EvalResult operand = ParseUnary();
+                return new EvalResult(-operand.Value, operand.IsPercent);
             }
 
             return ParsePower();
         }
 
         // Power -> Primary ( ('^' | '**') Unary )? [Right-associative]
-        private double ParsePower()
+        private EvalResult ParsePower()
         {
-            double left = ParsePrimary();
+            EvalResult left = ParsePrimary();
 
             if (Match(TokenType.Power))
             {
-                double exponent = ParseUnary();
-                return Math.Pow(left, exponent);
+                EvalResult exponent = ParseUnary();
+                return new EvalResult(Math.Pow(left.Value, exponent.Value), isPercent: false);
             }
 
             return left;
@@ -495,63 +604,71 @@ public static class MathEvaluator
                    token.Type == TokenType.OpenParen;
         }
 
-        // Primary -> Number | Constant | FunctionCall | '(' Expression ')'
-        private double ParsePrimary()
+        // Primary -> ( Number | Constant | FunctionCall | '(' Expression ')' ) ('%')*
+        private EvalResult ParsePrimary()
         {
+            EvalResult result;
+
             if (Match(TokenType.Number))
             {
-                return Previous().NumberValue;
+                result = new EvalResult(Previous().NumberValue, isPercent: false);
             }
-
-            if (Match(TokenType.Identifier))
+            else if (Match(TokenType.Identifier))
             {
                 string name = Previous().Text ?? string.Empty;
 
                 // Constants
                 if (name == "pi")
                 {
-                    return Math.PI;
+                    result = new EvalResult(Math.PI, isPercent: false);
                 }
-                if (name == "e")
+                else if (name == "e")
                 {
-                    return Math.E;
+                    result = new EvalResult(Math.E, isPercent: false);
                 }
-
-                // Functions
-                if (Check(TokenType.OpenParen))
+                else if (Check(TokenType.OpenParen))
                 {
                     Advance(); // consume '('
-                    double arg = ParseExpression();
-                    Consume(TokenType.CloseParen, $"Missing closing parenthesis ')' for function '{name}'.");
+                    EvalResult arg = ParseExpression();
+                    if (!IsAtEnd())
+                    {
+                        Consume(TokenType.CloseParen, $"Missing closing parenthesis ')' for function '{name}'.");
+                    }
 
-                    return EvaluateFunction(name, arg);
+                    result = new EvalResult(EvaluateFunction(name, arg.Value), isPercent: false);
                 }
-
-                throw new FormatException($"Unknown identifier '{name}' or missing parentheses for function call.");
+                else
+                {
+                    throw new FormatException($"Unknown identifier '{name}' or missing parentheses for function call.");
+                }
             }
-
-            if (Match(TokenType.OpenParen))
+            else if (Match(TokenType.OpenParen))
             {
-                double expr = ParseExpression();
-                Consume(TokenType.CloseParen, "Missing closing parenthesis ')'.");
-                return expr;
+                result = ParseExpression();
+                if (!IsAtEnd())
+                {
+                    Consume(TokenType.CloseParen, "Missing closing parenthesis ')'.");
+                }
+            }
+            else
+            {
+                throw new FormatException($"Expected expression at position {Peek().Position}, found '{Peek()}'.");
             }
 
-            throw new FormatException($"Expected expression at position {Peek().Position}, found '{Peek()}'.");
+            // Postfix percentage: e.g. 50% => 0.50, (100 + 50)% => 1.50
+            while (Match(TokenType.Percent))
+            {
+                result = new EvalResult(result.Value / 100.0, isPercent: true);
+            }
+
+            return result;
         }
 
         private static double EvaluateFunction(string name, double arg) => name switch
         {
             "sqrt" => Math.Sqrt(arg),
             "abs" => Math.Abs(arg),
-            "sin" => Math.Sin(arg),
-            "cos" => Math.Cos(arg),
-            "tan" => Math.Tan(arg),
-            "log" => Math.Log10(arg),
-            "ln" => Math.Log(arg),
             "round" => Math.Round(arg, MidpointRounding.AwayFromZero),
-            "floor" => Math.Floor(arg),
-            "ceil" or "ceiling" => Math.Ceiling(arg),
             _ => throw new FormatException($"Unknown function '{name}'.")
         };
     }

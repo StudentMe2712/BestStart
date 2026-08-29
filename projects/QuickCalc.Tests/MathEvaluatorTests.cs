@@ -8,60 +8,171 @@ namespace QuickCalc.Tests;
 
 public class MathEvaluatorTests
 {
+    #region Basic Arithmetic & Everyday Operator Aliases
+
     [Theory]
     [InlineData("2*15", 30)]
     [InlineData("2 * 15", 30)]
     [InlineData("10 / 4", 2.5)]
-    [InlineData("5,5 * 2", 11)]
-    [InlineData("5.5 * 2", 11)]
-    [InlineData("2^8", 256)]
-    [InlineData("2 ** 3", 8)]
-    [InlineData("-5 + 3", -2)]
-    [InlineData("2 * (15 + 7)", 44)]
-    [InlineData("10 % 3", 1)]
-    [InlineData("sqrt(144)", 12)]
+    [InlineData("10 ÷ 4", 2.5)]
+    [InlineData("100 : 4", 25)]
+    [InlineData("100 \\ 4", 25)]
     [InlineData("12 x 12", 144)]
     [InlineData("12 X 12", 144)]
     [InlineData("12 × 12", 144)]
-    [InlineData("10 ÷ 4", 2.5)]
-    public void Evaluate_StandardExpressions_ReturnsExpectedResult(string expression, double expected)
+    [InlineData("12 • 12", 144)]
+    [InlineData("12 ∙ 12", 144)]
+    [InlineData("12 · 12", 144)]
+    [InlineData("12 ⋅ 12", 144)]
+    [InlineData("2^3", 8)]
+    [InlineData("10^2", 100)]
+    [InlineData("2^8", 256)]
+    [InlineData("2 ** 3", 8)]
+    [InlineData("-5 + 3", -2)]
+    [InlineData("+5 + 3", 8)]
+    [InlineData("2 * (15 + 7)", 44)]
+    public void Evaluate_EverydayOperatorAliases_ReturnsExpectedResult(string expression, double expected)
     {
         double result = MathEvaluator.Evaluate(expression);
         Assert.Equal(expected, result, precision: 6);
     }
 
+    #endregion
+
+    #region Decimal and Thousands Formatting
+
     [Theory]
-    [InlineData("2*15", "30")]
-    [InlineData("2 * 15", "30")]
-    [InlineData("10 / 4", "2.5")]
-    [InlineData("5,5 * 2", "11")]
-    [InlineData("5.5 * 2", "11")]
-    [InlineData("2^8", "256")]
-    [InlineData("2 ** 3", "8")]
-    [InlineData("-5 + 3", "-2")]
-    [InlineData("2 * (15 + 7)", "44")]
-    [InlineData("10 % 3", "1")]
-    [InlineData("sqrt(144)", "12")]
-    [InlineData("12 x 12", "144")]
-    [InlineData("12 × 12", "144")]
-    [InlineData("10 ÷ 4", "2.5")]
-    public void TryEvaluate_StandardExpressions_ReturnsExpectedFormattedString(string expression, string expectedFormatted)
+    [InlineData("5,5 * 2", 11)]
+    [InlineData("5.5 * 2", 11)]
+    [InlineData("2,5 + 7,5", 10)]
+    [InlineData("2.5 + 7.5", 10)]
+    [InlineData(",5 * 4", 2)]
+    [InlineData(".5 * 4", 2)]
+    [InlineData("1 000 000 + 500 000", 1500000)]
+    [InlineData("10_000 * 2", 20000)]
+    [InlineData("1 000 000,50 + 0,50", 1000001)]
+    [InlineData("1 000.50 + 0.50", 1000001 - 999000)] // 1001
+    [InlineData("2 500 + 13%", 2825)]
+    public void Evaluate_NumberFormattingAndGrouping_CalculatesAccurately(string expression, double expected)
     {
-        bool success = MathEvaluator.TryEvaluate(expression, out double _, out string? formatted);
-        Assert.True(success);
-        Assert.Equal(expectedFormatted, formatted);
+        double result = MathEvaluator.Evaluate(expression);
+        Assert.Equal(expected, result, precision: 6);
+    }
+
+    #endregion
+
+    #region Everyday Percentage Semantics
+
+    [Theory]
+    // Postfix percentages
+    [InlineData("50%", 0.5)]
+    [InlineData("100%", 1.0)]
+    [InlineData("5%", 0.05)]
+    [InlineData("0.5%", 0.005)]
+    [InlineData("0,5%", 0.005)]
+    [InlineData("50%%", 0.005)]
+    // Additive percentages (tax, markup, tip)
+    [InlineData("100 + 20%", 120)]
+    [InlineData("2500 + 13%", 2825)]
+    [InlineData("200 + 5.5%", 211)]
+    [InlineData("200 + 5,5%", 211)]
+    // Subtractive percentages (discounts)
+    [InlineData("100 - 20%", 80)]
+    [InlineData("1500 - 15%", 1275)]
+    [InlineData("200 - 5.5%", 189)]
+    [InlineData("200 - 5,5%", 189)]
+    // Multiplicative percentages
+    [InlineData("100 * 20%", 20)]
+    [InlineData("20% * 100", 20)]
+    [InlineData("100 x 20%", 20)]
+    [InlineData("100 × 20%", 20)]
+    // Division by percentage
+    [InlineData("100 / 20%", 500)]
+    [InlineData("100 : 20%", 500)]
+    [InlineData("100 ÷ 20%", 500)]
+    [InlineData("20% / 2", 0.1)]
+    // Chained percentages
+    [InlineData("100 + 20% - 10%", 108)]
+    [InlineData("100 + 10% + 10%", 121)]
+    [InlineData("1000 - 20% - 10%", 720)]
+    // Parenthesized percentages
+    [InlineData("(100 + 50) + 10%", 165)]
+    [InlineData("(200 - 50) - 10%", 135)]
+    [InlineData("(100 + 20%)", 120)]
+    [InlineData("(20% + 30%) * 100", 50)]
+    // Direct percentage additions / subtractions (no preceding base)
+    [InlineData("20% + 30%", 0.5)]
+    [InlineData("50% - 20%", 0.3)]
+    [InlineData("10% + 20% + 30%", 0.6)]
+    // Natural language aliases: of / от
+    [InlineData("20% of 150", 30)]
+    [InlineData("20% OF 150", 30)]
+    [InlineData("20% от 150", 30)]
+    [InlineData("20% ОТ 150", 30)]
+    [InlineData("50% of 200", 100)]
+    [InlineData("15% от 2000", 300)]
+    [InlineData("20% of (100 + 50)", 30)]
+    public void Evaluate_PercentageSemantics_CalculatesExpectedResult(string expression, double expected)
+    {
+        double result = MathEvaluator.Evaluate(expression);
+        Assert.Equal(expected, result, precision: 6);
+    }
+
+    #endregion
+
+    #region Auto-Closing Unbalanced Parentheses
+
+    [Theory]
+    [InlineData("(10 + 5", 15)]
+    [InlineData("2 * (10 + 5", 30)]
+    [InlineData("((10 + 5) * 2", 30)]
+    [InlineData("(2 + 3) * (4 + 5", 45)]
+    [InlineData("sqrt(144", 12)]
+    [InlineData("abs(-42", 42)]
+    [InlineData("round(2.6", 3)]
+    [InlineData("(100 + 50 + 10%", 165)]
+    public void Evaluate_AutoClosingParentheses_EvaluatesCleanly(string expression, double expected)
+    {
+        double result = MathEvaluator.Evaluate(expression);
+        Assert.Equal(expected, result, precision: 6);
+    }
+
+    #endregion
+
+    #region Implicit Multiplication & Functions
+
+    [Theory]
+    [InlineData("2(3 + 4)", 14)]
+    [InlineData("(2 + 3)(4 + 5)", 45)]
+    [InlineData("2sqrt(9)", 6)]
+    [InlineData("3(2)", 6)]
+    [InlineData("2pi", 6.283185307)]
+    [InlineData("sqrt(144)", 12)]
+    [InlineData("abs(-42)", 42)]
+    [InlineData("abs(42)", 42)]
+    [InlineData("abs(-3,14)", 3.14)]
+    [InlineData("round(2.6)", 3)]
+    [InlineData("round(2.4)", 2)]
+    [InlineData("round(2.5)", 3)]
+    [InlineData("round(-2.5)", -3)]
+    public void Evaluate_ImplicitMultiplicationAndSimpleFunctions_ReturnsCorrectValue(string expression, double expected)
+    {
+        double result = MathEvaluator.Evaluate(expression);
+        Assert.Equal(expected, result, precision: 5);
     }
 
     [Fact]
-    public void Evaluate_PiMultiplication_ReturnsApproximateValue()
+    public void Evaluate_Constants_ReturnsCorrectValues()
     {
-        double result = MathEvaluator.Evaluate("pi * 2");
-        Assert.InRange(result, 6.2831853, 6.2831854);
-
-        string? formatted = MathEvaluator.EvaluateToString("pi * 2");
-        Assert.NotNull(formatted);
-        Assert.StartsWith("6.2831853", formatted);
+        Assert.Equal(Math.PI, MathEvaluator.Evaluate("pi"), precision: 10);
+        Assert.Equal(Math.PI, MathEvaluator.Evaluate("PI"), precision: 10);
+        Assert.Equal(Math.E, MathEvaluator.Evaluate("e"), precision: 10);
+        Assert.Equal(Math.E, MathEvaluator.Evaluate("E"), precision: 10);
     }
+
+    #endregion
+
+    #region Culture Invariance
 
     [Theory]
     [InlineData("ru-RU")]
@@ -80,18 +191,27 @@ public class MathEvaluatorTests
             Thread.CurrentThread.CurrentCulture = culture;
             Thread.CurrentThread.CurrentUICulture = culture;
 
-            // Problem to solve check: 2*15 must be 30, never 300
+            // Problem to solve: 2*15 must be 30, never 300
             Assert.Equal(30.0, MathEvaluator.Evaluate("2*15"));
             Assert.Equal("30", MathEvaluator.FormatResult(MathEvaluator.Evaluate("2*15")));
 
-            // Decimal comma and dot checks
+            // Comma & dot decimals
             Assert.Equal(11.0, MathEvaluator.Evaluate("5,5 * 2"));
             Assert.Equal(11.0, MathEvaluator.Evaluate("5.5 * 2"));
             Assert.Equal("11", MathEvaluator.FormatResult(MathEvaluator.Evaluate("5,5 * 2")));
             Assert.Equal("11", MathEvaluator.FormatResult(MathEvaluator.Evaluate("5.5 * 2")));
 
             Assert.Equal(2.5, MathEvaluator.Evaluate("10 / 4"));
+            Assert.Equal(2.5, MathEvaluator.Evaluate("10 : 4"));
             Assert.Equal("2.5", MathEvaluator.FormatResult(MathEvaluator.Evaluate("10 / 4")));
+
+            // Percentages
+            Assert.Equal(120.0, MathEvaluator.Evaluate("100 + 20%"));
+            Assert.Equal("120", MathEvaluator.FormatResult(MathEvaluator.Evaluate("100 + 20%")));
+            Assert.Equal(80.0, MathEvaluator.Evaluate("100 - 20%"));
+            Assert.Equal("80", MathEvaluator.FormatResult(MathEvaluator.Evaluate("100 - 20%")));
+            Assert.Equal(30.0, MathEvaluator.Evaluate("20% от 150"));
+            Assert.Equal("30", MathEvaluator.FormatResult(MathEvaluator.Evaluate("20% of 150")));
         }
         finally
         {
@@ -100,100 +220,30 @@ public class MathEvaluatorTests
         }
     }
 
-    [Theory]
-    [InlineData("abs(-42)", 42)]
-    [InlineData("abs(42)", 42)]
-    [InlineData("abs(-3,14)", 3.14)]
-    [InlineData("sin(0)", 0)]
-    [InlineData("cos(0)", 1)]
-    [InlineData("tan(0)", 0)]
-    [InlineData("log(100)", 2)]
-    [InlineData("log(1000)", 3)]
-    [InlineData("ln(e)", 1)]
-    [InlineData("round(2.6)", 3)]
-    [InlineData("round(2.4)", 2)]
-    [InlineData("round(2.5)", 3)]
-    [InlineData("round(-2.5)", -3)]
-    [InlineData("floor(3.9)", 3)]
-    [InlineData("floor(-3.1)", -4)]
-    [InlineData("ceil(3.1)", 4)]
-    [InlineData("ceil(-3.9)", -3)]
-    [InlineData("ceiling(3.1)", 4)]
-    public void Evaluate_ScientificFunctions_ReturnsCorrectValue(string expression, double expected)
-    {
-        double result = MathEvaluator.Evaluate(expression);
-        Assert.Equal(expected, result, precision: 6);
-    }
+    #endregion
 
-    [Fact]
-    public void Evaluate_EulerConstant_ReturnsCorrectValue()
-    {
-        double result = MathEvaluator.Evaluate("e");
-        Assert.Equal(Math.E, result, precision: 10);
-    }
-
-    [Fact]
-    public void Evaluate_TrigonometricWithPi_ReturnsExpectedValue()
-    {
-        double result = MathEvaluator.Evaluate("sin(pi / 2)");
-        Assert.Equal(1.0, result, precision: 6);
-
-        double cosPi = MathEvaluator.Evaluate("cos(pi)");
-        Assert.Equal(-1.0, cosPi, precision: 6);
-    }
+    #region String Formatting & Precision
 
     [Theory]
-    [InlineData("2(3 + 4)", 14)]
-    [InlineData("2pi", 6.283185307)]
-    [InlineData("(2 + 3)(4 + 5)", 45)]
-    [InlineData("2sqrt(9)", 6)]
-    [InlineData("3(2)", 6)]
-    public void Evaluate_ImplicitMultiplication_CalculatesCorrectly(string expression, double expected)
+    [InlineData("2*15", "30")]
+    [InlineData("10 / 4", "2.5")]
+    [InlineData("100 + 20%", "120")]
+    [InlineData("2500 + 13%", "2825")]
+    [InlineData("1500 - 15%", "1275")]
+    [InlineData("100 + 20% - 10%", "108")]
+    [InlineData("20% of 150", "30")]
+    [InlineData("20% от 150", "30")]
+    [InlineData("50%", "0.5")]
+    [InlineData("1 000 000 + 500 000", "1500000")]
+    [InlineData("10_000 * 2", "20000")]
+    [InlineData("100 : 4", "25")]
+    [InlineData("12 x 12", "144")]
+    [InlineData("(10 + 5", "15")]
+    public void TryEvaluate_EverydayExpressions_ReturnsExpectedFormattedString(string expression, string expectedFormatted)
     {
-        double result = MathEvaluator.Evaluate(expression);
-        Assert.Equal(expected, result, precision: 5);
-    }
-
-    [Theory]
-    [InlineData("2 ^ 3 ^ 2", 512)] // Right-associative: 2^(3^2) = 2^9 = 512
-    [InlineData("(2 ^ 3) ^ 2", 64)]
-    [InlineData("2 * 3 ^ 2", 18)]   // Power has higher precedence than multiply: 2 * 9 = 18
-    [InlineData("10 - 4 + 2", 8)]   // Left-to-right addition/subtraction
-    [InlineData("10 % 3 * 2", 2)]   // Left-to-right modulo/multiplication
-    [InlineData("-2 ^ 2", -4)]      // -(2^2) = -4
-    [InlineData("(-2) ^ 2", 4)]
-    public void Evaluate_PrecedenceAndAssociativity_CalculatesCorrectly(string expression, double expected)
-    {
-        double result = MathEvaluator.Evaluate(expression);
-        Assert.Equal(expected, result, precision: 6);
-    }
-
-    [Theory]
-    [InlineData("1e3", 1000)]
-    [InlineData("1.5e2", 150)]
-    [InlineData("1,5e2", 150)]
-    [InlineData("2e-1", 0.2)]
-    [InlineData("2.5e+2", 250)]
-    public void Evaluate_ScientificNotation_ParsesCorrectly(string expression, double expected)
-    {
-        double result = MathEvaluator.Evaluate(expression);
-        Assert.Equal(expected, result, precision: 6);
-    }
-
-    [Theory]
-    [InlineData("SQRT(144)", 12)]
-    [InlineData("Sqrt(144)", 12)]
-    [InlineData("PI", Math.PI)]
-    [InlineData("Pi", Math.PI)]
-    [InlineData("E", Math.E)]
-    [InlineData("SIN(0)", 0)]
-    [InlineData("COS(0)", 1)]
-    [InlineData("12 X 12", 144)]
-    [InlineData("12 x 12", 144)]
-    public void Evaluate_CaseInsensitivity_ReturnsCorrectResult(string expression, double expected)
-    {
-        double result = MathEvaluator.Evaluate(expression);
-        Assert.Equal(expected, result, precision: 6);
+        bool success = MathEvaluator.TryEvaluate(expression, out double _, out string? formatted);
+        Assert.True(success);
+        Assert.Equal(expectedFormatted, formatted);
     }
 
     [Fact]
@@ -205,6 +255,10 @@ public class MathEvaluatorTests
         Assert.Equal("0.3", formatted);
     }
 
+    #endregion
+
+    #region Error & Incomplete Expression Handling
+
     [Theory]
     [InlineData(null)]
     [InlineData("")]
@@ -212,7 +266,6 @@ public class MathEvaluatorTests
     [InlineData("2 +")]
     [InlineData("2 *")]
     [InlineData("sqrt(")]
-    [InlineData("(2 + 3")]
     [InlineData("unknown(5)")]
     [InlineData("++")]
     [InlineData("@#$")]
@@ -229,4 +282,6 @@ public class MathEvaluatorTests
         double result = MathEvaluator.Evaluate("10 / 0");
         Assert.True(double.IsInfinity(result));
     }
+
+    #endregion
 }

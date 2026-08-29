@@ -1,6 +1,6 @@
 # QuickCalc — Minimalist Floating Calculator Widget
 
-QuickCalc is a sleek, ultra-fast floating calculator widget for Windows built with .NET 8 and WPF. It operates with a global system hotkey (`Alt + Q`), evaluates mathematical expressions in real time using a custom culture-invariant recursive descent parser, and allows instant copying of calculated results to the clipboard.
+QuickCalc is a sleek, ultra-fast floating calculator widget for Windows built with .NET 8 and WPF. It operates with a global system hotkey (`Alt + Q`), evaluates mathematical expressions in real time using a custom culture-invariant recursive descent parser tailored for everyday calculations, and allows instant copying of calculated results to the clipboard.
 
 ---
 
@@ -9,18 +9,28 @@ QuickCalc is a sleek, ultra-fast floating calculator widget for Windows built wi
 - **Global Hotkey Toggle**: `Alt + Q` summons or dismisses the calculator from anywhere in Windows.
 - **Floating Spotlight-Style UI**: Borderless, semi-transparent window with rounded corners, dark theme (`#252526`), and ambient drop shadow.
 - **Real-Time Evaluation**: Dynamically evaluates mathematical expressions as you type without pressing calculate.
-- **Culture-Invariant Engine**: Fully culture-independent parsing; both `.` and `,` are accepted as decimal separators without regional Windows culture issues (e.g. `ru-RU`, `de-DE`, `fr-FR`).
-- **Rich Mathematical Syntax**:
-  - **Arithmetic Operators**: `+`, `-`, unary `+x` / `-x`, `*`, `/`, `%` (modulo)
-  - **Multiplication Aliases**: `*`, `x`, `X`, `×` (e.g. `12 x 12`, `12 × 12`, `2*15`)
-  - **Division Aliases**: `/`, `÷` (always floating-point arithmetic, e.g. `10 ÷ 4` = `2.5`)
-  - **Power / Exponentiation**: `^` or `**` (e.g. `2^8` = `256`, `2**3` = `8`, `2^3^2` = `512`)
-  - **Parentheses**: Arbitrary nested expressions `(...)`
-  - **Implicit Multiplication**: e.g. `2(15 + 7)`, `2pi`, `(2+3)(4+5)`, `2sqrt(9)`
-  - **Scientific Constants**: `pi` / `PI` (`Math.PI`), `e` / `E` (`Math.E`)
-  - **Scientific Functions**: `sqrt(...)`, `abs(...)`, `sin(...)`, `cos(...)`, `tan(...)`, `log(...)` (base 10), `ln(...)` (natural log), `round(...)`, `floor(...)`, `ceil(...)` / `ceiling(...)`
-  - **Scientific Notation**: `1e3`, `1.5e-2`, `2.5e+2`
-  - **Clean Floating-Point Formatting**: Trims trailing zeros and automatically removes IEEE 754 precision artifacts (`0.1 + 0.2` = `0.3`).
+- **Everyday Percentage Semantics (`%`)**:
+  - **Postfix Percentage**: `50%` = `0.5`, `100%` = `1`, `5%` = `0.05`
+  - **Additive Percentage (Tax / Tip / Markup)**: `100 + 20%` = `120` (`100 + (100 * 0.20)`), `2500 + 13%` = `2825`, `200 + 5.5%` = `211`
+  - **Subtractive Percentage (Discounts)**: `100 - 20%` = `80` (`100 - (100 * 0.20)`), `1500 - 15%` = `1275`, `200 - 5.5%` = `189`
+  - **Multiplicative Percentage**: `100 * 20%` = `20`, `20% * 100` = `20`, `100 x 20%` = `20`
+  - **Division by Percentage**: `100 / 20%` = `500`, `100 : 20%` = `500`, `20% / 2` = `0.1`
+  - **Chained Percentages**: `100 + 20% - 10%` = `108` (`(120) - 12`), `100 + 10% + 10%` = `121`, `1000 - 20% - 10%` = `720`
+  - **Parenthesized Percentages**: `(100 + 50) + 10%` = `165`, `(200 - 50) - 10%` = `135`, `(100 + 20%)` = `120`
+  - **Natural Language Aliases**: `20% of 150` = `30`, `20% от 150` = `30`, `50% of 200` = `100`, `15% от 2000` = `300`
+  - **Direct Percentage Additions / Subtractions**: `20% + 30%` = `0.5`, `50% - 20%` = `0.3`, `10% + 20% + 30%` = `0.6`
+- **Everyday Operator Aliases & Formatting**:
+  - **Division Aliases**: `/`, `÷`, `:`, `\` (e.g. `100 : 4 = 25`, `100 ÷ 4 = 25`, `100 \ 4 = 25`)
+  - **Multiplication Aliases**: `*`, `x`, `X`, `×`, `•`, `∙`, `·`, `⋅` (e.g. `12 x 12 = 144`, `12 • 12 = 144`)
+  - **Power / Exponentiation**: `^` or `**` (e.g. `2^3 = 8`, `10^2 = 100`, `2^8 = 256`)
+  - **Thousands Separators & Spaces in Numbers**: `1 000 000 + 500 000 = 1500000`, `10_000 * 2 = 20000`, `2 500 + 13% = 2825`
+  - **Culture-Invariant Decimal Separators**: Both `.` and `,` are accepted seamlessly (`2,5 + 7,5 = 10`, `5,5 * 2 = 11`) without regional Windows culture issues (`ru-RU`, `de-DE`, `fr-FR`).
+  - **Auto-Closing Unbalanced Parentheses on Live Evaluation**: `(10 + 5` ➔ `15`, `2 * (10 + 5` ➔ `30`, `sqrt(144` ➔ `12`, `(100 + 50 + 10%` ➔ `165`
+- **Lightweight Everyday Engine**:
+  - Streamlined engine focused on everyday arithmetic and finance calculations.
+  - Complex unused functions (`sin`, `cos`, `tan`, `log`, `ln`, `ceil`, `floor`) removed for instant evaluation speed.
+  - Clean floating-point formatting removing IEEE 754 precision artifacts (`0.1 + 0.2` = `0.3`).
+  - Simple utilities retained: `sqrt(...)`, `abs(...)`, `round(...)`, and constants `pi`, `e`.
 - **Keyboard Shortcuts**:
   - `Enter`: Copies the current result to clipboard and hides the widget.
   - `Esc`: Hides the widget.
@@ -36,10 +46,11 @@ QuickCalc is a sleek, ultra-fast floating calculator widget for Windows built wi
 - **Interoperability**: Win32 API (`user32.dll`) via `HwndSource` hook:
   - `RegisterHotKey` / `UnregisterHotKey` (`Alt + Q`, `MOD_ALT = 0x0001`, `VK_Q = 0x51`)
 - **Evaluation Engine (`QuickCalc.Services.MathEvaluator`)**:
-  - Custom Lexer and Recursive Descent Parser.
+  - Custom Lexer and Recursive Descent Parser with percentage-aware evaluation state.
   - Strictly operates under `CultureInfo.InvariantCulture`.
   - Normalizes commas and dots to standard decimals while tokenizing.
-  - Handles operator precedence: Primary & Functions > Exponentiation (`^`, `**`) > Unary (`+`, `-`) > Multiplicative (`*`, `/`, `%`, implicit multiply) > Additive (`+`, `-`).
+  - Handles number grouping / thousands separators (spaces, underscores).
+  - Operator precedence: Primary & Postfix (`%`) > Exponentiation (`^`, `**`) > Unary (`+`, `-`) > Multiplicative (`*`, `/`, `÷`, `:`, `\`, `x`, `•`, `of`, `от`, implicit multiply) > Additive (`+`, `-`, `+ %`, `- %`).
 - **Testing Framework**: xUnit with .NET 8 test runner (`QuickCalc.Tests`).
 
 ---
@@ -55,11 +66,11 @@ projects/
 │   ├── MainWindow.xaml           # Borderless floating UI layout
 │   ├── MainWindow.xaml.cs        # WinAPI hotkey, UI bindings & evaluation integration
 │   ├── Services/
-│   │   └── MathEvaluator.cs      # Culture-invariant Recursive Descent Math Parser
+│   │   └── MathEvaluator.cs      # Everyday Math & Percentage Recursive Descent Parser
 │   └── quickcalc_spec.md         # Specification, testing guide & checklist
 └── QuickCalc.Tests/
     ├── QuickCalc.Tests.csproj    # xUnit Unit Test Project Configuration
-    └── MathEvaluatorTests.cs     # Comprehensive test matrix for MathEvaluator
+    └── MathEvaluatorTests.cs     # Comprehensive test matrix for MathEvaluator (122 tests)
 ```
 
 ---
@@ -74,19 +85,22 @@ projects/
   - [x] Input row: Large `TextBox` (FontSize 22), placeholder text, custom caret, and minimalist close button.
   - [x] Result row: Real-time formatted result `TextBlock` (FontSize 18, `#4EC9B0`) and hotkey tips.
 - [x] Implement `MathEvaluator.cs`:
-  - [x] Lexer tokenizing numbers, aliases (`x`, `×`, `÷`, `**`), operators, constants, and functions.
-  - [x] Recursive descent parser for additive, multiplicative, unary, power, and primary expressions.
-  - [x] Complete culture independence (`CultureInfo.InvariantCulture`), resolving the Russian Windows `2*15 = 300` bug.
-  - [x] Clean float formatting and trailing zero removal.
+  - [x] Everyday percentage semantics: postfix `50%`, additive `100 + 20% = 120`, subtractive `100 - 20% = 80`, multiplicative `100 * 20% = 20`, division `100 / 20% = 500`, chained `100 + 20% - 10% = 108`, parenthesized `(100 + 50) + 10% = 165`.
+  - [x] Natural language percentage aliases: `20% of 150 = 30`, `20% от 150 = 30`.
+  - [x] Direct percentage additions/subtractions without base: `20% + 30% = 0.5`.
+  - [x] Everyday operator aliases: division (`/`, `÷`, `:`, `\`), multiplication (`*`, `x`, `X`, `×`, `•`, `∙`, `·`, `⋅`), exponentiation (`^`, `**`).
+  - [x] Thousands separators and spaces in numbers (`1 000 000 + 500 000`, `10_000 * 2`, `2 500 + 13%`).
+  - [x] Culture independence (`CultureInfo.InvariantCulture`) with comma and dot decimals (`2,5 + 7,5 = 10`).
+  - [x] Auto-closing unbalanced parentheses on live typing (`(10 + 5` ➔ `15`, `2 * (10 + 5` ➔ `30`).
+  - [x] Simplified engine: removed unused heavy functions (`sin`, `cos`, `tan`, `log`, `ln`, `ceil`, `floor`), retained `sqrt`, `abs`, `round`, `pi`, `e`.
 - [x] Integrate `MathEvaluator` in `MainWindow.xaml.cs`:
   - [x] WinAPI global hotkey registration (`Alt + Q`) on `OnSourceInitialized` via `HwndSource.AddHook`.
   - [x] Real-time calculation on `InputTextBox.TextChanged`.
   - [x] Enter key to copy result to clipboard and hide window.
   - [x] Escape key and Close button to hide window.
   - [x] Border left-click dragging support via `DragMove()`.
-- [x] Create Unit Tests (`QuickCalc.Tests`):
-  - [x] Standard operations, operator precedence, culture invariance (`ru-RU`, `de-DE`, `fr-FR`, `tr-TR`).
-  - [x] Scientific functions, constants, exponentiation, aliases, implicit multiplication, error handling.
+- [x] Unit Tests (`QuickCalc.Tests`):
+  - [x] 122 comprehensive tests covering percentages, aliases, formatting, auto-closing parens, and cultures.
 - [x] 100% Green test execution with `dotnet test`.
 
 ---
@@ -106,31 +120,36 @@ Execute the xUnit test runner:
 ```bash
 dotnet test projects/QuickCalc.Tests/QuickCalc.Tests.csproj
 ```
-Expected output: **93 passed, 0 failed, 0 skipped**.
+Expected output: **122 passed, 0 failed, 0 skipped**.
 
-### 3. Key Test Matrix
+### 3. Key Everyday Math Test Matrix
 
 | Expression | Expected Result | Verified Feature |
 | :--- | :--- | :--- |
-| `2*15` | `30` | Culture-invariant multiplication (ru-RU bug fixed) |
-| `2 * 15` | `30` | Spaced multiplication |
-| `10 / 4` | `2.5` | Floating-point division |
-| `5,5 * 2` | `11` | Comma as decimal separator |
-| `5.5 * 2` | `11` | Dot as decimal separator |
-| `2^8` | `256` | Exponentiation operator (`^`) |
-| `2 ** 3` | `8` | Exponentiation alias (`**`) |
-| `-5 + 3` | `-2` | Unary negation |
-| `2 * (15 + 7)` | `44` | Parenthesized sub-expressions |
-| `10 % 3` | `1` | Modulo remainder |
-| `sqrt(144)` | `12` | Square root function |
+| `50%` | `0.5` | Standalone / postfix percentage |
+| `100 + 20%` | `120` | Additive percentage (tax/tip/markup: 100 + 20) |
+| `2500 + 13%` | `2825` | Everyday income tax calculation |
+| `100 - 20%` | `80` | Subtractive percentage (discounts: 100 - 20) |
+| `1500 - 15%` | `1275` | Everyday retail discount |
+| `100 * 20%` | `20` | Multiplicative percentage |
+| `100 / 20%` | `500` | Division by percentage |
+| `100 + 20% - 10%` | `108` | Chained percentage operations (`120 - 12`) |
+| `(100 + 50) + 10%` | `165` | Parenthesized expression with percentage markup |
+| `20% of 150` | `30` | English natural language percentage |
+| `20% от 150` | `30` | Russian natural language percentage |
+| `20% + 30%` | `0.5` | Direct percentage addition without base |
+| `1 000 000 + 500 000` | `1500000` | Space thousands separators |
+| `10_000 * 2` | `20000` | Underscore thousands separators |
+| `100 : 4` | `25` | European colon division alias |
+| `100 ÷ 4` | `25` | Unicode division sign alias |
+| `100 \ 4` | `25` | Backslash division alias |
 | `12 x 12` | `144` | Letter `x` multiplication alias |
-| `12 × 12` | `144` | Unicode `×` multiplication alias |
-| `10 ÷ 4` | `2.5` | Unicode `÷` division alias |
-| `pi * 2` | `6.2831853...` | Mathematical constant `pi` |
-| `ln(e)` | `1` | Natural logarithm and Euler's constant `e` |
-| `2(3 + 4)` | `14` | Implicit multiplication with parentheses |
-| `2 ^ 3 ^ 2` | `512` | Right-associative exponentiation |
-| `Thread.CurrentCulture = "ru-RU"` | `2*15 = 30` | System culture resilience |
+| `12 • 12` | `144` | Bullet multiplication alias |
+| `2,5 + 7,5` | `10` | Comma decimal separator |
+| `(10 + 5` | `15` | Auto-closing unclosed parentheses on live evaluation |
+| `2 * (10 + 5` | `30` | Auto-closing nested expression |
+| `2^3` | `8` | Exponentiation operator |
+| `Thread.CurrentCulture = "ru-RU"` | `2*15 = 30` | Full culture invariance |
 
 ### 4. Interactive Application Verification
 Launch the application:
@@ -138,6 +157,7 @@ Launch the application:
 dotnet run --project projects/QuickCalc/QuickCalc.csproj
 ```
 1. Press `Alt + Q` to summon the widget.
-2. Type `2*15` ➔ Instant `= 30`.
-3. Type `5,5 * 2` ➔ Instant `= 11`.
-4. Press `Enter` ➔ Window closes, `30` or `11` is copied to clipboard.
+2. Type `2500 + 13%` ➔ Instant `= 2825`.
+3. Type `20% от 150` ➔ Instant `= 30`.
+4. Type `1 000 000 + 500 000` ➔ Instant `= 1500000`.
+5. Press `Enter` ➔ Window closes, result is copied to clipboard.
