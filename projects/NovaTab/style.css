@@ -3,6 +3,49 @@
    ========================================================================== */
 
 :root {
+  --ui-bg: #0d1117;
+  --ui-modal: rgba(28,29,38,0.97);
+  --ui-popover: var(--ui-modal);
+  --ui-modal-fixed: rgba(28,29,38,0.97);
+  --ui-border-fixed: rgba(255,255,255,0.1);
+  --ui-fill-fixed: rgba(255,255,255,0.06);
+  --ui-fill-fixed-hover: rgba(255,255,255,0.10);
+  --ui-fill-fixed-active: rgba(255,255,255,0.14);
+  --ui-border-subtle: rgba(255,255,255,0.06);
+  --ui-border: rgba(255,255,255,0.10);
+  --ui-border-strong: rgba(255,255,255,0.18);
+  --ui-fill: rgba(255,255,255,0.06);
+  --ui-fill-hover: rgba(255,255,255,0.10);
+  --ui-fill-active: rgba(255,255,255,0.14);
+  --ui-text: rgba(255,255,255,0.92);
+  --ui-text-secondary: rgba(255,255,255,0.70);
+  --ui-text-tertiary: rgba(255,255,255,0.45);
+  --ui-text-dim: rgba(255,255,255,0.30);
+  --ui-text-faint: rgba(255,255,255,0.20);
+  --ui-danger: rgba(255,110,110,0.85);
+  --ui-danger-strong: #ff6b6b;
+  --ui-danger-bg: rgba(220,60,60,0.12);
+  --ui-danger-bg-hover: rgba(220,60,60,0.22);
+  --ui-danger-border: rgba(255,80,80,0.3);
+  
+  --board-rgb: 33,24,29;
+  --board-alpha: 0.200;
+  --board-blur: 12px;
+  --board-border: rgba(33,24,29,0.350);
+  --board-outline-theme-color: rgba(33,24,29,0.400);
+  --accent-color: #002449;
+  --accent-tab-bg: rgba(0,36,73,0.8);
+  --accent-tab-border: rgba(0,36,73,0.95);
+  --accent-tab-text: #fff;
+  
+  --board-alpha-hover: 0.250;
+  --board-text: rgba(255,255,255,0.9);
+  --board-text-secondary: rgba(255,255,255,0.65);
+  --board-text-dim: rgba(255,255,255,0.28);
+  --board-text-hover: #fff;
+  --board-hover-bg: rgba(255,255,255,0.07);
+
+  /* Layout base helpers */
   --bg-gradient: linear-gradient(135deg, #a1c4fd 0%, #c2e9fb 100%);
   --glass-bg: rgba(255, 255, 255, 0.4);
   --glass-bg-hover: rgba(255, 255, 255, 0.55);
@@ -11,23 +54,9 @@
   --glass-border: 1px solid rgba(255, 255, 255, 0.3);
   --glass-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
   --text-main: #1a1a1a;
-  --text-secondary: #555555;
-  --text-dim: #777777;
-  --accent-color: #2563eb;
-  --accent-color-hover: #1d4ed8;
-  --danger-color: #d32f2f;
   --radius-pill: 100px;
   --radius-card: 16px;
   --radius-item: 10px;
-
-  --ui-bg: #0d1117;
-  --ui-modal: rgba(28, 29, 38, 0.97);
-  --ui-modal-fixed: rgba(28, 29, 38, 0.97);
-  --ui-border: rgba(255, 255, 255, 0.1);
-  --ui-fill: rgba(255, 255, 255, 0.05);
-  --ui-fill-hover: rgba(255, 255, 255, 0.10);
-  --ui-text: rgba(255, 255, 255, 0.85);
-  --ui-text-secondary: rgba(255, 255, 255, 0.65);
 }
 
 * {
@@ -311,32 +340,26 @@ body {
    ========================================================================== */
 
 .board-placeholder {
-  border: 1px dashed rgba(0, 0, 0, 0.2);
-  border-radius: var(--radius-card);
+  border: 1px dashed rgba(255, 255, 255, 0.2);
+  border-radius: 16px;
   display: flex;
   align-items: center;
   justify-content: center;
   min-height: 120px;
   cursor: pointer;
-  transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+  opacity: 0; /* Полностью скрыт по умолчанию */
+  transition: opacity 0.2s ease, background 0.2s ease;
 }
 
 .board-placeholder:hover {
-  background: rgba(255, 255, 255, 0.15);
-  border-color: rgba(0, 0, 0, 0.35);
-  transform: translateY(-2px);
+  opacity: 1; /* Появляется только при наведении */
+  background: rgba(255, 255, 255, 0.05);
 }
 
 .board-placeholder .plus-icon {
-  color: rgba(0, 0, 0, 0.3);
+  color: rgba(255, 255, 255, 0.5);
   font-size: 24px;
   font-weight: 300;
-  transition: color 0.2s ease, transform 0.2s ease;
-}
-
-.board-placeholder:hover .plus-icon {
-  color: rgba(0, 0, 0, 0.6);
-  transform: scale(1.15);
 }
 
 /* ==========================================================================
@@ -387,18 +410,29 @@ body {
 .sidebar-wrapper.is-open .icon-menu { display: none; }
 .sidebar-wrapper.is-open .icon-close { display: block; }
 
-/* Кнопка Настроек (Отдельная, с постоянным фоном) */
-.side-settings-btn {
-  width: 52px; height: 52px; border-radius: 50%;
-  background: rgba(10, 25, 45, 0.7); /* Темно-синий круг всегда */
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  border: none; color: #fff; cursor: pointer;
-  display: flex; align-items: center; justify-content: center;
-  transition: background 0.2s, transform 0.2s;
+.side-settings-btn,
+.sidebar-btn-settings {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  box-shadow: 0 0 24px rgba(0,0,0,0.22);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, color 0.15s, transform 0.2s ease;
+  background: var(--accent-tab-bg, rgba(255,255,255,0.18));
+  color: var(--accent-tab-text, #fff);
+  border: 0.5px solid var(--accent-tab-border, rgba(255,255,255,0.25));
+  opacity: 1;
   outline: none;
 }
-.side-settings-btn:hover { background: rgba(15, 35, 60, 0.85); transform: scale(1.05); }
+
+.side-settings-btn:hover,
+.sidebar-btn-settings:hover {
+  background: var(--accent-color);
+  transform: scale(1.05);
+}
 
 /* ==========================================================================
    Context Menu
