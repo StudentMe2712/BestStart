@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>NovaTab</title>
+  <link rel="stylesheet" href="style.css" />
+  <script src="preload.js"></script>
+</head>
+<body>
+
+<video id="video-bg" autoplay loop muted playsinline></video>
+<div id="photo-bg"></div>
+
+<div class="app">
+  <div class="topbar">
+    <nav class="pages-nav" id="pagesNav"></nav>
+    <div id="navSearchBar"></div>
+    <div class="top-widgets" id="topWidgets">
+      <div class="focus-stats weather-widget" id="weatherWidget" style="display:none"></div>
+      <div class="focus-stats" id="focusStats"></div>
+      <div class="focus-stats clock-widget" id="clockWidget">
+        <div class="focus-today-label" id="clockDate"></div>
+        <div class="focus-today-value" id="clockTime"></div>
+      </div>
+    </div>
+  </div>
+  <div class="boards-area" id="boardsArea"></div>
+</div>
+
+<button class="add-board-fab" id="addBoardFab" data-i18n="fab.newBoard">+ New board</button>
+
+<aside class="sidebar" id="sidebar">
+  <!-- Expanded items, animate upward when menu opens. --i=0 appears first (closest to button) -->
+  <div class="sidebar-expanded" id="sidebarExpanded">
+    <div class="ex-wrap" style="--i:4"><span class="ex-label" data-i18n="side.search">Search</span><button class="sidebar-btn ex-btn" id="searchSideBtn" title="Search (Ctrl+K)" data-i18n-title="side.searchTitle"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></button></div>
+    <div class="ex-wrap" style="--i:3"><span class="ex-label" data-i18n="side.wallpaper">Wallpaper</span><button class="sidebar-btn ex-btn" id="mpWallpaper" title="Wallpaper" data-i18n-title="side.wallpaper"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg></button></div>
+    <div class="ex-wrap" style="--i:2"><span class="ex-label" data-i18n="side.widgets">Widgets</span><button class="sidebar-btn ex-btn" id="mpWidgets" title="Widgets" data-i18n-title="side.widgets"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="8" height="8" rx="2"/><rect x="13" y="3" width="8" height="8" rx="2"/><rect x="3" y="13" width="8" height="8" rx="2"/><path d="M17 13v6M14 16h6"/></svg></button></div>
+    <div class="ex-wrap" style="--i:1"><span class="ex-label" data-i18n="side.import">Import</span><button class="sidebar-btn ex-btn" id="mpImport" title="Import bookmarks" data-i18n-title="side.importTitle"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/><line x1="12" y1="8" x2="12" y2="14"/><line x1="9" y1="11" x2="15" y2="11"/></svg></button></div>
+    <div class="ex-wrap" style="--i:0"><span class="ex-label" data-i18n="side.trash">Trash</span><button class="sidebar-btn ex-btn" id="mpTrash" title="Trash" data-i18n-title="side.trash"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg></button></div>
+  </div>
+  <!-- Always-visible base buttons -->
+  <button class="sidebar-btn sidebar-menu-toggle" id="menuSideBtn" title="Menu" data-i18n-title="side.menu">
+    <svg class="icon-menu" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+    <svg class="icon-close" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+  </button>
+  <button class="sidebar-btn sidebar-btn-settings" id="settingsSideBtn" title="Settings" data-i18n-title="side.settings">
+    <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+  </button>
+</aside>
+
+<!-- Search overlay -->
+<div class="search-overlay" id="searchOverlay">
+  <div class="search-modal">
+    <div class="search-input-wrap">
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.3)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input type="text" id="searchInput" placeholder="Search bookmarks…" data-i18n-ph="search.placeholder" autocomplete="off" spellcheck="false" />
+      <kbd class="search-esc-hint">Esc</kbd>
+    </div>
+    <div class="search-results" id="searchResults"></div>
+  </div>
+</div>
+
+<!-- Import modal -->
+<div class="import-overlay" id="importOverlay">
+  <div class="import-modal">
+    <div class="import-header">
+      <span data-i18n="import.header">Import from Chrome Bookmarks</span>
+      <button class="import-close-btn" id="importCloseBtn">×</button>
+    </div>
+    <div class="import-list" id="importList"></div>
+    <div class="import-footer">
+      <span class="import-json-link" id="importJsonLink" data-i18n="import.jsonLink">Or import from a JSON file</span>
+      <input type="file" id="importJsonInput" accept="application/json,.json" style="display:none;" />
+    </div>
+  </div>
+</div>
+
+<!-- Trash modal -->
+<div class="trash-overlay" id="trashOverlay">
+  <div class="trash-modal">
+    <div class="trash-header">
+      <span data-i18n="trash.title">Trash</span>
+      <div class="trash-confirm" id="trashConfirm" style="display:none">
+        <span class="trash-confirm-label" data-i18n="trash.emptyConfirm">Empty trash?</span>
+        <button class="trash-confirm-btn trash-confirm-cancel" id="trashConfirmCancel" data-i18n="common.cancel">Cancel</button>
+        <button class="trash-confirm-btn trash-confirm-yes" id="trashConfirmYes" data-i18n="trash.deleteAll">Delete all</button>
+      </div>
+      <button class="trash-empty-btn" id="trashEmptyBtn" data-i18n="trash.empty">Empty trash</button>
+      <button class="trash-close-btn" id="trashCloseBtn">×</button>
+    </div>
+    <div class="trash-list" id="trashList"></div>
+  </div>
+</div>
+
+<div class="wp-overlay" id="wpOverlay">
+  <div class="wp-modal">
+    <div class="wp-header">
+      <span class="wp-title" data-i18n="wp.title">Wallpaper</span>
+      <button class="wp-close-btn" id="wpCloseBtn">×</button>
+    </div>
+    <div class="wp-body" id="wpBody"></div>
+    <input type="file" id="fileInput" accept="image/*,video/mp4" style="display:none;" />
+  </div>
+</div>
+
+
+<!-- Widget Gallery -->
+<div class="widget-gallery" id="widgetGallery">
+  <div class="panel-label" data-i18n="widgets.label">Widgets</div>
+  <div class="widget-card" id="wcBoard">
+    <div class="widget-card-icon">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="18" rx="3"/><line x1="8" y1="9" x2="16" y2="9"/><line x1="8" y1="13" x2="14" y2="13"/></svg>
+    </div>
+    <span class="widget-card-name" data-i18n="widget.board">Board</span>
+    <button class="widget-add-btn" data-i18n="widget.add">Add</button>
+  </div>
+
+  <div class="widget-card" id="wcNotes">
+    <div class="widget-card-icon">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+    </div>
+    <span class="widget-card-name" data-i18n="widget.notes">Notes</span>
+    <button class="widget-add-btn" data-i18n="widget.add">Add</button>
+  </div>
+  <div class="widget-card" id="wcCalendar">
+    <div class="widget-card-icon">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+    </div>
+    <span class="widget-card-name" data-i18n="widget.calendar">Calendar</span>
+    <button class="widget-add-btn" data-i18n="widget.add">Add</button>
+  </div>
+  <div class="widget-card" id="wcPomodoro">
+    <div class="widget-card-icon">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><polyline points="12,7 12,12 15,15"/></svg>
+    </div>
+    <span class="widget-card-name" data-i18n="widget.pomodoro">Pomodoro</span>
+    <button class="widget-add-btn" data-i18n="widget.add">Add</button>
+  </div>
+  <div class="widget-card" id="wcClock">
+    <div class="widget-card-icon">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><polyline points="12,7 12,12 16,12"/></svg>
+    </div>
+    <span class="widget-card-name" data-i18n="widget.clock">Clock</span>
+    <button class="st-toggle" id="clockToggle"><span class="st-toggle-knob"></span></button>
+  </div>
+  <div class="widget-card" id="wcNavSearch">
+    <div class="widget-card-icon">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    </div>
+    <span class="widget-card-name" data-i18n="widget.search">Search</span>
+    <button class="st-toggle" id="navSearchToggle"><span class="st-toggle-knob"></span></button>
+  </div>
+
+  <div class="widget-card widget-card--weather" id="wcWeather">
+    <div class="widget-card-icon">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9z"/></svg>
+    </div>
+    <span class="widget-card-name" data-i18n="widget.weather">Weather</span>
+    <button class="st-toggle" id="weatherToggle"><span class="st-toggle-knob"></span></button>
+  </div>
+  <div class="weather-card-config" id="weatherCardConfig" style="display:none">
+    <div class="weather-config-row">
+      <input class="weather-city-input" id="weatherCityInput" placeholder="City name…" data-i18n-ph="weather.cityPlaceholder" autocomplete="off" />
+      <button class="widget-add-btn" id="weatherCityApply" data-i18n="weather.apply">Apply</button>
+      <ul class="weather-city-suggest" id="weatherCitySuggest" style="display:none"></ul>
+    </div>
+  </div>
+
+</div>
+
+<!-- Style Editor -->
+<div class="se-overlay" id="seOverlay">
+  <div class="se-modal">
+    <div class="se-header">
+      <div class="se-title" data-i18n="se.title">Adjust Wallpaper Style</div>
+      <div class="se-subtitle" id="seSubtitle" data-i18n="se.analyzing">Analyzing wallpaper…</div>
+    </div>
+    <div class="se-body">
+      <div class="se-color-row">
+        <div class="se-field">
+          <div class="se-label"><span data-i18n="se.primaryColor">Primary Color</span> <span class="se-hex-val" id="seAccentHex">#ffffff</span></div>
+          <label class="se-color-wrap"><div class="se-color-swatch" id="seAccentSwatch"></div><input type="color" id="seAccentPicker" value="#ffffff" /></label>
+        </div>
+        <div class="se-field">
+          <div class="se-label"><span data-i18n="se.boardColor">Board Color</span> <span class="se-hex-val" id="seBoardHex">#ffffff</span></div>
+          <label class="se-color-wrap"><div class="se-color-swatch" id="seBoardSwatch"></div><input type="color" id="seBoardPicker" value="#ffffff" /></label>
+        </div>
+      </div>
+      <div class="se-slider-field">
+        <div class="se-label"><span data-i18n="se.boardOpacity">Board Opacity</span> <span id="seOpacityVal">5%</span></div>
+        <input type="range" class="se-slider" id="seOpacitySlider" min="0" max="100" step="1" value="5" />
+      </div>
+      <div class="se-slider-field">
+        <div class="se-label"><span data-i18n="se.boardBlur">Board Blur</span> <span id="seBlurVal">12px</span></div>
+        <input type="range" class="se-slider" id="seBlurSlider" min="0" max="40" step="1" value="12" />
+      </div>
+      <div class="se-slider-field">
+        <div class="se-label" data-i18n="se.textSize">Text Size</div>
+        <div class="se-seg" id="seTextScale">
+          <button class="se-seg-btn" data-val="0.9">S</button>
+          <button class="se-seg-btn" data-val="1">M</button>
+          <button class="se-seg-btn" data-val="1.15">L</button>
+        </div>
+      </div>
+      <div class="se-slider-field">
+        <div class="se-label" data-i18n="se.textWeight">Text Weight</div>
+        <div class="se-seg" id="seTextWeight">
+          <button class="se-seg-btn" data-val="0" data-i18n="common.normal">Normal</button>
+          <button class="se-seg-btn" data-val="1" data-i18n="common.bold">Bold</button>
+        </div>
+      </div>
+    </div>
+    <div class="se-footer">
+      <button class="se-btn" id="seCancelBtn" data-i18n="common.cancel">Cancel</button>
+      <button class="se-btn" id="seResetBtn" data-i18n="common.reset">Reset</button>
+      <button class="se-btn se-save" id="seSaveBtn" data-i18n="common.save">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Settings -->
+<div class="settings-overlay" id="settingsOverlay" style="display:none">
+  <div class="settings-modal">
+    <div class="settings-header">
+      <span class="settings-title" data-i18n="settings.title">Settings</span>
+      <button class="settings-close-btn" id="settingsCloseBtn">×</button>
+    </div>
+    <div class="settings-main">
+      <nav class="settings-nav" id="settingsNav"></nav>
+      <div class="settings-body" id="settingsBody"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Onboarding Tour -->
+<div id="tourOverlay" class="tour-overlay" style="display:none" aria-hidden="true"></div>
+<div id="tourTooltip" class="tour-tooltip" style="display:none">
+  <div class="tour-header">
+    <span id="tourStepLabel" class="tour-step-label"></span>
+    <button id="tourSkipBtn" class="tour-skip" data-i18n="tour.skip">Skip tour</button>
+  </div>
+  <h3 id="tourTitle" class="tour-title"></h3>
+  <p id="tourDesc" class="tour-desc"></p>
+  <div id="tourDemo" class="tour-demo" style="display:none" aria-hidden="true">
+    <div class="tour-demo-board">
+      <div class="tour-demo-bk"><span class="tour-demo-fav"></span><span class="tour-demo-line"></span></div>
+      <div class="tour-demo-bk"><span class="tour-demo-fav"></span><span class="tour-demo-line short"></span></div>
+    </div>
+    <div class="tour-demo-board tour-demo-board-target">
+      <div class="tour-demo-bk"><span class="tour-demo-fav"></span><span class="tour-demo-line"></span></div>
+      <div class="tour-demo-bk"><span class="tour-demo-fav"></span><span class="tour-demo-line short"></span></div>
+    </div>
+    <div class="tour-demo-chip">
+      <span class="tour-demo-chip-dot"></span>
+      <span class="tour-demo-chip-line"></span>
+    </div>
+    <svg class="tour-demo-cursor" viewBox="0 0 24 24" width="20" height="20"><path d="M4 2 L4 19 L8.5 14.5 L11.5 21 L14 20 L11 13.5 L17 13.5 Z" fill="#fff" stroke="rgba(0,0,0,0.5)" stroke-width="1.2" stroke-linejoin="round"/></svg>
+  </div>
+  <div class="tour-footer">
+    <div class="tour-nav-btns">
+      <button id="tourBackBtn" class="tour-back-btn" style="display:none">← Back</button>
+      <button id="tourNextBtn" class="tour-next-btn" data-i18n="tour.next">Next →</button>
+    </div>
+  </div>
+  <button id="tourLaterBtn" class="tour-later-btn" style="display:none" data-i18n="tour.maybeLater">Maybe later</button>
+</div>
+
+<script src="i18n.js"></script>
+<script src="newtab.js"></script>
+</body>
+</html>

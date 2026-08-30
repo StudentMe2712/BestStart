@@ -1,0 +1,12 @@
+{
+  "manifest_version": 3,
+  "name": "NovaTab",
+  "version": "1.0",
+  "description": "Приватная и полностью бесплатная стартовая страница",
+  "chrome_url_overrides": {
+    "newtab": "newtab.html"
+  },
+  "permissions": ["storage", "bookmarks", "favicon"],
+  "background": { "service_worker": "background.js" },
+  "icons": { "128": "icon128.png" }
+}

@@ -658,6 +658,8 @@
     if (navApp) navApp.textContent = dict['settings.tabAppearance'];
     const navRegion = document.querySelector('.settings-nav-item[data-tab="tab-region"] span');
     if (navRegion) navRegion.textContent = dict['settings.tabRegion'];
+    const navAccount = document.querySelector('.settings-nav-item[data-tab="tab-account"] span');
+    if (navAccount) navAccount.textContent = dict['settings.tabAccount'];
     const navSupport = document.querySelector('#supportNavBtn span');
     if (navSupport) navSupport.textContent = dict['settings.tabSupport'];
 
