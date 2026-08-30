@@ -32,8 +32,8 @@
     <Grid Background="Transparent">
         <Grid.RowDefinitions>
             <RowDefinition Height="42" />  <!-- 0: Windows 11 Title Bar with Tabs -->
-            <RowDefinition Height="46" />  <!-- 1: Navigation & Address Bar & Search -->
-            <RowDefinition Height="44" />  <!-- 2: Windows 11 Command Bar (~44px) -->
+            <RowDefinition Height="48" />  <!-- 1: Navigation & Address Bar & Search (48px) -->
+            <RowDefinition Height="48" />  <!-- 2: Windows 11 Command Bar (48px) -->
             <RowDefinition Height="*" />   <!-- 3: Sidebar + Main File View -->
             <RowDefinition Height="30" />  <!-- 4: Bottom Status Bar -->
         </Grid.RowDefinitions>
@@ -86,7 +86,10 @@
                                     Style="{StaticResource NavIconButton}"
                                     Command="{Binding CloseTabCommand}"
                                     ToolTip="Закрыть вкладку">
-                                <TextBlock Text="✕" FontSize="9" Foreground="{StaticResource BrushTextSecondary}" />
+                                <Path Data="{StaticResource GeoDismiss}"
+                                      Fill="{StaticResource BrushTextSecondary}"
+                                      Stretch="Uniform"
+                                      Width="10" Height="10" />
                             </Button>
                         </StackPanel>
                     </Border>
@@ -96,7 +99,10 @@
                             Style="{StaticResource NavIconButton}"
                             Command="{Binding NewTabCommand}"
                             ToolTip="Новая вкладка (Ctrl+T)">
-                        <TextBlock Text="➕" FontSize="10" Foreground="{StaticResource BrushTextSecondary}" />
+                        <Path Data="{StaticResource GeoAdd}"
+                              Fill="{StaticResource BrushTextSecondary}"
+                              Stretch="Uniform"
+                              Width="12" Height="12" />
                     </Button>
                 </StackPanel>
 
@@ -158,361 +164,446 @@
             </Grid>
         </Border>
 
-                <!-- ================= 1: TOP NAVIGATION & ADDRESS BAR & SEARCH ================= -->
-                <Border Grid.Row="1"
-                        Background="{StaticResource BrushMica}"
-                        BorderBrush="{StaticResource BrushBorder}"
-                        BorderThickness="0,0,0,1"
-                        Padding="10,6">
+        <!-- ================= 1: TOP NAVIGATION & ADDRESS BAR & SEARCH ================= -->
+        <Border Grid.Row="1"
+                Background="{StaticResource BrushMica}"
+                BorderBrush="{StaticResource BrushBorder}"
+                BorderThickness="0,0,0,1"
+                Padding="10,6">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />                        <!-- 0: Navigation Buttons (Back, Forward, Up, Refresh) -->
+                    <ColumnDefinition Width="3*" />                          <!-- 1: Breadcrumb / Address Bar (~75%) -->
+                    <ColumnDefinition Width="1*" MinWidth="240" />           <!-- 2: Windows 11 Search Box (~25%, MinWidth=240) -->
+                </Grid.ColumnDefinitions>
+
+                <!-- Navigation Buttons in Rounded Frames (Width=32, Height=32, 16x16 icon) -->
+                <StackPanel Grid.Column="0"
+                            Orientation="Horizontal"
+                            VerticalAlignment="Center"
+                            Margin="0,0,8,0">
+                    <Button Style="{StaticResource NavIconButton}"
+                            Command="{Binding GoBackCommand}"
+                            ToolTip="Назад (Alt+Left)">
+                        <Path Data="{StaticResource GeoArrowLeft}"
+                              Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                              Stretch="Uniform"
+                              Width="16" Height="16" />
+                    </Button>
+
+                    <Button Style="{StaticResource NavIconButton}"
+                            Command="{Binding GoForwardCommand}"
+                            ToolTip="Вперед (Alt+Right)">
+                        <Path Data="{StaticResource GeoArrowRight}"
+                              Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                              Stretch="Uniform"
+                              Width="16" Height="16" />
+                    </Button>
+
+                    <Button Style="{StaticResource NavIconButton}"
+                            Command="{Binding NavigateUpCommand}"
+                            ToolTip="Вверх (Alt+Up)">
+                        <Path Data="{StaticResource GeoArrowUp}"
+                              Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                              Stretch="Uniform"
+                              Width="16" Height="16" />
+                    </Button>
+
+                    <Button Style="{StaticResource NavIconButton}"
+                            Command="{Binding RefreshCommand}"
+                            ToolTip="Обновить (F5)">
+                        <Path Data="{StaticResource GeoRefresh}"
+                              Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                              Stretch="Uniform"
+                              Width="16" Height="16" />
+                    </Button>
+                </StackPanel>
+
+                <!-- Windows 11 Breadcrumb Address Bar (Width=3*) -->
+                <Border Grid.Column="1"
+                        Style="{StaticResource Win11InputContainerStyle}"
+                        Margin="0,0,8,0"
+                        VerticalAlignment="Center">
+                    <Grid>
+                        <!-- Mode A: Clickable Breadcrumb Segments -->
+                        <Grid Visibility="{Binding IsEditingPath, Converter={StaticResource InverseBoolToVis}}"
+                              Background="Transparent"
+                              MouseDown="AddressBar_MouseDown"
+                              Cursor="Hand">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+
+                            <Image Grid.Column="0"
+                                   Source="{Binding FolderIcon}"
+                                   Width="16" Height="16"
+                                   VerticalAlignment="Center"
+                                   Margin="6,0,6,0"
+                                   RenderOptions.BitmapScalingMode="HighQuality" />
+
+                            <!-- Breadcrumb Segments ItemsControl -->
+                            <ItemsControl Grid.Column="1"
+                                          ItemsSource="{Binding Breadcrumbs}"
+                                          VerticalAlignment="Center">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <StackPanel Orientation="Horizontal" />
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                            <Button Content="{Binding Name}"
+                                                    Style="{StaticResource BreadcrumbButton}"
+                                                    Command="{Binding DataContext.NavigateBreadcrumbCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                    CommandParameter="{Binding}"
+                                                    ToolTip="{Binding FullPath}" />
+
+                                            <!-- Segment Chevron Separator -->
+                                            <TextBlock Text="›"
+                                                       Foreground="{StaticResource BrushTextMuted}"
+                                                       FontSize="13"
+                                                       FontWeight="Bold"
+                                                       VerticalAlignment="Center"
+                                                       Margin="2,0,2,0"
+                                                       Visibility="{Binding IsLast, Converter={StaticResource InverseBoolToVis}}" />
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+
+                            <!-- Switch to Edit Mode Icon Button -->
+                            <Button Grid.Column="2"
+                                    Width="24" Height="24"
+                                    Padding="0"
+                                    Style="{StaticResource NavIconButton}"
+                                    Command="{Binding StartEditPathCommand}"
+                                    ToolTip="Редактировать адрес (Ctrl+L / Alt+D)"
+                                    HorizontalAlignment="Right"
+                                    Margin="0,0,4,0">
+                                <Path Data="{StaticResource GeoRename}"
+                                      Fill="{StaticResource BrushTextMuted}"
+                                      Stretch="Uniform"
+                                      Width="12" Height="12" />
+                            </Button>
+                        </Grid>
+
+                        <!-- Mode B: Editable Address TextBox -->
+                        <Grid Visibility="{Binding IsEditingPath, Converter={StaticResource BoolToVis}}">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+
+                            <TextBox x:Name="AddressTextBox"
+                                     Grid.Column="0"
+                                     Text="{Binding PathInputText, UpdateSourceTrigger=PropertyChanged}"
+                                     BorderThickness="0"
+                                     Background="Transparent"
+                                     Foreground="{StaticResource BrushTextPrimary}"
+                                     CaretBrush="{StaticResource BrushAccentLight}"
+                                     VerticalAlignment="Center"
+                                     FontSize="12"
+                                     Padding="6,0"
+                                     KeyDown="AddressTextBox_KeyDown"
+                                     LostFocus="AddressTextBox_LostFocus" />
+
+                            <Button Grid.Column="1"
+                                    Width="24" Height="24"
+                                    Padding="0"
+                                    Style="{StaticResource NavIconButton}"
+                                    Command="{Binding CommitEditPathCommand}"
+                                    ToolTip="Перейти"
+                                    Margin="0,0,2,0">
+                                <Path Data="{StaticResource GeoArrowRight}"
+                                      Fill="{StaticResource BrushAccentLight}"
+                                      Stretch="Uniform"
+                                      Width="12" Height="12" />
+                            </Button>
+
+                            <Button Grid.Column="2"
+                                    Width="24" Height="24"
+                                    Padding="0"
+                                    Style="{StaticResource NavIconButton}"
+                                    Command="{Binding CancelEditPathCommand}"
+                                    ToolTip="Отмена"
+                                    Margin="0,0,4,0">
+                                <Path Data="{StaticResource GeoDismiss}"
+                                      Fill="{StaticResource BrushTextSecondary}"
+                                      Stretch="Uniform"
+                                      Width="11" Height="11" />
+                            </Button>
+                        </Grid>
+                    </Grid>
+                </Border>
+
+                <!-- Windows 11 Search Box (Width=1*, MinWidth=240, Magnifying glass inside left Margin="10,0,0,0", clear button on right) -->
+                <Border Grid.Column="2"
+                        Style="{StaticResource Win11InputContainerStyle}"
+                        VerticalAlignment="Center">
                     <Grid>
                         <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto" /> <!-- Navigation Buttons (Back, Forward, Up, Refresh) -->
-                            <ColumnDefinition Width="*" />    <!-- Breadcrumb / Address Bar -->
-                            <ColumnDefinition Width="280" />  <!-- Windows 11 Search Box -->
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
 
-                        <!-- Navigation Buttons in Rounded Frames -->
-                        <StackPanel Grid.Column="0"
-                                    Orientation="Horizontal"
-                                    VerticalAlignment="Center"
-                                    Margin="0,0,8,0">
-                            <Button Style="{StaticResource NavIconButton}"
-                                    Command="{Binding GoBackCommand}"
-                                    ToolTip="Назад (Alt+Left)">
-                                <TextBlock Text="◀" FontSize="11" />
-                            </Button>
+                        <Path Grid.Column="0"
+                              Data="{StaticResource GeoSearch}"
+                              Fill="{StaticResource BrushTextMuted}"
+                              Stretch="Uniform"
+                              Width="14" Height="14"
+                              VerticalAlignment="Center"
+                              Margin="10,0,6,0" />
 
-                            <Button Style="{StaticResource NavIconButton}"
-                                    Command="{Binding GoForwardCommand}"
-                                    ToolTip="Вперед (Alt+Right)">
-                                <TextBlock Text="▶" FontSize="11" />
-                            </Button>
+                        <TextBox x:Name="SearchTextBox"
+                                 Grid.Column="1"
+                                 Text="{Binding SearchQuery, UpdateSourceTrigger=PropertyChanged}"
+                                 BorderThickness="0"
+                                 Background="Transparent"
+                                 Foreground="{StaticResource BrushTextPrimary}"
+                                 CaretBrush="{StaticResource BrushAccentLight}"
+                                 VerticalAlignment="Center"
+                                 FontSize="12"
+                                 Padding="2,0" />
 
-                            <Button Style="{StaticResource NavIconButton}"
-                                    Command="{Binding NavigateUpCommand}"
-                                    ToolTip="Вверх (Alt+Up)">
-                                <TextBlock Text="⬆" FontSize="12" />
-                            </Button>
+                        <!-- Dynamic Placeholder Text -->
+                        <TextBlock Grid.Column="1"
+                                   Text="{Binding SearchPlaceholder}"
+                                   Foreground="{StaticResource BrushTextMuted}"
+                                   FontSize="11"
+                                   VerticalAlignment="Center"
+                                   IsHitTestVisible="False"
+                                   Margin="4,0,0,0"
+                                   TextTrimming="CharacterEllipsis"
+                                   Visibility="{Binding SearchQuery, Converter={StaticResource StringNullOrEmptyToVis}, ConverterParameter=invert}" />
 
-                            <Button Style="{StaticResource NavIconButton}"
-                                    Command="{Binding RefreshCommand}"
-                                    ToolTip="Обновить (F5)">
-                                <TextBlock Text="🔄" FontSize="11" />
-                            </Button>
-                        </StackPanel>
-
-                        <!-- Windows 11 Breadcrumb Address Bar -->
-                        <Border Grid.Column="1"
-                                Style="{StaticResource Win11InputContainerStyle}"
-                                Margin="0,0,8,0"
-                                VerticalAlignment="Center">
-                            <Grid>
-                                <!-- Mode A: Clickable Breadcrumb Segments -->
-                                <Grid Visibility="{Binding IsEditingPath, Converter={StaticResource InverseBoolToVis}}"
-                                      Background="Transparent"
-                                      MouseDown="AddressBar_MouseDown"
-                                      Cursor="Hand">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="Auto" />
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="Auto" />
-                                    </Grid.ColumnDefinitions>
-
-                                    <Image Grid.Column="0"
-                                           Source="{Binding FolderIcon}"
-                                           Width="16" Height="16"
-                                           VerticalAlignment="Center"
-                                           Margin="4,0,6,0"
-                                           RenderOptions.BitmapScalingMode="HighQuality" />
-
-                                    <!-- Breadcrumb Segments ItemsControl -->
-                                    <ItemsControl Grid.Column="1"
-                                                  ItemsSource="{Binding Breadcrumbs}"
-                                                  VerticalAlignment="Center">
-                                        <ItemsControl.ItemsPanel>
-                                            <ItemsPanelTemplate>
-                                                <StackPanel Orientation="Horizontal" />
-                                            </ItemsPanelTemplate>
-                                        </ItemsControl.ItemsPanel>
-                                        <ItemsControl.ItemTemplate>
-                                            <DataTemplate>
-                                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                                    <Button Content="{Binding Name}"
-                                                            Style="{StaticResource BreadcrumbButton}"
-                                                            Command="{Binding DataContext.NavigateBreadcrumbCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                                            CommandParameter="{Binding}"
-                                                            ToolTip="{Binding FullPath}" />
-
-                                                    <!-- Segment Chevron Separator -->
-                                                    <TextBlock Text="›"
-                                                               Foreground="{StaticResource BrushTextMuted}"
-                                                               FontSize="13"
-                                                               FontWeight="Bold"
-                                                               VerticalAlignment="Center"
-                                                               Margin="2,0,2,0"
-                                                               Visibility="{Binding IsLast, Converter={StaticResource InverseBoolToVis}}" />
-                                                </StackPanel>
-                                            </DataTemplate>
-                                        </ItemsControl.ItemTemplate>
-                                    </ItemsControl>
-
-                                    <!-- Switch to Edit Mode Icon Button -->
-                                    <Button Grid.Column="2"
-                                            Width="24" Height="24"
-                                            Style="{StaticResource NavIconButton}"
-                                            Command="{Binding StartEditPathCommand}"
-                                            ToolTip="Редактировать адрес (Ctrl+L / Alt+D)"
-                                            HorizontalAlignment="Right"
-                                            Margin="0,0,2,0">
-                                        <TextBlock Text="✏️" FontSize="10" />
-                                    </Button>
-                                </Grid>
-
-                                <!-- Mode B: Editable Address TextBox -->
-                                <Grid Visibility="{Binding IsEditingPath, Converter={StaticResource BoolToVis}}">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="Auto" />
-                                        <ColumnDefinition Width="Auto" />
-                                    </Grid.ColumnDefinitions>
-
-                                    <TextBox x:Name="AddressTextBox"
-                                             Grid.Column="0"
-                                             Text="{Binding PathInputText, UpdateSourceTrigger=PropertyChanged}"
-                                             BorderThickness="0"
-                                             Background="Transparent"
-                                             Foreground="{StaticResource BrushTextPrimary}"
-                                             CaretBrush="{StaticResource BrushAccentLight}"
-                                             VerticalAlignment="Center"
-                                             FontSize="12"
-                                             Padding="4,0"
-                                             KeyDown="AddressTextBox_KeyDown"
-                                             LostFocus="AddressTextBox_LostFocus" />
-
-                                    <Button Grid.Column="1"
-                                            Width="24" Height="24"
-                                            Style="{StaticResource NavIconButton}"
-                                            Command="{Binding CommitEditPathCommand}"
-                                            ToolTip="Перейти"
-                                            Margin="0,0,2,0">
-                                        <TextBlock Text="➔" FontSize="11" Foreground="{StaticResource BrushAccentLight}" />
-                                    </Button>
-
-                                    <Button Grid.Column="2"
-                                            Width="24" Height="24"
-                                            Style="{StaticResource NavIconButton}"
-                                            Command="{Binding CancelEditPathCommand}"
-                                            ToolTip="Отмена"
-                                            Margin="0,0,2,0">
-                                        <TextBlock Text="✕" FontSize="10" />
-                                    </Button>
-                                </Grid>
-                            </Grid>
-                        </Border>
-
-                        <!-- Windows 11 Search Box -->
-                        <Border Grid.Column="2"
-                                Style="{StaticResource Win11InputContainerStyle}"
-                                VerticalAlignment="Center">
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto" />
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="Auto" />
-                                </Grid.ColumnDefinitions>
-
-                                <TextBlock Grid.Column="0"
-                                           Text="🔍"
-                                           FontSize="11"
-                                           Foreground="{StaticResource BrushTextMuted}"
-                                           VerticalAlignment="Center"
-                                           Margin="4,0,4,0" />
-
-                                <TextBox x:Name="SearchTextBox"
-                                         Grid.Column="1"
-                                         Text="{Binding SearchQuery, UpdateSourceTrigger=PropertyChanged}"
-                                         BorderThickness="0"
-                                         Background="Transparent"
-                                         Foreground="{StaticResource BrushTextPrimary}"
-                                         CaretBrush="{StaticResource BrushAccentLight}"
-                                         VerticalAlignment="Center"
-                                         FontSize="12"
-                                         Padding="2,0" />
-
-                                <!-- Dynamic Placeholder Text -->
-                                <TextBlock Grid.Column="1"
-                                           Text="{Binding SearchPlaceholder}"
-                                           Foreground="{StaticResource BrushTextMuted}"
-                                           FontSize="11"
-                                           VerticalAlignment="Center"
-                                           IsHitTestVisible="False"
-                                           Margin="4,0,0,0"
-                                           TextTrimming="CharacterEllipsis"
-                                           Visibility="{Binding SearchQuery, Converter={StaticResource StringNullOrEmptyToVis}, ConverterParameter=invert}" />
-
-                                <!-- Clear search button -->
-                                <Button Grid.Column="2"
-                                        Width="20" Height="20"
-                                        Style="{StaticResource NavIconButton}"
-                                        Click="BtnClearSearch_Click"
-                                        ToolTip="Очистить поиск"
-                                        Visibility="{Binding SearchQuery, Converter={StaticResource StringNullOrEmptyToVis}}">
-                                    <TextBlock Text="✕" FontSize="9" />
-                                </Button>
-                            </Grid>
-                        </Border>
+                        <!-- Clear search button -->
+                        <Button Grid.Column="2"
+                                Width="24" Height="24"
+                                Padding="0"
+                                Style="{StaticResource NavIconButton}"
+                                Click="BtnClearSearch_Click"
+                                ToolTip="Очистить поиск"
+                                Margin="0,0,4,0"
+                                Visibility="{Binding SearchQuery, Converter={StaticResource StringNullOrEmptyToVis}}">
+                            <Path Data="{StaticResource GeoDismiss}"
+                                  Fill="{StaticResource BrushTextSecondary}"
+                                  Stretch="Uniform"
+                                  Width="12" Height="12" />
+                        </Button>
                     </Grid>
                 </Border>
+            </Grid>
+        </Border>
 
-                <!-- ================= 2: WINDOWS 11 COMMAND BAR (~44px) ================= -->
-                <Border Grid.Row="2"
-                        Background="{StaticResource BrushMicaSecondary}"
-                        BorderBrush="{StaticResource BrushBorder}"
-                        BorderThickness="0,0,0,1"
-                        Padding="8,0">
-                    <Grid>
+        <!-- ================= 2: WINDOWS 11 COMMAND BAR (48px) ================= -->
+        <Border Grid.Row="2"
+                Height="48"
+                Background="{StaticResource BrushMicaSecondary}"
+                BorderBrush="{StaticResource BrushBorder}"
+                BorderThickness="0,0,0,1"
+                Padding="8,0">
+            <Grid>
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <!-- [ ➕ Создать ▾ ] Button with ContextMenu (Height=36, Padding=10,6, Margin=2,0, CornerRadius=4) -->
+                    <Button x:Name="BtnCreateDropdown"
+                            Style="{StaticResource CommandBarButton}"
+                            Height="36"
+                            Padding="10,6"
+                            Margin="2,0"
+                            Click="BtnCreate_Click"
+                            ToolTip="Создать новый элемент (Ctrl+Shift+N)">
+                        <Button.ContextMenu>
+                            <ContextMenu>
+                                <MenuItem Header="📁 Папка"
+                                          InputGestureText="Ctrl+Shift+N"
+                                          Command="{Binding NewFolderCommand}" />
+                                <MenuItem Header="📄 Текстовый документ"
+                                          Command="{Binding NewTextFileCommand}" />
+                            </ContextMenu>
+                        </Button.ContextMenu>
                         <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                            <!-- [ ➕ Создать ▾ ] Button with ContextMenu -->
-                            <Button x:Name="BtnCreateDropdown"
-                                    Style="{StaticResource CommandBarButton}"
-                                    Click="BtnCreate_Click"
-                                    ToolTip="Создать новый элемент (Ctrl+Shift+N)">
-                                <Button.ContextMenu>
-                                    <ContextMenu>
-                                        <MenuItem Header="📁 Папка"
-                                                  InputGestureText="Ctrl+Shift+N"
-                                                  Command="{Binding NewFolderCommand}" />
-                                        <MenuItem Header="📄 Текстовый документ"
-                                                  Command="{Binding NewTextFileCommand}" />
-                                    </ContextMenu>
-                                </Button.ContextMenu>
-                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                    <TextBlock Text="➕ " FontSize="11" Foreground="{StaticResource BrushAccentLight}" />
-                                    <TextBlock Text="Создать " FontWeight="Medium" />
-                                    <TextBlock Text="▾" FontSize="9" Foreground="{StaticResource BrushTextMuted}" />
-                                </StackPanel>
-                            </Button>
-
-                            <!-- Thin Vertical Separator -->
-                            <Border Width="1" Height="18" Background="{StaticResource BrushBorderLight}" Margin="6,0" />
-
-                            <!-- Compact Icon Action Group (Width=32, Height=32, CornerRadius=4) -->
-                            <!-- ✂ Cut -->
-                            <Button Style="{StaticResource CommandBarActionButton}"
-                                    Command="{Binding CutCommand}"
-                                    ToolTip="Вырезать (Ctrl+X)">
-                                <TextBlock Text="✂" FontSize="13" />
-                            </Button>
-
-                            <!-- 📋 Copy -->
-                            <Button Style="{StaticResource CommandBarActionButton}"
-                                    Command="{Binding CopyCommand}"
-                                    ToolTip="Копировать (Ctrl+C)">
-                                <TextBlock Text="📋" FontSize="12" />
-                            </Button>
-
-                            <!-- 📥 Paste -->
-                            <Button Style="{StaticResource CommandBarActionButton}"
-                                    Command="{Binding PasteCommand}"
-                                    ToolTip="Вставить (Ctrl+V)">
-                                <TextBlock Text="📥" FontSize="12" />
-                            </Button>
-
-                            <!-- ✏️ Rename -->
-                            <Button Style="{StaticResource CommandBarActionButton}"
-                                    Command="{Binding RenameCommand}"
-                                    ToolTip="Переименовать (F2)">
-                                <TextBlock Text="✏️" FontSize="12" />
-                            </Button>
-
-                            <!-- 🔗 Share / Copy Path -->
-                            <Button Style="{StaticResource CommandBarActionButton}"
-                                    Command="{Binding CopyPathCommand}"
-                                    ToolTip="Поделиться / Копировать путь">
-                                <TextBlock Text="🔗" FontSize="12" />
-                            </Button>
-
-                            <!-- 🗑️ Delete -->
-                            <Button Style="{StaticResource CommandBarActionButton}"
-                                    Command="{Binding DeleteCommand}"
-                                    ToolTip="Удалить (Delete)">
-                                <TextBlock Text="🗑️" FontSize="12" Foreground="{StaticResource BrushError}" />
-                            </Button>
-
-                            <!-- Thin Vertical Separator -->
-                            <Border Width="1" Height="18" Background="{StaticResource BrushBorderLight}" Margin="6,0" />
-
-                            <!-- ⇅ Сортировка ▾ Dropdown -->
-                            <Button x:Name="BtnSortDropdown"
-                                    Style="{StaticResource CommandBarButton}"
-                                    Click="BtnSort_Click"
-                                    ToolTip="Параметры сортировки">
-                                <Button.ContextMenu>
-                                    <ContextMenu>
-                                        <MenuItem Header="Имя"
-                                                  Command="{Binding SortByNameCommand}" />
-                                        <MenuItem Header="Дата изменения"
-                                                  Command="{Binding SortByDateCommand}" />
-                                        <MenuItem Header="Тип"
-                                                  Command="{Binding SortByTypeCommand}" />
-                                        <MenuItem Header="Размер"
-                                                  Command="{Binding SortBySizeCommand}" />
-                                        <Separator />
-                                        <MenuItem Header="По возрастанию / убыванию"
-                                                  Command="{Binding ToggleSortDirectionCommand}" />
-                                    </ContextMenu>
-                                </Button.ContextMenu>
-                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                    <TextBlock Text="⇅ " FontSize="12" />
-                                    <TextBlock Text="Сортировка " />
-                                    <TextBlock Text="▾" FontSize="9" Foreground="{StaticResource BrushTextMuted}" />
-                                </StackPanel>
-                            </Button>
-
-                            <!-- ☷ Вид ▾ Dropdown -->
-                            <Button x:Name="BtnViewDropdown"
-                                    Style="{StaticResource CommandBarButton}"
-                                    Click="BtnView_Click"
-                                    ToolTip="Параметры отображения">
-                                <Button.ContextMenu>
-                                    <ContextMenu>
-                                        <MenuItem Header="Таблица (подробный)" IsChecked="True" />
-                                        <Separator />
-                                        <MenuItem Header="Скрытые элементы"
-                                                  IsCheckable="True"
-                                                  IsChecked="{Binding ShowHiddenFiles}"
-                                                  Command="{Binding ToggleShowHiddenFilesCommand}" />
-                                    </ContextMenu>
-                                </Button.ContextMenu>
-                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                    <TextBlock Text="☷ " FontSize="12" />
-                                    <TextBlock Text="Вид " />
-                                    <TextBlock Text="▾" FontSize="9" Foreground="{StaticResource BrushTextMuted}" />
-                                </StackPanel>
-                            </Button>
-
-                            <!-- 💻 Открыть в терминале -->
-                            <Button Style="{StaticResource CommandBarButton}"
-                                    Command="{Binding OpenInTerminalCommand}"
-                                    ToolTip="Открыть в терминале PowerShell">
-                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                    <TextBlock Text="💻 " FontSize="12" />
-                                    <TextBlock Text="Терминал" />
-                                </StackPanel>
-                            </Button>
-
-                            <!-- ℹ️ Свойства -->
-                            <Button Style="{StaticResource CommandBarButton}"
-                                    Command="{Binding PropertiesCommand}"
-                                    ToolTip="Свойства (Alt+Enter)">
-                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                    <TextBlock Text="ℹ️ " FontSize="12" Foreground="{StaticResource BrushAccentLight}" />
-                                    <TextBlock Text="Свойства" />
-                                </StackPanel>
-                            </Button>
+                            <Path Data="{StaticResource GeoAdd}"
+                                  Fill="{StaticResource BrushAccentLight}"
+                                  Stretch="Uniform"
+                                  Width="14" Height="14"
+                                  Margin="0,0,6,0"
+                                  VerticalAlignment="Center" />
+                            <TextBlock Text="Создать" FontWeight="Medium" VerticalAlignment="Center" Margin="0,0,4,0" />
+                            <TextBlock Text="▾" FontSize="9" Foreground="{StaticResource BrushTextMuted}" VerticalAlignment="Center" />
                         </StackPanel>
-                    </Grid>
-                </Border>
+                    </Button>
+
+                    <!-- Separator -->
+                    <Rectangle Width="1" Height="20" Fill="#26FFFFFF" Margin="6,0" VerticalAlignment="Center" />
+
+                    <!-- Signature Icon Action Group (Width=36, Height=36, Padding=0, Margin=1,0, CornerRadius=4, Icon 16x16) -->
+                    <!-- ✂ Cut -->
+                    <Button Style="{StaticResource CommandBarActionButton}"
+                            Width="36" Height="36"
+                            Padding="0"
+                            Margin="1,0"
+                            Command="{Binding CutCommand}"
+                            ToolTip="Вырезать (Ctrl+X)">
+                        <Path Data="{StaticResource GeoCut}" Fill="{StaticResource BrushTextPrimary}" Stretch="Uniform" Width="16" Height="16" />
+                    </Button>
+
+                    <!-- 📋 Copy -->
+                    <Button Style="{StaticResource CommandBarActionButton}"
+                            Width="36" Height="36"
+                            Padding="0"
+                            Margin="1,0"
+                            Command="{Binding CopyCommand}"
+                            ToolTip="Копировать (Ctrl+C)">
+                        <Path Data="{StaticResource GeoCopy}" Fill="{StaticResource BrushTextPrimary}" Stretch="Uniform" Width="16" Height="16" />
+                    </Button>
+
+                    <!-- 📥 Paste -->
+                    <Button Style="{StaticResource CommandBarActionButton}"
+                            Width="36" Height="36"
+                            Padding="0"
+                            Margin="1,0"
+                            Command="{Binding PasteCommand}"
+                            ToolTip="Вставить (Ctrl+V)">
+                        <Path Data="{StaticResource GeoPaste}" Fill="{StaticResource BrushTextPrimary}" Stretch="Uniform" Width="16" Height="16" />
+                    </Button>
+
+                    <!-- ✏️ Rename -->
+                    <Button Style="{StaticResource CommandBarActionButton}"
+                            Width="36" Height="36"
+                            Padding="0"
+                            Margin="1,0"
+                            Command="{Binding RenameCommand}"
+                            ToolTip="Переименовать (F2)">
+                        <Path Data="{StaticResource GeoRename}" Fill="{StaticResource BrushTextPrimary}" Stretch="Uniform" Width="16" Height="16" />
+                    </Button>
+
+                    <!-- 🔗 Share / Copy Path -->
+                    <Button Style="{StaticResource CommandBarActionButton}"
+                            Width="36" Height="36"
+                            Padding="0"
+                            Margin="1,0"
+                            Command="{Binding CopyPathCommand}"
+                            ToolTip="Поделиться / Копировать путь">
+                        <Path Data="{StaticResource GeoShare}" Fill="{StaticResource BrushTextPrimary}" Stretch="Uniform" Width="16" Height="16" />
+                    </Button>
+
+                    <!-- 🗑️ Delete -->
+                    <Button Style="{StaticResource CommandBarActionButton}"
+                            Width="36" Height="36"
+                            Padding="0"
+                            Margin="1,0"
+                            Command="{Binding DeleteCommand}"
+                            ToolTip="Удалить (Delete)">
+                        <Path Data="{StaticResource GeoDelete}" Fill="{StaticResource BrushTextPrimary}" Stretch="Uniform" Width="16" Height="16" />
+                    </Button>
+
+                    <!-- Separator -->
+                    <Rectangle Width="1" Height="20" Fill="#26FFFFFF" Margin="6,0" VerticalAlignment="Center" />
+
+                    <!-- ⇅ Сортировка ▾ Dropdown -->
+                    <Button x:Name="BtnSortDropdown"
+                            Style="{StaticResource CommandBarButton}"
+                            Height="36"
+                            Padding="10,6"
+                            Click="BtnSort_Click"
+                            ToolTip="Параметры сортировки">
+                        <Button.ContextMenu>
+                            <ContextMenu>
+                                <MenuItem Header="Имя"
+                                          Command="{Binding SortByNameCommand}" />
+                                <MenuItem Header="Дата изменения"
+                                          Command="{Binding SortByDateCommand}" />
+                                <MenuItem Header="Тип"
+                                          Command="{Binding SortByTypeCommand}" />
+                                <MenuItem Header="Размер"
+                                          Command="{Binding SortBySizeCommand}" />
+                                <Separator />
+                                <MenuItem Header="По возрастанию / убыванию"
+                                          Command="{Binding ToggleSortDirectionCommand}" />
+                            </ContextMenu>
+                        </Button.ContextMenu>
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <Path Data="{StaticResource GeoSort}"
+                                  Fill="{StaticResource BrushTextPrimary}"
+                                  Stretch="Uniform"
+                                  Width="14" Height="14"
+                                  Margin="0,0,6,0"
+                                  VerticalAlignment="Center" />
+                            <TextBlock Text="Сортировка" VerticalAlignment="Center" Margin="0,0,4,0" />
+                            <TextBlock Text="▾" FontSize="9" Foreground="{StaticResource BrushTextMuted}" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
+
+                    <!-- ☷ Вид ▾ Dropdown -->
+                    <Button x:Name="BtnViewDropdown"
+                            Style="{StaticResource CommandBarButton}"
+                            Height="36"
+                            Padding="10,6"
+                            Click="BtnView_Click"
+                            ToolTip="Параметры отображения">
+                        <Button.ContextMenu>
+                            <ContextMenu>
+                                <MenuItem Header="Таблица (подробный)" IsChecked="True" />
+                                <Separator />
+                                <MenuItem Header="Скрытые элементы"
+                                          IsCheckable="True"
+                                          IsChecked="{Binding ShowHiddenFiles}"
+                                          Command="{Binding ToggleShowHiddenFilesCommand}" />
+                            </ContextMenu>
+                        </Button.ContextMenu>
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <Path Data="{StaticResource GeoView}"
+                                  Fill="{StaticResource BrushTextPrimary}"
+                                  Stretch="Uniform"
+                                  Width="14" Height="14"
+                                  Margin="0,0,6,0"
+                                  VerticalAlignment="Center" />
+                            <TextBlock Text="Вид" VerticalAlignment="Center" Margin="0,0,4,0" />
+                            <TextBlock Text="▾" FontSize="9" Foreground="{StaticResource BrushTextMuted}" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
+
+                    <!-- 💻 Открыть в терминале -->
+                    <Button Style="{StaticResource CommandBarButton}"
+                            Height="36"
+                            Padding="10,6"
+                            Command="{Binding OpenInTerminalCommand}"
+                            ToolTip="Открыть в терминале PowerShell">
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <Path Data="{StaticResource GeoTerminal}"
+                                  Fill="{StaticResource BrushTextPrimary}"
+                                  Stretch="Uniform"
+                                  Width="14" Height="14"
+                                  Margin="0,0,6,0"
+                                  VerticalAlignment="Center" />
+                            <TextBlock Text="Терминал" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
+
+                    <!-- ℹ️ Свойства -->
+                    <Button Style="{StaticResource CommandBarButton}"
+                            Height="36"
+                            Padding="10,6"
+                            Command="{Binding PropertiesCommand}"
+                            ToolTip="Свойства (Alt+Enter)">
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <Path Data="{StaticResource GeoMore}"
+                                  Fill="{StaticResource BrushTextPrimary}"
+                                  Stretch="Uniform"
+                                  Width="14" Height="14"
+                                  Margin="0,0,6,0"
+                                  VerticalAlignment="Center" />
+                            <TextBlock Text="Свойства" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+            </Grid>
+        </Border>
 
                 <!-- ================= 3: SIDEBAR + MAIN FILE VIEW ================= -->
                 <Grid Grid.Row="3">
@@ -754,7 +845,7 @@
                                                             Style="{StaticResource ContextMenuTopActionButton}"
                                                             Command="{Binding PlacementTarget.Tag.CutCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
                                                             ToolTip="Вырезать (Ctrl+X)">
-                                                        <TextBlock Text="✂" FontSize="13" />
+                                                        <Path Data="{StaticResource GeoCut}" Fill="{StaticResource BrushTextPrimary}" Stretch="Uniform" Width="16" Height="16" />
                                                     </Button>
 
                                                     <!-- 📋 Copy -->
@@ -762,7 +853,7 @@
                                                             Style="{StaticResource ContextMenuTopActionButton}"
                                                             Command="{Binding PlacementTarget.Tag.CopyCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
                                                             ToolTip="Копировать (Ctrl+C)">
-                                                        <TextBlock Text="📋" FontSize="12" />
+                                                        <Path Data="{StaticResource GeoCopy}" Fill="{StaticResource BrushTextPrimary}" Stretch="Uniform" Width="16" Height="16" />
                                                     </Button>
 
                                                     <!-- ✏️ Rename -->
@@ -770,7 +861,7 @@
                                                             Style="{StaticResource ContextMenuTopActionButton}"
                                                             Command="{Binding PlacementTarget.Tag.RenameCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
                                                             ToolTip="Переименовать (F2)">
-                                                        <TextBlock Text="✏️" FontSize="12" />
+                                                        <Path Data="{StaticResource GeoRename}" Fill="{StaticResource BrushTextPrimary}" Stretch="Uniform" Width="16" Height="16" />
                                                     </Button>
 
                                                     <!-- 🔗 Share / Copy Path -->
@@ -778,7 +869,7 @@
                                                             Style="{StaticResource ContextMenuTopActionButton}"
                                                             Command="{Binding PlacementTarget.Tag.CopyPathCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
                                                             ToolTip="Поделиться / Копировать путь">
-                                                        <TextBlock Text="🔗" FontSize="12" />
+                                                        <Path Data="{StaticResource GeoShare}" Fill="{StaticResource BrushTextPrimary}" Stretch="Uniform" Width="16" Height="16" />
                                                     </Button>
 
                                                     <!-- 🗑️ Delete -->
@@ -786,7 +877,7 @@
                                                             Style="{StaticResource ContextMenuTopActionButton}"
                                                             Command="{Binding PlacementTarget.Tag.DeleteCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
                                                             ToolTip="Удалить (Delete)">
-                                                        <TextBlock Text="🗑️" FontSize="12" Foreground="{StaticResource BrushError}" />
+                                                        <Path Data="{StaticResource GeoDelete}" Fill="{StaticResource BrushError}" Stretch="Uniform" Width="16" Height="16" />
                                                     </Button>
                                                 </Grid>
 
