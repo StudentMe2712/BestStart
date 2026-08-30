@@ -185,6 +185,32 @@
   };
 
   // --- 4. UTILITIES ---
+  function findNodeInTree(nodes, id) {
+    if (!nodes || !Array.isArray(nodes)) return null;
+    for (const node of nodes) {
+      if (node.id === id) return node;
+      if (node.children && node.children.length > 0) {
+        const found = findNodeInTree(node.children, id);
+        if (found) return found;
+      }
+    }
+    return null;
+  }
+
+  function removeNodeFromTree(nodes, id) {
+    if (!nodes || !Array.isArray(nodes)) return false;
+    for (let i = 0; i < nodes.length; i++) {
+      if (nodes[i].id === id) {
+        nodes.splice(i, 1);
+        return true;
+      }
+      if (nodes[i].children && nodes[i].children.length > 0) {
+        if (removeNodeFromTree(nodes[i].children, id)) return true;
+      }
+    }
+    return false;
+  }
+
   function extractHostname(url) {
     try {
       if (!url) return '';
@@ -433,6 +459,7 @@
   // --- 7. RENDERING BOARDS (TOP NAV PILLS) ---
 
   function renderBoardsPills() {
+    if (!elements.boardsPillsWrapper) return;
     elements.boardsPillsWrapper.innerHTML = '';
 
     // 1. "✦ Все доски" Master Pill
@@ -443,8 +470,16 @@
     allPill.addEventListener('click', () => selectBoard('all'));
     elements.boardsPillsWrapper.appendChild(allPill);
 
-    // 2. Derive top folders / boards
-    const displayFolders = state.allFolders.filter(f => f.depth <= 2);
+    // 2. Filter, deduplicate, and render valid user category folders
+    const ignoredRootIds = new Set(['0', '1', '2', 'mobile']);
+    const seenIds = new Set();
+    const displayFolders = state.allFolders.filter(f => {
+      if (!f || !f.id || ignoredRootIds.has(String(f.id))) return false;
+      if (!f.title || !f.title.trim()) return false;
+      if (seenIds.has(String(f.id))) return false;
+      seenIds.add(String(f.id));
+      return true;
+    });
 
     displayFolders.forEach(folder => {
       const bCount = (state.bookmarksByFolder.get(folder.id) || []).length;
@@ -537,6 +572,7 @@
     // Card Header
     const header = document.createElement('div');
     header.className = 'card-header-bar';
+    const isRootFolder = folder.id === '0' || folder.id === '1' || folder.id === '2' || folder.id === 'mobile';
     header.innerHTML = `
       <div class="card-title-group">
         <span class="card-title-text" title="${escapeHtml(folder.title)}">${escapeHtml(folder.title)}</span>
@@ -549,6 +585,14 @@
             <line x1="5" y1="12" x2="19" y2="12"></line>
           </svg>
         </button>
+        ${!isRootFolder ? `
+        <button class="card-icon-btn btn-delete-card" title="Удалить категорию «${escapeHtml(folder.title)}»">
+          <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+            <polyline points="3 6 5 6 21 6"></polyline>
+            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+          </svg>
+        </button>
+        ` : ''}
       </div>
     `;
 
@@ -556,6 +600,14 @@
       e.stopPropagation();
       openAddModal(folder.id);
     });
+
+    const deleteFolderBtn = header.querySelector('.btn-delete-card');
+    if (deleteFolderBtn) {
+      deleteFolderBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        deleteCategoryFolder(folder);
+      });
+    }
 
     card.appendChild(header);
 
@@ -889,6 +941,12 @@
             state.bookmarksByFolder.set(parentId, []);
           }
           state.bookmarksByFolder.get(parentId).unshift(newBm);
+
+          const targetFolderNode = findNodeInTree(MOCK_BOOKMARK_TREE, parentId);
+          if (targetFolderNode) {
+            targetFolderNode.children = targetFolderNode.children || [];
+            targetFolderNode.children.unshift(newBm);
+          }
         }
         showToast('Закладка добавлена');
       }
@@ -909,6 +967,7 @@
       if (state.isExtension) {
         await chrome.bookmarks.remove(bookmark.id);
       } else {
+        removeNodeFromTree(MOCK_BOOKMARK_TREE, bookmark.id);
         state.allBookmarks = state.allBookmarks.filter(b => b.id !== bookmark.id);
         const folderList = state.bookmarksByFolder.get(bookmark.parentId);
         if (folderList) {
@@ -920,6 +979,44 @@
     } catch (err) {
       console.error('[NovaTab] Delete error:', err);
       showToast('Ошибка удаления', 'error');
+    }
+  }
+
+  async function deleteCategoryFolder(folder) {
+    if (!folder || !folder.id) return;
+    if (folder.id === '0' || folder.id === '1' || folder.id === '2' || folder.id === 'mobile') {
+      showToast('Корневую папку нельзя удалить', 'error');
+      return;
+    }
+
+    const count = (state.bookmarksByFolder.get(folder.id) || []).length;
+    const confirmed = window.confirm(`Удалить категорию «${folder.title}»${count > 0 ? ` и все ${count} закладок в ней` : ''}?`);
+    if (!confirmed) return;
+
+    try {
+      if (state.isExtension) {
+        if (chrome.bookmarks?.removeTree) {
+          await chrome.bookmarks.removeTree(folder.id);
+        } else {
+          await chrome.bookmarks.remove(folder.id);
+        }
+      } else {
+        removeNodeFromTree(MOCK_BOOKMARK_TREE, folder.id);
+        state.allFolders = state.allFolders.filter(f => f.id !== folder.id);
+        state.folderMap.delete(folder.id);
+        state.bookmarksByFolder.delete(folder.id);
+        state.allBookmarks = state.allBookmarks.filter(b => b.parentId !== folder.id);
+      }
+
+      if (state.activeBoardId === folder.id) {
+        state.activeBoardId = 'all';
+      }
+
+      showToast(`Категория «${folder.title}» удалена`);
+      await loadBookmarks();
+    } catch (err) {
+      console.error('[NovaTab] Delete category error:', err);
+      showToast('Ошибка при удалении категории', 'error');
     }
   }
 
@@ -961,6 +1058,12 @@
         state.allFolders.push(folderObj);
         state.folderMap.set(newFolderId, folderObj);
         state.bookmarksByFolder.set(newFolderId, []);
+
+        const parentNode = findNodeInTree(MOCK_BOOKMARK_TREE, parentId) || (MOCK_BOOKMARK_TREE[0]?.children?.[0]);
+        if (parentNode) {
+          parentNode.children = parentNode.children || [];
+          parentNode.children.push({ id: newFolderId, title, children: [] });
+        }
       }
       showToast(`Папка «${title}» создана!`);
       closeFolderModal();
@@ -1025,6 +1128,14 @@
   // --- 13. EVENT LISTENERS INITIALIZATION ---
 
   function setupEventListeners() {
+    // Horizontal wheel scrolling on board pills
+    if (elements.boardsPillsWrapper) {
+      elements.boardsPillsWrapper.addEventListener('wheel', (e) => {
+        e.preventDefault();
+        elements.boardsPillsWrapper.scrollLeft += e.deltaY;
+      }, { passive: false });
+    }
+
     // Background Wallpaper Button
     elements.bgChangeBtn.addEventListener('click', () => {
       elements.bgFileInput.click();

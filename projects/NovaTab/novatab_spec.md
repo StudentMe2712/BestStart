@@ -116,14 +116,16 @@ To ensure instantaneous loading without hitting `chrome.storage.local` storage q
 
 ### 4.1 Top Nav (Boards / Tabs)
 - Centered at the top: `.top-nav-container.glass-panel`.
-- Contains "✦ Все доски" master pill plus dynamic pills for top bookmark folders (e.g. `📺 Стриминг`, `🎮 Гейминг`, `💻 Разработка`, `🤖 AI Platforms`).
+- Contains "✦ Все доски" master pill plus dynamic pills for top bookmark folders (e.g. `📺 Стриминг`, `🎮 Гейминг`, `💻 Разработка`, `🤖 AI Platforms`), filtered and deduplicated.
+- Invisible scrollbar rule (`scrollbar-width: none; ::-webkit-scrollbar { display: none; }`) preserving clean look.
+- Interactive horizontal mouse-wheel scrolling support on `#boards-pills-wrapper` for seamless overflow browsing.
 - "+ Новая доска" quick creator button to instantiate new bookmark categories.
 
 ### 4.2 Main Viewport & Category Cards
 - `height: calc(100vh - 78px); margin-top: 78px; overflow-y: auto; padding: 24px 80px 48px 40px;`
 - Responsive dynamic columns (`.cards-masonry-grid` / `.cards-masonry-grid.list-layout`).
 - Inside each `.glass-card`:
-  - **Header:** Folder title, item counter badge, and quick "+" add bookmark button.
+  - **Header:** Folder title, item counter badge, quick "+" add bookmark button, and "🗑" category folder deletion button (`.btn-delete-card`) with subtle red hover styling and confirmation dialog.
   - **Bookmark Rows:** 16px Favicon (with Google S2 & letter avatar fallback), title, domain label, and hover actions dock (open, copy link, edit, delete).
 
 ### 4.3 Right Floating Toolbar Dock
@@ -161,7 +163,8 @@ To ensure instantaneous loading without hitting `chrome.storage.local` storage q
 
 - [x] **100% Manifest V3 CSP Compliance:** Removed Tailwind CDN and inline configuration, removed inline handlers, zero remote dependencies, zero `eval()`, pure native event binding.
 - [x] **Pure Native CSS3 Refactor (`style.css`):** Comprehensive CSS variables, glassmorphism design tokens (`.glass-panel`, `.glass-card`, `.glass-pill`, `.glass-pill-active`), responsive grid, modals, and toolbars.
-- [x] **Semantic HTML Architecture (`index.html`):** Pristine `<head>` with only required meta/title/link elements, semantic classes, and single bottom script tag.
+- [x] **Semantic HTML Architecture (`index.html`):** Pristine `<head>` with only required meta/title/link elements, semantic classes, clean empty `#boards-pills-wrapper`, and single bottom script tag.
 - [x] **Wallpaper Engine & Compression (`app.js`):** Canvas downscaling to 1920x1080, WebP 80% compression, `chrome.storage.local` persistence, right-click reset.
-- [x] **Dynamic Chrome Bookmarks Parser (`app.js`):** Tree crawling, folder grouping into cards, rich standalone mock data fallback, live reactive listeners (`onCreated`, `onRemoved`, `onChanged`, `onMoved`).
+- [x] **Dynamic Chrome Bookmarks Parser & Category Management (`app.js`):** Tree crawling, folder grouping into cards, category folder deletion (`chrome.bookmarks.removeTree`), rich standalone mock data fallback, live reactive listeners (`onCreated`, `onRemoved`, `onChanged`, `onMoved`).
+- [x] **Tab Bar & Navigation Usability:** Invisible scrollbars, deduplicated dynamic board pills, horizontal mouse-wheel scrolling support.
 - [x] **Interactive Controls & Hotkeys:** Global `/` search shortcut, search palette keyboard navigation (`↑`, `↓`, `Enter`, `Escape`), board filtering, bookmark CRUD, view mode toggle.
