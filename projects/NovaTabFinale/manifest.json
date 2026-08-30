@@ -8,5 +8,11 @@
   },
   "permissions": ["storage", "bookmarks", "favicon"],
   "background": { "service_worker": "background.js" },
-  "icons": { "128": "icon128.png" }
+  "icons": { "128": "icon128.png" },
+  "web_accessible_resources": [
+    {
+      "resources": ["wallpapers/*"],
+      "matches": ["<all_urls>"]
+    }
+  ]
 }

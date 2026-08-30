@@ -4096,7 +4096,10 @@ function applyBundledWallpaper(wp, opts) {
   localStorage.setItem('ntwp-type', 'bundled');
   try { localStorage.setItem('ntwp-data', url); } catch {}
   if (!opts.silent) closeWallpaperModal();
-  fetch(url).then(r => r.blob()).then(blob => {
+  fetch(url).then(r => {
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    return r.blob();
+  }).then(blob => {
     const fr = new FileReader();
     fr.onload = e => {
       analyzeWallpaper(e.target.result).then(analysis => {
@@ -4108,9 +4111,11 @@ function applyBundledWallpaper(wp, opts) {
           boardOpacity: analysis.isDark ? 20 : 60, boardBlur: 12 };
         withTextPrefs(ts); S.themeStyle = ts; applyThemeStyle(ts); saveState();
         if (!opts.silent) openStyleEditor(ts);
-      });
+      }).catch(() => {});
     };
     fr.readAsDataURL(blob);
+  }).catch(err => {
+    console.warn('[NovaTab] Could not load wallpaper image for color analysis:', err);
   });
 }
 
