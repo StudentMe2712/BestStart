@@ -545,19 +545,17 @@
   }
 
   const rgbToHex = (r, g, b) => '#' + [r, g, b].map(x => {
-    const hex = x.toString(16);
+    const hex = Math.max(0, Math.min(255, Math.round(x))).toString(16);
     return hex.length === 1 ? '0' + hex : hex;
   }).join('');
 
   const hexToRgbArr = (hex) => {
-    if (!hex) return [33, 24, 29];
-    let clean = hex.replace('#', '');
-    if (clean.length === 3) {
-      clean = clean.split('').map(c => c + c).join('');
+    let r = 0, g = 0, b = 0;
+    if (hex && hex.length === 7) {
+      r = parseInt(hex.substring(1, 3), 16) || 0;
+      g = parseInt(hex.substring(3, 5), 16) || 0;
+      b = parseInt(hex.substring(5, 7), 16) || 0;
     }
-    let r = parseInt(clean.substring(0, 2), 16) || 0;
-    let g = parseInt(clean.substring(2, 4), 16) || 0;
-    let b = parseInt(clean.substring(4, 6), 16) || 0;
     return [r, g, b];
   };
 
@@ -3874,163 +3872,132 @@
     // Snapshot previous styles on open for Cancel rollback
     snapshotThemeSetup();
 
-    // Applies wallpaper
+    // 1. Применяем обои
     applyWallpaper(imgUrl);
 
     // Closes wallpaper picker modal
     if (wpOverlay) wpOverlay.style.display = 'none';
 
-    // Opens #themeSetupOverlay
-    if (themeSetupOverlay) themeSetupOverlay.style.display = 'flex';
-
-    // Sets #seSubtitle to "Анализ изображения..."
-    if (seSubtitle) {
-      seSubtitle.textContent = I18N_STRINGS[currentLanguage]?.['se.analyzing'] || 'Анализ изображения...';
+    // 2. Открываем окно
+    const overlay = document.getElementById('themeSetupOverlay');
+    if (overlay) overlay.style.display = 'flex';
+    const subtitle = document.getElementById('seSubtitle');
+    if (subtitle) {
+      subtitle.textContent = I18N_STRINGS[currentLanguage]?.['se.analyzing'] || 'Анализ изображения...';
     }
 
-    // Default slider and segment values for theme setup
-    const initialOpacity = 60;
-    const initialBlur = 12;
-    if (seOpacitySlider) {
-      seOpacitySlider.value = initialOpacity;
-      seOpacitySlider.style.background = `linear-gradient(to right, var(--accent-color,#fff) ${initialOpacity}%, rgba(255,255,255,0.12) ${initialOpacity}%)`;
-    }
-    if (seOpacityVal) seOpacityVal.textContent = `${initialOpacity}%`;
-    document.documentElement.style.setProperty('--board-alpha', (initialOpacity / 100).toFixed(2));
-
-    if (seBlurSlider) {
-      seBlurSlider.value = initialBlur;
-      const progress = (initialBlur / 40) * 100;
-      seBlurSlider.style.background = `linear-gradient(to right, var(--accent-color,#fff) ${progress}%, rgba(255,255,255,0.12) ${progress}%)`;
-    }
-    if (seBlurVal) seBlurVal.textContent = `${initialBlur}px`;
-    document.documentElement.style.setProperty('--board-blur', `${initialBlur}px`);
-
-    if (seTextScale) {
-      seTextScale.querySelectorAll('.se-seg-btn').forEach(b => {
-        b.classList.toggle('active', b.dataset.val === '1');
-      });
-    }
-    document.documentElement.style.setProperty('--board-text-scale', '1');
-    document.documentElement.style.setProperty('--board-text-size', '13.5px');
-    document.querySelectorAll('.link-item').forEach(el => {
-      el.style.fontSize = '13.5px';
-    });
-
-    if (seTextWeight) {
-      seTextWeight.querySelectorAll('.se-seg-btn').forEach(b => {
-        b.classList.toggle('active', b.dataset.val === '400');
-      });
-    }
-    document.documentElement.style.setProperty('--board-font-weight', '400');
-    document.documentElement.style.setProperty('--link-weight', '400');
-    document.querySelectorAll('.link-item').forEach(el => {
-      el.style.fontWeight = '400';
-    });
-
-    // Analyzes image
-    analyzeWallpaperTheme(imgUrl);
-  }
-
-  function analyzeWallpaperTheme(imgUrl) {
-    if (!imgUrl || typeof imgUrl !== 'string') {
-      fallbackExtractedTheme();
-      return;
-    }
-
+    // 3. Анализ Canvas
     const img = new Image();
     img.crossOrigin = 'Anonymous';
-
+    img.src = imgUrl;
     img.onload = () => {
-      try {
-        const canvas = document.createElement('canvas');
-        canvas.width = 50;
-        canvas.height = 50;
-        const ctx = canvas.getContext('2d');
-        if (!ctx) {
-          fallbackExtractedTheme();
-          return;
+      const W = 100, H = 60; // Увеличенное разрешение для более точного сэмплинга
+      const cvs = document.createElement('canvas');
+      cvs.width = W;
+      cvs.height = H;
+      const ctx = cvs.getContext('2d');
+      if (!ctx) return;
+      ctx.drawImage(img, 0, 0, W, H);
+      const data = ctx.getImageData(0, 0, W, H).data;
+
+      let tr = 0, tg = 0, tb = 0;
+      let maxScore = 0;
+      let ar = 128, ag = 128, ab = 128; // Дефолтный акцент (будет заменен)
+
+      const n = data.length / 4;
+
+      for (let i = 0; i < data.length; i += 4) {
+        const r = data[i], g = data[i + 1], b = data[i + 2];
+        tr += r; tg += g; tb += b;
+
+        // Ищем самый насыщенный и приятный цвет для акцента
+        const mx = Math.max(r, g, b), mn = Math.min(r, g, b);
+        const sat = mx === 0 ? 0 : (mx - mn) / mx;
+        const lum = mx / 255;
+
+        // Отбрасываем слишком темные и слишком светлые пиксели
+        const score = sat * (lum > 0.2 && lum < 0.85 ? 1 : 0);
+        if (score > maxScore) {
+          maxScore = score;
+          ar = r; ag = g; ab = b;
         }
+      }
 
-        ctx.drawImage(img, 0, 0, 50, 50);
-        const imgData = ctx.getImageData(0, 0, 50, 50).data;
-        let totalR = 0, totalG = 0, totalB = 0;
-        const pixelCount = 50 * 50;
+      // Средний цвет фона
+      const avgR = tr / n, avgG = tg / n, avgB = tb / n;
 
-        for (let i = 0; i < imgData.length; i += 4) {
-          totalR += imgData[i];
-          totalG += imgData[i + 1];
-          totalB += imgData[i + 2];
-        }
+      // Яркость фона для переключения светлой/темной темы
+      const brightness = (avgR * 299 + avgG * 587 + avgB * 114) / 1000;
+      const isDark = brightness < 140;
 
-        const r = Math.round(totalR / pixelCount);
-        const g = Math.round(totalG / pixelCount);
-        const b = Math.round(totalB / pixelCount);
-        const brightness = (r * 299 + g * 587 + b * 114) / 1000;
-        const isLight = brightness > 128;
+      // --- ТОЧНЫЙ ВЫЧИСЛИТЕЛЬ ИДЕАЛЬНЫХ ЦВЕТОВ ---
+      // Если картинка полностью серая (maxScore < 0.15), даем приятный дефолт, иначе - вычисленный пиксель.
+      let suggestedAccent = maxScore > 0.15 ? rgbToHex(ar, ag, ab) : (isDark ? '#786550' : '#002449');
 
-        const suggestedAccent = rgbToHex(r, g, b);
-        const suggestedBoard = isLight ? '#ffffff' : '#21181d';
+      // Цвет доски: белый для светлой темы. Для темной — берем средний цвет и затемняем его на 70% (* 0.3)
+      let suggestedBoard = isDark
+        ? rgbToHex(avgR * 0.3, avgG * 0.3, avgB * 0.3)
+        : '#ffffff';
 
-        applyExtractedTheme(suggestedAccent, suggestedBoard, isLight);
-      } catch (err) {
-        console.error('Error analyzing image canvas:', err);
-        fallbackExtractedTheme();
+      // Прозрачность: 20% для темных, 60% для светлых (лучшая читаемость)
+      const suggestedOpacity = isDark ? 20 : 60;
+
+      if (subtitle) {
+        subtitle.textContent = isDark
+          ? (I18N_STRINGS[currentLanguage]?.['se.darkDetected'] || 'Обнаружена темная тема.')
+          : (I18N_STRINGS[currentLanguage]?.['se.lightDetected'] || 'Обнаружена светлая тема.');
+      }
+
+      // 4. Применяем параметры в модальное окно UI
+      const accPicker = document.getElementById('seAccentPicker');
+      if (accPicker) {
+        accPicker.value = suggestedAccent;
+        const accSwatch = document.getElementById('seAccentSwatch');
+        if (accSwatch) accSwatch.style.background = suggestedAccent;
+        const accHex = document.getElementById('seAccentHex');
+        if (accHex) accHex.textContent = suggestedAccent;
+      }
+
+      const boardPicker = document.getElementById('seBoardPicker');
+      if (boardPicker) {
+        boardPicker.value = suggestedBoard;
+        const boardSwatch = document.getElementById('seBoardSwatch');
+        if (boardSwatch) boardSwatch.style.background = suggestedBoard;
+        const boardHex = document.getElementById('seBoardHex');
+        if (boardHex) boardHex.textContent = suggestedBoard;
+      }
+
+      const opSlider = document.getElementById('seOpacitySlider');
+      if (opSlider) {
+        opSlider.value = suggestedOpacity;
+        const opVal = document.getElementById('seOpacityVal');
+        if (opVal) opVal.textContent = suggestedOpacity + '%';
+        const pct = (suggestedOpacity / 100) * 100;
+        opSlider.style.background = `linear-gradient(to right, var(--accent-color,#fff) ${pct}%, rgba(255,255,255,0.12) ${pct}%)`;
+      }
+
+      // 5. Мгновенно отражаем изменения в глобальных переменных
+      const root = document.documentElement;
+      root.style.setProperty('--accent-color', suggestedAccent);
+      root.style.setProperty('--accent-tab-bg', hexToRgba(suggestedAccent, 0.8));
+      root.style.setProperty('--accent-tab-border', hexToRgba(suggestedAccent, 0.95));
+
+      const boardRgbArr = hexToRgbArr(suggestedBoard);
+      const boardRgbStr = boardRgbArr.join(',');
+      root.style.setProperty('--board-rgb', boardRgbStr);
+      root.style.setProperty('--board-border', `rgba(${boardRgbStr},0.350)`);
+      root.style.setProperty('--board-outline-theme-color', `rgba(${boardRgbStr},0.400)`);
+      root.style.setProperty('--board-alpha', (suggestedOpacity / 100).toFixed(2));
+
+      // Обновляем цвет текста
+      if (typeof updateBoardTextColor === 'function') {
+        updateBoardTextColor(suggestedBoard);
       }
     };
 
     img.onerror = () => {
-      fallbackExtractedTheme();
+      console.error('Ошибка анализа картинки обоев.');
     };
-
-    img.src = imgUrl;
-  }
-
-  function applyExtractedTheme(suggestedAccent, suggestedBoard, isLight) {
-    if (seSubtitle) {
-      seSubtitle.textContent = isLight
-        ? (I18N_STRINGS[currentLanguage]?.['se.lightDetected'] || 'Обнаружена светлая тема.')
-        : (I18N_STRINGS[currentLanguage]?.['se.darkDetected'] || 'Обнаружена темная тема.');
-    }
-
-    // Updates inputs & swatches
-    if (seAccentPicker) seAccentPicker.value = suggestedAccent;
-    if (seAccentSwatch) seAccentSwatch.style.backgroundColor = suggestedAccent;
-    if (seAccentHex) seAccentHex.textContent = suggestedAccent;
-
-    if (seBoardPicker) seBoardPicker.value = suggestedBoard;
-    if (seBoardSwatch) seBoardSwatch.style.backgroundColor = suggestedBoard;
-    if (seBoardHex) seBoardHex.textContent = suggestedBoard;
-
-    // Sets live CSS properties
-    const root = document.documentElement;
-    root.style.setProperty('--accent-color', suggestedAccent);
-    root.style.setProperty('--accent-tab-bg', hexToRgba(suggestedAccent, 0.8));
-    root.style.setProperty('--accent-tab-border', hexToRgba(suggestedAccent, 0.95));
-
-    const boardRgb = hexToRgb(suggestedBoard);
-    root.style.setProperty('--board-rgb', boardRgb);
-    root.style.setProperty('--board-border', `rgba(${boardRgb},0.350)`);
-    root.style.setProperty('--board-outline-theme-color', `rgba(${boardRgb},0.400)`);
-
-    updateBoardTextColor(suggestedBoard);
-
-    if (seOpacitySlider) {
-      const val = seOpacitySlider.value || 60;
-      seOpacitySlider.style.background = `linear-gradient(to right, var(--accent-color,#fff) ${val}%, rgba(255,255,255,0.12) ${val}%)`;
-    }
-    if (seBlurSlider) {
-      const val = seBlurSlider.value || 12;
-      const progress = (val / 40) * 100;
-      seBlurSlider.style.background = `linear-gradient(to right, var(--accent-color,#fff) ${progress}%, rgba(255,255,255,0.12) ${progress}%)`;
-    }
-  }
-
-  function fallbackExtractedTheme() {
-    const isLight = false;
-    const suggestedAccent = '#002449';
-    const suggestedBoard = '#21181d';
-    applyExtractedTheme(suggestedAccent, suggestedBoard, isLight);
   }
 
   function initThemeSetupOverlay() {
@@ -4154,10 +4121,7 @@
     if (seResetBtn) {
       seResetBtn.addEventListener('click', () => {
         if (currentThemeWallpaper) {
-          if (seSubtitle) {
-            seSubtitle.textContent = I18N_STRINGS[currentLanguage]?.['se.analyzing'] || 'Анализ изображения...';
-          }
-          analyzeWallpaperTheme(currentThemeWallpaper);
+          handleWallpaperSelect(currentThemeWallpaper);
         }
       });
     }

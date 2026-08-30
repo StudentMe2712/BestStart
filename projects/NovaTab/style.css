@@ -1708,6 +1708,7 @@ dialog h3 {
 /* Инпут поиска города */
 .weather-city-input {
   flex: 1;
+  min-width: 0;
   background: rgba(0, 0, 0, 0.2);
   border: 1px solid var(--ui-border, rgba(255,255,255,0.1));
   color: var(--ui-text, rgba(255,255,255,0.92));
