@@ -1,7 +1,8 @@
-# NovaTab — Aesthetic Glassmorphism Dashboard Specification
-**Version:** 2.0.0 (Aesthetic Glassmorphism Dashboard 1:1 Transformation)  
+# NovaTab — Aesthetic Glassmorphism Dashboard Specification (Markmez 1:1 Master Architecture)
+
+**Version:** 2.0.0 (Markmez 1:1 Master Cloning Specification)  
 **Target Platform:** Google Chrome / Chromium-based Browsers (Manifest V3)  
-**Design Philosophy:** Ultra-modern, responsive Glassmorphism dashboard with hardware-accelerated backdrop blur (`blur(24px)`), pure Native CSS3 design system, top floating capsules (Navigation Pills, Global Search Bar, Time & Weather Widget), open category cards grid, and custom video/image wallpaper engine.
+**Design Philosophy:** Pixel-perfect Markmez Master Template replication. Ultra-modern responsive Glassmorphism dashboard with hardware-accelerated backdrop blur (`--board-blur: 16px`), CSS tokenized glassmorphism (`.board, .glass-panel`), floating pill topbar (dynamic category tabs + weather & clock), scrollable multi-column category boards (`.boards-columns` -> `.board-column` -> `.board`), floating right capsule dock (`#sidebar`), full multi-modal overlay system (`#search-overlay`, `#wp-overlay`, `#widgets-overlay`, `#trash-overlay`, `#settings-overlay`), and native IndexedDB lively video/image background engine.
 
 ---
 
@@ -23,7 +24,7 @@ NovaTab is strictly engineered to comply with Chrome Manifest V3 Content Securit
 
 ```
 +---------------------------------------------------------------------------------------------------+
-|                                        NovaTab Dashboard (Mv3)                                    |
+|                                 NovaTab Master Dashboard (Markmez 1:1)                            |
 +---------------------------------------------------------------------------------------------------+
 |  Manifest Configuration: permissions: ["bookmarks", "storage", "tabs", "favicon"]                 |
 |  Overrides: { "newtab": "index.html" } | Service Worker: background.js                           |
@@ -36,16 +37,15 @@ NovaTab is strictly engineered to comply with Chrome Manifest V3 Content Securit
         |    Background Service Worker    |               |    Glassmorphic SPA Viewport    |
         |        (background.js)          |               |      (index.html / app.js)      |
         +---------------------------------+               +---------------------------------+
-        | • Global shortcut Ctrl+Shift+Y  |               | • Top Bar: 3 Floating Capsules  |
-        | • Active tab metadata capture   |               |   - Left: Navigation Pills      |
-        | • Automatic target folder seed  |               |   - Center: Search Bar          |
-        | • Action badge visual feedback  |               |   - Right: Time & Weather       |
-        +---------------------------------+               | • Dynamic Russian Quotes Capsule|
-                                                          | • Open Category Glass Cards     |
-                                                          | • Native IndexedDB (NovaTabDB)  |
-                                                          | • Bottom Floating Gear & Bg Btns|
-                                                          | • Live Search Palette (Up/Down) |
-                                                          | • Real-time Chrome Event Sync   |
+        | • Global shortcut Ctrl+Shift+Y  |               | • Topbar: Dynamic Nav & Widgets |
+        | • Active tab metadata capture   |               |   - Left: #pagesNav pills + (+) |
+        | • Automatic target folder seed  |               |   - Right: Weather & Live Clock |
+        | • Action badge visual feedback  |               | • Dynamic Russian Quote Capsule |
+        +---------------------------------+               | • #boardsColumns & .board Cards |
+                                                          | • Right Floating Dock (#sidebar)|
+                                                          | • IndexedDB Video & Image Engine|
+                                                          | • 5-Overlay System & Hotkeys    |
+                                                          | • Concurrency Mutex & Tree Sync |
                                                           +---------------------------------+
                                                                            |
                                                                            v
@@ -58,49 +58,91 @@ NovaTab is strictly engineered to comply with Chrome Manifest V3 Content Securit
 
 ## 2. Visual System & Pure Native CSS3 Design Tokens
 
-NovaTab employs a multi-tiered glassmorphism visual hierarchy powered by standard CSS `backdrop-filter: blur(24px)` and alpha-channel RGBA borders.
+NovaTab employs a multi-tiered glassmorphism visual hierarchy powered by standard CSS `backdrop-filter: blur(var(--board-blur))` and alpha-channel RGBA borders.
 
 ### 2.1 CSS Utility Tokens (`style.css`)
 
-| Class | Properties & Aesthetics | Use Case |
-| :--- | :--- | :--- |
-| `body` | `width: 100vw; height: 100vh; overflow: hidden; margin: 0; padding: 0; display: flex; flex-direction: column; box-sizing: border-box; font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;` | Base flex container for top bar and main content. |
-| `.bg-video-layer` | `position: fixed; inset: 0; width: 100vw; height: 100vh; object-fit: cover; z-index: -2; pointer-events: none;` | Background HTML5 video layer for high-performance looping video wallpapers. |
-| `.bg-overlay-layer` | `position: fixed; inset: 0; width: 100vw; height: 100vh; z-index: -1; pointer-events: none; background-color: rgba(0, 0, 0, var(--overlay-opacity, 0.30)); transition: background-color var(--transition-fast);` | Adjustable dimming layer ensuring Glassmorphism readability over bright backgrounds. |
-| `.top-bar` | `display: flex; justify-content: space-between; align-items: center; padding: 24px 40px; width: 100%; box-sizing: border-box; gap: 20px; z-index: 40;` | Top horizontal floating capsules bar. |
-| `.glass-panel` | `background: rgba(0, 0, 0, 0.15) !important; backdrop-filter: blur(24px) !important; -webkit-backdrop-filter: blur(24px) !important; border: 1px solid rgba(255, 255, 255, 0.08) !important; border-radius: 24px; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1) !important; color: #FFFFFF; transition: all 0.3s ease;` | Unified glass panel foundation for capsules, category cards, buttons, and modals. |
-| `.top-nav-block` | `border-radius: 100px !important; padding: 4px 8px; display: flex; align-items: center; gap: 4px; max-width: 42vw;` | Left floating navigation pills capsule. |
-| `.nav-pill-btn` | `padding: 6px 16px; border-radius: 100px; font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.3s ease; background: transparent; border: none; color: rgba(255,255,255,0.8);` | Category/board filter pill. |
-| `.nav-pill-btn.active` | `background: rgba(0, 0, 0, 0.40) !important; color: #FFFFFF !important; font-weight: 600;` | Currently active category/board pill. |
-| `.top-search-block` | `border-radius: 100px !important; padding: 8px 16px; width: 420px; max-width: 35vw; display: flex; align-items: center; gap: 10px;` | Center floating search bar capsule with Google redirect on Enter. |
-| `.top-widget-block` | `border-radius: 100px !important; padding: 8px 20px; display: flex; align-items: center; gap: 10px; font-size: 13px; font-weight: 500; white-space: nowrap;` | Right floating time & weather widget capsule. |
-| `.main-content-viewport` | `flex: 1; display: flex; flex-direction: column; align-items: center; padding: 10px 40px 40px; overflow-y: auto; width: 100%; box-sizing: border-box; gap: 20px;` | Scrollable viewport hosting quote and category cards. |
-| `.quote-container` | `display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; margin: 0 auto; max-width: 820px; padding: 8px 20px; border-radius: 16px; cursor: pointer;` | Centered dynamic inspirational quote capsule. |
-| `.cards-container` | `display: flex; gap: 24px; justify-content: center; align-items: flex-start; flex-wrap: wrap; width: 100%; max-width: 1600px;` | Flex wrap container for vertical category cards. |
-| `.category-card` | `width: 240px; min-width: 220px; max-width: 260px; padding: 20px; border-radius: 24px !important; display: flex; flex-direction: column; gap: 14px;` | Open category cards (AI, Work, Finance, Social, Dev, Streaming). |
-| `.bookmark-row-item` | `display: flex; align-items: center; justify-content: space-between; gap: 8px; text-decoration: none; color: #FFFFFF; padding: 4px 0; border-radius: 6px; cursor: pointer; transition: all 0.2s ease;` | Bookmark row with 16x16 favicon, 14px title (`opacity: 0.8` -> `1.0`), and hover action dock. |
-| `.floating-gear-btn` | `position: fixed; right: 28px; bottom: 28px; width: 42px; height: 42px; border-radius: 50% !important; z-index: 50; display: flex; align-items: center; justify-content: center;` | Bottom-right floating gear button with rotation hover effect. |
-| `.floating-bg-btn` | `position: fixed; left: 28px; bottom: 28px; width: 42px; height: 42px; border-radius: 50% !important; z-index: 50; display: flex; align-items: center; justify-content: center;` | Bottom-left floating wallpaper upload button. |
-| `.modal-overlay` & `.modal-box` | Fullscreen frosted overlay with scale-animated glassmorphic modal box. | Search palette, bookmark CRUD, category creator, and settings dialogs. |
+```css
+:root {
+  --board-rgb: 255, 255, 255;
+  --board-alpha: 0.15;
+  --board-blur: 16px;
+  --board-border: rgba(255, 255, 255, 0.18);
+  --board-outline-theme-color: rgba(255, 255, 255, 0.750);
+  --accent-color: #3a7892;
+  --accent-color-hover: #4a91b0;
+  --board-hover-bg: rgba(255, 255, 255, 0.08);
+  --overlay-opacity: 0.25;
+  --text-primary: #ffffff;
+  --text-secondary: rgba(255, 255, 255, 0.75);
+  --text-muted: rgba(255, 255, 255, 0.5);
+  --text-dim: rgba(255, 255, 255, 0.35);
+
+  --radius-board: 20px;
+  --radius-pill: 100px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+
+  --transition-smooth: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  --transition-fast: all 0.15s ease;
+}
+```
+
+### 2.2 Glassmorphic Foundations
+
+```css
+.board, .glass-panel {
+  background: rgba(var(--board-rgb), var(--board-alpha));
+  backdrop-filter: blur(var(--board-blur));
+  -webkit-backdrop-filter: blur(var(--board-blur));
+  border: 1px solid var(--board-border);
+  border-radius: var(--radius-board);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+  color: var(--text-primary);
+  transition: var(--transition-smooth);
+}
+.board:hover {
+  border-color: rgba(255, 255, 255, 0.28);
+}
+```
 
 ---
 
-## 3. Top Floating Bar & Live Widgets
+## 3. DOM Skeleton & Component Structure
 
-### 3.1 Left Floating Block: Navigation Pills
-- Renders master `"✦ Home"` pill alongside user category pills (e.g. AI, Work, Finance, Social, Dev, Streaming) and the `+` Add Category button.
-- Custom pills feature HTML5 Drag & Drop reordering and hover-revealed `.delete-board-btn` cross.
+### 3.1 Background Layers
+- `#video-bg`: HTML5 `<video>` layer for looped video wallpapers (`autoplay loop muted playsinline`).
+- `#photo-bg`: High-resolution background photo layer (`background-size: cover; background-position: center;`).
+- `#bg-overlay`: Dynamic dimming layer with `--overlay-opacity` control.
 
-### 3.2 Center Floating Block: Search Bar
-- Magnifying glass SVG icon on the left.
-- `#global-search-input` text field with transparent background, white text, 14px font size.
-- Google `"G"` icon on the right.
-- On `Enter` key or Google icon click, redirects to `https://www.google.com/search?q=` + `encodeURIComponent(query)`.
-- Live search modal remains accessible via `/` keyboard shortcut.
+### 3.2 Topbar (`.topbar`)
+- **Left (`.pages-nav` / `#pagesNav`):** Frosted glass pill containing dynamic page tabs (`"✦ Home"`, custom boards, and `+` add board button `#btnAddBoard`). Includes HTML5 Drag & Drop reordering and hover delete crosses (`×`).
+- **Right (`.top-widgets` / `#topWidgets`):** Frosted glass pill containing Weather (`#widgetWeather`) + divider + Clock (`#clockDate`, `#clockTime`).
 
-### 3.3 Right Floating Block: Time & Weather Widget
-- Displays Location (`"Атырау"`), weather icon (`🌤️`), temperature (`"20°C"`), date in Russian (`"Вс, 30 авг"`), and live clock (`"13:00"`).
-- Real-time time & date updates every 1,000ms.
+### 3.3 Main Area (`.boards-area` / `#boardsArea`)
+- **Quotes Capsule (`#quoteBox`):** Centered dynamic inspirational quote in Russian (`#quoteText`, `#quoteAuthor`). Click to refresh with smooth fade transition.
+- **Columns Grid (`.boards-columns` / `#boardsColumns`):** Responsive multi-column layout of category boards (`.board-column` -> `.board.glass-panel`).
+- **Category Board (`.board`):** `.board-header` with category title, count badge, quick add `+` button, and delete/clear `🗑️` button. Contains `.bookmark-list` with `.bookmark-row` items.
+- **Bookmark Row (`.bookmark-row`):** 16x16 favicon with letter fallback, 14px title with hover opacity transition, and hover-revealed edit `[✏️]` and delete `[🗑️]` buttons.
+- **Empty State (`#emptyState`):** Displayed when no bookmarks exist in category.
+
+### 3.4 Floating Sidebar Dock (`#sidebar`)
+Fixed capsule dock on right center (`position: fixed; right: 24px; top: 50%; transform: translateY(-50%)`) containing:
+1. `#sideSearch` (`data-id="search"`, title="Поиск (/)") -> Search SVG
+2. `#mpWallpaper` (`data-id="wallpaper"`, title="Обои") -> Wallpaper SVG
+3. `#sideWidgets` (`data-id="widgets"`, title="Виджеты") -> Widgets SVG
+4. `#sideTrash` (`data-id="trash"`, title="Корзина") -> Trash SVG
+5. `#settingsSideBtn` (`data-id="settings"`, title="Настройки") -> Gear SVG
+
+### 3.5 Overlay Modal System (`.overlay`)
+1. `#search-overlay`: Quick Google Search (`Enter` redirect) + Live instant bookmark search with Up/Down keyboard navigation.
+2. `#wp-overlay`: Video & image wallpaper upload, presets, opacity slider, reset button.
+3. `#widgets-overlay`: Widget status and toggles.
+4. `#trash-overlay`: Category cleanup, empty categories auto-clean, and clear actions.
+5. `#settings-overlay`: Live glass customization sliders (`--board-blur`, `--board-alpha`, `--overlay-opacity`), statistics (`#statBookmarks`, `#statFolders`), and hotkeys guide.
+6. `#bookmark-overlay`: Add/Edit Bookmark modal with category picker.
+7. `#folder-overlay`: Add Category/Board modal with parent folder picker.
 
 ---
 
@@ -116,27 +158,23 @@ NovaTab employs a multi-tiered glassmorphism visual hierarchy powered by standar
 - **Video Uploads (`video/mp4`, `video/webm`, `video/ogg`):**
   1. Stored directly as a binary `Blob`/`File` in `NovaTabDB`.
   2. Object URL generated via `URL.createObjectURL(blob)`.
-  3. Bound to `#bg-video` layer (`autoplay`, `loop`, `muted`, `playsinline`).
-  4. Static background reset (`document.body.style.backgroundImage = 'none'`).
+  3. Bound to `#video-bg` layer (`autoplay`, `loop`, `muted`, `playsinline`).
+  4. Photo background layer cleared.
 - **Image Uploads (`image/*`):**
   1. Canvas aspect-ratio downscale to max 1920x1080.
   2. WebP 80% compression.
   3. Stored in IndexedDB and cached in storage.
-  4. Applied to `document.body.style.backgroundImage`.
-- **Adjustable Dimming Overlay:**
-  - `#bg-overlay` layer with `--overlay-opacity` CSS Custom Property (default `0.30`, range `0`–`0.85`).
-  - Interactive slider in Settings modal updates dimming and persists preference.
+  4. Applied to `#photo-bg.style.backgroundImage`.
+- **Customizable Glassmorphism & Dimming:**
+  - Live adjustment for `--board-blur` (8px to 30px), `--board-alpha` (0.05 to 0.50), and `--overlay-opacity` (0.0 to 0.85).
+  - Automatically persisted in `chrome.storage.local` and `localStorage`.
 
 ---
 
-## 5. Implementation Checklist & Status
+## 5. Implementation Verification & Status
 
-- [x] **100% Manifest V3 CSP Compliance:** Removed all external CDNs, zero inline handlers, zero remote scripts, zero `eval()`.
-- [x] **Aesthetic Glassmorphism Dashboard Layout (`index.html`, `style.css`):** Top bar with 3 floating glass capsules (Nav Pills, Search Bar, Time & Weather Widget), main viewport with open category cards, bottom floating gear and wallpaper buttons.
-- [x] **Live Clock & Weather Engine (`app.js`):** 1-second interval timer updating `#widget-time` and `#widget-date` in Russian (`Вс, 30 авг`, `13:00`).
-- [x] **Global Google Search Integration (`app.js`):** Direct Google Search redirection on Enter in `#global-search-input` + live search palette on `/`.
-- [x] **Open Category Cards Grid (`app.js`, `style.css`):** Vertical `.glass-panel.category-card` (240px wide) with 16px bold title, 16x16 favicons, 14px titles (`opacity: 0.8` -> `1.0`), and hover action docks.
-- [x] **Drag-and-Drop Category Sorting (`app.js`):** HTML5 drag-and-drop on category pills with `chrome.bookmarks.move` integration and mock tree reordering.
-- [x] **IndexedDB Lively Video & Image Wallpapers (`app.js`):** Binary storage in `NovaTabDB` supporting large video wallpapers and WebP compressed images.
-- [x] **Floating Settings & Controls (`app.js`, `style.css`):** Bottom-right `#floating-settings-btn` with 45deg rotation hover, bottom-left `#bg-change-btn`.
-
+- [x] **100% Manifest V3 CSP Compliance:** Zero remote scripts, zero inline scripts/handlers, zero `eval()`.
+- [x] **Markmez 1:1 CSS Engine (`style.css`):** `:root` design tokens, reusable `.board, .glass-panel`, `#video-bg`, `#photo-bg`, `#bg-overlay`, `.topbar`, `.pages-nav`, `.top-widgets`, `.boards-area`, `.boards-columns`, `.board-column`, `.board`, `.bookmark-row`, `#sidebar`, and `.overlay`.
+- [x] **Exact DOM Skeleton (`index.html`):** Fully structured with all required IDs and overlays.
+- [x] **Core Engine & Selectors (`app.js`):** Unified overlay manager, Russian live clock & quotes, IndexedDB wallpaper engine, concurrency mutex for bookmark loading, full category and bookmark CRUD, live search with keyboard navigation, drag & drop tabs.
+- [x] **Syntax Verification:** Passed `node -c projects/NovaTab/app.js` with 0 errors.

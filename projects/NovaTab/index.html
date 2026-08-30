@@ -7,288 +7,341 @@
   <link rel="icon" type="image/png" href="icons/icon32.png">
   <link rel="stylesheet" href="style.css">
 </head>
-<body class="dark">
+<body>
 
-  <!-- DYNAMIC BACKGROUND LAYERS (VIDEO & GLASS OVERLAY) -->
-  <video id="bg-video" class="bg-video-layer hidden" autoplay loop muted playsinline></video>
-  <div id="bg-overlay" class="bg-overlay-layer"></div>
+  <!-- BACKGROUND LAYERS -->
+  <video id="video-bg" class="hidden" autoplay loop muted playsinline></video>
+  <div id="photo-bg"></div>
+  <div id="bg-overlay"></div>
 
-  <!-- TOP BAR: THREE FLOATING GLASS BLOCKS -->
-  <header class="top-bar">
+  <!-- TOPBAR -->
+  <header class="topbar">
     
-    <!-- Left Floating Block: Navigation Pills -->
-    <div class="top-nav-block glass-panel" id="top-nav-bar">
-      <div id="boards-pills-wrapper" class="boards-pills-wrapper">
-        <!-- Rendered dynamically: "✦ Home", "AI", "Dev", "Work", etc. -->
+    <!-- Left: Dynamic Pages Navigation -->
+    <nav class="pages-nav" id="pagesNav">
+      <div class="nav-tabs-wrapper" id="navTabsWrapper">
+        <!-- Rendered dynamically: "✦ Home", custom categories/boards -->
       </div>
-      <button id="btn-add-board" class="nav-add-pill-btn" title="Создать новую категорию / доску">
-        <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4">
-          <line x1="12" y1="5" x2="12" y2="19"></line>
-          <line x1="5" y1="12" x2="19" y2="12"></line>
-        </svg>
-      </button>
-    </div>
+      <button id="btnAddBoard" class="nav-add-btn" title="Создать категорию / доску">+</button>
+    </nav>
 
-    <!-- Center Floating Block: Search Bar -->
-    <div class="top-search-block glass-panel">
-      <svg class="search-glass-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
-        <circle cx="11" cy="11" r="8"></circle>
-        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-      </svg>
-      <input 
-        type="text" 
-        id="global-search-input" 
-        class="top-search-input" 
-        placeholder="Search Google or Bookmarks..." 
-        autocomplete="off" 
-        spellcheck="false"
-      >
-      <svg class="search-google-icon" id="search-google-btn" viewBox="0 0 24 24" title="Google Search">
-        <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
-        <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
-        <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" fill="#FBBC05"/>
-        <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" fill="#EA4335"/>
-      </svg>
-    </div>
-
-    <!-- Right Floating Block: Time & Weather Widget -->
-    <div class="top-widget-block glass-panel" id="top-widget">
-      <span class="widget-location" id="widget-location">Атырау</span>
-      <span class="widget-weather-icon" id="widget-weather-icon">🌤️</span>
-      <span class="widget-temp" id="widget-temp">20°C</span>
-      <span class="widget-divider">•</span>
-      <span class="widget-date" id="widget-date">Вс, 30 авг</span>
-      <span class="widget-time" id="widget-time">13:00</span>
+    <!-- Right: Weather & Live Clock Widget -->
+    <div class="top-widgets" id="topWidgets">
+      <span class="widget-weather" id="widgetWeather">Атырау 🌤️ 20°C</span>
+      <span class="widget-sep">•</span>
+      <span class="clock-date" id="clockDate">Вс, 30 авг</span>
+      <span class="clock-time" id="clockTime">13:00</span>
     </div>
 
   </header>
 
-  <!-- MAIN SCROLLABLE VIEWPORT (CATEGORY CARDS) -->
-  <main class="main-content-viewport custom-scrollbar" id="main-viewport">
+  <!-- MAIN SCROLLABLE BOARDS AREA -->
+  <main class="boards-area custom-scrollbar" id="boardsArea">
     
     <!-- Dynamic Quotes Capsule -->
-    <div id="quote-container" class="quote-container" title="Нажмите, чтобы обновить цитату">
-      <p id="quote-text" class="quote-text">«...»</p>
-      <span id="quote-author" class="quote-author">— ...</span>
+    <div class="quote-box" id="quoteBox" title="Нажмите, чтобы обновить цитату">
+      <p class="quote-text" id="quoteText">«...»</p>
+      <span class="quote-author" id="quoteAuthor">— ...</span>
     </div>
 
-    <!-- Category Cards Masonry / Wrap Grid Container -->
-    <div id="cards-container" class="cards-container">
+    <!-- Boards / Columns Wrap Grid -->
+    <div class="boards-columns" id="boardsColumns">
       <!-- Category cards rendered dynamically by app.js -->
     </div>
 
     <!-- Empty State Container -->
-    <div id="empty-state" class="empty-glass-state hidden">
+    <div class="empty-glass-state hidden" id="emptyState">
       <div class="empty-state-icon">📂</div>
-      <h2 id="empty-state-title" class="empty-state-title">Нет закладок</h2>
-      <p id="empty-state-desc" class="empty-state-desc">В этой категории пока нет сохраненных страниц. Нажмите кнопку ниже, чтобы добавить первую закладку.</p>
-      <button id="btn-empty-add" class="glass-pill glass-pill-active empty-add-btn">
-        <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
-          <line x1="12" y1="5" x2="12" y2="19"></line>
-          <line x1="5" y1="12" x2="19" y2="12"></line>
-        </svg>
+      <h2 class="empty-state-title" id="emptyStateTitle">Нет закладок</h2>
+      <p class="empty-state-desc" id="emptyStateDesc">В этой категории пока нет сохраненных страниц. Нажмите кнопку ниже, чтобы добавить первую закладку.</p>
+      <button class="empty-add-btn" id="btnEmptyAdd">
+        <span>+</span>
         <span>Добавить закладку</span>
       </button>
     </div>
 
   </main>
 
-  <!-- BOTTOM FLOATING CONTROLS -->
-  <!-- Left Bottom Wallpaper Switcher -->
-  <button id="bg-change-btn" class="glass-panel floating-bg-btn" aria-label="Сменить фон" title="Сменить фон (ПКМ — сброс)">
-    <svg class="icon-md" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-      <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-      <circle cx="8.5" cy="8.5" r="1.5"></circle>
-      <polyline points="21 15 16 10 5 21"></polyline>
-    </svg>
-    <span class="tooltip-left">Сменить фон (ПКМ — сброс)</span>
-  </button>
-  <input type="file" id="bg-file-input" accept="image/*, video/mp4, video/webm, video/ogg" class="hidden">
+  <!-- FLOATING SIDEBAR DOCK -->
+  <aside class="sidebar" id="sidebar">
+    <!-- 1. Search Button -->
+    <button class="side-btn" id="sideSearch" data-id="search" title="Поиск (/)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+        <circle cx="11" cy="11" r="8"></circle>
+        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+      </svg>
+      <span class="tooltip">Поиск (/)</span>
+    </button>
 
-  <!-- Right Bottom Settings & Wallpapers Gear Button -->
-  <button id="floating-settings-btn" class="glass-panel floating-gear-btn" aria-label="Настройки и Обои" title="Настройки и Обои">
-    <svg class="gear-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-      <circle cx="12" cy="12" r="3"></circle>
-      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0-.33-1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
-    </svg>
-  </button>
+    <!-- 2. Wallpaper Button -->
+    <button class="side-btn" id="mpWallpaper" data-id="wallpaper" title="Обои">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+        <circle cx="8.5" cy="8.5" r="1.5"></circle>
+        <polyline points="21 15 16 10 5 21"></polyline>
+      </svg>
+      <span class="tooltip">Обои</span>
+    </button>
 
-  <!-- SEARCH MODAL (SEARCH PALETTE / HOTKEY '/') -->
-  <div id="search-modal" class="modal-overlay">
-    <div class="modal-box modal-box-wide">
-      <div class="modal-header">
-        <div class="modal-title-group">
-          <svg class="icon-md text-purple" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+    <!-- 3. Widgets Button -->
+    <button class="side-btn" id="sideWidgets" data-id="widgets" title="Виджеты">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <rect x="3" y="3" width="7" height="7" rx="1"></rect>
+        <rect x="14" y="3" width="7" height="7" rx="1"></rect>
+        <rect x="14" y="14" width="7" height="7" rx="1"></rect>
+        <rect x="3" y="14" width="7" height="7" rx="1"></rect>
+      </svg>
+      <span class="tooltip">Виджеты</span>
+    </button>
+
+    <!-- 4. Trash Button -->
+    <button class="side-btn" id="sideTrash" data-id="trash" title="Корзина">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <polyline points="3 6 5 6 21 6"></polyline>
+        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+        <line x1="10" y1="11" x2="10" y2="17"></line>
+        <line x1="14" y1="11" x2="14" y2="17"></line>
+      </svg>
+      <span class="tooltip">Корзина</span>
+    </button>
+
+    <!-- 5. Settings Button -->
+    <button class="side-btn" id="settingsSideBtn" data-id="settings" title="Настройки">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="3"></circle>
+        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0-.33-1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+      </svg>
+      <span class="tooltip">Настройки</span>
+    </button>
+  </aside>
+
+  <!-- OVERLAY 1: SEARCH OVERLAY -->
+  <div id="search-overlay" class="overlay">
+    <div class="overlay-card overlay-card-wide">
+      <div class="overlay-header">
+        <div class="overlay-title-group">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
             <circle cx="11" cy="11" r="8"></circle>
             <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
           </svg>
-          <span class="modal-title">Быстрый поиск закладок</span>
+          <span class="overlay-title">Быстрый поиск</span>
         </div>
-        <button id="search-modal-close" class="modal-close-btn" aria-label="Закрыть">&times;</button>
+        <button id="searchOverlayClose" class="overlay-close-btn" aria-label="Закрыть">&times;</button>
       </div>
 
-      <div class="search-input-wrapper">
-        <svg class="search-input-icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+      <div class="search-input-box" id="searchOverlayBox">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" style="color: var(--text-muted);">
           <circle cx="11" cy="11" r="8"></circle>
           <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
         </svg>
         <input 
           type="text" 
-          id="search-modal-input" 
-          class="form-input search-palette-input" 
-          placeholder="Поиск по названию, домену, URL или папке..." 
-          autocomplete="off"
+          id="searchOverlayInput" 
+          class="search-overlay-input" 
+          placeholder="Поиск в Google или по закладкам..." 
+          autocomplete="off" 
           spellcheck="false"
         >
+        <svg class="search-google-btn" id="searchGoogleBtn" width="20" height="20" viewBox="0 0 24 24" title="Google Search">
+          <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+          <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+          <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" fill="#FBBC05"/>
+          <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" fill="#EA4335"/>
+        </svg>
       </div>
 
-      <div id="search-results-list" class="search-results-list custom-scrollbar">
-        <!-- Live search matches -->
+      <div id="searchMatchesList" class="search-results-list custom-scrollbar">
+        <!-- Dynamic matches -->
       </div>
-      
-      <div class="search-palette-footer">
-        <div class="search-palette-hints">
+
+      <div class="search-footer-bar">
+        <div class="search-hints">
           <span><kbd>↑</kbd><kbd>↓</kbd> Навигация</span>
-          <span><kbd>Enter</kbd> Открыть</span>
+          <span><kbd>Enter</kbd> Google / Открыть</span>
           <span><kbd>ESC</kbd> Закрыть</span>
         </div>
-        <span id="search-match-count" class="search-match-count">0 результатов</span>
+        <span id="searchCount">0 результатов</span>
       </div>
     </div>
   </div>
 
-  <!-- ADD / EDIT BOOKMARK MODAL -->
-  <div id="bookmark-modal" class="modal-overlay">
-    <div class="modal-box">
-      <div class="modal-header">
-        <h3 id="modal-title" class="modal-title">Добавить закладку</h3>
-        <button id="modal-btn-close" class="modal-close-btn" aria-label="Закрыть">&times;</button>
+  <!-- OVERLAY 2: WALLPAPERS OVERLAY -->
+  <div id="wp-overlay" class="overlay">
+    <div class="overlay-card">
+      <div class="overlay-header">
+        <div class="overlay-title-group">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+            <circle cx="8.5" cy="8.5" r="1.5"></circle>
+            <polyline points="21 15 16 10 5 21"></polyline>
+          </svg>
+          <span class="overlay-title">Фон и Живые Обои</span>
+        </div>
+        <button id="wpOverlayClose" class="overlay-close-btn" aria-label="Закрыть">&times;</button>
       </div>
 
-      <form id="bookmark-form">
-        <input type="hidden" id="modal-bookmark-id" value="">
-        
-        <div class="form-group">
-          <label class="form-label" for="modal-bookmark-title">Название закладки</label>
-          <input 
-            type="text" 
-            id="modal-bookmark-title" 
-            class="form-input" 
-            placeholder="Например, GitHub — Where the world builds" 
-            required
-          >
+      <div class="overlay-body">
+        <div class="settings-section">
+          <h4 class="settings-section-title">Пользовательские Обои</h4>
+          <p class="settings-section-desc">Загрузите видео (MP4, WebM) или любое изображение. Видео сохраняется в локальной базе IndexedDB без ограничений по размеру.</p>
+          <div style="display: flex; gap: 10px; margin-top: 4px;">
+            <button id="btnUploadWp" class="btn btn-primary" style="flex: 1;">
+              <span>📁</span>
+              <span>Загрузить файл</span>
+            </button>
+            <button id="btnResetWp" class="btn btn-danger">
+              <span>↺</span>
+              <span>Сброс</span>
+            </button>
+          </div>
         </div>
 
-        <div class="form-group">
-          <label class="form-label" for="modal-bookmark-url">URL адрес</label>
-          <input 
-            type="url" 
-            id="modal-bookmark-url" 
-            class="form-input" 
-            placeholder="https://github.com" 
-            required
-          >
+        <div class="settings-section">
+          <div class="settings-row">
+            <label for="overlayOpacitySliderWp" class="settings-label">Затемнение фона</label>
+            <span id="overlayOpacityValWp" class="settings-value-badge">25%</span>
+          </div>
+          <input type="range" id="overlayOpacitySliderWp" min="0" max="0.85" step="0.05" value="0.25" class="glass-slider">
         </div>
+      </div>
 
-        <div class="form-group">
-          <label class="form-label" for="modal-bookmark-folder">Категория / Папка</label>
-          <select id="modal-bookmark-folder" class="form-select">
-            <!-- Populated dynamically -->
-          </select>
-        </div>
-
-        <div class="modal-footer">
-          <button type="button" id="modal-btn-cancel" class="btn btn-secondary">Отмена</button>
-          <button type="submit" id="modal-btn-save" class="btn btn-primary">Сохранить</button>
-        </div>
-      </form>
+      <div class="overlay-footer">
+        <button id="wpBtnDone" class="btn btn-primary">Готово</button>
+      </div>
     </div>
   </div>
 
-  <!-- ADD FOLDER / BOARD MODAL -->
-  <div id="folder-modal" class="modal-overlay">
-    <div class="modal-box">
-      <div class="modal-header">
-        <h3 class="modal-title">Создать категорию / доску</h3>
-        <button id="folder-modal-close" class="modal-close-btn" aria-label="Закрыть">&times;</button>
+  <!-- OVERLAY 3: WIDGETS OVERLAY -->
+  <div id="widgets-overlay" class="overlay">
+    <div class="overlay-card">
+      <div class="overlay-header">
+        <div class="overlay-title-group">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="3" width="7" height="7" rx="1"></rect>
+            <rect x="14" y="3" width="7" height="7" rx="1"></rect>
+            <rect x="14" y="14" width="7" height="7" rx="1"></rect>
+            <rect x="3" y="14" width="7" height="7" rx="1"></rect>
+          </svg>
+          <span class="overlay-title">Виджеты NovaTab</span>
+        </div>
+        <button id="widgetsOverlayClose" class="overlay-close-btn" aria-label="Закрыть">&times;</button>
       </div>
 
-      <form id="folder-form">
-        <div class="form-group">
-          <label class="form-label" for="folder-title-input">Название категории</label>
-          <input 
-            type="text" 
-            id="folder-title-input" 
-            class="form-input" 
-            placeholder="Например, AI, Work, Finance, Social, Dev..." 
-            required
-          >
+      <div class="overlay-body">
+        <div class="settings-section">
+          <h4 class="settings-section-title">Активные виджеты</h4>
+          <p class="settings-section-desc">Виджеты погоды, часов и вдохновляющих цитат работают в реальном времени с 0 внешней задержкой.</p>
+          <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 8px;">
+            <div class="settings-row">
+              <span class="settings-label">🌤️ Погода и температура</span>
+              <span class="settings-value-badge">Включено</span>
+            </div>
+            <div class="settings-row">
+              <span class="settings-label">⏰ Живые часы и дата</span>
+              <span class="settings-value-badge">Включено</span>
+            </div>
+            <div class="settings-row">
+              <span class="settings-label">💬 Вдохновляющие цитаты</span>
+              <span class="settings-value-badge">Включено</span>
+            </div>
+          </div>
         </div>
+      </div>
 
-        <div class="form-group">
-          <label class="form-label" for="folder-parent-select">Родительская папка</label>
-          <select id="folder-parent-select" class="form-select">
-            <!-- Populated dynamically -->
-          </select>
-        </div>
-
-        <div class="modal-footer">
-          <button type="button" id="folder-btn-cancel" class="btn btn-secondary">Отмена</button>
-          <button type="submit" class="btn btn-primary">Создать</button>
-        </div>
-      </form>
+      <div class="overlay-footer">
+        <button id="widgetsBtnDone" class="btn btn-primary">Закрыть</button>
+      </div>
     </div>
   </div>
 
-  <!-- SETTINGS MODAL -->
-  <div id="settings-modal" class="modal-overlay">
-    <div class="modal-box modal-box-wide">
-      <div class="modal-header">
-        <div class="modal-title-group">
-          <svg class="icon-md text-purple" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+  <!-- OVERLAY 4: TRASH & CLEANUP OVERLAY -->
+  <div id="trash-overlay" class="overlay">
+    <div class="overlay-card">
+      <div class="overlay-header">
+        <div class="overlay-title-group">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="3 6 5 6 21 6"></polyline>
+            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+          </svg>
+          <span class="overlay-title">Управление и Очистка</span>
+        </div>
+        <button id="trashOverlayClose" class="overlay-close-btn" aria-label="Закрыть">&times;</button>
+      </div>
+
+      <div class="overlay-body">
+        <div class="settings-section">
+          <h4 class="settings-section-title">Быстрые действия</h4>
+          <p class="settings-section-desc">Удаление пустых папок или быстрая очистка категорий закладок.</p>
+          <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 8px;">
+            <button id="btnCleanEmptyCategories" class="btn btn-secondary">
+              <span>🧹</span>
+              <span>Удалить пустые категории</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="settings-section">
+          <h4 class="settings-section-title">Категории закладок</h4>
+          <div id="trashCategoryList" style="display: flex; flex-direction: column; gap: 6px; max-height: 200px; overflow-y: auto;">
+            <!-- Rendered dynamically -->
+          </div>
+        </div>
+      </div>
+
+      <div class="overlay-footer">
+        <button id="trashBtnDone" class="btn btn-primary">Готово</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- OVERLAY 5: SETTINGS OVERLAY -->
+  <div id="settings-overlay" class="overlay">
+    <div class="overlay-card overlay-card-wide">
+      <div class="overlay-header">
+        <div class="overlay-title-group">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <circle cx="12" cy="12" r="3"></circle>
             <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0-.33-1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
           </svg>
-          <span class="modal-title">Настройки NovaTab & Обои</span>
+          <span class="overlay-title">Настройки NovaTab & Glassmorphism</span>
         </div>
-        <button id="settings-modal-close" class="modal-close-btn" aria-label="Закрыть">&times;</button>
+        <button id="settingsOverlayClose" class="overlay-close-btn" aria-label="Закрыть">&times;</button>
       </div>
 
-      <div class="modal-body">
-        <!-- Wallpaper Section -->
+      <div class="overlay-body">
+        <!-- Glassmorphism Customization Engine -->
         <div class="settings-section">
-          <h4 class="settings-section-title text-purple">Фон и Живые Обои</h4>
-          <p class="settings-section-desc">Загрузите изображение или живое видео (MP4, WebM). Видео сохраняется локально в IndexedDB без ограничений по размеру.</p>
-          <div class="settings-action-row">
-            <button id="settings-upload-bg-btn" class="btn btn-secondary">
-              <span>🖼️</span>
-              <span>Загрузить обои</span>
-            </button>
-            <button id="settings-reset-bg-btn" class="btn btn-danger">
-              <span>↺</span>
-              <span>Сбросить фон</span>
-            </button>
+          <h4 class="settings-section-title">Кастомизация Стеклянного Интерфейса</h4>
+          
+          <div class="settings-row">
+            <label for="blurSlider" class="settings-label">Размытие стекла (Blur)</label>
+            <span id="blurValue" class="settings-value-badge">16px</span>
           </div>
+          <input type="range" id="blurSlider" min="8" max="30" step="1" value="16" class="glass-slider">
 
-          <div class="settings-group" style="margin-top: 14px;">
-            <div class="settings-group-header">
-              <label for="overlay-opacity-slider" class="settings-label">Затемнение фона / Прозрачность</label>
-              <span id="overlay-opacity-value" class="settings-value-badge">30%</span>
-            </div>
-            <input type="range" id="overlay-opacity-slider" min="0" max="0.85" step="0.05" value="0.30" class="glass-slider">
+          <div class="settings-row" style="margin-top: 8px;">
+            <label for="alphaSlider" class="settings-label">Прозрачность карточек (Alpha)</label>
+            <span id="alphaValue" class="settings-value-badge">0.15</span>
           </div>
+          <input type="range" id="alphaSlider" min="0.05" max="0.50" step="0.01" value="0.15" class="glass-slider">
+
+          <div class="settings-row" style="margin-top: 8px;">
+            <label for="dimmingSlider" class="settings-label">Затемнение фона (Overlay Dimming)</label>
+            <span id="dimmingValue" class="settings-value-badge">25%</span>
+          </div>
+          <input type="range" id="dimmingSlider" min="0" max="0.85" step="0.05" value="0.25" class="glass-slider">
         </div>
 
         <!-- Stats Section -->
         <div class="settings-section">
-          <h4 class="settings-section-title text-cyan">Статистика</h4>
+          <h4 class="settings-section-title">Статистика</h4>
           <div class="settings-stats-grid">
             <div class="stat-card">
-              <div id="settings-stat-bookmarks" class="stat-value">0</div>
+              <div id="statBookmarks" class="stat-value">0</div>
               <div class="stat-label">Закладок всего</div>
             </div>
             <div class="stat-card">
-              <div id="settings-stat-folders" class="stat-value">0</div>
+              <div id="statFolders" class="stat-value">0</div>
               <div class="stat-label">Категорий / Папок</div>
             </div>
           </div>
@@ -296,26 +349,116 @@
 
         <!-- Hotkeys info -->
         <div class="settings-section">
-          <h4 class="settings-section-title text-amber">Горячие клавиши</h4>
+          <h4 class="settings-section-title">Горячие клавиши</h4>
           <div class="hotkeys-list">
-            <div class="hotkey-row"><span>Быстрый поиск закладок:</span><kbd>/</kbd></div>
+            <div class="hotkey-row"><span>Быстрый поиск закладок / Google:</span><kbd>/</kbd></div>
             <div class="hotkey-row"><span>Быстрое сохранение вкладки:</span><kbd>Ctrl+Shift+Y</kbd></div>
-            <div class="hotkey-row"><span>Закрыть окно:</span><kbd>Escape</kbd></div>
+            <div class="hotkey-row"><span>Закрыть активное окно / поиск:</span><kbd>Escape</kbd></div>
           </div>
         </div>
       </div>
 
-      <div class="modal-footer modal-footer-between">
-        <span class="version-text">NovaTab v2.0 • Aesthetic Glassmorphism</span>
-        <button id="settings-btn-done" class="btn btn-primary">Готово</button>
+      <div class="overlay-footer modal-footer-between">
+        <span style="font-size: 12px; color: var(--text-muted);">NovaTab v2.0 • Markmez 1:1 Engine</span>
+        <button id="settingsBtnDone" class="btn btn-primary">Готово</button>
       </div>
+    </div>
+  </div>
+
+  <!-- OVERLAY 6: ADD / EDIT BOOKMARK -->
+  <div id="bookmark-overlay" class="overlay">
+    <div class="overlay-card">
+      <div class="overlay-header">
+        <h3 id="modalTitle" class="overlay-title">Добавить закладку</h3>
+        <button id="modalBookmarkClose" class="overlay-close-btn" aria-label="Закрыть">&times;</button>
+      </div>
+
+      <form id="bookmarkForm">
+        <input type="hidden" id="modalBookmarkId" value="">
+        
+        <div class="overlay-body">
+          <div class="form-group">
+            <label class="form-label" for="modalBookmarkTitle">Название закладки</label>
+            <input 
+              type="text" 
+              id="modalBookmarkTitle" 
+              class="form-input" 
+              placeholder="Например, GitHub — Where the world builds" 
+              required
+            >
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="modalBookmarkUrl">URL адрес</label>
+            <input 
+              type="url" 
+              id="modalBookmarkUrl" 
+              class="form-input" 
+              placeholder="https://github.com" 
+              required
+            >
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="modalBookmarkFolder">Категория / Папка</label>
+            <select id="modalBookmarkFolder" class="form-select">
+              <!-- Populated dynamically -->
+            </select>
+          </div>
+        </div>
+
+        <div class="overlay-footer">
+          <button type="button" id="modalBookmarkCancel" class="btn btn-secondary">Отмена</button>
+          <button type="submit" id="modalBookmarkSave" class="btn btn-primary">Сохранить</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- OVERLAY 7: ADD FOLDER / BOARD -->
+  <div id="folder-overlay" class="overlay">
+    <div class="overlay-card">
+      <div class="overlay-header">
+        <h3 class="overlay-title">Создать категорию / доску</h3>
+        <button id="folderModalClose" class="overlay-close-btn" aria-label="Закрыть">&times;</button>
+      </div>
+
+      <form id="folderForm">
+        <div class="overlay-body">
+          <div class="form-group">
+            <label class="form-label" for="folderTitleInput">Название категории</label>
+            <input 
+              type="text" 
+              id="folderTitleInput" 
+              class="form-input" 
+              placeholder="Например, AI, Work, Finance, Social, Dev..." 
+              required
+            >
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="folderParentSelect">Родительская папка</label>
+            <select id="folderParentSelect" class="form-select">
+              <!-- Populated dynamically -->
+            </select>
+          </div>
+        </div>
+
+        <div class="overlay-footer">
+          <button type="button" id="folderBtnCancel" class="btn btn-secondary">Отмена</button>
+          <button type="submit" id="folderBtnSave" class="btn btn-primary">Создать</button>
+        </div>
+      </form>
     </div>
   </div>
 
   <!-- TOAST CONTAINER -->
   <div id="toast-container" class="toast-container"></div>
 
-  <!-- NovaTab Core Application Script -->
+  <!-- HIDDEN FILE INPUT -->
+  <input type="file" id="bg-file-input" accept="image/*, video/mp4, video/webm, video/ogg" class="hidden">
+
+  <!-- SCRIPTS -->
   <script src="app.js"></script>
 </body>
 </html>

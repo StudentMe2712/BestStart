@@ -4,6 +4,7 @@
  * - Zero remote scripts / external dependencies
  * - Zero inline event handlers / scripts
  * - Safe DOM event binding & delegated event listeners
+ * - 1:1 Master Template (Markmez specification)
  */
 
 (() => {
@@ -22,7 +23,12 @@
     currentSearchResults: [],
     selectedSearchIndex: -1,
     editingBookmarkId: null,
-    draggedFolderId: null
+    draggedFolderId: null,
+    activeOverlayId: null,
+    // Customization tokens
+    boardBlur: 16,
+    boardAlpha: 0.15,
+    overlayOpacity: 0.25
   };
 
   // --- 2. DYNAMIC QUOTES MODULE DATA ---
@@ -44,7 +50,7 @@
   let currentQuoteIndex = -1;
 
   function renderRandomQuote() {
-    if (!elements.quoteContainer || !elements.quoteText || !elements.quoteAuthor) return;
+    if (!elements.quoteBox || !elements.quoteText || !elements.quoteAuthor) return;
     if (QUOTES.length === 0) return;
 
     let newIndex;
@@ -54,14 +60,14 @@
     currentQuoteIndex = newIndex;
     const quote = QUOTES[newIndex];
 
-    elements.quoteContainer.style.opacity = '0';
-    elements.quoteContainer.style.transform = 'translateY(-4px)';
+    elements.quoteBox.style.opacity = '0';
+    elements.quoteBox.style.transform = 'translateY(-4px)';
 
     setTimeout(() => {
       elements.quoteText.textContent = `«${quote.text}»`;
       elements.quoteAuthor.textContent = `— ${quote.author}`;
-      elements.quoteContainer.style.opacity = '1';
-      elements.quoteContainer.style.transform = 'translateY(0)';
+      elements.quoteBox.style.opacity = '1';
+      elements.quoteBox.style.transform = 'translateY(0)';
     }, 150);
   }
 
@@ -149,76 +155,103 @@
 
   // --- 4. DOM ELEMENTS CACHE ---
   const elements = {
-    // Background Layers & Dimming
-    bgVideo: document.getElementById('bg-video'),
+    // Background Layers
+    videoBg: document.getElementById('video-bg'),
+    photoBg: document.getElementById('photo-bg'),
     bgOverlay: document.getElementById('bg-overlay'),
 
-    // Top Bar Floating Blocks
-    boardsPillsWrapper: document.getElementById('boards-pills-wrapper'),
-    btnAddBoard: document.getElementById('btn-add-board'),
-    globalSearchInput: document.getElementById('global-search-input'),
-    searchGoogleBtn: document.getElementById('search-google-btn'),
-    widgetLocation: document.getElementById('widget-location'),
-    widgetWeatherIcon: document.getElementById('widget-weather-icon'),
-    widgetTemp: document.getElementById('widget-temp'),
-    widgetDate: document.getElementById('widget-date'),
-    widgetTime: document.getElementById('widget-time'),
+    // Topbar
+    pagesNav: document.getElementById('pagesNav'),
+    navTabsWrapper: document.getElementById('navTabsWrapper'),
+    btnAddBoard: document.getElementById('btnAddBoard'),
+    topWidgets: document.getElementById('topWidgets'),
+    widgetWeather: document.getElementById('widgetWeather'),
+    clockDate: document.getElementById('clockDate'),
+    clockTime: document.getElementById('clockTime'),
 
-    // Main Viewport & Cards Container
-    mainViewport: document.getElementById('main-viewport'),
-    quoteContainer: document.getElementById('quote-container'),
-    quoteText: document.getElementById('quote-text'),
-    quoteAuthor: document.getElementById('quote-author'),
-    cardsContainer: document.getElementById('cards-container'),
-    emptyState: document.getElementById('empty-state'),
-    emptyStateTitle: document.getElementById('empty-state-title'),
-    emptyStateDesc: document.getElementById('empty-state-desc'),
-    btnEmptyAdd: document.getElementById('btn-empty-add'),
+    // Main Boards Area
+    boardsArea: document.getElementById('boardsArea'),
+    quoteBox: document.getElementById('quoteBox'),
+    quoteText: document.getElementById('quoteText'),
+    quoteAuthor: document.getElementById('quoteAuthor'),
+    boardsColumns: document.getElementById('boardsColumns'),
+    emptyState: document.getElementById('emptyState'),
+    emptyStateTitle: document.getElementById('emptyStateTitle'),
+    emptyStateDesc: document.getElementById('emptyStateDesc'),
+    btnEmptyAdd: document.getElementById('btnEmptyAdd'),
 
-    // Floating Bottom Controls
-    bgChangeBtn: document.getElementById('bg-change-btn'),
-    bgFileInput: document.getElementById('bg-file-input'),
-    floatingSettingsBtn: document.getElementById('floating-settings-btn'),
+    // Sidebar
+    sidebar: document.getElementById('sidebar'),
+    sideSearch: document.getElementById('sideSearch'),
+    mpWallpaper: document.getElementById('mpWallpaper'),
+    sideWidgets: document.getElementById('sideWidgets'),
+    sideTrash: document.getElementById('sideTrash'),
+    settingsSideBtn: document.getElementById('settingsSideBtn'),
 
-    // Search Palette Modal
-    searchModal: document.getElementById('search-modal'),
-    searchModalInput: document.getElementById('search-modal-input'),
-    searchResultsList: document.getElementById('search-results-list'),
-    searchModalClose: document.getElementById('search-modal-close'),
-    searchMatchCount: document.getElementById('search-match-count'),
+    // Search Overlay
+    searchOverlay: document.getElementById('search-overlay'),
+    searchOverlayInput: document.getElementById('searchOverlayInput'),
+    searchGoogleBtn: document.getElementById('searchGoogleBtn'),
+    searchMatchesList: document.getElementById('searchMatchesList'),
+    searchOverlayClose: document.getElementById('searchOverlayClose'),
+    searchCount: document.getElementById('searchCount'),
 
-    // Add / Edit Bookmark Modal
-    bookmarkModal: document.getElementById('bookmark-modal'),
-    modalTitle: document.getElementById('modal-title'),
-    modalBtnClose: document.getElementById('modal-btn-close'),
-    modalBtnCancel: document.getElementById('modal-btn-cancel'),
-    bookmarkForm: document.getElementById('bookmark-form'),
-    modalBookmarkId: document.getElementById('modal-bookmark-id'),
-    modalBookmarkTitle: document.getElementById('modal-bookmark-title'),
-    modalBookmarkUrl: document.getElementById('modal-bookmark-url'),
-    modalBookmarkFolder: document.getElementById('modal-bookmark-folder'),
+    // Wallpaper Overlay
+    wpOverlay: document.getElementById('wp-overlay'),
+    wpOverlayClose: document.getElementById('wpOverlayClose'),
+    wpBtnDone: document.getElementById('wpBtnDone'),
+    btnUploadWp: document.getElementById('btnUploadWp'),
+    btnResetWp: document.getElementById('btnResetWp'),
+    overlayOpacitySliderWp: document.getElementById('overlayOpacitySliderWp'),
+    overlayOpacityValWp: document.getElementById('overlayOpacityValWp'),
 
-    // Add Folder Modal
-    folderModal: document.getElementById('folder-modal'),
-    folderForm: document.getElementById('folder-form'),
-    folderTitleInput: document.getElementById('folder-title-input'),
-    folderParentSelect: document.getElementById('folder-parent-select'),
-    folderModalClose: document.getElementById('folder-modal-close'),
-    folderBtnCancel: document.getElementById('folder-btn-cancel'),
+    // Widgets Overlay
+    widgetsOverlay: document.getElementById('widgets-overlay'),
+    widgetsOverlayClose: document.getElementById('widgetsOverlayClose'),
+    widgetsBtnDone: document.getElementById('widgetsBtnDone'),
 
-    // Settings Modal
-    settingsModal: document.getElementById('settings-modal'),
-    settingsModalClose: document.getElementById('settings-modal-close'),
-    settingsBtnDone: document.getElementById('settings-btn-done'),
-    settingsUploadBgBtn: document.getElementById('settings-upload-bg-btn'),
-    settingsResetBgBtn: document.getElementById('settings-reset-bg-btn'),
-    overlayOpacitySlider: document.getElementById('overlay-opacity-slider'),
-    overlayOpacityValue: document.getElementById('overlay-opacity-value'),
-    settingsStatBookmarks: document.getElementById('settings-stat-bookmarks'),
-    settingsStatFolders: document.getElementById('settings-stat-folders'),
+    // Trash Overlay
+    trashOverlay: document.getElementById('trash-overlay'),
+    trashOverlayClose: document.getElementById('trashOverlayClose'),
+    trashBtnDone: document.getElementById('trashBtnDone'),
+    btnCleanEmptyCategories: document.getElementById('btnCleanEmptyCategories'),
+    trashCategoryList: document.getElementById('trashCategoryList'),
 
-    // Toast Container
-    toastContainer: document.getElementById('toast-container')
+    // Settings Overlay
+    settingsOverlay: document.getElementById('settings-overlay'),
+    settingsOverlayClose: document.getElementById('settingsOverlayClose'),
+    settingsBtnDone: document.getElementById('settingsBtnDone'),
+    blurSlider: document.getElementById('blurSlider'),
+    blurValue: document.getElementById('blurValue'),
+    alphaSlider: document.getElementById('alphaSlider'),
+    alphaValue: document.getElementById('alphaValue'),
+    dimmingSlider: document.getElementById('dimmingSlider'),
+    dimmingValue: document.getElementById('dimmingValue'),
+    statBookmarks: document.getElementById('statBookmarks'),
+    statFolders: document.getElementById('statFolders'),
+
+    // Bookmark Modal Overlay
+    bookmarkOverlay: document.getElementById('bookmark-overlay'),
+    modalTitle: document.getElementById('modalTitle'),
+    modalBookmarkClose: document.getElementById('modalBookmarkClose'),
+    modalBookmarkCancel: document.getElementById('modalBookmarkCancel'),
+    bookmarkForm: document.getElementById('bookmarkForm'),
+    modalBookmarkId: document.getElementById('modalBookmarkId'),
+    modalBookmarkTitle: document.getElementById('modalBookmarkTitle'),
+    modalBookmarkUrl: document.getElementById('modalBookmarkUrl'),
+    modalBookmarkFolder: document.getElementById('modalBookmarkFolder'),
+
+    // Folder Modal Overlay
+    folderOverlay: document.getElementById('folder-overlay'),
+    folderModalClose: document.getElementById('folderModalClose'),
+    folderBtnCancel: document.getElementById('folderBtnCancel'),
+    folderForm: document.getElementById('folderForm'),
+    folderTitleInput: document.getElementById('folderTitleInput'),
+    folderParentSelect: document.getElementById('folderParentSelect'),
+
+    // Toast Container & Hidden File Input
+    toastContainer: document.getElementById('toast-container'),
+    bgFileInput: document.getElementById('bg-file-input')
   };
 
   // --- 5. NATIVE INDEXEDDB WALLPAPER ENGINE ---
@@ -338,7 +371,7 @@
       hash = str.charCodeAt(i) + ((hash << 5) - hash);
     }
     const hue = Math.abs(hash % 360);
-    return `hsl(${hue}, 65%, 50%)`;
+    return `hsl(${hue}, 65%, 45%)`;
   }
 
   function escapeHtml(str) {
@@ -360,10 +393,11 @@
   }
 
   function showToast(message, type = 'success') {
+    if (!elements.toastContainer) return;
     const toast = document.createElement('div');
-    toast.className = `toast ${type === 'success' ? 'toast-success' : 'toast-error'}`;
+    toast.className = `toast ${type === 'success' ? 'toast-success' : (type === 'error' ? 'toast-error' : 'toast-info')}`;
     toast.innerHTML = `
-      <span class="toast-icon">${type === 'success' ? '✓' : '⚠️'}</span>
+      <span class="toast-icon">${type === 'success' ? '✓' : (type === 'error' ? '⚠️' : 'ℹ️')}</span>
       <span class="toast-message">${escapeHtml(message)}</span>
     `;
     elements.toastContainer.appendChild(toast);
@@ -373,7 +407,7 @@
       toast.style.transform = 'translateY(10px)';
       toast.style.transition = 'all 0.2s ease';
       setTimeout(() => toast.remove(), 250);
-    }, 3200);
+    }, 3000);
   }
 
   function openUrl(url) {
@@ -395,34 +429,34 @@
     return false;
   }
 
-  // --- 7. LIVE CLOCK & WEATHER WIDGET ENGINE ---
+  // --- 7. LIVE CLOCK & DATE ENGINE ---
   function updateLiveClockAndDate() {
     const now = new Date();
-    if (elements.widgetTime) {
+    if (elements.clockTime) {
       const h = String(now.getHours()).padStart(2, '0');
       const m = String(now.getMinutes()).padStart(2, '0');
-      elements.widgetTime.textContent = `${h}:${m}`;
+      elements.clockTime.textContent = `${h}:${m}`;
     }
-    if (elements.widgetDate) {
+    if (elements.clockDate) {
       const weekdays = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
       const months = ['янв', 'фев', 'мар', 'апр', 'мая', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'];
       const w = weekdays[now.getDay()];
       const d = now.getDate();
       const m = months[now.getMonth()];
-      elements.widgetDate.textContent = `${w}, ${d} ${m}`;
+      elements.clockDate.textContent = `${w}, ${d} ${m}`;
     }
   }
 
-  // --- 8. WALLPAPER ENGINE (VIDEO & IMAGE + INDEXEDDB) ---
+  // --- 8. WALLPAPER & GLASS ENGINE ---
   let currentVideoBlobUrl = null;
   let currentImageBlobUrl = null;
 
   function stopAndHideVideo() {
-    if (elements.bgVideo) {
-      elements.bgVideo.pause();
-      elements.bgVideo.removeAttribute('src');
-      elements.bgVideo.load();
-      elements.bgVideo.classList.add('hidden');
+    if (elements.videoBg) {
+      elements.videoBg.pause();
+      elements.videoBg.removeAttribute('src');
+      elements.videoBg.load();
+      elements.videoBg.classList.add('hidden');
     }
     if (currentVideoBlobUrl) {
       URL.revokeObjectURL(currentVideoBlobUrl);
@@ -436,48 +470,66 @@
       URL.revokeObjectURL(currentImageBlobUrl);
       currentImageBlobUrl = null;
     }
-    currentVideoBlobUrl = URL.createObjectURL(blob);
-    if (elements.bgVideo) {
-      elements.bgVideo.src = currentVideoBlobUrl;
-      elements.bgVideo.classList.remove('hidden');
-      elements.bgVideo.play().catch(err => console.warn('[NovaTab] Video playback notification:', err));
+    if (elements.photoBg) {
+      elements.photoBg.style.backgroundImage = '';
     }
-    document.body.style.backgroundImage = 'none';
+    currentVideoBlobUrl = URL.createObjectURL(blob);
+    if (elements.videoBg) {
+      elements.videoBg.src = currentVideoBlobUrl;
+      elements.videoBg.classList.remove('hidden');
+      elements.videoBg.play().catch(err => console.warn('[NovaTab] Video playback auto-started notification:', err));
+    }
   }
 
   function applyImageBackground(dataOrBlobUrl) {
     stopAndHideVideo();
-    if (dataOrBlobUrl) {
-      document.body.style.backgroundImage = `url("${dataOrBlobUrl}")`;
-    } else {
-      document.body.style.backgroundImage = '';
+    if (elements.photoBg) {
+      if (dataOrBlobUrl) {
+        elements.photoBg.style.backgroundImage = `url("${dataOrBlobUrl}")`;
+      } else {
+        elements.photoBg.style.backgroundImage = '';
+      }
     }
   }
 
-  function setOverlayOpacity(val) {
-    const num = Math.max(0, Math.min(0.85, parseFloat(val) || 0.30));
-    document.documentElement.style.setProperty('--overlay-opacity', num.toString());
-    if (elements.overlayOpacitySlider) {
-      elements.overlayOpacitySlider.value = num.toString();
-    }
-    if (elements.overlayOpacityValue) {
-      elements.overlayOpacityValue.textContent = `${Math.round(num * 100)}%`;
-    }
+  function setGlassStyles(blur, alpha, dimming) {
+    state.boardBlur = blur !== undefined ? parseInt(blur, 10) : state.boardBlur;
+    state.boardAlpha = alpha !== undefined ? parseFloat(alpha) : state.boardAlpha;
+    state.overlayOpacity = dimming !== undefined ? parseFloat(dimming) : state.overlayOpacity;
+
+    document.documentElement.style.setProperty('--board-blur', `${state.boardBlur}px`);
+    document.documentElement.style.setProperty('--board-alpha', state.boardAlpha.toString());
+    document.documentElement.style.setProperty('--overlay-opacity', state.overlayOpacity.toString());
+
+    if (elements.blurSlider) elements.blurSlider.value = state.boardBlur.toString();
+    if (elements.blurValue) elements.blurValue.textContent = `${state.boardBlur}px`;
+
+    if (elements.alphaSlider) elements.alphaSlider.value = state.boardAlpha.toString();
+    if (elements.alphaValue) elements.alphaValue.textContent = state.boardAlpha.toFixed(2);
+
+    if (elements.dimmingSlider) elements.dimmingSlider.value = state.overlayOpacity.toString();
+    if (elements.dimmingValue) elements.dimmingValue.textContent = `${Math.round(state.overlayOpacity * 100)}%`;
+
+    if (elements.overlayOpacitySliderWp) elements.overlayOpacitySliderWp.value = state.overlayOpacity.toString();
+    if (elements.overlayOpacityValWp) elements.overlayOpacityValWp.textContent = `${Math.round(state.overlayOpacity * 100)}%`;
   }
 
-  function handleOverlayOpacityChange(e) {
-    const val = parseFloat(e.target.value);
-    setOverlayOpacity(val);
+  function persistGlassSettings() {
+    const data = {
+      boardBlur: state.boardBlur,
+      boardAlpha: state.boardAlpha,
+      overlayOpacity: state.overlayOpacity
+    };
     if (state.isExtension && chrome.storage?.local) {
-      chrome.storage.local.set({ overlayOpacity: val });
+      chrome.storage.local.set(data);
     } else {
-      localStorage.setItem('novatab_overlayOpacity', val.toString());
+      localStorage.setItem('novatab_glass_settings', JSON.stringify(data));
     }
   }
 
-  async function loadSavedBackground() {
+  async function loadSavedBackgroundAndSettings() {
     try {
-      // 1. Try loading from native IndexedDB
+      // 1. Load Wallpaper
       const savedWallpaper = await WallpaperDB.get();
       if (savedWallpaper && savedWallpaper.blob) {
         if (savedWallpaper.type === 'video' || (savedWallpaper.blob.type && savedWallpaper.blob.type.startsWith('video/'))) {
@@ -488,7 +540,6 @@
           applyImageBackground(currentImageBlobUrl);
         }
       } else {
-        // Fallback to storage
         if (state.isExtension && chrome.storage?.local) {
           const stored = await chrome.storage.local.get(['customBackground', 'wallpaperType']);
           if (stored.customBackground && stored.wallpaperType !== 'video') {
@@ -503,19 +554,31 @@
         }
       }
 
-      // 2. Load Overlay Opacity
-      let overlayOpacity = 0.30;
-      if (state.isExtension && chrome.storage?.local) {
-        const stored = await chrome.storage.local.get(['overlayOpacity']);
-        if (stored.overlayOpacity !== undefined) overlayOpacity = parseFloat(stored.overlayOpacity);
-      } else {
-        const savedOpacity = localStorage.getItem('novatab_overlayOpacity');
-        if (savedOpacity !== null) overlayOpacity = parseFloat(savedOpacity);
-      }
-      setOverlayOpacity(overlayOpacity);
+      // 2. Load Glass Settings
+      let blur = 16;
+      let alpha = 0.15;
+      let dimming = 0.25;
 
+      if (state.isExtension && chrome.storage?.local) {
+        const stored = await chrome.storage.local.get(['boardBlur', 'boardAlpha', 'overlayOpacity']);
+        if (stored.boardBlur !== undefined) blur = stored.boardBlur;
+        if (stored.boardAlpha !== undefined) alpha = stored.boardAlpha;
+        if (stored.overlayOpacity !== undefined) dimming = stored.overlayOpacity;
+      } else {
+        const raw = localStorage.getItem('novatab_glass_settings');
+        if (raw) {
+          try {
+            const parsed = JSON.parse(raw);
+            if (parsed.boardBlur !== undefined) blur = parsed.boardBlur;
+            if (parsed.boardAlpha !== undefined) alpha = parsed.boardAlpha;
+            if (parsed.overlayOpacity !== undefined) dimming = parsed.overlayOpacity;
+          } catch {}
+        }
+      }
+
+      setGlassStyles(blur, alpha, dimming);
     } catch (e) {
-      console.warn('[NovaTab] Failed loading background from storage/IndexedDB:', e);
+      console.warn('[NovaTab] Failed loading background or glass settings:', e);
     }
   }
 
@@ -577,16 +640,15 @@
           if (state.isExtension && chrome.storage?.local) {
             chrome.storage.local.set({ customBackground: dataUrl, wallpaperType: 'image' }, () => {
               applyImageBackground(dataUrl);
-              showToast('Пользовательский фон успешно сохранен!');
+              showToast('Пользовательский фон сохранен!');
             });
           } else {
             try {
               localStorage.setItem('novatab_customBackground', dataUrl);
               localStorage.setItem('novatab_wallpaperType', 'image');
               applyImageBackground(dataUrl);
-              showToast('Пользовательский фон успешно сохранен!');
-            } catch (storageErr) {
-              console.warn('[NovaTab] LocalStorage quota exceeded:', storageErr);
+              showToast('Пользовательский фон сохранен!');
+            } catch {
               applyImageBackground(dataUrl);
               showToast('Фон применен на текущую сессию');
             }
@@ -621,7 +683,61 @@
     }
   }
 
-  // --- 9. BOOKMARK TREE PARSER & LOADER ---
+  // --- 9. OVERLAY MANAGER ---
+  function openOverlay(overlayEl, sourceBtn = null) {
+    closeAllOverlays();
+    if (!overlayEl) return;
+    overlayEl.classList.add('open', 'active');
+    state.activeOverlayId = overlayEl.id;
+
+    if (sourceBtn) {
+      sourceBtn.classList.add('active');
+    } else {
+      // Find matching sidebar button
+      const idMap = {
+        'search-overlay': elements.sideSearch,
+        'wp-overlay': elements.mpWallpaper,
+        'widgets-overlay': elements.sideWidgets,
+        'trash-overlay': elements.sideTrash,
+        'settings-overlay': elements.settingsSideBtn
+      };
+      if (idMap[overlayEl.id]) {
+        idMap[overlayEl.id].classList.add('active');
+      }
+    }
+
+    if (overlayEl === elements.searchOverlay) {
+      elements.searchOverlayInput.value = '';
+      elements.searchOverlayInput.focus();
+      renderSearchResults('');
+    } else if (overlayEl === elements.trashOverlay) {
+      renderTrashCategories();
+    } else if (overlayEl === elements.settingsOverlay) {
+      updateStatsDisplay();
+    }
+  }
+
+  function closeOverlay(overlayEl) {
+    if (!overlayEl) return;
+    overlayEl.classList.remove('open', 'active');
+    state.activeOverlayId = null;
+
+    // Remove active state from sidebar buttons
+    if (elements.sidebar) {
+      elements.sidebar.querySelectorAll('.side-btn').forEach(btn => btn.classList.remove('active'));
+    }
+  }
+
+  function closeAllOverlays() {
+    document.querySelectorAll('.overlay').forEach(ov => ov.classList.remove('open', 'active'));
+    state.activeOverlayId = null;
+    if (elements.sidebar) {
+      elements.sidebar.querySelectorAll('.side-btn').forEach(btn => btn.classList.remove('active'));
+    }
+    state.selectedSearchIndex = -1;
+  }
+
+  // --- 10. BOOKMARK TREE PARSER & CONCURRENCY MUTEX ---
   let isLoadingBookmarks = false;
   let pendingBookmarkReload = false;
 
@@ -642,7 +758,6 @@
       const nodeId = String(node.id);
 
       if (node.url) {
-        // It is a bookmark node
         const bm = {
           id: nodeId,
           parentId: String(node.parentId || parentId || '1'),
@@ -659,7 +774,6 @@
         }
         collections.tempBookmarksByFolder.get(pId).push(bm);
       } else {
-        // It is a folder node
         const title = node.title || (nodeId === '0' ? 'Root' : (nodeId === '1' ? 'Панель закладок' : (nodeId === '2' ? 'Другие закладки' : 'Папка')));
         const isRootWrapper = (nodeId === '0' || title === 'Root');
         const currentPath = isRootWrapper ? [] : [...parentPath, title];
@@ -745,8 +859,8 @@
       state.bookmarksByFolder = collections.tempBookmarksByFolder;
 
       populateFolderSelectDropdowns();
-      renderBoardsPills();
-      renderCardsView();
+      renderBoardsNav();
+      renderBoardsColumns();
       updateStatsDisplay();
     } catch (err) {
       console.error('[NovaTab] Failed to load bookmarks:', err);
@@ -760,20 +874,20 @@
     }
   }
 
-  // --- 10. RENDERING BOARDS (TOP NAV PILLS & DRAG AND DROP) ---
-  function renderBoardsPills() {
-    if (!elements.boardsPillsWrapper) return;
-    elements.boardsPillsWrapper.innerHTML = '';
+  // --- 11. RENDERING TOP PAGES NAVIGATION ---
+  function renderBoardsNav() {
+    if (!elements.navTabsWrapper) return;
+    elements.navTabsWrapper.innerHTML = '';
 
-    // 1. "✦ Home" Master Pill (Non-draggable)
-    const allPill = document.createElement('button');
-    allPill.className = `nav-pill-btn ${state.activeBoardId === 'all' ? 'active' : ''}`;
-    allPill.setAttribute('data-board', 'all');
-    allPill.innerHTML = `<span>✦</span><span>Home</span>`;
-    allPill.addEventListener('click', () => selectBoard('all'));
-    elements.boardsPillsWrapper.appendChild(allPill);
+    // 1. "✦ Home" Master Tab
+    const homeTab = document.createElement('button');
+    homeTab.className = `nav-tab-btn ${state.activeBoardId === 'all' ? 'active' : ''}`;
+    homeTab.setAttribute('data-board', 'all');
+    homeTab.innerHTML = `<span>✦</span><span>Home</span>`;
+    homeTab.addEventListener('click', () => selectBoard('all'));
+    elements.navTabsWrapper.appendChild(homeTab);
 
-    // 2. Filter, deduplicate, and render valid user category folders
+    // 2. Filter, deduplicate user categories
     const ignoredRootIds = new Set(['0', '1', '2', 'mobile']);
     const seenIds = new Set();
     const displayFolders = state.allFolders.filter(f => {
@@ -789,49 +903,49 @@
       const isActive = state.activeBoardId === folder.id;
       const canDelete = !isRootOrSystemFolder(folder);
 
-      const pill = document.createElement('button');
-      pill.className = `nav-pill-btn ${isActive ? 'active' : ''}`;
-      pill.setAttribute('data-board', folder.id);
-      pill.setAttribute('draggable', 'true');
+      const tab = document.createElement('button');
+      tab.className = `nav-tab-btn ${isActive ? 'active' : ''}`;
+      tab.setAttribute('data-board', folder.id);
+      tab.setAttribute('draggable', 'true');
 
-      pill.innerHTML = `
-        <span class="pill-title" title="${escapeHtml(folder.title)}">${escapeHtml(folder.title)}</span>
-        <span class="pill-count">${bCount}</span>
-        ${canDelete ? `<span class="delete-board-btn" title="Удалить категорию «${escapeHtml(folder.title)}»">×</span>` : ''}
+      tab.innerHTML = `
+        <span class="tab-title" title="${escapeHtml(folder.title)}">${escapeHtml(folder.title)}</span>
+        <span class="tab-badge">${bCount}</span>
+        ${canDelete ? `<span class="tab-delete-cross" title="Удалить категорию «${escapeHtml(folder.title)}»">×</span>` : ''}
       `;
 
-      // Drag and Drop listeners for pill reordering
-      pill.addEventListener('dragstart', (e) => {
+      // Drag and Drop
+      tab.addEventListener('dragstart', (e) => {
         state.draggedFolderId = folder.id;
         e.dataTransfer.setData('text/plain', folder.id);
         e.dataTransfer.effectAllowed = 'move';
-        pill.classList.add('dragging');
+        tab.classList.add('dragging');
       });
 
-      pill.addEventListener('dragover', (e) => {
+      tab.addEventListener('dragover', (e) => {
         e.preventDefault();
         e.dataTransfer.dropEffect = 'move';
         if (state.draggedFolderId && state.draggedFolderId !== folder.id) {
-          pill.classList.add('drag-over');
+          tab.classList.add('drag-over');
         }
       });
 
-      pill.addEventListener('dragleave', () => {
-        pill.classList.remove('drag-over');
+      tab.addEventListener('dragleave', () => {
+        tab.classList.remove('drag-over');
       });
 
-      pill.addEventListener('dragend', () => {
+      tab.addEventListener('dragend', () => {
         state.draggedFolderId = null;
-        if (elements.boardsPillsWrapper) {
-          elements.boardsPillsWrapper.querySelectorAll('.nav-pill-btn').forEach(p => {
+        if (elements.navTabsWrapper) {
+          elements.navTabsWrapper.querySelectorAll('.nav-tab-btn').forEach(p => {
             p.classList.remove('dragging', 'drag-over');
           });
         }
       });
 
-      pill.addEventListener('drop', async (e) => {
+      tab.addEventListener('drop', async (e) => {
         e.preventDefault();
-        pill.classList.remove('drag-over');
+        tab.classList.remove('drag-over');
         const draggedId = e.dataTransfer.getData('text/plain') || state.draggedFolderId;
         const targetId = folder.id;
 
@@ -850,7 +964,6 @@
               await chrome.bookmarks.move(draggedId, { parentId, index: targetIndex });
             }
           } else {
-            // Reorder in local mock mode
             const draggedIdx = state.allFolders.findIndex(f => f.id === draggedId);
             const targetIdx = state.allFolders.findIndex(f => f.id === targetId);
             if (draggedIdx !== -1 && targetIdx !== -1) {
@@ -872,12 +985,12 @@
           showToast('Порядок категорий обновлен!');
           await loadBookmarks();
         } catch (err) {
-          console.error('[NovaTab] Failed to reorder folder:', err);
+          console.error('[NovaTab] Failed to reorder category:', err);
           showToast('Ошибка при перемещении категории', 'error');
         }
       });
 
-      const deleteBtn = pill.querySelector('.delete-board-btn');
+      const deleteBtn = tab.querySelector('.tab-delete-cross');
       if (deleteBtn) {
         deleteBtn.addEventListener('click', (event) => {
           event.stopPropagation();
@@ -886,26 +999,25 @@
         });
       }
 
-      pill.addEventListener('click', () => selectBoard(folder.id));
-      elements.boardsPillsWrapper.appendChild(pill);
+      tab.addEventListener('click', () => selectBoard(folder.id));
+      elements.navTabsWrapper.appendChild(tab);
     });
   }
 
   function selectBoard(boardId) {
     state.activeBoardId = boardId;
-    renderBoardsPills();
-    renderCardsView();
+    renderBoardsNav();
+    renderBoardsColumns();
   }
 
-  // --- 11. RENDERING CATEGORY GLASS CARDS ---
-  function renderCardsView() {
-    elements.cardsContainer.innerHTML = '';
+  // --- 12. RENDERING BOARDS COLUMNS & CARDS ---
+  function renderBoardsColumns() {
+    if (!elements.boardsColumns) return;
+    elements.boardsColumns.innerHTML = '';
 
-    // Determine which folders to render cards for
     let rawFolders = [];
 
     if (state.activeBoardId === 'all') {
-      // Find all folders that have bookmarks or subfolders (excluding system roots)
       rawFolders = state.allFolders.filter(f => {
         if (isRootOrSystemFolder(f) && (f.id === '0' || f.id === '1' || f.id === '2' || f.id === 'mobile')) {
           return false;
@@ -914,7 +1026,6 @@
         return directBookmarks.length > 0 || (f.depth === 1);
       });
 
-      // Check if there are loose bookmarks directly on root parent (id: '1')
       const rootBookmarks = state.bookmarksByFolder.get('1') || [];
       if (rootBookmarks.length > 0) {
         rawFolders.unshift({
@@ -939,7 +1050,6 @@
       }
     }
 
-    // Strictly deduplicate targetFolders by folder ID
     const seenCardFolderIds = new Set();
     const targetFolders = [];
     for (const folder of rawFolders) {
@@ -952,56 +1062,59 @@
     }
 
     if (targetFolders.length === 0 && state.allBookmarks.length === 0) {
-      elements.cardsContainer.classList.add('hidden');
+      elements.boardsColumns.classList.add('hidden');
       elements.emptyState.classList.remove('hidden');
       return;
     }
 
-    elements.cardsContainer.classList.remove('hidden');
+    elements.boardsColumns.classList.remove('hidden');
     elements.emptyState.classList.add('hidden');
 
     const fragment = document.createDocumentFragment();
 
     targetFolders.forEach(folder => {
       const bookmarks = state.bookmarksByFolder.get(folder.id) || [];
-      const cardEl = createCategoryCard(folder, bookmarks);
-      fragment.appendChild(cardEl);
+      const colEl = document.createElement('div');
+      colEl.className = 'board-column';
+      const boardEl = createBoardCard(folder, bookmarks);
+      colEl.appendChild(boardEl);
+      fragment.appendChild(colEl);
     });
 
-    elements.cardsContainer.appendChild(fragment);
+    elements.boardsColumns.appendChild(fragment);
   }
 
-  function createCategoryCard(folder, bookmarks) {
+  function createBoardCard(folder, bookmarks) {
     const card = document.createElement('div');
-    card.className = 'glass-panel category-card';
+    card.className = 'board glass-panel';
     card.setAttribute('data-folder-id', folder.id);
 
-    // Card Header
+    // Board Header
     const header = document.createElement('div');
-    header.className = 'card-header-bar';
+    header.className = 'board-header';
     const canDeleteFolder = !isRootOrSystemFolder(folder);
     header.innerHTML = `
-      <div class="card-title-group">
-        <h3 class="card-category-title" title="${escapeHtml(folder.title)}">${escapeHtml(folder.title)}</h3>
-        <span class="card-badge">${bookmarks.length}</span>
+      <div class="board-title-group">
+        <h3 class="board-title" title="${escapeHtml(folder.title)}">${escapeHtml(folder.title)}</h3>
+        <span class="board-badge">${bookmarks.length}</span>
       </div>
-      <div class="card-header-actions">
-        <button class="card-icon-btn btn-quick-add" title="Добавить закладку в «${escapeHtml(folder.title)}»">
-          <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+      <div class="board-header-actions">
+        <button class="board-action-btn btn-quick-add" title="Добавить закладку в «${escapeHtml(folder.title)}»">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4">
             <line x1="12" y1="5" x2="12" y2="19"></line>
             <line x1="5" y1="12" x2="19" y2="12"></line>
           </svg>
         </button>
         ${canDeleteFolder ? `
-        <button class="card-icon-btn btn-delete-card" title="Удалить категорию «${escapeHtml(folder.title)}»">
-          <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+        <button class="board-action-btn btn-delete btn-delete-card" title="Удалить категорию «${escapeHtml(folder.title)}»">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
             <polyline points="3 6 5 6 21 6"></polyline>
             <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
           </svg>
         </button>
         ` : (bookmarks.length > 0 ? `
-        <button class="card-icon-btn btn-clear-card" title="Очистить все закладки из «${escapeHtml(folder.title)}»">
-          <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+        <button class="board-action-btn btn-delete btn-clear-card" title="Очистить все закладки из «${escapeHtml(folder.title)}»">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
             <polyline points="3 6 5 6 21 6"></polyline>
             <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
             <line x1="10" y1="11" x2="10" y2="17"></line>
@@ -1014,7 +1127,7 @@
 
     header.querySelector('.btn-quick-add').addEventListener('click', (e) => {
       e.stopPropagation();
-      openAddModal(folder.id);
+      openAddBookmarkModal(folder.id);
     });
 
     const deleteFolderBtn = header.querySelector('.btn-delete-card');
@@ -1035,14 +1148,14 @@
 
     card.appendChild(header);
 
-    // Bookmark Items Container
+    // Bookmarks List
     const itemsList = document.createElement('div');
-    itemsList.className = 'category-bookmarks-list';
+    itemsList.className = 'bookmark-list';
 
     if (bookmarks.length === 0) {
       itemsList.innerHTML = `
-        <div class="bookmark-empty-hint">
-          Нет закладок в этой категории
+        <div class="board-empty-hint">
+          Нет закладок
         </div>
       `;
     } else {
@@ -1058,7 +1171,7 @@
 
   function createBookmarkRow(bookmark) {
     const row = document.createElement('div');
-    row.className = 'bookmark-row-item';
+    row.className = 'bookmark-row';
     row.setAttribute('data-bookmark-id', bookmark.id);
 
     const faviconSrc = getFaviconUrl(bookmark.url);
@@ -1066,30 +1179,29 @@
     const firstLetter = (bookmark.title || bookmark.hostname || 'N').charAt(0).toUpperCase();
 
     row.innerHTML = `
-      <div class="bookmark-row-left">
-        <div class="favicon-wrapper">
+      <div class="bookmark-main">
+        <div class="bookmark-favicon">
           <img 
-            class="favicon-img" 
             src="${escapeHtml(faviconSrc)}" 
-            alt="${escapeHtml(bookmark.hostname)}"
+            alt=""
             loading="lazy"
           >
-          <div class="bookmark-favicon-fallback hidden" style="background: ${hostColor}">
+          <div class="bookmark-fallback-icon hidden" style="background: ${hostColor}">
             ${escapeHtml(firstLetter)}
           </div>
         </div>
-        <span class="bookmark-row-title" title="${escapeHtml(bookmark.title)}">${escapeHtml(bookmark.title)}</span>
+        <span class="bookmark-title" title="${escapeHtml(bookmark.title)}">${escapeHtml(bookmark.title)}</span>
       </div>
 
-      <div class="bookmark-row-actions">
-        <button class="bookmark-row-action-btn action-edit" title="Редактировать">
-          <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+      <div class="bookmark-actions">
+        <button class="bookmark-btn action-edit" title="Редактировать">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
             <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
             <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
           </svg>
         </button>
-        <button class="bookmark-row-action-btn btn-delete action-delete" title="Удалить">
-          <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+        <button class="bookmark-btn btn-delete action-delete" title="Удалить">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
             <polyline points="3 6 5 6 21 6"></polyline>
             <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
           </svg>
@@ -1097,24 +1209,22 @@
       </div>
     `;
 
-    // Favicon Fallback Event
-    const imgEl = row.querySelector('.favicon-img');
-    const fallbackEl = row.querySelector('.bookmark-favicon-fallback');
+    // Fallback Favicon on error
+    const imgEl = row.querySelector('.bookmark-favicon img');
+    const fallbackEl = row.querySelector('.bookmark-fallback-icon');
     imgEl.addEventListener('error', () => {
       imgEl.classList.add('hidden');
       fallbackEl.classList.remove('hidden');
     });
 
-    // Primary click -> open URL
     row.addEventListener('click', (e) => {
-      if (e.target.closest('.bookmark-row-actions')) return;
+      if (e.target.closest('.bookmark-actions')) return;
       openUrl(bookmark.url);
     });
 
-    // Action handlers
     row.querySelector('.action-edit').addEventListener('click', (e) => {
       e.stopPropagation();
-      openEditModal(bookmark);
+      openEditBookmarkModal(bookmark);
     });
 
     row.querySelector('.action-delete').addEventListener('click', (e) => {
@@ -1125,40 +1235,14 @@
     return row;
   }
 
-  // --- 12. SEARCH PALETTE MODAL ENGINE ---
-  function openSearchModal(initialQuery = '') {
-    elements.searchModal.classList.add('open');
-    elements.searchModalInput.value = initialQuery;
-    elements.searchModalInput.focus();
-    state.selectedSearchIndex = 0;
-    renderSearchResults(initialQuery);
-  }
-
-  function closeSearchModal() {
-    elements.searchModal.classList.remove('open');
-    state.selectedSearchIndex = -1;
-    state.currentSearchResults = [];
-  }
-
-  function updateSearchSelectionVisuals() {
-    const items = elements.searchResultsList.querySelectorAll('.search-result-item');
-    items.forEach((item, idx) => {
-      if (idx === state.selectedSearchIndex) {
-        item.classList.add('selected');
-        item.scrollIntoView({ block: 'nearest' });
-      } else {
-        item.classList.remove('selected');
-      }
-    });
-  }
-
+  // --- 13. SEARCH OVERLAY & RESULTS ---
   function renderSearchResults(query) {
+    if (!elements.searchMatchesList) return;
     const q = query.trim().toLowerCase();
-    elements.searchResultsList.innerHTML = '';
+    elements.searchMatchesList.innerHTML = '';
 
     let matches = [];
     if (!q) {
-      // Show recent 15 bookmarks when query is empty
       matches = [...state.allBookmarks].sort((a, b) => (b.dateAdded || 0) - (a.dateAdded || 0)).slice(0, 15);
     } else {
       matches = state.allBookmarks.filter(b => {
@@ -1174,11 +1258,13 @@
     state.currentSearchResults = matches;
     state.selectedSearchIndex = matches.length > 0 ? 0 : -1;
 
-    elements.searchMatchCount.textContent = `${matches.length} ${q ? 'совпадений' : 'недавних закладок'}`;
+    if (elements.searchCount) {
+      elements.searchCount.textContent = `${matches.length} ${q ? 'совпадений' : 'недавних закладок'}`;
+    }
 
     if (matches.length === 0) {
-      elements.searchResultsList.innerHTML = `
-        <div class="bookmark-empty-hint">
+      elements.searchMatchesList.innerHTML = `
+        <div class="board-empty-hint">
           По запросу «${escapeHtml(query)}» ничего не найдено
         </div>
       `;
@@ -1210,14 +1296,123 @@
 
       item.addEventListener('click', () => {
         openUrl(bm.url);
-        closeSearchModal();
+        closeAllOverlays();
       });
 
-      elements.searchResultsList.appendChild(item);
+      elements.searchMatchesList.appendChild(item);
     });
   }
 
-  // --- 13. CRUD MODALS & ACTIONS ---
+  function updateSearchSelectionVisuals() {
+    if (!elements.searchMatchesList) return;
+    const items = elements.searchMatchesList.querySelectorAll('.search-result-item');
+    items.forEach((item, idx) => {
+      if (idx === state.selectedSearchIndex) {
+        item.classList.add('selected');
+        item.scrollIntoView({ block: 'nearest' });
+      } else {
+        item.classList.remove('selected');
+      }
+    });
+  }
+
+  // --- 14. TRASH & CLEANUP ACTIONS ---
+  function renderTrashCategories() {
+    if (!elements.trashCategoryList) return;
+    elements.trashCategoryList.innerHTML = '';
+
+    const validFolders = state.allFolders.filter(f => f && f.id !== '0' && f.title !== 'Root');
+
+    if (validFolders.length === 0) {
+      elements.trashCategoryList.innerHTML = '<div class="board-empty-hint">Нет категорий для управления</div>';
+      return;
+    }
+
+    validFolders.forEach(folder => {
+      const bookmarks = state.bookmarksByFolder.get(folder.id) || [];
+      const row = document.createElement('div');
+      row.className = 'settings-row';
+      row.style.padding = '6px 0';
+      row.style.borderBottom = '1px solid rgba(255, 255, 255, 0.05)';
+
+      const isSystem = isRootOrSystemFolder(folder);
+
+      row.innerHTML = `
+        <div style="display: flex; align-items: center; gap: 8px; min-width: 0;">
+          <span style="font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+            ${escapeHtml(folder.title)}
+          </span>
+          <span class="board-badge">${bookmarks.length}</span>
+        </div>
+        <div style="display: flex; gap: 6px;">
+          ${bookmarks.length > 0 ? `
+          <button class="btn btn-secondary btn-trash-clear" style="padding: 4px 10px; font-size: 11px;">
+            Очистить
+          </button>
+          ` : ''}
+          ${!isSystem ? `
+          <button class="btn btn-danger btn-trash-delete" style="padding: 4px 10px; font-size: 11px;">
+            Удалить
+          </button>
+          ` : ''}
+        </div>
+      `;
+
+      const clearBtn = row.querySelector('.btn-trash-clear');
+      if (clearBtn) {
+        clearBtn.addEventListener('click', () => clearCategoryBookmarks(folder, bookmarks));
+      }
+
+      const delBtn = row.querySelector('.btn-trash-delete');
+      if (delBtn) {
+        delBtn.addEventListener('click', () => deleteCategoryFolder(folder));
+      }
+
+      elements.trashCategoryList.appendChild(row);
+    });
+  }
+
+  async function cleanEmptyCategories() {
+    const emptyFolders = state.allFolders.filter(f => {
+      if (isRootOrSystemFolder(f)) return false;
+      const bms = state.bookmarksByFolder.get(f.id) || [];
+      return bms.length === 0;
+    });
+
+    if (emptyFolders.length === 0) {
+      showToast('Нет пустых категорий для удаления', 'info');
+      return;
+    }
+
+    if (!window.confirm(`Удалить ${emptyFolders.length} пустых категорий?`)) {
+      return;
+    }
+
+    try {
+      for (const folder of emptyFolders) {
+        if (state.isExtension) {
+          if (chrome.bookmarks?.removeTree) {
+            await chrome.bookmarks.removeTree(folder.id);
+          } else if (chrome.bookmarks?.remove) {
+            await chrome.bookmarks.remove(folder.id);
+          }
+        } else {
+          removeNodeFromTree(MOCK_BOOKMARK_TREE, folder.id);
+          state.allFolders = state.allFolders.filter(f => f.id !== folder.id);
+          state.folderMap.delete(folder.id);
+          state.bookmarksByFolder.delete(folder.id);
+        }
+      }
+      showToast(`Удалено ${emptyFolders.length} пустых категорий`);
+      await loadBookmarks();
+      renderTrashCategories();
+    } catch (err) {
+      console.error('[NovaTab] Clean empty categories error:', err);
+      showToast('Ошибка при очистке пустых категорий', 'error');
+    }
+  }
+
+  // --- 15. CRUD MODALS & OPERATIONS ---
   function populateFolderSelectDropdowns() {
     if (!elements.folderParentSelect || !elements.modalBookmarkFolder) return;
     elements.folderParentSelect.innerHTML = '';
@@ -1250,7 +1445,7 @@
     elements.modalBookmarkFolder.value = defaultFolderId;
   }
 
-  function openAddModal(targetFolderId = null) {
+  function openAddBookmarkModal(targetFolderId = null) {
     populateFolderSelectDropdowns();
     state.editingBookmarkId = null;
     elements.modalTitle.textContent = 'Добавить закладку';
@@ -1270,11 +1465,11 @@
       }
     }
 
-    elements.bookmarkModal.classList.add('open');
+    openOverlay(elements.bookmarkOverlay);
     elements.modalBookmarkTitle.focus();
   }
 
-  function openEditModal(bookmark) {
+  function openEditBookmarkModal(bookmark) {
     populateFolderSelectDropdowns();
     state.editingBookmarkId = bookmark.id;
     elements.modalTitle.textContent = 'Редактировать закладку';
@@ -1283,14 +1478,8 @@
     elements.modalBookmarkUrl.value = bookmark.url;
     elements.modalBookmarkFolder.value = bookmark.parentId || (state.allFolders.find(f => f.id !== '0')?.id || '1');
 
-    elements.bookmarkModal.classList.add('open');
+    openOverlay(elements.bookmarkOverlay);
     elements.modalBookmarkTitle.focus();
-  }
-
-  function closeBookmarkModal() {
-    elements.bookmarkModal.classList.remove('open');
-    elements.bookmarkForm.reset();
-    state.editingBookmarkId = null;
   }
 
   async function handleBookmarkFormSubmit(e) {
@@ -1355,7 +1544,7 @@
         showToast('Закладка добавлена');
       }
 
-      closeBookmarkModal();
+      closeAllOverlays();
       await loadBookmarks();
     } catch (err) {
       console.error('[NovaTab] Bookmark save error:', err);
@@ -1381,7 +1570,7 @@
       showToast('Закладка удалена');
       await loadBookmarks();
     } catch (err) {
-      console.error('[NovaTab] Delete error:', err);
+      console.error('[NovaTab] Delete bookmark error:', err);
       showToast('Ошибка удаления', 'error');
     }
   }
@@ -1451,25 +1640,21 @@
 
       showToast(`Закладки из «${folder.title}» очищены`);
       await loadBookmarks();
+      renderTrashCategories();
     } catch (err) {
       console.error('[NovaTab] Clear category bookmarks error:', err);
       showToast('Ошибка при очистке закладок', 'error');
     }
   }
 
-  // --- 14. FOLDER CREATION MODAL ---
-  function openFolderModal() {
+  function openAddFolderModal() {
     populateFolderSelectDropdowns();
     const validFolders = state.allFolders.filter(f => f && f.id !== '0' && f.title !== 'Root');
     const defaultId = validFolders.some(f => String(f.id) === '1') ? '1' : (validFolders[0] ? String(validFolders[0].id) : '1');
     elements.folderParentSelect.value = defaultId;
     elements.folderTitleInput.value = '';
-    elements.folderModal.classList.add('open');
+    openOverlay(elements.folderOverlay);
     elements.folderTitleInput.focus();
-  }
-
-  function closeFolderModal() {
-    elements.folderModal.classList.remove('open');
   }
 
   async function handleFolderFormSubmit(e) {
@@ -1510,7 +1695,7 @@
         }
       }
       showToast(`Категория «${title}» создана!`);
-      closeFolderModal();
+      closeAllOverlays();
       await loadBookmarks();
     } catch (err) {
       console.error('[NovaTab] Create folder error:', err);
@@ -1518,33 +1703,121 @@
     }
   }
 
-  // --- 15. SETTINGS MODAL ---
-  function openSettingsModal() {
-    updateStatsDisplay();
-    elements.settingsModal.classList.add('open');
-  }
-
-  function closeSettingsModal() {
-    elements.settingsModal.classList.remove('open');
-  }
-
   function updateStatsDisplay() {
-    elements.settingsStatBookmarks.textContent = state.allBookmarks.length;
-    elements.settingsStatFolders.textContent = state.allFolders.length;
+    if (elements.statBookmarks) elements.statBookmarks.textContent = state.allBookmarks.length;
+    if (elements.statFolders) elements.statFolders.textContent = state.allFolders.length;
   }
 
   // --- 16. EVENT LISTENERS INITIALIZATION ---
   function setupEventListeners() {
-    // Dynamic Quote Module Click Event -> Roll new quote
-    if (elements.quoteContainer) {
-      elements.quoteContainer.addEventListener('click', renderRandomQuote);
+    // Dynamic Quote click -> roll quote
+    if (elements.quoteBox) {
+      elements.quoteBox.addEventListener('click', renderRandomQuote);
     }
 
-    // Top Search Input Enter key -> Direct Google Search redirect
-    if (elements.globalSearchInput) {
-      elements.globalSearchInput.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') {
-          const query = elements.globalSearchInput.value.trim();
+    // Top Pages Nav Add Button
+    if (elements.btnAddBoard) {
+      elements.btnAddBoard.addEventListener('click', openAddFolderModal);
+    }
+
+    // Empty state add button
+    if (elements.btnEmptyAdd) {
+      elements.btnEmptyAdd.addEventListener('click', () => openAddBookmarkModal());
+    }
+
+    // Horizontal wheel scroll on navigation tabs
+    if (elements.pagesNav) {
+      elements.pagesNav.addEventListener('wheel', (e) => {
+        e.preventDefault();
+        elements.pagesNav.scrollLeft += e.deltaY;
+      }, { passive: false });
+    }
+
+    // Sidebar buttons
+    if (elements.sideSearch) {
+      elements.sideSearch.addEventListener('click', () => {
+        if (state.activeOverlayId === 'search-overlay') closeAllOverlays();
+        else openOverlay(elements.searchOverlay, elements.sideSearch);
+      });
+    }
+    if (elements.mpWallpaper) {
+      elements.mpWallpaper.addEventListener('click', () => {
+        if (state.activeOverlayId === 'wp-overlay') closeAllOverlays();
+        else openOverlay(elements.wpOverlay, elements.mpWallpaper);
+      });
+    }
+    if (elements.sideWidgets) {
+      elements.sideWidgets.addEventListener('click', () => {
+        if (state.activeOverlayId === 'widgets-overlay') closeAllOverlays();
+        else openOverlay(elements.widgetsOverlay, elements.sideWidgets);
+      });
+    }
+    if (elements.sideTrash) {
+      elements.sideTrash.addEventListener('click', () => {
+        if (state.activeOverlayId === 'trash-overlay') closeAllOverlays();
+        else openOverlay(elements.trashOverlay, elements.sideTrash);
+      });
+    }
+    if (elements.settingsSideBtn) {
+      elements.settingsSideBtn.addEventListener('click', () => {
+        if (state.activeOverlayId === 'settings-overlay') closeAllOverlays();
+        else openOverlay(elements.settingsOverlay, elements.settingsSideBtn);
+      });
+    }
+
+    // Overlay backdrop clicks & close buttons
+    document.querySelectorAll('.overlay').forEach(overlayEl => {
+      overlayEl.addEventListener('click', (e) => {
+        if (e.target === overlayEl) {
+          closeAllOverlays();
+        }
+      });
+    });
+
+    if (elements.searchOverlayClose) elements.searchOverlayClose.addEventListener('click', closeAllOverlays);
+    if (elements.wpOverlayClose) elements.wpOverlayClose.addEventListener('click', closeAllOverlays);
+    if (elements.wpBtnDone) elements.wpBtnDone.addEventListener('click', closeAllOverlays);
+    if (elements.widgetsOverlayClose) elements.widgetsOverlayClose.addEventListener('click', closeAllOverlays);
+    if (elements.widgetsBtnDone) elements.widgetsBtnDone.addEventListener('click', closeAllOverlays);
+    if (elements.trashOverlayClose) elements.trashOverlayClose.addEventListener('click', closeAllOverlays);
+    if (elements.trashBtnDone) elements.trashBtnDone.addEventListener('click', closeAllOverlays);
+    if (elements.settingsOverlayClose) elements.settingsOverlayClose.addEventListener('click', closeAllOverlays);
+    if (elements.settingsBtnDone) elements.settingsBtnDone.addEventListener('click', closeAllOverlays);
+    if (elements.modalBookmarkClose) elements.modalBookmarkClose.addEventListener('click', closeAllOverlays);
+    if (elements.modalBookmarkCancel) elements.modalBookmarkCancel.addEventListener('click', closeAllOverlays);
+    if (elements.folderModalClose) elements.folderModalClose.addEventListener('click', closeAllOverlays);
+    if (elements.folderBtnCancel) elements.folderBtnCancel.addEventListener('click', closeAllOverlays);
+
+    // Search input & Google trigger
+    if (elements.searchOverlayInput) {
+      elements.searchOverlayInput.addEventListener('input', (e) => {
+        renderSearchResults(e.target.value);
+      });
+
+      elements.searchOverlayInput.addEventListener('keydown', (e) => {
+        if (e.key === 'ArrowDown') {
+          e.preventDefault();
+          if (state.currentSearchResults.length > 0) {
+            state.selectedSearchIndex = (state.selectedSearchIndex + 1) % state.currentSearchResults.length;
+            updateSearchSelectionVisuals();
+          }
+        } else if (e.key === 'ArrowUp') {
+          e.preventDefault();
+          if (state.currentSearchResults.length > 0) {
+            state.selectedSearchIndex = (state.selectedSearchIndex - 1 + state.currentSearchResults.length) % state.currentSearchResults.length;
+            updateSearchSelectionVisuals();
+          }
+        } else if (e.key === 'Enter') {
+          e.preventDefault();
+          const query = elements.searchOverlayInput.value.trim();
+          if (state.currentSearchResults.length > 0 && state.selectedSearchIndex >= 0) {
+            const selected = state.currentSearchResults[state.selectedSearchIndex];
+            if (selected) {
+              openUrl(selected.url);
+              closeAllOverlays();
+              return;
+            }
+          }
           if (query) {
             window.location.href = 'https://www.google.com/search?q=' + encodeURIComponent(query);
           }
@@ -1552,144 +1825,82 @@
       });
     }
 
-    // Top Search Google Button click -> Redirect to Google Search
     if (elements.searchGoogleBtn) {
       elements.searchGoogleBtn.addEventListener('click', () => {
-        const query = elements.globalSearchInput.value.trim();
+        const query = elements.searchOverlayInput.value.trim();
         if (query) {
           window.location.href = 'https://www.google.com/search?q=' + encodeURIComponent(query);
         } else {
-          elements.globalSearchInput.focus();
+          elements.searchOverlayInput.focus();
         }
       });
     }
 
-    // Horizontal wheel scrolling on board pills
-    if (elements.boardsPillsWrapper) {
-      elements.boardsPillsWrapper.addEventListener('wheel', (e) => {
-        e.preventDefault();
-        elements.boardsPillsWrapper.scrollLeft += e.deltaY;
-      }, { passive: false });
+    // Wallpaper upload & reset
+    if (elements.btnUploadWp) {
+      elements.btnUploadWp.addEventListener('click', () => elements.bgFileInput.click());
+    }
+    if (elements.btnResetWp) {
+      elements.btnResetWp.addEventListener('click', resetBackground);
+    }
+    if (elements.bgFileInput) {
+      elements.bgFileInput.addEventListener('change', handleBgFileSelect);
     }
 
-    // Background Wallpaper Button
-    elements.bgChangeBtn.addEventListener('click', () => {
-      elements.bgFileInput.click();
-    });
-
-    // Right click on floating bg button -> Reset wallpaper
-    elements.bgChangeBtn.addEventListener('contextmenu', (e) => {
-      e.preventDefault();
-      resetBackground();
-    });
-
-    elements.bgFileInput.addEventListener('change', handleBgFileSelect);
-
-    // Floating Gear button -> Open Settings Modal
-    if (elements.floatingSettingsBtn) {
-      elements.floatingSettingsBtn.addEventListener('click', openSettingsModal);
+    // Glassmorphism sliders
+    if (elements.blurSlider) {
+      elements.blurSlider.addEventListener('input', (e) => {
+        setGlassStyles(e.target.value, undefined, undefined);
+        persistGlassSettings();
+      });
+    }
+    if (elements.alphaSlider) {
+      elements.alphaSlider.addEventListener('input', (e) => {
+        setGlassStyles(undefined, e.target.value, undefined);
+        persistGlassSettings();
+      });
+    }
+    if (elements.dimmingSlider) {
+      elements.dimmingSlider.addEventListener('input', (e) => {
+        setGlassStyles(undefined, undefined, e.target.value);
+        persistGlassSettings();
+      });
+    }
+    if (elements.overlayOpacitySliderWp) {
+      elements.overlayOpacitySliderWp.addEventListener('input', (e) => {
+        setGlassStyles(undefined, undefined, e.target.value);
+        persistGlassSettings();
+      });
     }
 
-    // Add board button in top bar
-    if (elements.btnAddBoard) {
-      elements.btnAddBoard.addEventListener('click', openFolderModal);
+    // Trash clean empty
+    if (elements.btnCleanEmptyCategories) {
+      elements.btnCleanEmptyCategories.addEventListener('click', cleanEmptyCategories);
     }
 
-    // Empty state add button
-    if (elements.btnEmptyAdd) {
-      elements.btnEmptyAdd.addEventListener('click', () => openAddModal());
+    // Forms
+    if (elements.bookmarkForm) {
+      elements.bookmarkForm.addEventListener('submit', handleBookmarkFormSubmit);
     }
-
-    // Search Modal events
-    elements.searchModalClose.addEventListener('click', closeSearchModal);
-    elements.searchModal.addEventListener('click', (e) => {
-      if (e.target === elements.searchModal) closeSearchModal();
-    });
-    elements.searchModalInput.addEventListener('input', (e) => {
-      renderSearchResults(e.target.value);
-    });
-
-    // Search Modal Keyboard Navigation (Up, Down, Enter, Escape)
-    elements.searchModalInput.addEventListener('keydown', (e) => {
-      if (e.key === 'ArrowDown') {
-        e.preventDefault();
-        if (state.currentSearchResults.length > 0) {
-          state.selectedSearchIndex = (state.selectedSearchIndex + 1) % state.currentSearchResults.length;
-          updateSearchSelectionVisuals();
-        }
-      } else if (e.key === 'ArrowUp') {
-        e.preventDefault();
-        if (state.currentSearchResults.length > 0) {
-          state.selectedSearchIndex = (state.selectedSearchIndex - 1 + state.currentSearchResults.length) % state.currentSearchResults.length;
-          updateSearchSelectionVisuals();
-        }
-      } else if (e.key === 'Enter') {
-        e.preventDefault();
-        if (state.currentSearchResults.length > 0 && state.selectedSearchIndex >= 0) {
-          const selected = state.currentSearchResults[state.selectedSearchIndex];
-          if (selected) {
-            openUrl(selected.url);
-            closeSearchModal();
-          }
-        }
-      }
-    });
+    if (elements.folderForm) {
+      elements.folderForm.addEventListener('submit', handleFolderFormSubmit);
+    }
 
     // Global Keydown shortcuts
     window.addEventListener('keydown', (e) => {
-      // Press '/' to open fast search palette if not in another modal or input
       if (
         e.key === '/' && 
-        !elements.searchModal.classList.contains('open') && 
-        !elements.bookmarkModal.classList.contains('open') && 
-        !elements.folderModal.classList.contains('open') &&
-        !elements.settingsModal.classList.contains('open') &&
+        !state.activeOverlayId &&
         document.activeElement.tagName !== 'INPUT' &&
         document.activeElement.tagName !== 'TEXTAREA'
       ) {
         e.preventDefault();
-        openSearchModal();
+        openOverlay(elements.searchOverlay, elements.sideSearch);
       }
-      // Press 'Escape' to close all modals
       if (e.key === 'Escape') {
-        closeSearchModal();
-        closeBookmarkModal();
-        closeFolderModal();
-        closeSettingsModal();
+        closeAllOverlays();
       }
     });
-
-    // Bookmark Modal events
-    elements.modalBtnClose.addEventListener('click', closeBookmarkModal);
-    elements.modalBtnCancel.addEventListener('click', closeBookmarkModal);
-    elements.bookmarkModal.addEventListener('click', (e) => {
-      if (e.target === elements.bookmarkModal) closeBookmarkModal();
-    });
-    elements.bookmarkForm.addEventListener('submit', handleBookmarkFormSubmit);
-
-    // Folder Modal events
-    elements.folderModalClose.addEventListener('click', closeFolderModal);
-    elements.folderBtnCancel.addEventListener('click', closeFolderModal);
-    elements.folderModal.addEventListener('click', (e) => {
-      if (e.target === elements.folderModal) closeFolderModal();
-    });
-    elements.folderForm.addEventListener('submit', handleFolderFormSubmit);
-
-    // Settings Modal events
-    elements.settingsModalClose.addEventListener('click', closeSettingsModal);
-    elements.settingsBtnDone.addEventListener('click', closeSettingsModal);
-    elements.settingsModal.addEventListener('click', (e) => {
-      if (e.target === elements.settingsModal) closeSettingsModal();
-    });
-    elements.settingsUploadBgBtn.addEventListener('click', () => {
-      elements.bgFileInput.click();
-    });
-    elements.settingsResetBgBtn.addEventListener('click', resetBackground);
-
-    // Settings Opacity Slider listener
-    if (elements.overlayOpacitySlider) {
-      elements.overlayOpacitySlider.addEventListener('input', handleOverlayOpacityChange);
-    }
 
     // Chrome Live Bookmarks Reactive Sync
     if (state.isExtension) {
@@ -1702,15 +1913,14 @@
 
   // --- 17. BOOTSTRAP INITIALIZATION ---
   async function init() {
-    console.log(`[NovaTab] Initializing Aesthetic Glassmorphism Dashboard (Extension mode: ${state.isExtension})`);
+    console.log(`[NovaTab] Initializing Markmez 1:1 Engine (Extension mode: ${state.isExtension})`);
     updateLiveClockAndDate();
     setInterval(updateLiveClockAndDate, 1000);
     renderRandomQuote();
     setupEventListeners();
-    await loadSavedBackground();
+    await loadSavedBackgroundAndSettings();
     await loadBookmarks();
   }
 
   document.addEventListener('DOMContentLoaded', init);
 })();
-
