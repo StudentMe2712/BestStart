@@ -2,6 +2,11 @@
  * NovaTab — Visual Bookmark Manager: Glassmorphism Edition Core
  * Full-featured visual new tab extension with custom wallpaper engine,
  * folder-based category glass cards, top board pills, and instant search.
+ * 
+ * 100% Manifest V3 CSP Compliant:
+ * - Zero external CDN runtime dependencies
+ * - Zero inline scripts and zero inline HTML event handlers
+ * - Safe DOM event binding & delegated event listeners
  */
 
 (() => {
@@ -9,7 +14,7 @@
 
   // --- 1. APPLICATION STATE ---
   const state = {
-    isExtension: typeof chrome !== 'undefined' && !!chrome.bookmarks,
+    isExtension: typeof chrome !== 'undefined' && Boolean(chrome.bookmarks),
     rawTree: [],
     allBookmarks: [],
     allFolders: [],
@@ -18,6 +23,8 @@
     activeBoardId: 'all', // 'all' or folder ID
     viewMode: 'grid', // 'grid' | 'list'
     searchQuery: '',
+    currentSearchResults: [],
+    selectedSearchIndex: -1,
     editingBookmarkId: null
   };
 
@@ -219,8 +226,8 @@
     const toast = document.createElement('div');
     toast.className = `toast ${type === 'success' ? 'toast-success' : 'toast-error'}`;
     toast.innerHTML = `
-      <span class="text-base">${type === 'success' ? '✓' : '⚠️'}</span>
-      <span>${escapeHtml(message)}</span>
+      <span class="toast-icon">${type === 'success' ? '✓' : '⚠️'}</span>
+      <span class="toast-message">${escapeHtml(message)}</span>
     `;
     elements.toastContainer.appendChild(toast);
 
@@ -302,7 +309,7 @@
         let dataUrl;
         try {
           dataUrl = canvas.toDataURL('image/webp', 0.8);
-        } catch (err) {
+        } catch {
           dataUrl = canvas.toDataURL('image/jpeg', 0.85);
         }
 
@@ -409,7 +416,6 @@
         state.rawTree = tree;
         parseBookmarkNodes(tree);
       } else {
-        console.info('[NovaTab] Standalone mode: Rendering mock bookmark tree.');
         state.rawTree = MOCK_BOOKMARK_TREE;
         parseBookmarkNodes(MOCK_BOOKMARK_TREE);
       }
@@ -431,31 +437,26 @@
 
     // 1. "✦ Все доски" Master Pill
     const allPill = document.createElement('button');
-    allPill.className = `glass-pill ${state.activeBoardId === 'all' ? 'glass-pill-active' : ''} px-3.5 py-1.5 text-xs font-semibold text-white flex items-center gap-1.5 shrink-0`;
+    allPill.className = `glass-pill ${state.activeBoardId === 'all' ? 'glass-pill-active' : ''}`;
     allPill.setAttribute('data-board', 'all');
     allPill.innerHTML = `<span>✦</span><span>Все доски</span>`;
     allPill.addEventListener('click', () => selectBoard('all'));
     elements.boardsPillsWrapper.appendChild(allPill);
 
     // 2. Derive top folders / boards
-    // If folders exist in bookmarks bar or mock tree, render them
-    const displayFolders = state.allFolders.filter(f => {
-      // Exclude root containers like 'Bookmarks Bar' or 'Other Bookmarks' if they contain subfolders
-      return f.depth <= 2;
-    });
+    const displayFolders = state.allFolders.filter(f => f.depth <= 2);
 
     displayFolders.forEach(folder => {
       const bCount = (state.bookmarksByFolder.get(folder.id) || []).length;
       const isActive = state.activeBoardId === folder.id;
 
       const pill = document.createElement('button');
-      pill.className = `glass-pill ${isActive ? 'glass-pill-active' : ''} px-3 py-1.5 text-xs font-medium text-white/90 hover:text-white flex items-center gap-1.5 shrink-0`;
+      pill.className = `glass-pill ${isActive ? 'glass-pill-active' : ''}`;
       pill.setAttribute('data-board', folder.id);
 
-      // Clean title for icon
       pill.innerHTML = `
-        <span class="truncate max-w-[140px]" title="${escapeHtml(folder.title)}">${escapeHtml(folder.title)}</span>
-        <span class="text-[10px] opacity-60 font-mono">${bCount}</span>
+        <span class="pill-title" title="${escapeHtml(folder.title)}">${escapeHtml(folder.title)}</span>
+        <span class="pill-count">${bCount}</span>
       `;
 
       pill.addEventListener('click', () => selectBoard(folder.id));
@@ -499,7 +500,6 @@
       const selected = state.folderMap.get(state.activeBoardId);
       if (selected) {
         targetFolders = [selected];
-        // If it has children folders, include them too
         if (selected.childrenFolderIds && selected.childrenFolderIds.length > 0) {
           selected.childrenFolderIds.forEach(cid => {
             const childF = state.folderMap.get(cid);
@@ -531,7 +531,7 @@
 
   function createCategoryCard(folder, bookmarks) {
     const card = document.createElement('div');
-    card.className = 'glass-card flex flex-col';
+    card.className = 'glass-card';
     card.setAttribute('data-folder-id', folder.id);
 
     // Card Header
@@ -544,7 +544,7 @@
       </div>
       <div class="card-header-actions">
         <button class="card-icon-btn btn-quick-add" title="Добавить закладку в «${escapeHtml(folder.title)}»">
-          <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+          <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
             <line x1="12" y1="5" x2="12" y2="19"></line>
             <line x1="5" y1="12" x2="19" y2="12"></line>
           </svg>
@@ -561,11 +561,11 @@
 
     // Bookmark Items Container
     const itemsList = document.createElement('div');
-    itemsList.className = 'flex flex-col flex-1';
+    itemsList.className = 'bookmark-list';
 
     if (bookmarks.length === 0) {
       itemsList.innerHTML = `
-        <div class="py-6 text-center text-xs text-white/40 italic">
+        <div class="bookmark-empty-hint">
           Нет закладок в этой категории
         </div>
       `;
@@ -591,7 +591,7 @@
 
     row.innerHTML = `
       <div class="bookmark-left">
-        <div class="bookmark-favicon">
+        <div class="favicon-wrapper">
           <img 
             class="favicon-img" 
             src="${escapeHtml(faviconSrc)}" 
@@ -603,33 +603,33 @@
           </div>
         </div>
         <div class="bookmark-info">
-          <span class="bookmark-name" title="${escapeHtml(bookmark.title)}">${escapeHtml(bookmark.title)}</span>
+          <span class="bookmark-title" title="${escapeHtml(bookmark.title)}">${escapeHtml(bookmark.title)}</span>
           <span class="bookmark-domain" title="${escapeHtml(bookmark.hostname)}">${escapeHtml(bookmark.hostname)}</span>
         </div>
       </div>
 
-      <div class="bookmark-actions-dock">
+      <div class="bookmark-actions">
         <button class="item-action-btn action-open" title="Открыть в новой вкладке">
-          <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+          <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
             <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
             <polyline points="15 3 21 3 21 9"></polyline>
             <line x1="10" y1="14" x2="21" y2="3"></line>
           </svg>
         </button>
         <button class="item-action-btn action-copy" title="Скопировать ссылку">
-          <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+          <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
             <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
             <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
           </svg>
         </button>
         <button class="item-action-btn action-edit" title="Редактировать">
-          <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+          <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
             <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
             <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
           </svg>
         </button>
         <button class="item-action-btn btn-delete action-delete" title="Удалить">
-          <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+          <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
             <polyline points="3 6 5 6 21 6"></polyline>
             <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
           </svg>
@@ -647,7 +647,7 @@
 
     // Primary click -> open URL
     row.addEventListener('click', (e) => {
-      if (e.target.closest('.bookmark-actions-dock')) return;
+      if (e.target.closest('.bookmark-actions')) return;
       openUrl(bookmark.url);
     });
 
@@ -680,17 +680,32 @@
     return row;
   }
 
-  // --- 9. SEARCH MODAL ENGINE ---
+  // --- 9. SEARCH PALETTE MODAL ENGINE ---
 
   function openSearchModal() {
     elements.searchModal.classList.add('open');
     elements.searchModalInput.value = '';
     elements.searchModalInput.focus();
+    state.selectedSearchIndex = 0;
     renderSearchResults('');
   }
 
   function closeSearchModal() {
     elements.searchModal.classList.remove('open');
+    state.selectedSearchIndex = -1;
+    state.currentSearchResults = [];
+  }
+
+  function updateSearchSelectionVisuals() {
+    const items = elements.searchResultsList.querySelectorAll('.search-result-item');
+    items.forEach((item, idx) => {
+      if (idx === state.selectedSearchIndex) {
+        item.classList.add('selected');
+        item.scrollIntoView({ block: 'nearest' });
+      } else {
+        item.classList.remove('selected');
+      }
+    });
   }
 
   function renderSearchResults(query) {
@@ -712,11 +727,14 @@
       });
     }
 
+    state.currentSearchResults = matches;
+    state.selectedSearchIndex = matches.length > 0 ? 0 : -1;
+
     elements.searchMatchCount.textContent = `${matches.length} ${q ? 'совпадений' : 'недавних закладок'}`;
 
     if (matches.length === 0) {
       elements.searchResultsList.innerHTML = `
-        <div class="py-8 text-center text-xs text-white/50">
+        <div class="bookmark-empty-hint">
           По запросу «${escapeHtml(query)}» ничего не найдено
         </div>
       `;
@@ -725,21 +743,26 @@
 
     matches.forEach((bm, idx) => {
       const item = document.createElement('div');
-      item.className = 'search-result-item';
+      item.className = `search-result-item ${idx === 0 ? 'selected' : ''}`;
       item.setAttribute('data-url', bm.url);
 
       const faviconSrc = getFaviconUrl(bm.url);
 
       item.innerHTML = `
-        <div class="w-6 h-6 rounded-md bg-white/10 flex items-center justify-center overflow-hidden shrink-0 border border-white/10">
-          <img src="${escapeHtml(faviconSrc)}" class="w-4 h-4 object-contain" alt="">
+        <div class="search-result-icon">
+          <img src="${escapeHtml(faviconSrc)}" alt="" loading="lazy">
         </div>
-        <div class="flex flex-col min-w-0 flex-1">
-          <span class="text-xs font-semibold text-white truncate">${escapeHtml(bm.title)}</span>
-          <span class="text-[11px] text-white/50 truncate">${escapeHtml(bm.url)}</span>
+        <div class="search-result-info">
+          <span class="search-result-title">${escapeHtml(bm.title)}</span>
+          <span class="search-result-url">${escapeHtml(bm.url)}</span>
         </div>
-        <span class="text-[10px] px-2 py-0.5 rounded-full bg-white/10 text-purple-300 shrink-0 font-medium">${escapeHtml(bm.folderName)}</span>
+        <span class="search-result-badge">${escapeHtml(bm.folderName)}</span>
       `;
+
+      item.addEventListener('mouseenter', () => {
+        state.selectedSearchIndex = idx;
+        updateSearchSelectionVisuals();
+      });
 
       item.addEventListener('click', () => {
         openUrl(bm.url);
@@ -1036,15 +1059,43 @@
       renderSearchResults(e.target.value);
     });
 
+    // Search Modal Keyboard Navigation (Up, Down, Enter, Escape)
+    elements.searchModalInput.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        if (state.currentSearchResults.length > 0) {
+          state.selectedSearchIndex = (state.selectedSearchIndex + 1) % state.currentSearchResults.length;
+          updateSearchSelectionVisuals();
+        }
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        if (state.currentSearchResults.length > 0) {
+          state.selectedSearchIndex = (state.selectedSearchIndex - 1 + state.currentSearchResults.length) % state.currentSearchResults.length;
+          updateSearchSelectionVisuals();
+        }
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        if (state.currentSearchResults.length > 0 && state.selectedSearchIndex >= 0) {
+          const selected = state.currentSearchResults[state.selectedSearchIndex];
+          if (selected) {
+            openUrl(selected.url);
+            closeSearchModal();
+          }
+        }
+      }
+    });
+
     // Global Keydown shortcuts
     window.addEventListener('keydown', (e) => {
-      // Press '/' to open fast search modal
+      // Press '/' to open fast search modal if not in another modal or input
       if (
         e.key === '/' && 
         !elements.searchModal.classList.contains('open') && 
         !elements.bookmarkModal.classList.contains('open') && 
         !elements.folderModal.classList.contains('open') &&
-        !elements.settingsModal.classList.contains('open')
+        !elements.settingsModal.classList.contains('open') &&
+        document.activeElement.tagName !== 'INPUT' &&
+        document.activeElement.tagName !== 'TEXTAREA'
       ) {
         e.preventDefault();
         openSearchModal();

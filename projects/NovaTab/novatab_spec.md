@@ -1,13 +1,25 @@
 # NovaTab — Visual Bookmark Manager Specification
-**Version:** 1.1.0 (Glassmorphism & Custom Background Architecture)  
+**Version:** 1.2.0 (100% Manifest V3 CSP Compliant & Native CSS3 Architecture)  
 **Target Platform:** Google Chrome / Chromium-based Browsers (Manifest V3)  
-**Design Philosophy:** Ultra-modern, responsive Glassmorphism dashboard with hardware-accelerated backdrop blur, custom high-performance wallpaper engine, and board-based category organization.
+**Design Philosophy:** Ultra-modern, responsive Glassmorphism dashboard with hardware-accelerated backdrop blur, pure Native CSS3 design system, custom high-performance wallpaper engine, and board-based category organization.
 
 ---
 
-## 1. Architectural Overview
+## 1. Architectural Overview & Manifest V3 CSP Compliance
 
 NovaTab overrides the default browser "New Tab" page (`chrome_url_overrides: { "newtab": "index.html" }`), transforming it into an aesthetic, distraction-free visual hub with layered glass surfaces and reactive bookmarks management.
+
+### 1.1 Manifest V3 Content Security Policy (CSP) Architecture
+
+NovaTab is strictly engineered to comply with Chrome Manifest V3 Content Security Policy rules:
+
+| CSP Rule | NovaTab Implementation & Compliance Strategy |
+| :--- | :--- |
+| **Zero Remote Scripts** | All external CDNs (including `cdn.tailwindcss.com`) are completely eliminated. The extension operates 100% offline with zero external script fetching. |
+| **Zero Inline Scripts** | All `<script>...</script>` tags in `index.html` were removed. The single entry point script is `<script src="app.js"></script>` loaded at the bottom of `<body>`. |
+| **Zero Inline Event Handlers** | No `onclick`, `onchange`, `onerror`, or other inline event handler attributes exist in `index.html` or dynamically generated DOM strings. All interactions use `addEventListener` or event delegation. |
+| **Zero Dynamic Code Evaluation** | Strictly NO `eval()`, NO `new Function()`, and NO string-evaluated timers (`setTimeout("...", ms)`). All asynchronous timers execute native callback closures. |
+| **Zero External Fonts / Stylesheets** | `@import` of Google Fonts was replaced with native modern system font stacks (`system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, ...`) for instantaneous render with zero network delay. |
 
 ```
 +---------------------------------------------------------------------------------------------------+
@@ -24,11 +36,12 @@ NovaTab overrides the default browser "New Tab" page (`chrome_url_overrides: { "
         |    Background Service Worker    |               |    Glassmorphic SPA Viewport    |
         |        (background.js)          |               |      (index.html / app.js)      |
         +---------------------------------+               +---------------------------------+
-        | • Global shortcut Ctrl+Shift+Y  |               | • Top Board Pills Navigation    |
-        | • Active tab metadata capture   |               | • Responsive Category Cards     |
-        | • Automatic target folder seed  |               | • Custom Canvas WebP Engine     |
-        | • Action badge visual feedback  |               | • Right Floating Tool Dock      |
-        +---------------------------------+               | • Instant Live Search Modal     |
+        | • Global shortcut Ctrl+Shift+Y  |               | • 100% Native CSS3 Layout       |
+        | • Active tab metadata capture   |               | • Top Board Pills Navigation    |
+        | • Automatic target folder seed  |               | • Responsive Masonry Cards Grid |
+        | • Action badge visual feedback  |               | • Canvas WebP Wallpaper Engine  |
+        +---------------------------------+               | • Right Floating Tool Dock      |
+                                                          | • Live Search Palette (Up/Down) |
                                                           | • Real-time Chrome Event Sync   |
                                                           +---------------------------------+
                                                                            |
@@ -40,22 +53,24 @@ NovaTab overrides the default browser "New Tab" page (`chrome_url_overrides: { "
 
 ---
 
-## 2. Visual System & Glassmorphism Design Tokens
+## 2. Visual System & Pure Native CSS3 Design Tokens
 
-NovaTab employs a multi-tiered glassmorphism visual hierarchy powered by standard CSS `backdrop-filter: blur(...)` and alpha-channel RGBA borders.
+NovaTab employs a multi-tiered glassmorphism visual hierarchy powered by standard CSS `backdrop-filter: blur(...)` and alpha-channel RGBA borders, defined cleanly via CSS Custom Properties in `:root`.
 
 ### 2.1 CSS Utility Tokens (`style.css`)
 
 | Class | Properties & Aesthetics | Use Case |
 | :--- | :--- | :--- |
 | `body` | `width: 100vw; height: 100vh; overflow: hidden; margin: 0; padding: 0; background-size: cover; background-position: center; background-repeat: no-repeat; background-attachment: fixed;` with default cyberpunk aurora mesh gradient. | Base canvas for wallpaper and gradient rendering. |
-| `.glass-pill` | `background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 9999px;` | Top nav board tabs, modal action buttons, filter chips. |
-| `.glass-pill-active` | `background: linear-gradient(135deg, rgba(139, 92, 246, 0.65), rgba(99, 102, 241, 0.65)); backdrop-filter: blur(12px); border: 1px solid rgba(167, 139, 250, 0.35); box-shadow: 0 0 15px rgba(139, 92, 246, 0.3);` | Currently selected board/filter pill. |
-| `.glass-panel` | `background: rgba(0, 0, 0, 0.4); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid rgba(255, 255, 255, 0.1);` | Floating toolbar dock, top navbar capsule, modal backgrounds. |
-| `.glass-card` | `border-radius: 16px; background: rgba(0, 0, 0, 0.42); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px); border: 1px solid rgba(255, 255, 255, 0.1); padding: 18px;` with hover lift `-2px` and purple ambient glow. | Category/folder bookmark cards in the masonry grid. |
+| `.glass-panel` | `background: var(--glass-bg-panel); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid var(--glass-border);` | Floating toolbar dock, top navbar capsule, modal backgrounds. |
+| `.glass-card` | `border-radius: var(--radius-lg); background: var(--glass-bg-card); backdrop-filter: blur(16px); border: 1px solid var(--glass-border); padding: 16px;` with hover lift `-2px` and purple ambient glow. | Category/folder bookmark cards in the masonry grid. |
+| `.glass-pill` | `background: var(--glass-bg-pill); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border: 1px solid var(--glass-border-subtle); border-radius: 9999px;` | Top nav board tabs, filter chips, secondary buttons. |
+| `.glass-pill-active` | `background: linear-gradient(135deg, rgba(139, 92, 246, 0.75), rgba(99, 102, 241, 0.75)); backdrop-filter: blur(12px); border: 1px solid var(--glass-border-active); box-shadow: 0 0 15px rgba(139, 92, 246, 0.35);` | Currently selected board/filter pill and primary buttons. |
+| `.cards-masonry-grid` | `display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 20px; align-items: start;` | Dynamic responsive bookmark cards layout. |
 | `.floating-toolbar` | `position: fixed; right: 24px; top: 50%; transform: translateY(-50%); z-index: 50; border-radius: 9999px; padding: 12px 8px;` | Vertical quick-action dock on the right viewport edge. |
 | `.floating-bg-btn` | `position: fixed; bottom: 24px; left: 24px; z-index: 50; width: 48px; height: 48px; border-radius: 50%; display: flex; align-items: center; justify-content: center;` | Bottom-left instant wallpaper changer button. |
-| `.custom-scrollbar` | `scrollbar-width: thin; scrollbar-color: rgba(255, 255, 255, 0.2) transparent;` | Minimal unobtrusive scrollbar for viewport and lists. |
+| `.modal-overlay` & `.modal-box` | Fullscreen frosted overlay with scale-animated glassmorphic modal box and responsive sizes (`.modal-box-wide`). | Search palette, bookmark CRUD, folder creator, and settings dialogs. |
+| `.custom-scrollbar` | `scrollbar-width: thin; scrollbar-color: rgba(255, 255, 255, 0.2) transparent;` | Minimal unobtrusive scrollbar for viewport and search results. |
 
 ---
 
@@ -93,19 +108,19 @@ To ensure instantaneous loading without hitting `chrome.storage.local` storage q
 ```
 
 ### Reset Mechanism
-- Right-clicking (contextmenu) on the `#bg-change-btn` or selecting "Reset to Default" clears the custom background key from storage and restores the default cyber-neon mesh gradient.
+- Right-clicking (`contextmenu`) on the `#bg-change-btn` or selecting "Сбросить градиент" in Settings clears the custom background key from storage and restores the default cyber-neon mesh gradient.
 
 ---
 
 ## 4. UI Layout & Component Architecture
 
 ### 4.1 Top Nav (Boards / Tabs)
-- Centered at the top: `fixed top-5 left-1/2 -translate-x-1/2`.
+- Centered at the top: `.top-nav-container.glass-panel`.
 - Contains "✦ Все доски" master pill plus dynamic pills for top bookmark folders (e.g. `📺 Стриминг`, `🎮 Гейминг`, `💻 Разработка`, `🤖 AI Platforms`).
 - "+ Новая доска" quick creator button to instantiate new bookmark categories.
 
 ### 4.2 Main Viewport & Category Cards
-- `height: calc(100vh - 80px); margin-top: 80px; overflow-y: auto; padding: 24px 80px 40px 40px;`
+- `height: calc(100vh - 78px); margin-top: 78px; overflow-y: auto; padding: 24px 80px 48px 40px;`
 - Responsive dynamic columns (`.cards-masonry-grid` / `.cards-masonry-grid.list-layout`).
 - Inside each `.glass-card`:
   - **Header:** Folder title, item counter badge, and quick "+" add bookmark button.
@@ -114,17 +129,20 @@ To ensure instantaneous loading without hitting `chrome.storage.local` storage q
 ### 4.3 Right Floating Toolbar Dock
 - Fixed vertical capsule at `right: 24px, top: 50%`.
 - Glass buttons with hover tooltips:
-  1. **Search (`/`):** Launches the fuzzy search modal.
+  1. **Search (`/`):** Launches the fuzzy search palette modal.
   2. **Add (`+`):** Opens bookmark creation modal.
   3. **Folder (`📁`):** Opens folder / board creation modal.
   4. **View Toggle (`🔲`):** Switches between multi-column grid and single-column list.
   5. **Random Bookmark (`⚡`):** Picks and opens a random bookmark from the library.
   6. **Settings (`⚙️`):** Opens the NovaTab settings modal (wallpaper manager, statistics).
 
-### 4.4 Live Search Modal
+### 4.4 Live Search Palette Modal
 - Triggered globally via `/` key or toolbar search icon.
 - Real-time search across titles, URLs, domains, and folder names.
-- Instant keyboard navigation and click-to-open.
+- Full keyboard navigation:
+  - `↑` / `↓` Arrow keys to navigate matches with active highlight.
+  - `Enter` to open selected bookmark URL immediately.
+  - `Escape` to close palette.
 
 ---
 
@@ -135,14 +153,15 @@ To ensure instantaneous loading without hitting `chrome.storage.local` storage q
 2. **Tier 2 (Google S2 Favicon API):**
    `https://www.google.com/s2/favicons?domain=${encodeURIComponent(hostname)}&sz=32`
 3. **Tier 3 (Client Fallback):**
-   Generated circular letter avatar with consistent domain-hashed color palette (`hsl(hue, 65%, 50%)`).
+   Generated letter avatar with consistent domain-hashed color palette (`hsl(hue, 65%, 50%)`).
 
 ---
 
 ## 6. Implementation Checklist & Status
 
-- [x] **Glassmorphism CSS Architecture (`style.css`):** Full implementation of `.glass-pill`, `.glass-pill-active`, `.glass-panel`, `.glass-card`, `.floating-toolbar`, `.floating-bg-btn`, custom scrollbars, and default cyberpunk gradient.
-- [x] **Modern SPA Layout (`index.html`):** Tailwind CSS integration, centered top board pills, category cards grid, right floating toolbar, left bottom wallpaper button, search modal, CRUD modals, and toast notifications.
+- [x] **100% Manifest V3 CSP Compliance:** Removed Tailwind CDN and inline configuration, removed inline handlers, zero remote dependencies, zero `eval()`, pure native event binding.
+- [x] **Pure Native CSS3 Refactor (`style.css`):** Comprehensive CSS variables, glassmorphism design tokens (`.glass-panel`, `.glass-card`, `.glass-pill`, `.glass-pill-active`), responsive grid, modals, and toolbars.
+- [x] **Semantic HTML Architecture (`index.html`):** Pristine `<head>` with only required meta/title/link elements, semantic classes, and single bottom script tag.
 - [x] **Wallpaper Engine & Compression (`app.js`):** Canvas downscaling to 1920x1080, WebP 80% compression, `chrome.storage.local` persistence, right-click reset.
 - [x] **Dynamic Chrome Bookmarks Parser (`app.js`):** Tree crawling, folder grouping into cards, rich standalone mock data fallback, live reactive listeners (`onCreated`, `onRemoved`, `onChanged`, `onMoved`).
-- [x] **Interactive Controls & Hotkeys:** Global `/` search shortcut, Escape key modal dismiss, board switching, bookmark CRUD, view mode toggle.
+- [x] **Interactive Controls & Hotkeys:** Global `/` search shortcut, search palette keyboard navigation (`↑`, `↓`, `Enter`, `Escape`), board filtering, bookmark CRUD, view mode toggle.
