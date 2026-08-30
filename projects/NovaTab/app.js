@@ -1096,6 +1096,12 @@
             item.appendChild(descSpan);
           }
 
+          const menuBtn = document.createElement('button');
+          menuBtn.className = 'link-menu-btn';
+          menuBtn.title = 'Меню закладки';
+          menuBtn.textContent = '⋮';
+          item.appendChild(menuBtn);
+
           // Link Drag and Drop events
           item.addEventListener('dragstart', handleLinkDragStart);
           item.addEventListener('dragend', handleLinkDragEnd);
@@ -1104,6 +1110,7 @@
 
           // Left Click: Open Link
           item.addEventListener('click', (e) => {
+            if (e.target.closest('.link-menu-btn')) return;
             e.preventDefault();
             if (link.url) {
               const openInNewTab = document.body.classList.contains('setting-open-new-tab');
@@ -1609,13 +1616,27 @@
     }
   }
 
-  function deleteLink(tabId, boardId, linkId) {
-    const tab = appState.tabs.find((t) => t.id === tabId);
+  function deleteLink(tabIdOrBoardId, boardIdOrLinkId, linkId) {
+    let tabId, boardId, targetLinkId;
+    if (linkId !== undefined) {
+      tabId = tabIdOrBoardId;
+      boardId = boardIdOrLinkId;
+      targetLinkId = linkId;
+    } else {
+      boardId = tabIdOrBoardId;
+      targetLinkId = boardIdOrLinkId;
+      const currentTab = getActiveTab();
+      tabId = currentTab ? currentTab.id : null;
+    }
+    let tab = appState.tabs.find((t) => t.id === tabId);
+    if (!tab) {
+      tab = appState.tabs.find((t) => t.boards && t.boards.some((b) => b.id === boardId));
+    }
     if (!tab) return;
     const board = tab.boards.find((b) => b.id === boardId);
     if (!board) return;
 
-    board.links = board.links.filter((l) => l.id !== linkId);
+    board.links = (board.links || []).filter((l) => l.id !== targetLinkId);
     saveState();
     renderBoards();
     showToast('Ссылка удалена');
@@ -1764,7 +1785,34 @@
     });
   }
 
-  function openEditLinkModal(target) {
+  function openEditLinkModal(targetOrBoardId, linkId) {
+    let target = null;
+    if (typeof targetOrBoardId === 'object' && targetOrBoardId !== null) {
+      target = targetOrBoardId;
+    } else {
+      const boardId = targetOrBoardId;
+      const currentTab = getActiveTab();
+      let tab = currentTab;
+      let board = tab?.boards?.find((b) => b.id === boardId);
+      if (!board) {
+        for (const t of appState.tabs) {
+          board = t.boards?.find((b) => b.id === boardId);
+          if (board) { tab = t; break; }
+        }
+      }
+      const link = board?.links?.find((l) => l.id === linkId);
+      if (link && board && tab) {
+        target = {
+          tabId: tab.id,
+          boardId: board.id,
+          linkId: link.id,
+          title: link.title,
+          url: link.url
+        };
+      }
+    }
+    if (!target) return;
+
     const dict = I18N_STRINGS[currentLanguage] || I18N_STRINGS.ru;
     openModal({
       title: dict['modal.editBookmark'] || 'Изменить закладку',
@@ -2005,6 +2053,8 @@
     if (e.key === 'Escape') {
       hideContextMenu();
       hideBoardMenu();
+      const linkMenuEl = document.getElementById('linkMenu');
+      if (linkMenuEl) linkMenuEl.style.display = 'none';
       if (widgetGallery) widgetGallery.style.display = 'none';
       closeModal();
       closeSettingsModal();
@@ -2021,12 +2071,16 @@
   window.addEventListener('scroll', () => {
     hideContextMenu();
     hideBoardMenu();
+    const linkMenuEl = document.getElementById('linkMenu');
+    if (linkMenuEl) linkMenuEl.style.display = 'none';
     if (widgetGallery) widgetGallery.style.display = 'none';
   }, { passive: true });
 
   window.addEventListener('resize', () => {
     hideContextMenu();
     hideBoardMenu();
+    const linkMenuEl = document.getElementById('linkMenu');
+    if (linkMenuEl) linkMenuEl.style.display = 'none';
     if (widgetGallery) widgetGallery.style.display = 'none';
   });
 
@@ -3440,6 +3494,107 @@
     }
   }
 
+  // --- Link Menu Handling ---
+  function initLinkMenu() {
+    const linkMenu = document.getElementById('linkMenu');
+    const boardMenu = document.getElementById('boardMenu');
+    let currentLinkTarget = null; // { tabId, boardId, linkId, url, title }
+
+    document.addEventListener('click', (e) => {
+      const linkMenuBtn = e.target.closest('.link-menu-btn');
+      
+      if (linkMenuBtn) {
+        e.preventDefault();
+        e.stopPropagation();
+
+        if (boardMenu) boardMenu.style.display = 'none';
+
+        const linkItem = linkMenuBtn.closest('.link-item');
+        if (!linkItem || !linkMenu) return;
+
+        const currentTab = getActiveTab();
+        currentLinkTarget = {
+          tabId: currentTab ? currentTab.id : 'main',
+          boardId: linkItem.dataset.boardId,
+          linkId: linkItem.dataset.linkId,
+          url: linkItem.dataset.url,
+          title: linkItem.dataset.title
+        };
+
+        linkMenu.dataset.targetUrl = linkItem.dataset.url;
+        linkMenu.dataset.targetBoardId = linkItem.dataset.boardId;
+        linkMenu.dataset.targetLinkId = linkItem.dataset.linkId;
+
+        const rect = linkMenuBtn.getBoundingClientRect();
+        linkMenu.style.display = 'block';
+
+        // Position popup to the right of button (or left if near window right edge)
+        let left = rect.right + 8;
+        let top = rect.top;
+
+        if (left + 220 > window.innerWidth) {
+          left = rect.left - 228;
+        }
+        if (top + 200 > window.innerHeight) {
+          top = window.innerHeight - 210;
+        }
+
+        linkMenu.style.left = `${Math.max(8, left)}px`;
+        linkMenu.style.top = `${Math.max(8, top)}px`;
+      } else if (!e.target.closest('#linkMenu')) {
+        if (linkMenu) linkMenu.style.display = 'none';
+      }
+    });
+
+    // #lmOpen: Открыть
+    const lmOpen = document.getElementById('lmOpen');
+    if (lmOpen) {
+      lmOpen.addEventListener('click', () => {
+        if (currentLinkTarget && currentLinkTarget.url) {
+          window.open(normalizeUrl(currentLinkTarget.url), '_blank');
+        }
+        if (linkMenu) linkMenu.style.display = 'none';
+      });
+    }
+
+    // #lmIncognito: Открыть в инкогнито
+    const lmIncognito = document.getElementById('lmIncognito');
+    if (lmIncognito) {
+      lmIncognito.addEventListener('click', () => {
+        if (currentLinkTarget && currentLinkTarget.url) {
+          if (typeof chrome !== 'undefined' && chrome.windows && chrome.windows.create) {
+            chrome.windows.create({ incognito: true, url: normalizeUrl(currentLinkTarget.url) });
+          } else {
+            window.open(normalizeUrl(currentLinkTarget.url), '_blank');
+          }
+        }
+        if (linkMenu) linkMenu.style.display = 'none';
+      });
+    }
+
+    // #lmEdit: Изменить
+    const lmEdit = document.getElementById('lmEdit');
+    if (lmEdit) {
+      lmEdit.addEventListener('click', () => {
+        if (currentLinkTarget) {
+          openEditLinkModal(currentLinkTarget.boardId, currentLinkTarget.linkId);
+        }
+        if (linkMenu) linkMenu.style.display = 'none';
+      });
+    }
+
+    // #lmDelete: Удалить
+    const lmDelete = document.getElementById('lmDelete');
+    if (lmDelete) {
+      lmDelete.addEventListener('click', () => {
+        if (currentLinkTarget) {
+          deleteLink(currentLinkTarget.boardId, currentLinkTarget.linkId);
+        }
+        if (linkMenu) linkMenu.style.display = 'none';
+      });
+    }
+  }
+
   // --- Drag and Drop Engine: Board Dragging ---
   function initDragAndDrop() {
     const grid = document.querySelector('.boards-grid') || boardsGrid;
@@ -3472,19 +3627,27 @@
     });
 
     grid.addEventListener('dragover', (e) => {
-      e.preventDefault(); // Необходимо для срабатывания события drop
+      e.preventDefault(); // Обязательно для разрешения drop
       if (!draggedItem) return;
       if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
 
       const target = e.target.closest('.board, .board-card, .board-placeholder');
+      
       if (target && target !== draggedItem && target.parentNode === grid) {
-        const rect = target.getBoundingClientRect();
-        const isAfter = e.clientX > rect.left + rect.width / 2;
-        
-        if (isAfter) {
-          target.after(draggedItem);
-        } else {
+        if (target.classList.contains('board-placeholder')) {
+          // Если навели на пустой слот (плейсхолдер) — вставляем доску ПЕРЕД ним.
+          // Таким образом доска логически уходит в конец списка.
           target.before(draggedItem);
+        } else {
+          // Стандартная логика смены мест между двумя реальными досками
+          const rect = target.getBoundingClientRect();
+          const isAfter = e.clientX > rect.left + rect.width / 2;
+          
+          if (isAfter) {
+            target.after(draggedItem);
+          } else {
+            target.before(draggedItem);
+          }
         }
       }
     });
@@ -3559,6 +3722,7 @@
       populateQuickBoardSelect();
     });
     initBoardMenu();
+    initLinkMenu();
     initWidgetGallery();
     initSettingsModal();
     initTrashModal();
