@@ -66,16 +66,6 @@
   const settingsCloseBtn = document.getElementById('settingsCloseBtn');
   const settingsNav = document.getElementById('settingsNav');
   const settingsBody = document.getElementById('settingsBody');
-  const stSliderBoardW = document.getElementById('stSliderBoardW');
-  const stBoardWVal = document.getElementById('stBoardWVal');
-  const stSliderBlur = document.getElementById('stSliderBlur');
-  const stBlurVal = document.getElementById('stBlurVal');
-  const stSliderAlpha = document.getElementById('stSliderAlpha');
-  const stAlphaVal = document.getElementById('stAlphaVal');
-  const stSliderOverlay = document.getElementById('stSliderOverlay');
-  const stOverlayVal = document.getElementById('stOverlayVal');
-  const stUploadBgBtn = document.getElementById('stUploadBgBtn');
-  const stResetBgBtn = document.getElementById('stResetBgBtn');
 
   // --- Utility Functions ---
   function generateId(prefix = 'id') {
@@ -803,7 +793,7 @@
       e.stopPropagation();
       settingsOverlay.style.display = 'flex';
       if (sidebar) sidebar.classList.remove('is-open');
-      const wpTabBtn = document.querySelector('.settings-nav-item[data-tab="wallpapers"]');
+      const wpTabBtn = document.querySelector('.settings-nav-item[data-tab="tab-appearance"]');
       if (wpTabBtn) wpTabBtn.click();
     });
   }
@@ -854,67 +844,50 @@
       });
     }
 
-    // Settings Navigation Tabs
-    if (settingsNav && settingsBody) {
-      const navItems = settingsNav.querySelectorAll('.settings-nav-item');
-      const tabPanels = settingsBody.querySelectorAll('.settings-tab-panel');
+    // Nav tab clicks
+    const navItems = document.querySelectorAll('.settings-nav-item[data-tab]');
+    const tabContents = document.querySelectorAll('.settings-tab-content');
 
-      navItems.forEach((item) => {
-        item.addEventListener('click', () => {
-          const tabTarget = item.dataset.tab;
-          if (!tabTarget) return;
+    navItems.forEach(item => {
+      item.addEventListener('click', () => {
+        navItems.forEach(n => n.classList.remove('active'));
+        tabContents.forEach(t => (t.style.display = 'none'));
 
-          navItems.forEach((btn) => btn.classList.remove('active'));
-          item.classList.add('active');
+        item.classList.add('active');
+        const target = document.getElementById(item.dataset.tab);
+        if (target) target.style.display = 'block';
+      });
+    });
 
-          tabPanels.forEach((panel) => {
-            if (panel.dataset.tabPanel === tabTarget) {
-              panel.classList.add('active');
-            } else {
-              panel.classList.remove('active');
-            }
-          });
+    // Segmented buttons
+    document.querySelectorAll('.st-segment').forEach(segment => {
+      const btns = segment.querySelectorAll('.st-seg-btn');
+      btns.forEach(btn => {
+        btn.addEventListener('click', () => {
+          btns.forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
         });
       });
-    }
+    });
 
-    // Sliders & Value Badges
-    if (stSliderBoardW && stBoardWVal) {
-      stSliderBoardW.addEventListener('input', () => {
-        stBoardWVal.textContent = `${stSliderBoardW.value}px`;
-      });
-    }
+    // Live feedback for all .st-slider-field
+    document.querySelectorAll('.st-slider-field').forEach(field => {
+      const slider = field.querySelector('.st-slider');
+      const valEl = field.querySelector('.st-val');
+      if (slider && valEl) {
+        const initialText = valEl.textContent.trim();
+        const unit = initialText.endsWith('px') ? 'px' : initialText.endsWith('%') ? '%' : '';
+        slider.addEventListener('input', () => {
+          valEl.textContent = `${slider.value}${unit}`;
+        });
+      }
+    });
 
-    if (stSliderBlur && stBlurVal) {
-      stSliderBlur.addEventListener('input', () => {
-        stBlurVal.textContent = `${stSliderBlur.value}px`;
-      });
-    }
-
-    if (stSliderAlpha && stAlphaVal) {
-      stSliderAlpha.addEventListener('input', () => {
-        const pct = Math.round(parseFloat(stSliderAlpha.value) * 100);
-        stAlphaVal.textContent = `${pct}%`;
-      });
-    }
-
-    if (stSliderOverlay && stOverlayVal) {
-      stSliderOverlay.addEventListener('input', () => {
-        const pct = Math.round(parseFloat(stSliderOverlay.value) * 100);
-        stOverlayVal.textContent = `${pct}%`;
-      });
-    }
-
-    // Wallpaper action buttons
-    if (stUploadBgBtn) {
-      stUploadBgBtn.addEventListener('click', () => {
-        showToast('Функция выбора обоев готова');
-      });
-    }
-
-    if (stResetBgBtn) {
-      stResetBgBtn.addEventListener('click', () => {
-        showToast('Фон сброшен по умолчанию');
+    // Support button click handler
+    const supportNavBtn = document.getElementById('supportNavBtn');
+    if (supportNavBtn) {
+      supportNavBtn.addEventListener('click', () => {
+        showToast('Служба поддержки: support@novatab.app');
       });
     }
   }

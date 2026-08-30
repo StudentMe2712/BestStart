@@ -796,139 +796,53 @@ dialog h3 {
   overflow-y: auto;
 }
 
-.settings-tab-panel {
-  display: none;
-  flex-direction: column;
-  gap: 16px;
-}
+/* Заголовки секций */
+.st-section { margin-bottom: 32px; border-bottom: 1px solid var(--ui-border); padding-bottom: 16px; }
+.st-section:last-child { border-bottom: none; margin-bottom: 0; }
+.st-section-title { font-size: 11px; font-weight: 700; color: var(--ui-text-secondary); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 16px; }
 
-.settings-tab-panel.active {
-  display: flex;
-}
+/* Верстка строк */
+.st-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+.st-row-col { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
+.st-row-label { font-size: 13px; color: var(--ui-text); }
+.st-flex-gap { display: flex; align-items: center; gap: 8px; }
 
-.st-section-title {
-  font-size: 15px;
-  font-weight: 600;
-  color: #ffffff;
-  margin-bottom: 4px;
-  letter-spacing: -0.2px;
-}
-
-.st-desc-block {
-  color: var(--ui-text-secondary);
-  font-size: 13px;
-  line-height: 1.55;
-}
-
-.st-actions-row {
-  display: flex;
-  gap: 12px;
-  margin-top: 6px;
-  flex-wrap: wrap;
-}
-
-.settings-modal .btn-secondary {
-  border: 1px solid var(--ui-border);
-  background: var(--ui-fill);
-  color: var(--ui-text);
-}
-
-.settings-modal .btn-secondary:hover {
-  background: var(--ui-fill-hover);
-  color: #ffffff;
-}
-
-.st-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 12px 16px;
-  background: var(--ui-fill);
-  border: 1px solid var(--ui-border);
-  border-radius: 12px;
-}
-
-.st-label-group {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-
-.st-title {
-  font-size: 13.5px;
-  font-weight: 500;
-  color: var(--ui-text);
-}
-
-.st-desc {
-  font-size: 12px;
-  color: var(--ui-text-secondary);
-  line-height: 1.35;
-}
-
-.st-control-wrap {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex-shrink: 0;
-}
-
-/* Sliders */
-.st-slider {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 140px;
-  height: 6px;
-  border-radius: 3px;
-  background: rgba(255, 255, 255, 0.15);
+/* Сегментированные кнопки (Segmented Control) */
+.st-segment { display: flex; background: rgba(0,0,0,0.2); border-radius: 8px; padding: 2px; }
+.st-segment-full { width: 100%; }
+.st-seg-btn {
+  flex: 1; background: transparent; border: none; color: var(--ui-text-secondary);
+  padding: 6px 12px; border-radius: 6px; font-size: 13px; cursor: pointer; transition: 0.2s;
   outline: none;
-  cursor: pointer;
-  transition: background 0.2s;
 }
+.st-seg-btn:hover { color: #fff; }
+.st-seg-btn.active { background: rgba(255,255,255,0.15); color: #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.2); }
 
+/* Ползунки (Sliders) */
+.st-slider-field { margin-bottom: 16px; }
+.st-slider-header { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 13px; }
+.st-val { color: var(--ui-text-secondary); }
+.st-slider {
+  width: 100%; -webkit-appearance: none; appearance: none; background: rgba(255,255,255,0.1);
+  height: 4px; border-radius: 2px; outline: none; cursor: pointer;
+}
 .st-slider::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  background: #3b82f6;
-  cursor: pointer;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
-  transition: transform 0.15s, background 0.15s;
+  -webkit-appearance: none; appearance: none; width: 16px; height: 16px; border-radius: 50%;
+  background: #fff; cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,0.4);
 }
-
-.st-slider::-webkit-slider-thumb:hover {
-  transform: scale(1.15);
-  background: #60a5fa;
-}
-
 .st-slider::-moz-range-thumb {
-  width: 16px;
-  height: 16px;
-  border: none;
-  border-radius: 50%;
-  background: #3b82f6;
-  cursor: pointer;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
-  transition: transform 0.15s, background 0.15s;
+  width: 16px; height: 16px; border-radius: 50%; border: none;
+  background: #fff; cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,0.4);
 }
 
-.st-slider::-moz-range-thumb:hover {
-  transform: scale(1.15);
-  background: #60a5fa;
-}
-
-.st-val-badge {
-  display: inline-block;
-  min-width: 48px;
-  text-align: right;
-  font-size: 12px;
-  font-weight: 600;
-  color: #60a5fa;
-  font-variant-numeric: tabular-nums;
-}
+/* Формы */
+.st-select { background: rgba(0,0,0,0.2); color: #fff; border: 1px solid var(--ui-border); padding: 6px 10px; border-radius: 6px; font-size: 13px; outline: none; cursor: pointer; }
+.st-select option { background: #1c1d26; color: #fff; }
+.st-btn-small { background: rgba(255,255,255,0.08); color: #fff; border: 1px solid var(--ui-border); padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; transition: background 0.2s; }
+.st-btn-small:hover { background: rgba(255,255,255,0.16); }
+.st-kbd { background: rgba(0,0,0,0.3); border: 1px solid var(--ui-border); padding: 4px 8px; border-radius: 4px; font-size: 11px; font-family: monospace; color: var(--ui-text-secondary); }
+.st-color-picker { width: 100%; height: 36px; border-radius: 8px; background: #2a2a2a; border: 1px solid var(--ui-border); cursor: pointer; transition: border-color 0.2s; }
+.st-color-picker:hover { border-color: rgba(255,255,255,0.3); }
 
 /* Toggle Switch */
 .st-toggle {
@@ -963,56 +877,6 @@ dialog h3 {
 
 .st-toggle.on .st-toggle-knob {
   transform: translateX(16px);
-}
-
-/* Hotkeys Table */
-.hotkeys-table {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.hk-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 10px 14px;
-  background: var(--ui-fill);
-  border: 1px solid var(--ui-border);
-  border-radius: 10px;
-  color: var(--ui-text);
-  font-size: 13px;
-}
-
-kbd {
-  display: inline-block;
-  padding: 3px 8px;
-  font-family: SFMono-Regular, Consolas, "Liberation Mono", Menlo, Courier, monospace;
-  font-size: 11.5px;
-  font-weight: 600;
-  color: #ffffff;
-  background: rgba(255, 255, 255, 0.12);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 6px;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
-}
-
-/* About Meta */
-.about-meta {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 14px;
-  background: var(--ui-fill);
-  border: 1px solid var(--ui-border);
-  border-radius: 12px;
-  color: var(--ui-text-secondary);
-  font-size: 12.5px;
-  line-height: 1.5;
-}
-
-.about-meta strong {
-  color: var(--ui-text);
 }
 
 /* ==========================================================================
