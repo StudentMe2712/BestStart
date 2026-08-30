@@ -529,46 +529,171 @@
             </Setter>
         </Style>
 
-        <!-- Sidebar Item Button Style (Windows 11 Navigation Pane) -->
-        <Style x:Key="SidebarItemButton" TargetType="{x:Type Button}">
+        <!-- Windows 11 TreeView Chevron Expander ToggleButton Style (16x16 crisp vector arrow) -->
+        <Style x:Key="Win11TreeViewExpandCollapseToggleStyle" TargetType="{x:Type ToggleButton}">
+            <Setter Property="Focusable" Value="False" />
+            <Setter Property="Width" Value="16" />
+            <Setter Property="Height" Value="16" />
             <Setter Property="Background" Value="Transparent" />
-            <Setter Property="Foreground" Value="{StaticResource BrushTextPrimary}" />
             <Setter Property="BorderBrush" Value="Transparent" />
             <Setter Property="BorderThickness" Value="0" />
-            <Setter Property="Margin" Value="4,2,4,2" />
-            <Setter Property="Padding" Value="8,5" />
-            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="Margin" Value="0,0,2,0" />
             <Setter Property="Cursor" Value="Hand" />
             <Setter Property="FocusVisualStyle" Value="{x:Null}" />
             <Setter Property="Template">
                 <Setter.Value>
-                    <ControlTemplate TargetType="{x:Type Button}">
-                        <Border x:Name="sideBorder"
+                    <ControlTemplate TargetType="{x:Type ToggleButton}">
+                        <Border x:Name="toggleBorder"
                                 Background="{TemplateBinding Background}"
-                                BorderBrush="{TemplateBinding BorderBrush}"
-                                BorderThickness="{TemplateBinding BorderThickness}"
-                                CornerRadius="4"
-                                Padding="{TemplateBinding Padding}"
+                                CornerRadius="3"
+                                Width="16" Height="16"
                                 SnapsToDevicePixels="True">
-                            <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
-                                              VerticalAlignment="Center" />
+                            <Path x:Name="arrowPath"
+                                  Data="M6 4L10 8L6 12"
+                                  Stroke="{StaticResource BrushTextMuted}"
+                                  StrokeThickness="1.5"
+                                  StrokeStartLineCap="Round"
+                                  StrokeEndLineCap="Round"
+                                  StrokeLineJoin="Round"
+                                  HorizontalAlignment="Center"
+                                  VerticalAlignment="Center"
+                                  SnapsToDevicePixels="True" />
                         </Border>
                         <ControlTemplate.Triggers>
-                            <!-- Hover -->
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="sideBorder" Property="Background" Value="#15FFFFFF" />
+                                <Setter TargetName="toggleBorder" Property="Background" Value="#15FFFFFF" />
+                                <Setter TargetName="arrowPath" Property="Stroke" Value="{StaticResource BrushTextPrimary}" />
                             </Trigger>
-                            <!-- Active / Selected State (soft elevated gray #1EFFFFFF) -->
-                            <DataTrigger Binding="{Binding IsActive}" Value="True">
-                                <Setter TargetName="sideBorder" Property="Background" Value="#1EFFFFFF" />
-                            </DataTrigger>
-                            <Trigger Property="IsPressed" Value="True">
-                                <Setter TargetName="sideBorder" Property="Background" Value="#2AFFFFFF" />
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="arrowPath" Property="Data" Value="M4 6L8 10L12 6" />
+                                <Setter TargetName="arrowPath" Property="Stroke" Value="{StaticResource BrushTextSecondary}" />
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
+        </Style>
+
+        <!-- Windows 11 Fluent TreeViewItem Style -->
+        <Style x:Key="Win11TreeViewItemStyle" TargetType="{x:Type TreeViewItem}">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Foreground" Value="{StaticResource BrushTextPrimary}" />
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="Padding" Value="6,4" />
+            <Setter Property="Margin" Value="0" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+            <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type TreeViewItem}">
+                        <Grid SnapsToDevicePixels="True">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="*" />
+                            </Grid.RowDefinitions>
+
+                            <!-- Item Row Wrapper -->
+                            <Border x:Name="ItemBorder"
+                                    Grid.Row="0"
+                                    Background="{TemplateBinding Background}"
+                                    BorderBrush="Transparent"
+                                    BorderThickness="0"
+                                    Margin="4,1,4,1"
+                                    Padding="{TemplateBinding Padding}"
+                                    CornerRadius="4"
+                                    SnapsToDevicePixels="True">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+
+                                    <!-- Chevron ToggleButton (Hidden when no children) -->
+                                    <ToggleButton x:Name="Expander"
+                                                  Grid.Column="0"
+                                                  Style="{StaticResource Win11TreeViewExpandCollapseToggleStyle}"
+                                                  IsChecked="{Binding IsExpanded, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}"
+                                                  ClickMode="Press"
+                                                  Focusable="False"
+                                                  VerticalAlignment="Center" />
+
+                                    <ContentPresenter x:Name="PART_Header"
+                                                      Grid.Column="1"
+                                                      ContentSource="Header"
+                                                      HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                                      VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+                                                      SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}" />
+                                </Grid>
+                            </Border>
+
+                            <!-- Child Items Presenter with 24px left indentation -->
+                            <ItemsPresenter x:Name="ItemsHost"
+                                            Grid.Row="1"
+                                            Margin="24,0,0,0"
+                                            Visibility="Collapsed" />
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsExpanded" Value="True">
+                                <Setter TargetName="ItemsHost" Property="Visibility" Value="Visible" />
+                            </Trigger>
+                            <Trigger Property="HasItems" Value="False">
+                                <Setter TargetName="Expander" Property="Visibility" Value="Hidden" />
+                            </Trigger>
+                            <DataTrigger Binding="{Binding HasChildren}" Value="False">
+                                <Setter TargetName="Expander" Property="Visibility" Value="Hidden" />
+                            </DataTrigger>
+
+                            <!-- Hover state (#12FFFFFF) -->
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="ItemBorder" Property="Background" Value="#12FFFFFF" />
+                            </Trigger>
+
+                            <!-- Selected / Active state (#1EFFFFFF) -->
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="ItemBorder" Property="Background" Value="#1EFFFFFF" />
+                                <Setter Property="Foreground" Value="#FFFFFF" />
+                            </Trigger>
+
+                            <!-- ViewModel IsActive State (#1EFFFFFF) -->
+                            <DataTrigger Binding="{Binding IsActive}" Value="True">
+                                <Setter TargetName="ItemBorder" Property="Background" Value="#1EFFFFFF" />
+                                <Setter Property="Foreground" Value="#FFFFFF" />
+                            </DataTrigger>
+
+                            <!-- Separator rendering: transparent, zero padding, non-clickable -->
+                            <DataTrigger Binding="{Binding IsSeparator}" Value="True">
+                                <Setter TargetName="Expander" Property="Visibility" Value="Collapsed" />
+                                <Setter TargetName="ItemBorder" Property="Background" Value="Transparent" />
+                                <Setter TargetName="ItemBorder" Property="Padding" Value="0" />
+                                <Setter TargetName="ItemBorder" Property="Margin" Value="0" />
+                                <Setter Property="Focusable" Value="False" />
+                                <Setter Property="Cursor" Value="Arrow" />
+                                <Setter Property="IsHitTestVisible" Value="False" />
+                            </DataTrigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsSeparator}" Value="True">
+                    <Setter Property="Focusable" Value="False" />
+                    <Setter Property="IsHitTestVisible" Value="False" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- Windows 11 Fluent TreeView Style -->
+        <Style x:Key="Win11TreeViewStyle" TargetType="{x:Type TreeView}">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="6,6" />
+            <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled" />
+            <Setter Property="ScrollViewer.VerticalScrollBarVisibility" Value="Auto" />
+            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+            <Setter Property="ItemContainerStyle" Value="{StaticResource Win11TreeViewItemStyle}" />
         </Style>
 
         <!-- ContextMenu Top Action Icon Button Style -->

@@ -46,8 +46,7 @@ public class MainViewModel : ViewModelBase
         Items = new ObservableCollection<FileSystemItem>();
         SelectedItems = new ObservableCollection<FileSystemItem>();
         Breadcrumbs = new ObservableCollection<BreadcrumbItem>();
-        QuickAccessItems = new ObservableCollection<SidebarItem>();
-        DriveItems = new ObservableCollection<SidebarItem>();
+        SidebarNodes = new ObservableCollection<SidebarItem>();
 
         // Navigation Commands
         GoBackCommand = new RelayCommand(GoBack, () => CanGoBack);
@@ -66,7 +65,7 @@ public class MainViewModel : ViewModelBase
         });
         SelectSidebarItemCommand = new RelayCommand<SidebarItem>(item =>
         {
-            if (item != null && !string.IsNullOrWhiteSpace(item.Path))
+            if (item != null && !item.IsSeparator && !string.IsNullOrWhiteSpace(item.Path))
             {
                 SelectedSidebarItem = item;
                 _ = NavigateToPathAsync(item.Path);
@@ -305,8 +304,7 @@ public class MainViewModel : ViewModelBase
     public ObservableCollection<FileSystemItem> Items { get; }
     public ObservableCollection<FileSystemItem> SelectedItems { get; }
     public ObservableCollection<BreadcrumbItem> Breadcrumbs { get; }
-    public ObservableCollection<SidebarItem> QuickAccessItems { get; }
-    public ObservableCollection<SidebarItem> DriveItems { get; }
+    public ObservableCollection<SidebarItem> SidebarNodes { get; }
 
     #endregion
 
@@ -709,13 +707,12 @@ public class MainViewModel : ViewModelBase
 
     #endregion
 
-    #region Sidebar (Quick Access & Drives)
+    #region Sidebar (Windows 11 Hierarchical TreeView)
 
     private void InitializeSidebar()
     {
-        QuickAccessItems.Clear();
+        SidebarNodes.Clear();
 
-        // Pinned Windows 11 standard folders
         string userProfile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
         string pictures = Environment.GetFolderPath(Environment.SpecialFolder.MyPictures);
         string desktop = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
@@ -724,37 +721,112 @@ public class MainViewModel : ViewModelBase
         string music = Environment.GetFolderPath(Environment.SpecialFolder.MyMusic);
         string videos = Environment.GetFolderPath(Environment.SpecialFolder.MyVideos);
 
-        AddQuickAccessFolder("Главная", "🏠", userProfile, IconExtractor.GetSpecialFolderIcon(Environment.SpecialFolder.UserProfile));
-        AddQuickAccessFolder("Галерея", "🖼️", Directory.Exists(pictures) ? pictures : userProfile, IconExtractor.GetSpecialFolderIcon(Environment.SpecialFolder.MyPictures));
-        AddQuickAccessFolder("Рабочий стол", "🖥️", desktop, IconExtractor.GetSpecialFolderIcon(Environment.SpecialFolder.Desktop));
-        AddQuickAccessFolder("Загрузки", "📥", Directory.Exists(downloads) ? downloads : userProfile, IconExtractor.GetCustomFolderIcon(downloads));
-        AddQuickAccessFolder("Документы", "📄", documents, IconExtractor.GetSpecialFolderIcon(Environment.SpecialFolder.MyDocuments));
-        AddQuickAccessFolder("Изображения", "🌄", pictures, IconExtractor.GetSpecialFolderIcon(Environment.SpecialFolder.MyPictures));
-        AddQuickAccessFolder("Музыка", "🎵", music, IconExtractor.GetSpecialFolderIcon(Environment.SpecialFolder.MyMusic));
-        AddQuickAccessFolder("Видео", "🎬", videos, IconExtractor.GetSpecialFolderIcon(Environment.SpecialFolder.MyVideos));
-
-        RefreshDrives();
-    }
-
-    private void AddQuickAccessFolder(string title, string iconGlyph, string path, System.Windows.Media.ImageSource? icon = null)
-    {
-        if (!string.IsNullOrWhiteSpace(path))
+        // 1. Главная
+        SidebarNodes.Add(new SidebarItem
         {
-            QuickAccessItems.Add(new SidebarItem
-            {
-                Title = title,
-                IconGlyph = iconGlyph,
-                Icon = icon ?? IconExtractor.GetFolderIcon(true),
-                Path = path,
-                IsDrive = false,
-                Section = "Главная"
-            });
-        }
+            Title = "Главная",
+            Path = userProfile,
+            Icon = IconExtractor.GetSpecialFolderIcon(Environment.SpecialFolder.UserProfile) ?? IconExtractor.GetFolderIcon(true),
+            IconGlyph = "🏠"
+        });
+
+        // 2. Галерея
+        SidebarNodes.Add(new SidebarItem
+        {
+            Title = "Галерея",
+            Path = Directory.Exists(pictures) ? pictures : userProfile,
+            Icon = IconExtractor.GetSpecialFolderIcon(Environment.SpecialFolder.MyPictures) ?? IconExtractor.GetFolderIcon(true),
+            IconGlyph = "🖼️"
+        });
+
+        // 3. Separator
+        SidebarNodes.Add(new SidebarItem { IsSeparator = true });
+
+        // 4. Рабочий стол
+        SidebarNodes.Add(new SidebarItem
+        {
+            Title = "Рабочий стол",
+            Path = desktop,
+            Icon = IconExtractor.GetSpecialFolderIcon(Environment.SpecialFolder.Desktop) ?? IconExtractor.GetFolderIcon(true),
+            IconGlyph = "🖥️"
+        });
+
+        // 5. Загрузки
+        SidebarNodes.Add(new SidebarItem
+        {
+            Title = "Загрузки",
+            Path = Directory.Exists(downloads) ? downloads : userProfile,
+            Icon = IconExtractor.GetCustomFolderIcon(downloads) ?? IconExtractor.GetFolderIcon(true),
+            IconGlyph = "📥"
+        });
+
+        // 6. Документы
+        SidebarNodes.Add(new SidebarItem
+        {
+            Title = "Документы",
+            Path = documents,
+            Icon = IconExtractor.GetSpecialFolderIcon(Environment.SpecialFolder.MyDocuments) ?? IconExtractor.GetFolderIcon(true),
+            IconGlyph = "📄"
+        });
+
+        // 7. Изображения
+        SidebarNodes.Add(new SidebarItem
+        {
+            Title = "Изображения",
+            Path = pictures,
+            Icon = IconExtractor.GetSpecialFolderIcon(Environment.SpecialFolder.MyPictures) ?? IconExtractor.GetFolderIcon(true),
+            IconGlyph = "🌄"
+        });
+
+        // 8. Музыка
+        SidebarNodes.Add(new SidebarItem
+        {
+            Title = "Музыка",
+            Path = music,
+            Icon = IconExtractor.GetSpecialFolderIcon(Environment.SpecialFolder.MyMusic) ?? IconExtractor.GetFolderIcon(true),
+            IconGlyph = "🎵"
+        });
+
+        // 9. Видео
+        SidebarNodes.Add(new SidebarItem
+        {
+            Title = "Видео",
+            Path = videos,
+            Icon = IconExtractor.GetSpecialFolderIcon(Environment.SpecialFolder.MyVideos) ?? IconExtractor.GetFolderIcon(true),
+            IconGlyph = "🎬"
+        });
+
+        // 10. Separator
+        SidebarNodes.Add(new SidebarItem { IsSeparator = true });
+
+        // 11. Этот компьютер
+        var thisPcNode = new SidebarItem
+        {
+            Title = "Этот компьютер",
+            IsExpanded = true,
+            Path = null,
+            Icon = IconExtractor.GetDriveIcon("C:\\", true) ?? IconExtractor.GetFolderIcon(true),
+            IconGlyph = "💻"
+        };
+        PopulateDrives(thisPcNode);
+        SidebarNodes.Add(thisPcNode);
+
+        // 12. Separator
+        SidebarNodes.Add(new SidebarItem { IsSeparator = true });
+
+        // 13. Сеть
+        SidebarNodes.Add(new SidebarItem
+        {
+            Title = "Сеть",
+            Path = null,
+            Icon = IconExtractor.GetSpecialFolderIcon(Environment.SpecialFolder.NetworkShortcuts) ?? IconExtractor.GetFolderIcon(true),
+            IconGlyph = "🌐"
+        });
     }
 
-    private void RefreshDrives()
+    private void PopulateDrives(SidebarItem thisPcNode)
     {
-        DriveItems.Clear();
+        thisPcNode.Children.Clear();
         try
         {
             foreach (var drive in DriveInfo.GetDrives())
@@ -768,14 +840,13 @@ public class MainViewModel : ViewModelBase
                     double totalGb = drive.TotalSize / (1024.0 * 1024 * 1024);
                     double usagePercent = totalGb > 0 ? ((totalGb - freeGb) / totalGb) * 100.0 : 0;
 
-                    DriveItems.Add(new SidebarItem
+                    thisPcNode.Children.Add(new SidebarItem
                     {
                         Title = $"{label} ({driveLetter})",
                         IconGlyph = "💾",
                         Icon = driveIcon,
                         Path = drive.RootDirectory.FullName,
                         IsDrive = true,
-                        Section = "Этот компьютер",
                         FreeSpaceBytes = drive.AvailableFreeSpace,
                         TotalSizeBytes = drive.TotalSize,
                         UsagePercent = usagePercent,
@@ -784,14 +855,13 @@ public class MainViewModel : ViewModelBase
                 }
                 else
                 {
-                    DriveItems.Add(new SidebarItem
+                    thisPcNode.Children.Add(new SidebarItem
                     {
                         Title = $"Диск ({drive.Name.TrimEnd('\\')})",
                         IconGlyph = "💾",
                         Icon = driveIcon,
                         Path = drive.Name,
                         IsDrive = true,
-                        Section = "Этот компьютер",
                         Subtitle = "Устройство не готово"
                     });
                 }
@@ -803,16 +873,68 @@ public class MainViewModel : ViewModelBase
         }
     }
 
+    private void RefreshDrives()
+    {
+        var thisPc = SidebarNodes.FirstOrDefault(n => n.Title == "Этот компьютер");
+        if (thisPc != null)
+        {
+            PopulateDrives(thisPc);
+        }
+    }
+
     private void UpdateActiveSidebarHighlight(string currentPath)
     {
-        foreach (var item in QuickAccessItems)
+        if (string.IsNullOrWhiteSpace(currentPath))
         {
-            item.IsActive = string.Equals(item.Path, currentPath, StringComparison.OrdinalIgnoreCase);
+            SetAllInactive(SidebarNodes);
+            return;
         }
 
-        foreach (var item in DriveItems)
+        string normalized = currentPath.TrimEnd('\\');
+        SetNodeHighlightRecursive(SidebarNodes, normalized);
+    }
+
+    private bool SetNodeHighlightRecursive(IEnumerable<SidebarItem> nodes, string normalizedCurrentPath)
+    {
+        bool anyMatched = false;
+        foreach (var item in nodes)
         {
-            item.IsActive = string.Equals(item.Path.TrimEnd('\\'), currentPath.TrimEnd('\\'), StringComparison.OrdinalIgnoreCase);
+            if (item.IsSeparator)
+            {
+                item.IsActive = false;
+                continue;
+            }
+
+            bool match = false;
+            if (!string.IsNullOrWhiteSpace(item.Path))
+            {
+                string itemPath = item.Path.TrimEnd('\\');
+                match = string.Equals(itemPath, normalizedCurrentPath, StringComparison.OrdinalIgnoreCase);
+            }
+
+            item.IsActive = match;
+            if (match) anyMatched = true;
+
+            if (item.Children.Count > 0)
+            {
+                if (SetNodeHighlightRecursive(item.Children, normalizedCurrentPath))
+                {
+                    anyMatched = true;
+                }
+            }
+        }
+        return anyMatched;
+    }
+
+    private void SetAllInactive(IEnumerable<SidebarItem> nodes)
+    {
+        foreach (var item in nodes)
+        {
+            item.IsActive = false;
+            if (item.Children.Count > 0)
+            {
+                SetAllInactive(item.Children);
+            }
         }
     }
 

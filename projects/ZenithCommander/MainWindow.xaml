@@ -613,100 +613,77 @@
                         <ColumnDefinition Width="*" MinWidth="300" />                   <!-- Fluent File List View -->
                     </Grid.ColumnDefinitions>
 
-                    <!-- SIDEBAR (Windows 11 Navigation Pane: #1C1C1C, rounded items, no blue strip) -->
+                    <!-- SIDEBAR (Windows 11 Navigation Pane: #1C1C1C, hierarchical TreeView) -->
                     <Border Grid.Column="0"
                             Background="{StaticResource BrushSidebar}"
                             BorderBrush="{StaticResource BrushBorder}"
                             BorderThickness="0,0,1,0">
-                        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-                            <StackPanel Margin="4,6">
-                                <!-- Section 1: Главная (Pinned standard folders) -->
-                                <TextBlock Text="Главная"
-                                           FontSize="11"
-                                           FontWeight="SemiBold"
-                                           Foreground="{StaticResource BrushTextMuted}"
-                                           Margin="12,8,0,4" />
+                        <TreeView x:Name="SidebarTreeView"
+                                  ItemsSource="{Binding SidebarNodes}"
+                                  Background="Transparent"
+                                  BorderThickness="0"
+                                  Padding="6,6"
+                                  ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                  ScrollViewer.VerticalScrollBarVisibility="Auto"
+                                  ItemContainerStyle="{StaticResource Win11TreeViewItemStyle}"
+                                  SelectedItemChanged="SidebarTreeView_SelectedItemChanged"
+                                  PreviewMouseLeftButtonUp="SidebarTreeView_PreviewMouseLeftButtonUp">
+                            <TreeView.ItemTemplate>
+                                <HierarchicalDataTemplate DataType="{x:Type models:SidebarItem}"
+                                                          ItemsSource="{Binding Children}">
+                                    <Grid HorizontalAlignment="Stretch" ToolTip="{Binding Path}">
+                                        <!-- Separator -->
+                                        <Rectangle Height="1"
+                                                   Fill="#20FFFFFF"
+                                                   Margin="8,6,8,6"
+                                                   HorizontalAlignment="Stretch"
+                                                   Visibility="{Binding IsSeparator, Converter={StaticResource BoolToVis}}" />
 
-                                <ItemsControl ItemsSource="{Binding QuickAccessItems}">
-                                    <ItemsControl.ItemTemplate>
-                                        <DataTemplate>
-                                            <Button Style="{StaticResource SidebarItemButton}"
-                                                    Command="{Binding DataContext.SelectSidebarItemCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                                    CommandParameter="{Binding}"
-                                                    ToolTip="{Binding Path}">
-                                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                                    <Image Source="{Binding Icon}"
-                                                           Width="16" Height="16"
-                                                           Margin="0,0,10,0"
+                                        <!-- Regular Sidebar Item View -->
+                                        <Grid Visibility="{Binding IsSeparator, Converter={StaticResource InverseBoolToVis}}">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+
+                                            <!-- 16x16 Icon -->
+                                            <Image Grid.Column="0"
+                                                   Source="{Binding Icon}"
+                                                   Width="16" Height="16"
+                                                   Margin="0,0,10,0"
+                                                   VerticalAlignment="Center"
+                                                   RenderOptions.BitmapScalingMode="HighQuality" />
+
+                                            <!-- Item Content (Title, optional Subtitle & Mini Storage Bar) -->
+                                            <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                                <TextBlock Text="{Binding Title}"
+                                                           FontSize="12"
+                                                           Foreground="{StaticResource BrushTextPrimary}"
                                                            VerticalAlignment="Center"
-                                                           RenderOptions.BitmapScalingMode="HighQuality" />
-                                                    <TextBlock Text="{Binding Title}"
-                                                               FontSize="12"
-                                                               Foreground="{StaticResource BrushTextPrimary}"
-                                                               VerticalAlignment="Center" />
-                                                </StackPanel>
-                                            </Button>
-                                        </DataTemplate>
-                                    </ItemsControl.ItemTemplate>
-                                </ItemsControl>
+                                                           TextTrimming="CharacterEllipsis" />
 
-                                <Separator Style="{StaticResource {x:Type Separator}}" Margin="10,8" />
+                                                <TextBlock Text="{Binding Subtitle}"
+                                                           FontSize="10"
+                                                           Foreground="{StaticResource BrushTextMuted}"
+                                                           Margin="0,1,0,2"
+                                                           TextTrimming="CharacterEllipsis"
+                                                           Visibility="{Binding Subtitle, Converter={StaticResource StringNullOrEmptyToVis}}" />
 
-                                <!-- Section 2: Этот компьютер (Drives & Storage) -->
-                                <TextBlock Text="Этот компьютер"
-                                           FontSize="11"
-                                           FontWeight="SemiBold"
-                                           Foreground="{StaticResource BrushTextMuted}"
-                                           Margin="12,4,0,4" />
-
-                                <ItemsControl ItemsSource="{Binding DriveItems}">
-                                    <ItemsControl.ItemTemplate>
-                                        <DataTemplate>
-                                            <Button Style="{StaticResource SidebarItemButton}"
-                                                    Command="{Binding DataContext.SelectSidebarItemCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                                    CommandParameter="{Binding}"
-                                                    ToolTip="{Binding Path}">
-                                                <Grid>
-                                                    <Grid.ColumnDefinitions>
-                                                        <ColumnDefinition Width="Auto" />
-                                                        <ColumnDefinition Width="*" />
-                                                    </Grid.ColumnDefinitions>
-
-                                                    <Image Grid.Column="0"
-                                                           Source="{Binding Icon}"
-                                                           Width="16" Height="16"
-                                                           Margin="0,0,10,0"
-                                                           VerticalAlignment="Center"
-                                                           RenderOptions.BitmapScalingMode="HighQuality" />
-
-                                                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                                        <TextBlock Text="{Binding Title}"
-                                                                   FontSize="12"
-                                                                   FontWeight="Medium"
-                                                                   Foreground="{StaticResource BrushTextPrimary}"
-                                                                   TextTrimming="CharacterEllipsis" />
-                                                        <TextBlock Text="{Binding Subtitle}"
-                                                                   FontSize="10"
-                                                                   Foreground="{StaticResource BrushTextMuted}"
-                                                                   Margin="0,1,0,2"
-                                                                   TextTrimming="CharacterEllipsis" />
-
-                                                        <!-- Mini Storage Usage Bar -->
-                                                        <ProgressBar Height="3"
-                                                                     Value="{Binding UsagePercent}"
-                                                                     Maximum="100"
-                                                                     Foreground="{StaticResource BrushAccentLight}"
-                                                                     Background="#33FFFFFF"
-                                                                     BorderThickness="0"
-                                                                     Margin="0,1,6,0" />
-                                                    </StackPanel>
-                                                </Grid>
-                                            </Button>
-                                        </DataTemplate>
-                                    </ItemsControl.ItemTemplate>
-                                </ItemsControl>
-                            </StackPanel>
-                        </ScrollViewer>
+                                                <!-- Mini Storage Usage Bar (for logical drives) -->
+                                                <ProgressBar Height="3"
+                                                             Value="{Binding UsagePercent}"
+                                                             Maximum="100"
+                                                             Foreground="{StaticResource BrushAccentLight}"
+                                                             Background="#33FFFFFF"
+                                                             BorderThickness="0"
+                                                             Margin="0,1,6,0"
+                                                             Visibility="{Binding IsDrive, Converter={StaticResource BoolToVis}}" />
+                                            </StackPanel>
+                                        </Grid>
+                                    </Grid>
+                                </HierarchicalDataTemplate>
+                            </TreeView.ItemTemplate>
+                        </TreeView>
                     </Border>
 
                     <!-- Splitter between Sidebar & Main List -->

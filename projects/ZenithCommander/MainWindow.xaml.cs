@@ -3,8 +3,10 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Interop;
+using System.Windows.Media;
 using NexusCommander.Models;
 using NexusCommander.ViewModels;
 
@@ -206,6 +208,59 @@ public partial class MainWindow : Window
         {
             vm.SearchQuery = string.Empty;
         }
+    }
+
+    private void SidebarTreeView_SelectedItemChanged(object sender, RoutedPropertyChangedEventArgs<object> e)
+    {
+        if (DataContext is MainViewModel vm && e.NewValue is SidebarItem item)
+        {
+            if (!item.IsSeparator && !string.IsNullOrWhiteSpace(item.Path))
+            {
+                vm.SelectSidebarItemCommand.Execute(item);
+            }
+        }
+    }
+
+    private void SidebarTreeView_PreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+    {
+        if (e.OriginalSource is DependencyObject source)
+        {
+            var toggleBtn = FindVisualParent<ToggleButton>(source);
+            if (toggleBtn != null)
+            {
+                return; // User clicked expander chevron; let ToggleButton handle expansion
+            }
+
+            var treeViewItem = FindVisualParent<TreeViewItem>(source);
+            if (treeViewItem?.DataContext is SidebarItem item)
+            {
+                if (!item.IsSeparator)
+                {
+                    if (DataContext is MainViewModel vm && !string.IsNullOrWhiteSpace(item.Path))
+                    {
+                        vm.SelectSidebarItemCommand.Execute(item);
+                    }
+                    else if (item.HasChildren)
+                    {
+                        item.IsExpanded = !item.IsExpanded;
+                    }
+                }
+            }
+        }
+    }
+
+    private static T? FindVisualParent<T>(DependencyObject child) where T : DependencyObject
+    {
+        var parent = VisualTreeHelper.GetParent(child);
+        while (parent != null)
+        {
+            if (parent is T typed)
+            {
+                return typed;
+            }
+            parent = VisualTreeHelper.GetParent(parent);
+        }
+        return null;
     }
 
     private void FileListView_MouseDoubleClick(object sender, MouseButtonEventArgs e)
