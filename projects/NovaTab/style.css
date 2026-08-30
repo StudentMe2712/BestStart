@@ -252,6 +252,24 @@ body {
   flex-direction: column;
 }
 
+/* Базовые стили для draggable элементов */
+.board,
+.board-card {
+  -webkit-user-drag: element;
+  cursor: grab;
+}
+.board:active,
+.board-card:active {
+  cursor: grabbing;
+}
+.board.dragging,
+.board-card.dragging {
+  opacity: 0.4;
+  transform: scale(0.95);
+  box-shadow: 0 12px 32px rgba(0,0,0,0.3);
+  z-index: 100;
+}
+
 .board:hover,
 .board-card:hover {
   transform: translateY(-2px);
@@ -945,28 +963,37 @@ dialog h3 {
   align-items: center;
   gap: 10px;
   padding: 10px 14px;
-  border-radius: 10px;
+  border-radius: var(--radius-item, 10px);
   border: none;
-  background: transparent;
-  color: var(--ui-text-secondary);
   font-size: 13px;
-  font-weight: 500;
   cursor: pointer;
   text-align: left;
   width: 100%;
   transition: all 0.15s ease;
   font-family: inherit;
+  margin: 0;
+  box-sizing: border-box;
+  -webkit-font-smoothing: antialiased;
+  pointer-events: all;
+  background: transparent;
+  color: var(--ui-text-secondary);
+  font-weight: 400;
 }
 
+/* Активное состояние и Hover */
 .settings-nav-item:hover {
-  background: var(--ui-fill);
-  color: var(--ui-text);
+  background: var(--ui-fill, rgba(255,255,255,0.06));
 }
 
 .settings-nav-item.active {
-  background: var(--ui-fill-hover);
-  color: var(--ui-text);
+  background: var(--ui-fill-hover, rgba(255,255,255,0.10));
+  color: var(--ui-text, rgba(255,255,255,0.92));
   font-weight: 600;
+}
+
+/* Стилизация SVG внутри кнопок навигации */
+.settings-nav-item svg {
+  color: inherit;
 }
 
 .nav-item-icon {

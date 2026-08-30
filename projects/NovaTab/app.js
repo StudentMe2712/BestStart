@@ -254,6 +254,7 @@
       if (board.type === 'notes') {
         const card = document.createElement('div');
         card.className = 'board board-card';
+        card.setAttribute('draggable', 'true');
         card.dataset.id = board.id;
         card.dataset.boardId = board.id;
 
@@ -313,6 +314,7 @@
       if (board.type === 'calendar') {
         const card = document.createElement('div');
         card.className = 'board board-card';
+        card.setAttribute('draggable', 'true');
         card.dataset.id = board.id;
         card.dataset.boardId = board.id;
 
@@ -412,7 +414,8 @@
 
       // 3. REGULAR BOOKMARK BOARD
       const card = document.createElement('div');
-      card.className = 'board-card';
+      card.className = 'board board-card';
+      card.setAttribute('draggable', 'true');
       card.dataset.id = board.id;
       card.dataset.boardId = board.id;
 
@@ -1694,6 +1697,77 @@
     }
   }
 
+  // --- Drag and Drop ---
+  function initDragAndDrop() {
+    const grid = document.querySelector('.boards-grid');
+    if (!grid) return;
+    let draggedItem = null;
+
+    grid.addEventListener('dragstart', (e) => {
+      const card = e.target.closest('.board, .board-card');
+      if (card && !card.classList.contains('board-placeholder')) {
+        draggedItem = card;
+        setTimeout(() => draggedItem.classList.add('dragging'), 0);
+      }
+    });
+
+    grid.addEventListener('dragend', (e) => {
+      if (draggedItem) {
+        draggedItem.classList.remove('dragging');
+        draggedItem = null;
+
+        // Update order in state
+        const currentTab = getActiveTab();
+        if (currentTab && currentTab.boards) {
+          const boardElements = [...grid.querySelectorAll('.board:not(.board-placeholder), .board-card:not(.board-placeholder)')];
+          const newBoards = [];
+          boardElements.forEach((el) => {
+            const bId = el.dataset.boardId || el.dataset.id;
+            const found = currentTab.boards.find(b => b.id === bId);
+            if (found && !newBoards.includes(found)) newBoards.push(found);
+          });
+          currentTab.boards.forEach(b => {
+            if (!newBoards.includes(b)) newBoards.push(b);
+          });
+          currentTab.boards = newBoards;
+          saveState();
+        }
+      }
+    });
+
+    grid.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      if (!draggedItem) return;
+
+      const afterElement = getDragAfterElement(grid, e.clientX);
+      const placeholder = document.getElementById('addBoardPlaceholder');
+
+      if (afterElement == null || afterElement === placeholder) {
+        if (placeholder) {
+          grid.insertBefore(draggedItem, placeholder);
+        } else {
+          grid.appendChild(draggedItem);
+        }
+      } else {
+        grid.insertBefore(draggedItem, afterElement);
+      }
+    });
+
+    function getDragAfterElement(container, x) {
+      const draggableElements = [...container.querySelectorAll('.board:not(.dragging):not(.board-placeholder), .board-card:not(.dragging):not(.board-placeholder)')];
+      
+      return draggableElements.reduce((closest, child) => {
+        const box = child.getBoundingClientRect();
+        const offset = x - (box.left + box.width / 2);
+        if (offset < 0 && offset > closest.offset) {
+          return { offset: offset, element: child };
+        } else {
+          return closest;
+        }
+      }, { offset: Number.NEGATIVE_INFINITY }).element;
+    }
+  }
+
   // --- Initializer ---
   function init() {
     loadSavedWallpaper();
@@ -1706,6 +1780,7 @@
     initSettingsModal();
     initWallpaperModal();
     initWallpaperPresetsGrid();
+    initDragAndDrop();
   }
 
   if (document.readyState === 'loading') {
