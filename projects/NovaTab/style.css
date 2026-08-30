@@ -586,14 +586,20 @@ body {
   display: flex;
   align-items: center;
   gap: 4px;
-  opacity: 0.6;
-  transition: opacity var(--transition-fast);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--transition-fast), transform var(--transition-fast);
+  transform: translateX(4px);
   flex-shrink: 0;
 }
 
+.bookmark-item:hover .bookmark-actions,
+.bookmark-item:focus-within .bookmark-actions,
 .bookmark-item:hover .bookmark-actions-dock,
-.bookmark-item:hover .bookmark-actions {
+.bookmark-item:focus-within .bookmark-actions-dock {
   opacity: 1;
+  pointer-events: auto;
+  transform: translateX(0);
 }
 
 .item-action-btn {
