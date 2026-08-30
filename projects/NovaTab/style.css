@@ -79,12 +79,16 @@ body {
 
 #bg-layer {
   position: fixed;
-  inset: 0;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
   z-index: -1;
-  background: var(--bg-gradient);
   background-size: cover;
   background-position: center;
+  background-repeat: no-repeat;
   pointer-events: none;
+  transition: background-image 0.4s ease-in-out;
 }
 
 /* ==========================================================================

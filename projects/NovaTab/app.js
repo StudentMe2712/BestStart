@@ -10,6 +10,23 @@
   const STORAGE_KEY = 'novatab_state';
   const FALLBACK_FAVICON = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23666' stroke-width='2'><circle cx='12' cy='12' r='10'/><line x1='2' y1='12' x2='22' y2='12'/><path d='M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10z'/></svg>";
 
+  const WALLPAPER_PRESETS = [
+    'wallpapers/01.png',
+    'wallpapers/02.jpg',
+    'wallpapers/03.jpg',
+    'wallpapers/04.jpg',
+    'wallpapers/05.jpg',
+    'wallpapers/06.png',
+    'wallpapers/07.png',
+    'wallpapers/08.jpg',
+    'wallpapers/09.jpg',
+    'wallpapers/10.jpg',
+    'wallpapers/11.jpg',
+    'wallpapers/12.jpg',
+    'wallpapers/13.jpg',
+    'wallpapers/14.jpg'
+  ];
+
   const DEFAULT_STATE = {
     activeTabId: 'main',
     tabs: [
@@ -1367,7 +1384,66 @@
     }
   }
 
-  // --- Wallpaper Modal Handling ---
+  // --- Wallpaper Handling ---
+  function applyWallpaper(url) {
+    const bgLayer = document.getElementById('bg-layer');
+    if (!bgLayer || !url) return;
+
+    if (url.startsWith('linear-gradient') || url.startsWith('radial-gradient')) {
+      bgLayer.style.background = url;
+    } else {
+      bgLayer.style.backgroundImage = `url("${url}")`;
+      bgLayer.style.backgroundSize = 'cover';
+      bgLayer.style.backgroundPosition = 'center';
+      bgLayer.style.backgroundRepeat = 'no-repeat';
+    }
+
+    if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+      chrome.storage.local.set({ savedWallpaper: url });
+    } else {
+      try {
+        localStorage.setItem('savedWallpaper', url);
+      } catch (e) {}
+    }
+  }
+
+  function loadSavedWallpaper() {
+    if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+      chrome.storage.local.get(['savedWallpaper'], (result) => {
+        if (result && result.savedWallpaper) {
+          applyWallpaper(result.savedWallpaper);
+        } else {
+          applyWallpaper(WALLPAPER_PRESETS[0]);
+        }
+      });
+    } else {
+      const saved = localStorage.getItem('savedWallpaper');
+      if (saved) {
+        applyWallpaper(saved);
+      } else {
+        applyWallpaper(WALLPAPER_PRESETS[0]);
+      }
+    }
+  }
+
+  function initWallpaperPresetsGrid() {
+    const grid = document.getElementById('wpPresetsGrid');
+    if (!grid) return;
+    grid.innerHTML = '';
+
+    WALLPAPER_PRESETS.forEach((wpPath, index) => {
+      const btn = document.createElement('button');
+      btn.className = 'wp-preset-item';
+      btn.style.backgroundImage = `url("${wpPath}")`;
+      btn.title = `Preset ${index + 1}`;
+      btn.addEventListener('click', () => {
+        applyWallpaper(wpPath);
+        showToast('Обои обновлены');
+      });
+      grid.appendChild(btn);
+    });
+  }
+
   function openWallpaperModal() {
     if (!wpOverlay) return;
     wpOverlay.style.display = 'flex';
@@ -1410,29 +1486,13 @@
 
         const reader = new FileReader();
         reader.onload = (event) => {
-          const bgLayer = document.getElementById('bg-layer');
-          if (bgLayer) {
-            bgLayer.style.background = `url(${event.target.result}) center/cover no-repeat`;
-          }
+          applyWallpaper(event.target.result);
           showToast('Обои обновлены');
         };
         reader.readAsDataURL(file);
         wpFileInput.value = '';
       });
     }
-
-    // Preset Items Click
-    const presetItems = document.querySelectorAll('.wp-preset-item');
-    presetItems.forEach((item) => {
-      item.addEventListener('click', () => {
-        const bg = item.dataset.bg || item.style.background;
-        const bgLayer = document.getElementById('bg-layer');
-        if (bgLayer && bg) {
-          bgLayer.style.background = bg;
-        }
-        showToast('Пресет применен');
-      });
-    });
 
     // Search Online Button Click
     if (wpSearchOnlineBtn) {
@@ -1444,6 +1504,7 @@
 
   // --- Initializer ---
   function init() {
+    loadSavedWallpaper();
     loadState(() => {
       renderTabs();
       renderBoards();
@@ -1452,6 +1513,7 @@
     initWidgetGallery();
     initSettingsModal();
     initWallpaperModal();
+    initWallpaperPresetsGrid();
   }
 
   if (document.readyState === 'loading') {
