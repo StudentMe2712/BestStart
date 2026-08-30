@@ -11,7 +11,8 @@
     "https://raw.githubusercontent.com/*",
     "https://api.forismatic.com/*",
     "https://api.open-meteo.com/*",
-    "https://geocoding-api.open-meteo.com/*"
+    "https://geocoding-api.open-meteo.com/*",
+    "https://services.bonjourr.fr/*"
   ],
   "background": { "service_worker": "background.js" },
   "icons": { "128": "icon128.png" },

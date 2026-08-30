@@ -2488,6 +2488,15 @@ body.theme-light.tour-show-create .grid-cell.can-add .cell-plus { color: rgba(0,
 
 /* ── Dynamic Quote Widget ── */
 #quotes_container {
+  /* Переменные из дампа пользователя */
+  --text-shadow-alpha: 0.2;
+  --text-shadow-interface: 1px 2px 6px rgb(0 0 0 / var(--text-shadow-alpha));
+  --font-family: -apple-system, system-ui, Ubuntu, Roboto, "Open Sans", "Segoe UI", "Helvetica Neue";
+  --font-weight: 400;
+  --font-size: 0.875em;
+  --font-color: 255, 255, 255;
+  --out-cubic: cubic-bezier(0.215, 0.61, 0.355, 1);
+
   position: fixed;
   bottom: 24px;
   left: 50%;
@@ -2500,22 +2509,22 @@ body.theme-light.tour-show-create .grid-cell.can-add .cell-plus { color: rgba(0,
   max-width: 45em;
   min-width: 20em;
   
-  /* Typography */
-  color: rgb(var(--font-color, 255, 255, 255));
+  color: rgb(var(--font-color));
   text-align: center;
-  font-size: var(--font-size, 0.875em);
-  font-family: var(--font-family, -apple-system, system-ui, Ubuntu, Roboto, "Open Sans", "Segoe UI", "Helvetica Neue");
-  font-weight: var(--font-weight, 400);
-  text-shadow: var(--text-shadow-interface, 1px 2px 6px rgba(0, 0, 0, 0.2));
+  font-size: var(--font-size);
+  font-family: var(--font-family);
+  font-weight: var(--font-weight);
+  text-shadow: var(--text-shadow-interface);
   
-  /* Interaction: pointer-events none on container so clicks pass through to boards,
-     text itself is selectable */
+  /* Взаимодействие: пропускаем клики на доски под виджетом, 
+     но сам текст можно выделять */
   pointer-events: none;
   user-select: text;
-  opacity: 0;
-  transition: opacity 0.5s var(--out-cubic, cubic-bezier(0.215, 0.61, 0.355, 1));
+  opacity: 0; /* Исходно скрыт для плавного появления */
+  transition: opacity 0.6s var(--out-cubic);
 }
 
+/* Возвращаем события мыши тексту, чтобы его можно было выделить */
 #quote, #author {
   pointer-events: auto;
   margin: 0;
@@ -2535,9 +2544,10 @@ body.theme-light.tour-show-create .grid-cell.can-add .cell-plus { color: rgba(0,
 }
 
 body.theme-light #quotes_container {
-  color: #000;
-  text-shadow: 0 1px 4px rgba(255, 255, 255, 0.6), 0 0 12px rgba(255, 255, 255, 0.4);
+  --font-color: 0, 0, 0;
+  --text-shadow-interface: 0 1px 4px rgba(255, 255, 255, 0.6), 0 0 12px rgba(255, 255, 255, 0.4);
 }
+
 
 
 
