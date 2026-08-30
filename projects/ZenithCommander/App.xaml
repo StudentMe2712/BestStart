@@ -533,22 +533,14 @@
                                               VerticalAlignment="Center" />
                         </Border>
                         <ControlTemplate.Triggers>
-                            <!-- Normal Active / Selected State (soft elevated gray #303030 / #1EFFFFFF, no blue strip) -->
+                            <!-- Hover -->
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="sideBorder" Property="Background" Value="#15FFFFFF" />
+                            </Trigger>
+                            <!-- Active / Selected State (soft elevated gray #1EFFFFFF) -->
                             <DataTrigger Binding="{Binding IsActive}" Value="True">
                                 <Setter TargetName="sideBorder" Property="Background" Value="#1EFFFFFF" />
                             </DataTrigger>
-                            <!-- Hover -->
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="sideBorder" Property="Background" Value="#12FFFFFF" />
-                            </Trigger>
-                            <!-- Selected + Hover -->
-                            <MultiDataTrigger>
-                                <MultiDataTrigger.Conditions>
-                                    <Condition Binding="{Binding IsActive}" Value="True" />
-                                    <Condition Property="IsMouseOver" Value="True" />
-                                </MultiDataTrigger.Conditions>
-                                <Setter TargetName="sideBorder" Property="Background" Value="#25FFFFFF" />
-                            </MultiDataTrigger>
                             <Trigger Property="IsPressed" Value="True">
                                 <Setter TargetName="sideBorder" Property="Background" Value="#2AFFFFFF" />
                             </Trigger>
