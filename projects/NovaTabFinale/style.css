@@ -2487,54 +2487,56 @@ body.theme-light.tour-show-create .grid-cell.can-add { border-color: rgba(0,0,0,
 body.theme-light.tour-show-create .grid-cell.can-add .cell-plus { color: rgba(0,0,0,0.78); }
 
 /* ── Dynamic Quote Widget ── */
-.quote-widget {
+#quotes_container {
   position: fixed;
-  bottom: 20px;
+  bottom: 24px;
   left: 50%;
   transform: translateX(-50%);
   z-index: 10;
-  max-width: min(700px, 85vw);
-  padding: 8px 18px;
-  border-radius: 14px;
-  background: rgba(var(--board-rgb, 255,255,255), var(--board-alpha, 0.05));
-  border: 1px solid var(--board-border, rgba(255,255,255,0.1));
-  box-shadow: 0 0 24px rgba(0,0,0,0.22);
-  backdrop-filter: blur(var(--board-blur, 12px));
-  -webkit-backdrop-filter: blur(var(--board-blur, 12px));
-  text-align: center;
-  cursor: pointer;
-  user-select: none;
-  opacity: 0;
-  transition: opacity 0.4s ease, transform 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 3px;
-  isolation: isolate;
+  row-gap: 1em;
+  width: 50vw;
+  max-width: 45em;
+  min-width: 20em;
+  
+  /* Typography */
+  color: rgb(var(--font-color, 255, 255, 255));
+  text-align: center;
+  font-size: var(--font-size, 0.875em);
+  font-family: var(--font-family, -apple-system, system-ui, Ubuntu, Roboto, "Open Sans", "Segoe UI", "Helvetica Neue");
+  font-weight: var(--font-weight, 400);
+  text-shadow: var(--text-shadow-interface, 1px 2px 6px rgba(0, 0, 0, 0.2));
+  
+  /* Interaction: pointer-events none on container so clicks pass through to boards,
+     text itself is selectable */
+  pointer-events: none;
+  user-select: text;
+  opacity: 0;
+  transition: opacity 0.5s var(--out-cubic, cubic-bezier(0.215, 0.61, 0.355, 1));
 }
 
-.quote-widget:hover {
-  background: rgba(var(--board-rgb, 255,255,255), var(--board-alpha-hover, 0.10));
-  box-shadow: 0 4px 32px rgba(0,0,0,0.3);
-  transform: translateX(-50%) translateY(-2px);
+#quote, #author {
+  pointer-events: auto;
+  margin: 0;
 }
 
-.quote-widget:active {
-  transform: translateX(-50%) translateY(0);
-}
-
-.quote-text {
-  font-size: calc(13px * var(--board-text-scale, 1));
-  font-style: italic;
-  line-height: 1.4;
-  color: var(--board-text, rgba(255,255,255,0.9));
-}
-
-.quote-author {
-  font-size: calc(11px * var(--board-text-scale, 1));
+#quote {
+  font-size: 1.1em;
   font-weight: 500;
-  color: var(--board-text-secondary, rgba(255,255,255,0.65));
-  letter-spacing: 0.02em;
+  line-height: 1.4;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+}
+
+#author {
+  font-size: 0.9em;
+  opacity: 0.8;
+}
+
+body.theme-light #quotes_container {
+  color: #000;
+  text-shadow: 0 1px 4px rgba(255, 255, 255, 0.6), 0 0 12px rgba(255, 255, 255, 0.4);
 }
 
 

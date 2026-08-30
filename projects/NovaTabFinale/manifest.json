@@ -8,6 +8,7 @@
   },
   "permissions": ["storage", "bookmarks", "favicon"],
   "host_permissions": [
+    "https://raw.githubusercontent.com/*",
     "https://api.forismatic.com/*",
     "https://api.open-meteo.com/*",
     "https://geocoding-api.open-meteo.com/*"

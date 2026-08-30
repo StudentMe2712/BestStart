@@ -5130,57 +5130,75 @@ document.getElementById('settingsSideBtn').addEventListener('click', e => {
   }
 });
 
-// ── Резервная база цитат (на случай оффлайна или падения API) ──
+// ── Надежная локальная база цитат (Оффлайн / Fallback) ──
 const FALLBACK_QUOTES = [
   { text: "В минуту нерешительности действуй быстро и старайся сделать первый шаг, хотя бы и лишний.", author: "Лев Толстой" },
   { text: "Никогда не ошибается тот, кто ничего не делает.", author: "Теодор Рузвельт" },
-  { text: "Сложнее всего начать действовать, все остальное зависит только от упорства.", author: "Амелия Эрхарт" },
   { text: "То, что мы знаем, — это капля, а то, чего мы не знаем, — это океан.", author: "Исаак Ньютон" },
-  { text: "Успех — это способность шагать от одной неудачи к другой, не теряя энтузиазма.", author: "Уинстон Черчилль" }
+  { text: "Сложнее всего начать действовать, все остальное зависит только от упорства.", author: "Амелия Эрхарт" },
+  { text: "Успех — это способность шагать от одной неудачи к другой, не теряя энтузиазма.", author: "Уинстон Черчилль" },
+  { text: "Логика может привести вас от пункта А к пункту Б, а воображение — куда угодно.", author: "Альберт Эйнштейн" },
+  { text: "Единственный способ сделать выдающуюся работу — искренне любить то, что делаешь.", author: "Стив Джобс" },
+  { text: "Не ждите. Время никогда не будет «подходящим».", author: "Наполеон Хилл" },
+  { text: "Если вы думаете, что на что-то способны, вы правы; если думаете, что ни на что не способны — вы тоже правы.", author: "Генри Форд" },
+  { text: "Свобода ничего не стоит, если она не включает в себя свободу ошибаться.", author: "Махатма Ганди" },
+  { text: "Великие умы обсуждают идеи. Средние умы обсуждают события. Мелкие умы обсуждают людей.", author: "Элеонора Рузвельт" },
+  { text: "Два самых важных дня в твоей жизни: день, когда ты появился на свет, и день, когда понял, зачем.", author: "Марк Твен" },
+  { text: "Будьте изменением, которое вы хотите видеть в мире.", author: "Махатма Ганди" },
+  { text: "Человек, которым вам суждено стать — это только тот человек, которым вы сами решите стать.", author: "Ральф Уолдо Эмерсон" },
+  { text: "Вы не можете истощить креативность. Чем больше вы её используете, тем больше её становится.", author: "Майя Энджелоу" },
+  { text: "Неважно, как медленно вы идете, до тех пор, пока вы не остановитесь.", author: "Конфуций" },
+  { text: "Если вы хотите построить корабль, не надо созывать людей, чтобы все спланировать. Надо заразить их стремлением к бесконечному морю.", author: "Антуан де Сент-Экзюпери" },
+  { text: "Мы — то, что мы постоянно делаем. Совершенство, следовательно, не действие, а привычка.", author: "Аристотель" },
+  { text: "Жизнь — это то, что с тобой происходит, пока ты строишь другие планы.", author: "Джон Леннон" },
+  { text: "Секрет продвижения вперед в том, чтобы начать.", author: "Марк Твен" }
 ];
 
 async function renderRandomQuote() {
-  const quoteText = document.getElementById('quoteText');
-  const quoteAuthor = document.getElementById('quoteAuthor');
-  const widget = document.getElementById('quoteWidget');
+  const quoteEl = document.getElementById('quote');
+  const authorEl = document.getElementById('author');
+  const container = document.getElementById('quotes_container');
   
-  if (!quoteText || !quoteAuthor || !widget) return;
+  if (!quoteEl || !authorEl || !container) return;
 
-  // Изначально скрываем виджет, чтобы текст не "прыгал" при загрузке
-  widget.style.opacity = '0'; 
+  container.style.opacity = '0'; // Скрываем до рендера
 
-  // По умолчанию берем резервную цитату
   let finalQuote = FALLBACK_QUOTES[Math.floor(Math.random() * FALLBACK_QUOTES.length)];
 
+  // Функция fetch с жестким таймаутом (чтобы не ждать 522 ошибки 15 секунд)
+  const fetchWithTimeout = (url, ms) => {
+    return Promise.race([
+      fetch(url),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), ms))
+    ]);
+  };
+
   try {
-    // Делаем запрос к Forismatic API (lang=ru)
-    const response = await fetch('https://api.forismatic.com/api/1.0/?method=getQuote&format=json&lang=ru', {
-      cache: 'no-store'
-    });
+    const url = 'https://raw.githubusercontent.com/splincode/quotes-russian/master/quotes.json';
+    const response = await fetchWithTimeout(url, 2000); // Таймаут 2 секунды
     
     if (response.ok) {
-      const textData = await response.text();
-      // Forismatic иногда отдает JSON с неэкранированными кавычками. 
-      const cleanJson = textData.replace(/\\'/g, "'").replace(/\n/g, " "); 
-      const data = JSON.parse(cleanJson);
-      
-      if (data.quoteText) {
+      const data = await response.json();
+      if (data && data.length > 0) {
+        const randomItem = data[Math.floor(Math.random() * data.length)];
         finalQuote = {
-          text: data.quoteText.trim(),
-          author: data.quoteAuthor ? data.quoteAuthor.trim() : "Неизвестный автор"
+          text: randomItem.quote || randomItem.text,
+          author: randomItem.author || "Неизвестный автор"
         };
       }
     }
   } catch (err) {
-    console.warn('[NovaTab] API цитат недоступно (оффлайн режим).', err.message);
+    console.warn('[NovaTab] Локальный режим цитат.');
   }
 
-  // Применяем текст в DOM
-  quoteText.textContent = `«${finalQuote.text}»`;
-  quoteAuthor.textContent = finalQuote.author;
+  // Применяем текст
+  quoteEl.textContent = `«${finalQuote.text}»`;
+  authorEl.textContent = finalQuote.author;
   
-  // Плавно проявляем виджет
-  widget.style.opacity = '0.85';
+  // Плавное появление
+  setTimeout(() => {
+    container.style.opacity = '1';
+  }, 150);
 }
 
 // ── Init ──
@@ -5204,7 +5222,8 @@ async function init() {
   document.getElementById('weatherWidget')?.addEventListener('click', showWeatherPopup);
 
   renderRandomQuote();
-  document.getElementById('quoteWidget')?.addEventListener('click', renderRandomQuote);
+  document.getElementById('quotes_container')?.addEventListener('click', renderRandomQuote);
+  document.getElementById('quote')?.addEventListener('click', renderRandomQuote);
 }
 init();
 
