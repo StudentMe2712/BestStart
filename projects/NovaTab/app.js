@@ -126,7 +126,22 @@
       'toast.hotkeySaved': 'Горячая клавиша сохранена: ',
       'toast.quickSaveTriggered': 'Быстрое сохранение: ',
       'weather.cityPlaceholder': 'Название города…',
-      'weather.apply': 'Применить'
+      'weather.apply': 'Применить',
+      'se.title': 'Оформление обоев',
+      'se.analyzing': 'Анализ изображения...',
+      'se.lightDetected': 'Обнаружена светлая тема.',
+      'se.darkDetected': 'Обнаружена темная тема.',
+      'se.primaryColor': 'Основной цвет',
+      'se.boardColor': 'Цвет доски',
+      'se.boardOpacity': 'Прозрачность доски',
+      'se.boardBlur': 'Размытие доски',
+      'se.textSize': 'Размер текста',
+      'se.textWeight': 'Толщина текста',
+      'common.normal': 'Обычный',
+      'common.bold': 'Жирный',
+      'common.cancel': 'Отмена',
+      'common.reset': 'Сбросить',
+      'common.save': 'Сохранить'
     },
     en: {
       'settings.title': 'Settings',
@@ -222,7 +237,22 @@
       'toast.hotkeySaved': 'Shortcut saved: ',
       'toast.quickSaveTriggered': 'Quick save: ',
       'weather.cityPlaceholder': 'City name…',
-      'weather.apply': 'Apply'
+      'weather.apply': 'Apply',
+      'se.title': 'Wallpaper Styling',
+      'se.analyzing': 'Analyzing image...',
+      'se.lightDetected': 'Light theme detected.',
+      'se.darkDetected': 'Dark theme detected.',
+      'se.primaryColor': 'Primary Color',
+      'se.boardColor': 'Board Color',
+      'se.boardOpacity': 'Board Opacity',
+      'se.boardBlur': 'Board Blur',
+      'se.textSize': 'Text Size',
+      'se.textWeight': 'Text Weight',
+      'common.normal': 'Normal',
+      'common.bold': 'Bold',
+      'common.cancel': 'Cancel',
+      'common.reset': 'Reset',
+      'common.save': 'Save'
     },
     de: {
       'settings.title': 'Einstellungen',
@@ -318,7 +348,22 @@
       'toast.hotkeySaved': 'Tastenkürzel gespeichert: ',
       'toast.quickSaveTriggered': 'Schnellspeichern: ',
       'weather.cityPlaceholder': 'Stadtname…',
-      'weather.apply': 'Anwenden'
+      'weather.apply': 'Anwenden',
+      'se.title': 'Hintergrundbild-Design',
+      'se.analyzing': 'Bildanalyse...',
+      'se.lightDetected': 'Helles Design erkannt.',
+      'se.darkDetected': 'Dunkles Design erkannt.',
+      'se.primaryColor': 'Hauptfarbe',
+      'se.boardColor': 'Board-Farbe',
+      'se.boardOpacity': 'Board-Deckkraft',
+      'se.boardBlur': 'Board-Unschärfe',
+      'se.textSize': 'Textgröße',
+      'se.textWeight': 'Schriftstärke',
+      'common.normal': 'Normal',
+      'common.bold': 'Fett',
+      'common.cancel': 'Abbrechen',
+      'common.reset': 'Zurücksetzen',
+      'common.save': 'Speichern'
     }
   };
 
@@ -435,6 +480,27 @@
   const modalSearchInput = document.getElementById('modalSearchInput');
   const searchResults = document.getElementById('searchResults');
 
+  // Theme Setup Overlay Elements
+  const themeSetupOverlay = document.getElementById('themeSetupOverlay');
+  const seSubtitle = document.getElementById('seSubtitle');
+  const seAccentPicker = document.getElementById('seAccentPicker');
+  const seAccentSwatch = document.getElementById('seAccentSwatch');
+  const seAccentHex = document.getElementById('seAccentHex');
+  const seBoardPicker = document.getElementById('seBoardPicker');
+  const seBoardSwatch = document.getElementById('seBoardSwatch');
+  const seBoardHex = document.getElementById('seBoardHex');
+  const seOpacitySlider = document.getElementById('seOpacitySlider');
+  const seOpacityVal = document.getElementById('seOpacityVal');
+  const seBlurSlider = document.getElementById('seBlurSlider');
+  const seBlurVal = document.getElementById('seBlurVal');
+  const seTextScale = document.getElementById('seTextScale');
+  const seTextWeight = document.getElementById('seTextWeight');
+  const seCancelBtn = document.getElementById('seCancelBtn');
+  const seResetBtn = document.getElementById('seResetBtn');
+  const seSaveBtn = document.getElementById('seSaveBtn');
+  let themeSetupSnapshot = null;
+  let currentThemeWallpaper = null;
+
   // Appearance Snapshot for Cancel / Restore
   let initialAppearanceSnapshot = null;
 
@@ -476,6 +542,47 @@
     toastTimer = setTimeout(() => {
       toast.classList.remove('show');
     }, duration);
+  }
+
+  const rgbToHex = (r, g, b) => '#' + [r, g, b].map(x => {
+    const hex = x.toString(16);
+    return hex.length === 1 ? '0' + hex : hex;
+  }).join('');
+
+  const hexToRgbArr = (hex) => {
+    if (!hex) return [33, 24, 29];
+    let clean = hex.replace('#', '');
+    if (clean.length === 3) {
+      clean = clean.split('').map(c => c + c).join('');
+    }
+    let r = parseInt(clean.substring(0, 2), 16) || 0;
+    let g = parseInt(clean.substring(2, 4), 16) || 0;
+    let b = parseInt(clean.substring(4, 6), 16) || 0;
+    return [r, g, b];
+  };
+
+  function updateBoardTextColor(hexBg) {
+    const [r, g, b] = hexToRgbArr(hexBg);
+    const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+    const root = document.documentElement;
+    
+    if (brightness > 128) {
+      // Light background -> Dark text
+      root.style.setProperty('--board-text', 'rgba(0,0,0,0.85)');
+      root.style.setProperty('--board-text-secondary', 'rgba(0,0,0,0.65)');
+      root.style.setProperty('--board-text-dim', 'rgba(0,0,0,0.3)');
+      root.style.setProperty('--board-text-hover', 'rgba(0,0,0,1)');
+      root.style.setProperty('--board-hover-bg', 'rgba(0,0,0,0.07)');
+      root.style.setProperty('--text-main', '#111111');
+    } else {
+      // Dark background -> Light text
+      root.style.setProperty('--board-text', 'rgba(255,255,255,0.92)');
+      root.style.setProperty('--board-text-secondary', 'rgba(255,255,255,0.7)');
+      root.style.setProperty('--board-text-dim', 'rgba(255,255,255,0.3)');
+      root.style.setProperty('--board-text-hover', '#fff');
+      root.style.setProperty('--board-hover-bg', 'rgba(255,255,255,0.07)');
+      root.style.setProperty('--text-main', '#ffffff');
+    }
   }
 
   function hexToRgb(hex) {
@@ -2478,11 +2585,20 @@
 
   function applyTextSizeSetting(sizeVal) {
     let px = '13.5px';
-    if (sizeVal === 'S' || sizeVal === '12px' || sizeVal === '12') px = '12px';
-    else if (sizeVal === 'M' || sizeVal === '13.5px' || sizeVal === '13.5') px = '13.5px';
-    else if (sizeVal === 'L' || sizeVal === '15px' || sizeVal === '15') px = '15px';
+    let scale = '1';
+    if (sizeVal === 'S' || sizeVal === '12px' || sizeVal === '12' || sizeVal === '0.9') {
+      px = '12px';
+      scale = '0.9';
+    } else if (sizeVal === 'M' || sizeVal === '13.5px' || sizeVal === '13.5' || sizeVal === '1') {
+      px = '13.5px';
+      scale = '1';
+    } else if (sizeVal === 'L' || sizeVal === '15px' || sizeVal === '15' || sizeVal === '1.15') {
+      px = '15px';
+      scale = '1.15';
+    }
 
     document.documentElement.style.setProperty('--board-text-size', px);
+    document.documentElement.style.setProperty('--board-text-scale', scale);
     document.querySelectorAll('.link-item').forEach(el => {
       el.style.fontSize = px;
     });
@@ -2535,6 +2651,8 @@
     if (swatchBoard) swatchBoard.style.backgroundColor = hex;
     const colorBoard = document.getElementById('colorBoard');
     if (colorBoard && colorBoard.value !== hex) colorBoard.value = hex;
+
+    updateBoardTextColor(hex);
 
     saveSetting('app_board_rgb', rgb);
     saveSetting('app_board_hex', hex);
@@ -2656,11 +2774,14 @@
       const boardHex = settings['app_board_hex'] || '#21181d';
       const boardAlphaPercent = settings['app_board_alpha_percent'] !== undefined ? parseInt(settings['app_board_alpha_percent'], 10) : (settings['app_board_alpha'] !== undefined ? Math.round(parseFloat(settings['app_board_alpha']) * 100) : 24);
       const boardBlurVal = settings['app_board_blur_val'] !== undefined ? parseInt(settings['app_board_blur_val'], 10) : (settings['app_board_blur'] !== undefined ? parseInt(settings['app_board_blur'], 10) : 5);
+      const textScaleVal = settings['app_board_text_scale'];
+      const textWeightVal = settings['app_board_font_weight'] || settings['stSegTextWeight'] || 'normal';
 
       applyAccentColor(accentColor);
       applyBoardColor(boardHex);
       applyBoardAlpha(boardAlphaPercent);
       applyBoardBlur(boardBlurVal);
+      updateBoardTextColor(boardHex);
 
       // Open new tab default true
       const openNewTabVal = settings['openNewTabToggle'] !== undefined ? Boolean(settings['openNewTabToggle']) : true;
@@ -2769,7 +2890,12 @@
       applySearchAppearance(searchColor, searchAlpha, searchBlur, searchWidth);
 
       // Text Size
-      const textSizeVal = settings['stSegTextSize'] || 'M';
+      let textSizeVal = settings['stSegTextSize'];
+      if (!textSizeVal) {
+        if (textScaleVal === '0.9') textSizeVal = 'S';
+        else if (textScaleVal === '1.15') textSizeVal = 'L';
+        else textSizeVal = 'M';
+      }
       const textSizeSeg = document.getElementById('stSegTextSize');
       if (textSizeSeg) {
         textSizeSeg.querySelectorAll('.st-seg-btn').forEach((btn) => {
@@ -2777,15 +2903,14 @@
           btn.classList.toggle('active', bVal === textSizeVal);
         });
       }
-      applyTextSizeSetting(textSizeVal);
+      applyTextSizeSetting(textScaleVal || textSizeVal);
 
       // Text Weight
-      const textWeightVal = settings['stSegTextWeight'] || 'normal';
       const textWeightSeg = document.getElementById('stSegTextWeight');
       if (textWeightSeg) {
         textWeightSeg.querySelectorAll('.st-seg-btn').forEach((btn) => {
           const bVal = btn.dataset.val || (btn.textContent.trim() === 'Жирный' || btn.textContent.trim() === 'Bold' ? 'bold' : 'normal');
-          btn.classList.toggle('active', bVal === textWeightVal || btn.textContent.trim() === textWeightVal);
+          btn.classList.toggle('active', bVal === textWeightVal || btn.textContent.trim() === textWeightVal || (textWeightVal === '600' && bVal === 'bold') || (textWeightVal === '400' && bVal === 'normal'));
         });
       }
       applyTextWeightSetting(textWeightVal);
@@ -3533,7 +3658,7 @@
     }
   }
 
-  // --- Wallpaper Handling ---
+  // --- Wallpaper Handling & Smart Theme Engine ---
   function applyWallpaper(url) {
     const bgLayer = document.getElementById('bg-layer');
     if (!bgLayer || !url) return;
@@ -3575,6 +3700,442 @@
     }
   }
 
+  function snapshotThemeSetup() {
+    const root = document.documentElement;
+    const currentAccent = root.style.getPropertyValue('--accent-color').trim() || '#002449';
+    const currentBoardRgb = root.style.getPropertyValue('--board-rgb').trim() || '33,24,29';
+    const currentBoardHex = document.getElementById('colorBoard')?.value || '#21181d';
+    const currentAlpha = root.style.getPropertyValue('--board-alpha').trim() || '0.24';
+    const currentAlphaPercent = document.getElementById('sliderAlpha')?.value || '24';
+    const currentBlur = root.style.getPropertyValue('--board-blur').trim() || '5px';
+    const currentBlurVal = document.getElementById('sliderBlur')?.value || '5';
+    const currentTextScale = root.style.getPropertyValue('--board-text-scale').trim() || '1';
+    const currentTextSize = root.style.getPropertyValue('--board-text-size').trim() || '13.5px';
+    const currentFontWeight = root.style.getPropertyValue('--board-font-weight').trim() || '400';
+    const savedWp = localStorage.getItem('savedWallpaper') || WALLPAPER_PRESETS[0];
+
+    themeSetupSnapshot = {
+      accent: currentAccent,
+      boardRgb: currentBoardRgb,
+      boardHex: currentBoardHex,
+      alpha: currentAlpha,
+      alphaPercent: currentAlphaPercent,
+      blur: currentBlur,
+      blurVal: currentBlurVal,
+      textScale: currentTextScale,
+      textSize: currentTextSize,
+      fontWeight: currentFontWeight,
+      wallpaper: savedWp
+    };
+  }
+
+  function restoreThemeSnapshot() {
+    if (!themeSetupSnapshot) return;
+    const root = document.documentElement;
+
+    applyWallpaper(themeSetupSnapshot.wallpaper);
+    applyAccentColor(themeSetupSnapshot.accent);
+    applyBoardColor(themeSetupSnapshot.boardHex);
+
+    root.style.setProperty('--board-alpha', themeSetupSnapshot.alpha);
+    root.style.setProperty('--board-blur', themeSetupSnapshot.blur);
+    root.style.setProperty('--board-text-scale', themeSetupSnapshot.textScale);
+    root.style.setProperty('--board-text-size', themeSetupSnapshot.textSize);
+    root.style.setProperty('--board-font-weight', themeSetupSnapshot.fontWeight);
+    root.style.setProperty('--link-weight', themeSetupSnapshot.fontWeight);
+
+    document.querySelectorAll('.link-item').forEach(el => {
+      el.style.fontSize = themeSetupSnapshot.textSize;
+      el.style.fontWeight = themeSetupSnapshot.fontWeight;
+    });
+
+    updateBoardTextColor(themeSetupSnapshot.boardHex);
+  }
+
+  function closeThemeSetupOverlay() {
+    if (themeSetupOverlay) themeSetupOverlay.style.display = 'none';
+  }
+
+  function handleWallpaperSelect(imgUrl) {
+    if (!imgUrl) return;
+    currentThemeWallpaper = imgUrl;
+
+    // Snapshot previous styles on open for Cancel rollback
+    snapshotThemeSetup();
+
+    // Applies wallpaper
+    applyWallpaper(imgUrl);
+
+    // Closes wallpaper picker modal
+    if (wpOverlay) wpOverlay.style.display = 'none';
+
+    // Opens #themeSetupOverlay
+    if (themeSetupOverlay) themeSetupOverlay.style.display = 'flex';
+
+    // Sets #seSubtitle to "Анализ изображения..."
+    if (seSubtitle) {
+      seSubtitle.textContent = I18N_STRINGS[currentLanguage]?.['se.analyzing'] || 'Анализ изображения...';
+    }
+
+    // Default slider and segment values for theme setup
+    const initialOpacity = 60;
+    const initialBlur = 12;
+    if (seOpacitySlider) {
+      seOpacitySlider.value = initialOpacity;
+      seOpacitySlider.style.background = `linear-gradient(to right, var(--accent-color,#fff) ${initialOpacity}%, rgba(255,255,255,0.12) ${initialOpacity}%)`;
+    }
+    if (seOpacityVal) seOpacityVal.textContent = `${initialOpacity}%`;
+    document.documentElement.style.setProperty('--board-alpha', (initialOpacity / 100).toFixed(2));
+
+    if (seBlurSlider) {
+      seBlurSlider.value = initialBlur;
+      const progress = (initialBlur / 40) * 100;
+      seBlurSlider.style.background = `linear-gradient(to right, var(--accent-color,#fff) ${progress}%, rgba(255,255,255,0.12) ${progress}%)`;
+    }
+    if (seBlurVal) seBlurVal.textContent = `${initialBlur}px`;
+    document.documentElement.style.setProperty('--board-blur', `${initialBlur}px`);
+
+    if (seTextScale) {
+      seTextScale.querySelectorAll('.se-seg-btn').forEach(b => {
+        b.classList.toggle('active', b.dataset.val === '1');
+      });
+    }
+    document.documentElement.style.setProperty('--board-text-scale', '1');
+    document.documentElement.style.setProperty('--board-text-size', '13.5px');
+    document.querySelectorAll('.link-item').forEach(el => {
+      el.style.fontSize = '13.5px';
+    });
+
+    if (seTextWeight) {
+      seTextWeight.querySelectorAll('.se-seg-btn').forEach(b => {
+        b.classList.toggle('active', b.dataset.val === '400');
+      });
+    }
+    document.documentElement.style.setProperty('--board-font-weight', '400');
+    document.documentElement.style.setProperty('--link-weight', '400');
+    document.querySelectorAll('.link-item').forEach(el => {
+      el.style.fontWeight = '400';
+    });
+
+    // Analyzes image
+    analyzeWallpaperTheme(imgUrl);
+  }
+
+  function analyzeWallpaperTheme(imgUrl) {
+    if (!imgUrl || typeof imgUrl !== 'string') {
+      fallbackExtractedTheme();
+      return;
+    }
+
+    const img = new Image();
+    img.crossOrigin = 'Anonymous';
+
+    img.onload = () => {
+      try {
+        const canvas = document.createElement('canvas');
+        canvas.width = 50;
+        canvas.height = 50;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          fallbackExtractedTheme();
+          return;
+        }
+
+        ctx.drawImage(img, 0, 0, 50, 50);
+        const imgData = ctx.getImageData(0, 0, 50, 50).data;
+        let totalR = 0, totalG = 0, totalB = 0;
+        const pixelCount = 50 * 50;
+
+        for (let i = 0; i < imgData.length; i += 4) {
+          totalR += imgData[i];
+          totalG += imgData[i + 1];
+          totalB += imgData[i + 2];
+        }
+
+        const r = Math.round(totalR / pixelCount);
+        const g = Math.round(totalG / pixelCount);
+        const b = Math.round(totalB / pixelCount);
+        const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+        const isLight = brightness > 128;
+
+        const suggestedAccent = rgbToHex(r, g, b);
+        const suggestedBoard = isLight ? '#ffffff' : '#21181d';
+
+        applyExtractedTheme(suggestedAccent, suggestedBoard, isLight);
+      } catch (err) {
+        console.error('Error analyzing image canvas:', err);
+        fallbackExtractedTheme();
+      }
+    };
+
+    img.onerror = () => {
+      fallbackExtractedTheme();
+    };
+
+    img.src = imgUrl;
+  }
+
+  function applyExtractedTheme(suggestedAccent, suggestedBoard, isLight) {
+    if (seSubtitle) {
+      seSubtitle.textContent = isLight
+        ? (I18N_STRINGS[currentLanguage]?.['se.lightDetected'] || 'Обнаружена светлая тема.')
+        : (I18N_STRINGS[currentLanguage]?.['se.darkDetected'] || 'Обнаружена темная тема.');
+    }
+
+    // Updates inputs & swatches
+    if (seAccentPicker) seAccentPicker.value = suggestedAccent;
+    if (seAccentSwatch) seAccentSwatch.style.backgroundColor = suggestedAccent;
+    if (seAccentHex) seAccentHex.textContent = suggestedAccent;
+
+    if (seBoardPicker) seBoardPicker.value = suggestedBoard;
+    if (seBoardSwatch) seBoardSwatch.style.backgroundColor = suggestedBoard;
+    if (seBoardHex) seBoardHex.textContent = suggestedBoard;
+
+    // Sets live CSS properties
+    const root = document.documentElement;
+    root.style.setProperty('--accent-color', suggestedAccent);
+    root.style.setProperty('--accent-tab-bg', hexToRgba(suggestedAccent, 0.8));
+    root.style.setProperty('--accent-tab-border', hexToRgba(suggestedAccent, 0.95));
+
+    const boardRgb = hexToRgb(suggestedBoard);
+    root.style.setProperty('--board-rgb', boardRgb);
+    root.style.setProperty('--board-border', `rgba(${boardRgb},0.350)`);
+    root.style.setProperty('--board-outline-theme-color', `rgba(${boardRgb},0.400)`);
+
+    updateBoardTextColor(suggestedBoard);
+
+    if (seOpacitySlider) {
+      const val = seOpacitySlider.value || 60;
+      seOpacitySlider.style.background = `linear-gradient(to right, var(--accent-color,#fff) ${val}%, rgba(255,255,255,0.12) ${val}%)`;
+    }
+    if (seBlurSlider) {
+      const val = seBlurSlider.value || 12;
+      const progress = (val / 40) * 100;
+      seBlurSlider.style.background = `linear-gradient(to right, var(--accent-color,#fff) ${progress}%, rgba(255,255,255,0.12) ${progress}%)`;
+    }
+  }
+
+  function fallbackExtractedTheme() {
+    const isLight = false;
+    const suggestedAccent = '#002449';
+    const suggestedBoard = '#21181d';
+    applyExtractedTheme(suggestedAccent, suggestedBoard, isLight);
+  }
+
+  function initThemeSetupOverlay() {
+    if (!themeSetupOverlay) return;
+
+    // Backdrop click -> close and rollback
+    themeSetupOverlay.addEventListener('click', (e) => {
+      if (e.target === themeSetupOverlay) {
+        restoreThemeSnapshot();
+        closeThemeSetupOverlay();
+      }
+    });
+
+    // Accent Picker
+    if (seAccentPicker) {
+      const handleAccentInput = (val) => {
+        if (seAccentSwatch) seAccentSwatch.style.backgroundColor = val;
+        if (seAccentHex) seAccentHex.textContent = val;
+        document.documentElement.style.setProperty('--accent-color', val);
+        document.documentElement.style.setProperty('--accent-tab-bg', hexToRgba(val, 0.8));
+        document.documentElement.style.setProperty('--accent-tab-border', hexToRgba(val, 0.95));
+
+        if (seOpacitySlider) {
+          const oVal = seOpacitySlider.value || 60;
+          seOpacitySlider.style.background = `linear-gradient(to right, var(--accent-color,#fff) ${oVal}%, rgba(255,255,255,0.12) ${oVal}%)`;
+        }
+        if (seBlurSlider) {
+          const bVal = seBlurSlider.value || 12;
+          const progress = (bVal / 40) * 100;
+          seBlurSlider.style.background = `linear-gradient(to right, var(--accent-color,#fff) ${progress}%, rgba(255,255,255,0.12) ${progress}%)`;
+        }
+      };
+
+      seAccentPicker.addEventListener('input', (e) => handleAccentInput(e.target.value));
+      seAccentPicker.addEventListener('change', (e) => handleAccentInput(e.target.value));
+    }
+
+    if (seAccentSwatch && seAccentPicker) {
+      seAccentSwatch.addEventListener('click', () => seAccentPicker.click());
+    }
+
+    // Board Picker
+    if (seBoardPicker) {
+      const handleBoardInput = (val) => {
+        if (seBoardSwatch) seBoardSwatch.style.backgroundColor = val;
+        if (seBoardHex) seBoardHex.textContent = val;
+        const rgb = hexToRgb(val);
+        document.documentElement.style.setProperty('--board-rgb', rgb);
+        document.documentElement.style.setProperty('--board-border', `rgba(${rgb},0.350)`);
+        document.documentElement.style.setProperty('--board-outline-theme-color', `rgba(${rgb},0.400)`);
+        updateBoardTextColor(val);
+      };
+
+      seBoardPicker.addEventListener('input', (e) => handleBoardInput(e.target.value));
+      seBoardPicker.addEventListener('change', (e) => handleBoardInput(e.target.value));
+    }
+
+    if (seBoardSwatch && seBoardPicker) {
+      seBoardSwatch.addEventListener('click', () => seBoardPicker.click());
+    }
+
+    // Opacity Slider
+    if (seOpacitySlider) {
+      seOpacitySlider.addEventListener('input', (e) => {
+        const val = e.target.value;
+        if (seOpacityVal) seOpacityVal.textContent = `${val}%`;
+        const alpha = (val / 100).toFixed(2);
+        document.documentElement.style.setProperty('--board-alpha', alpha);
+        e.target.style.background = `linear-gradient(to right, var(--accent-color,#fff) ${val}%, rgba(255,255,255,0.12) ${val}%)`;
+      });
+    }
+
+    // Blur Slider
+    if (seBlurSlider) {
+      seBlurSlider.addEventListener('input', (e) => {
+        const val = e.target.value;
+        if (seBlurVal) seBlurVal.textContent = `${val}px`;
+        document.documentElement.style.setProperty('--board-blur', `${val}px`);
+        const progress = (val / 40) * 100;
+        e.target.style.background = `linear-gradient(to right, var(--accent-color,#fff) ${progress}%, rgba(255,255,255,0.12) ${progress}%)`;
+      });
+    }
+
+    // Text Scale Segment Buttons
+    if (seTextScale) {
+      seTextScale.querySelectorAll('.se-seg-btn').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          seTextScale.querySelectorAll('.se-seg-btn').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          const scaleVal = btn.dataset.val || '1';
+          document.documentElement.style.setProperty('--board-text-scale', scaleVal);
+          let px = '13.5px';
+          if (scaleVal === '0.9') px = '12px';
+          else if (scaleVal === '1') px = '13.5px';
+          else if (scaleVal === '1.15') px = '15px';
+          document.documentElement.style.setProperty('--board-text-size', px);
+          document.querySelectorAll('.link-item').forEach(el => {
+            el.style.fontSize = px;
+          });
+        });
+      });
+    }
+
+    // Text Weight Segment Buttons
+    if (seTextWeight) {
+      seTextWeight.querySelectorAll('.se-seg-btn').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          seTextWeight.querySelectorAll('.se-seg-btn').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          const weightVal = btn.dataset.val || '400';
+          document.documentElement.style.setProperty('--board-font-weight', weightVal);
+          document.documentElement.style.setProperty('--link-weight', weightVal);
+          document.querySelectorAll('.link-item').forEach(el => {
+            el.style.fontWeight = weightVal;
+          });
+        });
+      });
+    }
+
+    // Reset Button
+    if (seResetBtn) {
+      seResetBtn.addEventListener('click', () => {
+        if (currentThemeWallpaper) {
+          if (seSubtitle) {
+            seSubtitle.textContent = I18N_STRINGS[currentLanguage]?.['se.analyzing'] || 'Анализ изображения...';
+          }
+          analyzeWallpaperTheme(currentThemeWallpaper);
+        }
+      });
+    }
+
+    // Cancel Button
+    if (seCancelBtn) {
+      seCancelBtn.addEventListener('click', () => {
+        restoreThemeSnapshot();
+        closeThemeSetupOverlay();
+      });
+    }
+
+    // Save Button
+    if (seSaveBtn) {
+      seSaveBtn.addEventListener('click', () => {
+        const accentHex = seAccentPicker ? seAccentPicker.value : '#002449';
+        const boardHex = seBoardPicker ? seBoardPicker.value : '#21181d';
+        const boardRgb = hexToRgb(boardHex);
+        const opacityVal = seOpacitySlider ? parseInt(seOpacitySlider.value, 10) : 60;
+        const alpha = (opacityVal / 100).toFixed(3);
+        const blurVal = seBlurSlider ? parseInt(seBlurSlider.value, 10) : 12;
+        const activeScaleBtn = seTextScale?.querySelector('.se-seg-btn.active');
+        const scaleVal = activeScaleBtn ? activeScaleBtn.dataset.val : '1';
+        const activeWeightBtn = seTextWeight?.querySelector('.se-seg-btn.active');
+        const weightVal = activeWeightBtn ? activeWeightBtn.dataset.val : '400';
+
+        // Save to storage
+        saveSetting('app_accent_color', accentHex);
+        saveSetting('app_board_rgb', boardRgb);
+        saveSetting('app_board_hex', boardHex);
+        saveSetting('app_board_alpha', alpha);
+        saveSetting('app_board_alpha_percent', opacityVal);
+        saveSetting('app_board_blur', `${blurVal}px`);
+        saveSetting('app_board_blur_val', blurVal);
+        saveSetting('app_board_text_scale', scaleVal);
+        saveSetting('app_board_font_weight', weightVal);
+
+        // Update settings modal appearance tab inputs to match
+        const colorAccent = document.getElementById('colorAccent');
+        const swatchAccent = document.getElementById('swatchAccent');
+        if (colorAccent) colorAccent.value = accentHex;
+        if (swatchAccent) swatchAccent.style.backgroundColor = accentHex;
+
+        const colorBoard = document.getElementById('colorBoard');
+        const swatchBoard = document.getElementById('swatchBoard');
+        if (colorBoard) colorBoard.value = boardHex;
+        if (swatchBoard) swatchBoard.style.backgroundColor = boardHex;
+
+        const sliderAlpha = document.getElementById('sliderAlpha');
+        const valAlpha = document.getElementById('valAlpha');
+        if (sliderAlpha) {
+          sliderAlpha.value = opacityVal;
+          sliderAlpha.style.background = `linear-gradient(to right, var(--accent-color,#fff) ${opacityVal}%, rgba(255,255,255,0.12) ${opacityVal}%)`;
+        }
+        if (valAlpha) valAlpha.textContent = `${opacityVal}%`;
+
+        const sliderBlur = document.getElementById('sliderBlur');
+        const valBlur = document.getElementById('valBlur');
+        if (sliderBlur) {
+          sliderBlur.value = blurVal;
+          const progress = (blurVal / 40) * 100;
+          sliderBlur.style.background = `linear-gradient(to right, var(--accent-color,#fff) ${progress}%, rgba(255,255,255,0.12) ${progress}%)`;
+        }
+        if (valBlur) valBlur.textContent = `${blurVal}px`;
+
+        const stSegTextSize = document.getElementById('stSegTextSize');
+        if (stSegTextSize) {
+          let targetSize = 'M';
+          if (scaleVal === '0.9') targetSize = 'S';
+          else if (scaleVal === '1.15') targetSize = 'L';
+          stSegTextSize.querySelectorAll('.st-seg-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.val === targetSize);
+          });
+        }
+
+        const stSegTextWeight = document.getElementById('stSegTextWeight');
+        if (stSegTextWeight) {
+          const targetWeight = weightVal === '600' ? 'bold' : 'normal';
+          stSegTextWeight.querySelectorAll('.st-seg-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.val === targetWeight);
+          });
+        }
+
+        showToast(currentLanguage === 'en' ? 'Theme saved' : currentLanguage === 'de' ? 'Design gespeichert' : 'Оформление сохранено');
+        closeThemeSetupOverlay();
+      });
+    }
+  }
+
   function initWallpaperPresetsGrid() {
     const grid = document.getElementById('wpPresetsGrid');
     if (!grid) return;
@@ -3586,8 +4147,7 @@
       btn.style.backgroundImage = `url("${wpPath}")`;
       btn.title = `Preset ${index + 1}`;
       btn.addEventListener('click', () => {
-        applyWallpaper(wpPath);
-        showToast('Обои обновлены');
+        handleWallpaperSelect(wpPath);
       });
       grid.appendChild(btn);
     });
@@ -3635,8 +4195,7 @@
 
         const reader = new FileReader();
         reader.onload = (event) => {
-          applyWallpaper(event.target.result);
-          showToast('Обои обновлены');
+          handleWallpaperSelect(event.target.result);
         };
         reader.readAsDataURL(file);
         wpFileInput.value = '';
@@ -3879,6 +4438,7 @@
     initSearchOverlay();
     initWallpaperModal();
     initWallpaperPresetsGrid();
+    initThemeSetupOverlay();
     initDragAndDrop();
   }
 

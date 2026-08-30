@@ -546,6 +546,69 @@
     </div>
   </div>
 
+  <!-- Оверлей настроек обоев -->
+  <div class="modal-overlay" id="themeSetupOverlay" style="display: none; align-items: center; justify-content: center;">
+    <div class="se-modal">
+      <div class="se-header">
+        <div class="se-title" data-i18n="se.title">Оформление обоев</div>
+        <div class="se-subtitle" id="seSubtitle" data-i18n="se.analyzing">Анализ изображения...</div>
+      </div>
+      
+      <div class="se-body">
+        <div class="se-color-row">
+          <div class="se-field">
+            <div class="se-label"><span data-i18n="se.primaryColor">Основной цвет</span> <span class="se-hex-val" id="seAccentHex">#786550</span></div>
+            <label class="se-color-wrap">
+              <div class="se-color-swatch" id="seAccentSwatch" style="background: rgb(120, 101, 80);"></div>
+              <input type="color" id="seAccentPicker" value="#786550" style="position:absolute; opacity:0; width:0; height:0;">
+            </label>
+          </div>
+          <div class="se-field">
+            <div class="se-label"><span data-i18n="se.boardColor">Цвет доски</span> <span class="se-hex-val" id="seBoardHex">#ffffff</span></div>
+            <label class="se-color-wrap">
+              <div class="se-color-swatch" id="seBoardSwatch" style="background: rgb(255, 255, 255);"></div>
+              <input type="color" id="seBoardPicker" value="#ffffff" style="position:absolute; opacity:0; width:0; height:0;">
+            </label>
+          </div>
+        </div>
+        
+        <div class="se-slider-field">
+          <div class="se-label"><span data-i18n="se.boardOpacity">Прозрачность доски</span> <span id="seOpacityVal" class="se-hex-val">60%</span></div>
+          <input type="range" class="se-slider" id="seOpacitySlider" min="0" max="100" step="1" value="60">
+        </div>
+        
+        <div class="se-slider-field">
+          <div class="se-label"><span data-i18n="se.boardBlur">Размытие доски</span> <span id="seBlurVal" class="se-hex-val">12px</span></div>
+          <input type="range" class="se-slider" id="seBlurSlider" min="0" max="40" step="1" value="12">
+        </div>
+        
+        <div class="se-color-row">
+          <div class="se-field">
+            <div class="se-label" data-i18n="se.textSize">Размер текста</div>
+            <div class="se-seg" id="seTextScale">
+              <button class="se-seg-btn" data-val="0.9">S</button>
+              <button class="se-seg-btn active" data-val="1">M</button>
+              <button class="se-seg-btn" data-val="1.15">L</button>
+            </div>
+          </div>
+          <div class="se-field">
+            <div class="se-label" data-i18n="se.textWeight">Толщина текста</div>
+            <div class="se-seg" id="seTextWeight">
+              <button class="se-seg-btn active" data-val="400" data-i18n="common.normal">Обычный</button>
+              <button class="se-seg-btn" data-val="600" data-i18n="common.bold">Жирный</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="se-footer">
+        <button class="se-btn st-btn" id="seCancelBtn" data-i18n="common.cancel">Отмена</button>
+        <button class="se-btn st-btn" id="seResetBtn" data-i18n="common.reset">Сбросить</button>
+        <button class="se-btn st-btn se-save" id="seSaveBtn" data-i18n="common.save" style="background: var(--accent-tab-bg); color: #fff; border: none;">Сохранить</button>
+      </div>
+    </div>
+  </div>
+
   <script src="app.js"></script>
 </body>
 </html>
