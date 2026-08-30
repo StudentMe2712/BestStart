@@ -1,0 +1,16 @@
+version: '2.0'
+generator: BestStart SmartRouter
+task:
+  prompt: Разработай десктопное приложение на C# WPF с XAML и MVVM
+  active_skills:
+  - csharp_wpf.skill
+  active_mcps:
+  - sequential-thinking
+  - context7
+runtime:
+  routing_strategy: dynamic_semantic_regex
+  auto_inject: true
+  context_injection_enabled: true
+environment:
+  target_platform: multi-stack
+  isolation: docker-first

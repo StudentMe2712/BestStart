@@ -1,0 +1,91 @@
+{
+  "$schema": "https://json.schemastore.org/mcp-settings.json",
+  "description": "BestStart Enterprise MCP (Model Context Protocol) Server Configuration",
+  "mcpServers": {
+    "sequential-thinking": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-sequential-thinking"],
+      "description": "Dynamic, multi-step structured reasoning protocol for complex problem-solving, architectural planning, and algorithmic validation.",
+      "category": "Reasoning & Planning"
+    },
+    "playwright": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-playwright"],
+      "description": "Headless and GUI browser automation, UI visual verification, accessibility tree navigation, and end-to-end web testing.",
+      "category": "Browser Automation & Testing"
+    },
+    "firecrawl": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-firecrawl"],
+      "env": {
+        "FIRECRAWL_API_KEY": "${FIRECRAWL_API_KEY}"
+      },
+      "description": "Clean web scraping and markdown conversion engine designed for extracting structured data from complex JavaScript-rendered web applications.",
+      "category": "Web Intelligence & Scraping"
+    },
+    "chrome-devtools": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-chrome-devtools"],
+      "description": "Direct Chrome DevTools Protocol (CDP) bridge for deep DOM inspection, live network request monitoring, performance profiling, and console log capture.",
+      "category": "Debugging & Diagnostics"
+    },
+    "context7": {
+      "command": "npx",
+      "args": ["-y", "context7-mcp-server"],
+      "env": {
+        "CONTEXT7_API_KEY": "${CONTEXT7_API_KEY}"
+      },
+      "description": "High-accuracy live library documentation retriever, eliminating hallucinated APIs and outdated framework syntax across modern stacks.",
+      "category": "Knowledge & Documentation"
+    },
+    "github-mcp": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-github"],
+      "env": {
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "${GITHUB_PERSONAL_ACCESS_TOKEN}"
+      },
+      "description": "Official GitHub integration for pull requests, issue tracking, commit history exploration, code searches, and CI/CD workflow monitoring.",
+      "category": "VCS & Collaboration"
+    },
+    "filesystem": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-filesystem",
+        "C:\\Users\\Mila\\Desktop\\BestStart"
+      ],
+      "description": "Secure, scoped filesystem provider granting granular read and write access to the workspace repository and project artifacts.",
+      "category": "System & Filesystem"
+    },
+    "fetch": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-fetch"],
+      "description": "Lightweight HTTP/HTTPS content retrieval server for quickly parsing remote web documents, markdown feeds, and JSON endpoints without a full browser overhead.",
+      "category": "Networking & Ingestion"
+    },
+    "sqlite": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-sqlite",
+        "--db-path",
+        "C:\\Users\\Mila\\Desktop\\BestStart\\data\\app.db"
+      ],
+      "description": "Local embedded SQLite database explorer for inspecting tables, running schema migrations, query profiling, and validating transactional storage.",
+      "category": "Database & Storage"
+    },
+    "postgres": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-postgres",
+        "${DATABASE_URL}"
+      ],
+      "env": {
+        "DATABASE_URL": "${DATABASE_URL}"
+      },
+      "description": "Enterprise PostgreSQL database gateway for inspecting schemas, running safe analytical queries, index performance tuning, and table introspection.",
+      "category": "Database & Storage"
+    }
+  }
+}

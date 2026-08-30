@@ -1,0 +1,246 @@
+---
+name: cpp_native
+description: Modern C++ (C++20/C++23) native engineering, RAII, custom memory arenas, cache-friendly data-oriented design, lock-free concurrency, std::jthread, and SIMD/AVX intrinsics.
+---
+
+# Modern Native C++ (C++20/23) Engineering Standards
+
+This skill provides advanced guidelines, idioms, and high-performance patterns for developing mission-critical, low-latency, and memory-safe native systems in **C++20 / C++23**.
+
+---
+
+## 1. Modern C++ Core Idioms & RAII
+
+### 1.1 Custom Deleters with `std::unique_ptr`
+Always encapsulate non-memory resources (Win32 handles, file descriptors, C libraries) in zero-overhead RAII wrappers:
+
+```cpp
+#include <memory>
+#include <concepts>
+#include <cstdio>
+
+// Zero-overhead RAII handle wrapper
+struct FileCloser {
+    void operator()(std::FILE* fp) const noexcept {
+        if (fp) std::fclose(fp);
+    }
+};
+using UniqueFile = std::unique_ptr<std::FILE, FileCloser>;
+
+template <typename T, auto DeleterFunc>
+struct CustomDeleter {
+    void operator()(T* ptr) const noexcept {
+        if (ptr) DeleterFunc(ptr);
+    }
+};
+
+template <typename T, auto DeleterFunc>
+using ScopedNativeHandle = std::unique_ptr<T, CustomDeleter<T, DeleterFunc>>;
+```
+
+### 1.2 Concepts, Constraints & Error Handling (`std::expected`)
+Eliminate runtime exceptions in performance-critical paths by employing `std::expected` (C++23) and compile-time concepts:
+
+```cpp
+#include <expected>
+#include <string_view>
+#include <concepts>
+
+enum class SystemErrorCode {
+    InvalidArgument,
+    BufferOverflow,
+    ResourceUnavailable,
+    Timeout
+};
+
+template <typename T>
+concept NumericData = std::integral<T> || std::floating_point<T>;
+
+template <NumericData T>
+[[nodiscard]] constexpr auto CalculateChecksum(std::span<const T> buffer) noexcept 
+    -> std::expected<uint64_t, SystemErrorCode> 
+{
+    if (buffer.empty()) [[unlikely]] {
+        return std::unexpected(SystemErrorCode::InvalidArgument);
+    }
+
+    uint64_t sum = 0;
+    for (const auto& val : buffer) {
+        sum += static_cast<uint64_t>(val);
+    }
+    return sum;
+}
+```
+
+---
+
+## 2. Memory Arenas & Polymorphic Memory Resources (`std::pmr`)
+
+Avoid fine-grained heap allocations in hot loops. Use monotonic arena allocators:
+
+```cpp
+#include <memory_resource>
+#include <vector>
+#include <string>
+
+void ProcessFrameBatch() {
+    // 64 KB stack-allocated buffer for zero-malloc hot execution
+    std::array<std::byte, 64 * 1024> stackBuffer;
+    std::pmr::monotonic_buffer_resource pool(
+        stackBuffer.data(), 
+        stackBuffer.size(), 
+        std::pmr::null_memory_resource() // Disallow heap fallback
+    );
+
+    // Fast vector allocations inside the arena
+    std::pmr::vector<std::pmr::string> messages(&pool);
+    messages.reserve(128);
+
+    for (int i = 0; i < 100; ++i) {
+        messages.emplace_back("Telemetry payload packet #" + std::to_string(i), &pool);
+    }
+    // Entire arena is reset at scope exit without individual deallocation overhead
+}
+```
+
+---
+
+## 3. Cache-Friendly Data-Oriented Design (DoD)
+
+### 3.1 Structure of Arrays (SoA) vs Array of Structures (AoS)
+Maximize CPU L1/L2 cache hit rate by separating hot and cold fields:
+
+```cpp
+#include <vector>
+#include <new>
+
+// Cache line aligned structure to avoid false sharing
+struct alignas(std::hardware_destructive_interference_size) ParticleSystemSoA {
+    std::vector<float> posX;
+    std::vector<float> posY;
+    std::vector<float> posZ;
+    std::vector<float> velX;
+    std::vector<float> velY;
+    std::vector<float> velZ;
+    std::vector<uint32_t> entityIds;
+
+    void UpdatePositions(float dt, size_t count) noexcept {
+        // Continuous memory reads yield maximum SIMD auto-vectorization
+        for (size_t i = 0; i < count; ++i) {
+            posX[i] += velX[i] * dt;
+            posY[i] += velY[i] * dt;
+            posZ[i] += velZ[i] * dt;
+        }
+    }
+};
+```
+
+---
+
+## 4. Concurrency, `std::jthread`, and Lock-Free Queues
+
+### 4.1 Single-Producer Single-Consumer (SPSC) Lock-Free Ring Buffer
+```cpp
+#include <atomic>
+#include <array>
+#include <optional>
+#include <thread>
+#include <new>
+
+template <typename T, size_t Capacity>
+    requires (Capacity > 0 && (Capacity & (Capacity - 1)) == 0) // Must be power of 2
+class LockFreeSPSCQueue {
+private:
+    static constexpr size_t IndexMask = Capacity - 1;
+    std::array<T, Capacity> ringBuffer_;
+
+    // Align indices to separate cache lines to eliminate false sharing
+    alignas(std::hardware_destructive_interference_size) std::atomic<size_t> head_{0};
+    alignas(std::hardware_destructive_interference_size) std::atomic<size_t> tail_{0};
+
+public:
+    template <typename... Args>
+    bool Emplace(Args&&... args) noexcept {
+        const size_t currentTail = tail_.load(std::memory_order_relaxed);
+        const size_t currentHead = head_.load(std::memory_order_acquire);
+
+        if ((currentTail - currentHead) >= Capacity) {
+            return false; // Queue is full
+        }
+
+        ringBuffer_[currentTail & IndexMask] = T(std::forward<Args>(args)...);
+        tail_.store(currentTail + 1, std::memory_order_release);
+        return true;
+    }
+
+    std::optional<T> Pop() noexcept {
+        const size_t currentHead = head_.load(std::memory_order_relaxed);
+        const size_t currentTail = tail_.load(std::memory_order_acquire);
+
+        if (currentHead == currentTail) {
+            return std::nullopt; // Queue is empty
+        }
+
+        T val = std::move(ringBuffer_[currentHead & IndexMask]);
+        head_.store(currentHead + 1, std::memory_order_release);
+        return val;
+    }
+};
+```
+
+### 4.2 Cooperative Cancellation with `std::jthread` & `std::stop_token`
+```cpp
+void WorkerLoop(std::stop_token st, LockFreeSPSCQueue<int, 1024>& queue) {
+    while (!st.stop_requested()) {
+        if (auto item = queue.Pop()) {
+            // Process item...
+        } else {
+            std::this_thread::yield();
+        }
+    }
+}
+
+// Spawning thread with automatic RAII join on destruction
+void StartEngine() {
+    LockFreeSPSCQueue<int, 1024> queue;
+    std::jthread worker(WorkerLoop, std::ref(queue));
+    // When worker goes out of scope, request_stop() and join() are invoked automatically
+}
+```
+
+---
+
+## 5. SIMD / AVX2 Intrinsics Vectorization
+
+Process 8 single-precision floats (256-bit) per CPU cycle:
+
+```cpp
+#include <immintrin.h>
+#include <span>
+
+void VectorizedFMA(
+    std::span<const float> a, 
+    std::span<const float> b, 
+    std::span<const float> c, 
+    std::span<float> out) noexcept 
+{
+    const size_t count = a.size();
+    size_t i = 0;
+
+    // Process in chunks of 8 floats with AVX2 FMA
+    for (; i + 8 <= count; i += 8) {
+        __m256 va = _mm256_loadu_ps(&a[i]);
+        __m256 vb = _mm256_loadu_ps(&b[i]);
+        __m256 vc = _mm256_loadu_ps(&c[i]);
+
+        // Fused Multiply-Add: (va * vb) + vc
+        __m256 vres = _mm256_fmadd_ps(va, vb, vc);
+        _mm256_storeu_ps(&out[i], vres);
+    }
+
+    // Scalar fallback loop for remaining elements
+    for (; i < count; ++i) {
+        out[i] = (a[i] * b[i]) + c[i];
+    }
+}
+```

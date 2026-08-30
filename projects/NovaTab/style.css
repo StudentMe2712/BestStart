@@ -1353,6 +1353,43 @@ dialog h3 {
   transform: translateX(16px);
 }
 
+/* Структура секции выбора цвета */
+.st-color-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
+.st-color-field { display: flex; flex-direction: column; width: 100%; }
+.st-color-swatch { 
+  width: 100%; height: 36px; border-radius: 8px; 
+  border: 1px solid var(--ui-border, rgba(255,255,255,0.1)); 
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.1); 
+  cursor: pointer;
+  transition: transform 0.15s ease, border-color 0.2s ease;
+}
+.st-color-swatch:hover {
+  transform: scale(1.02);
+  border-color: rgba(255,255,255,0.3);
+}
+.st-color-field-top { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 13px; }
+.se-hex-val { color: var(--ui-text-secondary, rgba(255,255,255,0.7)); font-size: 13px; font-weight: 500; }
+
+/* Динамические ползунки */
+.se-slider { 
+  width: 100%; -webkit-appearance: none; height: 4px; border-radius: 2px; outline: none; 
+}
+.se-slider::-webkit-slider-thumb { 
+  -webkit-appearance: none; width: 16px; height: 16px; border-radius: 50%; 
+  background: #fff; cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+  transition: transform 0.15s ease;
+}
+.se-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.15);
+}
+
+/* Предотвращение захвата favicon браузером при drag-and-drop */
+.link-item .favicon {
+  -webkit-user-drag: none;
+  user-select: none;
+  pointer-events: none;
+}
+
 /* ==========================================================================
    Wallpaper Modal & Unified Modal Base
    ========================================================================== */

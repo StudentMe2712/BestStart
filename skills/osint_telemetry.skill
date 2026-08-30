@@ -1,0 +1,176 @@
+---
+name: osint_telemetry
+description: OSINT investigation toolchain (GHunt, Shodan, Censys, phone/email reconnaissance), aiogram 3.x Telegram bot telemetry pipelines, rate-limiting, stealth proxy rotation, and structured Prometheus observability.
+---
+
+# OSINT Investigation & Telegram Telemetry Engineering Standards
+
+This skill provides comprehensive operational guidelines, architectural patterns, and production code for building high-concurrency **OSINT (Open Source Intelligence)** investigation engines and **Telegram telemetry bots** using **aiogram 3.x**, **GHunt**, **Shodan / Censys**, rotating proxies, and **Prometheus metrics**.
+
+---
+
+## 1. High-Performance Telegram Bot Architecture (aiogram 3.x)
+
+### 1.1 Middleware Pipeline: Throttling & Prometheus Telemetry
+Implement non-blocking, asynchronous middleware for rate-limiting and latency observability:
+
+```python
+import time
+from typing import Any, Awaitable, Callable, Dict
+from aiogram import BaseMiddleware
+from aiogram.types import TelegramObject, Message
+from prometheus_client import Counter, Histogram
+
+REQUEST_COUNT = Counter(
+    "bot_requests_total", 
+    "Total incoming Telegram bot events", 
+    ["event_type", "status"]
+)
+REQUEST_LATENCY = Histogram(
+    "bot_request_duration_seconds", 
+    "Histogram of request processing duration in seconds", 
+    ["handler_name"]
+)
+
+class TelemetryRateLimitMiddleware(BaseMiddleware):
+    def __init__(self, rate_limit_sec: float = 1.0):
+        self._rate_limit = rate_limit_sec
+        self._user_last_action: Dict[int, float] = {}
+
+    async def __call__(
+        self,
+        handler: Callable[[TelegramObject, Dict[str, Any]], Awaitable[Any]],
+        event: TelegramObject,
+        data: Dict[str, Any]
+    ) -> Any:
+        start_time = time.monotonic()
+        
+        if isinstance(event, Message) and event.from_user:
+            user_id = event.from_user.id
+            now = time.monotonic()
+            last_action = self._user_last_action.get(user_id, 0.0)
+
+            if now - last_action < self._rate_limit:
+                REQUEST_COUNT.labels(event_type="message", status="throttled").inc()
+                await event.answer("⚠️ Rate limit exceeded. Please wait a moment.")
+                return None
+
+            self._user_last_action[user_id] = now
+
+        try:
+            result = await handler(event, data)
+            REQUEST_COUNT.labels(event_type="message", status="success").inc()
+            return result
+        except Exception as exc:
+            REQUEST_COUNT.labels(event_type="message", status="error").inc()
+            raise exc
+        finally:
+            duration = time.monotonic() - start_time
+            REQUEST_LATENCY.labels(handler_name=data.get("handler_name", "unknown")).observe(duration)
+```
+
+---
+
+## 2. OSINT Investigation Modules
+
+### 2.1 Shodan & Censys Network Reconnaissance
+Correlate IP addresses, SSL fingerprints, open ports, and vulnerabilities:
+
+```python
+import aiohttp
+from typing import Dict, Any, Optional
+
+class ShodanReconEngine:
+    def __init__(self, api_key: str):
+        self._api_key = api_key
+        self._base_url = "https://api.shodan.io"
+
+    async def inspect_host(self, ip_address: str) -> Optional[Dict[str, Any]]:
+        url = f"{self._base_url}/shodan/host/{ip_address}?key={self._api_key}"
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url, timeout=aiohttp.ClientTimeout(total=10)) as resp:
+                if resp.status == 200:
+                    data = await resp.json()
+                    return {
+                        "ip": data.get("ip_str"),
+                        "org": data.get("org"),
+                        "os": data.get("os"),
+                        "ports": data.get("ports", []),
+                        "vulns": list(data.get("vulns", {}).keys()),
+                        "hostnames": data.get("hostnames", []),
+                    }
+                return None
+```
+
+### 2.2 Phone & Email Reconnaissance Pipeline
+```python
+import dns.asyncresolver
+import re
+
+class EmailReconService:
+    @staticmethod
+    async def verify_mx_records(email: str) -> Dict[str, Any]:
+        domain = email.split("@")[-1]
+        try:
+            resolver = dns.asyncresolver.Resolver()
+            resolver.timeout = 3.0
+            answers = await resolver.resolve(domain, "MX")
+            records = [str(r.exchange).rstrip(".") for r in answers]
+            return {"valid_domain": True, "mx_records": records}
+        except Exception:
+            return {"valid_domain": False, "mx_records": []}
+```
+
+---
+
+## 3. Stealth Proxy Rotation & Anti-Fingerprinting
+
+```python
+import itertools
+from typing import List
+import httpx
+
+class RotatingProxyPool:
+    def __init__(self, proxy_list: List[str]):
+        self._pool = itertools.cycle(proxy_list)
+
+    def get_next_proxy(self) -> str:
+        return next(self._pool)
+
+    def create_stealth_client(self) -> httpx.AsyncClient:
+        proxy = self.get_next_proxy()
+        return httpx.AsyncClient(
+            proxy=proxy,
+            headers={
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36",
+                "Accept-Language": "en-US,en;q=0.9",
+                "Sec-Ch-Ua": '"Chromium";v="128", "Not;A=Brand";v="24", "Google Chrome";v="128"',
+                "Sec-Ch-Ua-Mobile": "?0",
+                "Sec-Ch-Ua-Platform": '"Windows"',
+            },
+            timeout=15.0,
+            verify=False
+        )
+```
+
+---
+
+## 4. Structured Telemetry & Admin Security Alerts
+
+```python
+import structlog
+from aiogram import Bot
+
+logger = structlog.get_logger()
+
+async def send_security_alert(bot: Bot, admin_chat_id: int, event_title: str, payload: dict):
+    logger.warn("security_alert_dispatched", event=event_title, payload=payload)
+    formatted_msg = (
+        f"🚨 <b>SECURITY TELEMETRY ALERT</b>\n\n"
+        f"<b>Event:</b> {event_title}\n"
+        f"<b>Target:</b> <code>{payload.get('target', 'N/A')}</code>\n"
+        f"<b>Origin:</b> <code>{payload.get('origin_ip', 'N/A')}</code>\n"
+        f"<b>Timestamp:</b> <code>{payload.get('timestamp', 'N/A')}</code>"
+    )
+    await bot.send_message(chat_id=admin_chat_id, text=formatted_msg, parse_mode="HTML")
+```

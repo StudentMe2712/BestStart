@@ -218,15 +218,50 @@
 
           <!-- Вкладка: Внешний вид -->
           <div class="settings-tab-content" id="tab-appearance" style="display: none;">
-            <div class="st-section">
-              <div class="st-row-col">
-                <span class="st-row-label" data-i18n="settings.searchColor">Цвет плашки поиска</span>
-                <div class="st-color-picker" id="stColorPickerSearchPreview"><input type="color" id="stColorPickerSearch" style="opacity: 0; width: 100%; height: 100%; cursor: pointer;"></div>
+            <!-- Секция: Доска (Реактивные настройки внешнего вида) -->
+            <div class="st-section" style="padding: 20px 20px 14px; border-bottom: 1px solid var(--ui-border); margin: 0;">
+              <div class="st-section-title">Доска</div>
+              
+              <div class="st-color-pair">
+                <div class="st-color-field">
+                  <span class="st-row-label">Основной цвет</span>
+                  <label style="display: block; cursor: pointer; position: relative; margin-top: 6px;">
+                    <div class="st-color-swatch" id="swatchAccent" style="background: rgb(0, 36, 73);"></div>
+                    <input type="color" id="colorAccent" value="#002449" style="position: absolute; opacity: 0; width: 0px; height: 0px;">
+                  </label>
+                </div>
+                <div class="st-color-field">
+                  <span class="st-row-label">Цвет доски</span>
+                  <label style="display: block; cursor: pointer; position: relative; margin-top: 6px;">
+                    <div class="st-color-swatch" id="swatchBoard" style="background: rgb(33, 24, 29);"></div>
+                    <input type="color" id="colorBoard" value="#21181d" style="position: absolute; opacity: 0; width: 0px; height: 0px;">
+                  </label>
+                </div>
               </div>
-              <div class="st-slider-field"><div class="st-slider-header"><span class="st-row-label" data-i18n="settings.searchAlpha">Прозрачность</span><span class="st-val">20%</span></div><input type="range" class="st-slider" id="stSliderSearchAlpha" value="20" min="0" max="100"></div>
-              <div class="st-slider-field"><div class="st-slider-header"><span class="st-row-label" data-i18n="settings.searchBlur">Размытие</span><span class="st-val">12px</span></div><input type="range" class="st-slider" id="stSliderSearchBlur" value="12" min="0" max="32"></div>
-              <div class="st-slider-field"><div class="st-slider-header"><span class="st-row-label" data-i18n="settings.searchWidth">Ширина</span><span class="st-val">340px</span></div><input type="range" class="st-slider" id="stSliderSearchWidth" value="340" min="200" max="600"></div>
+
+              <div class="st-slider-field">
+                <div class="st-color-field-top">
+                  <span class="st-row-label">Прозрачность</span>
+                  <span class="se-hex-val" id="valAlpha">24%</span>
+                </div>
+                <input type="range" id="sliderAlpha" class="se-slider st-slider" min="0" max="100" step="1" value="24" style="background: linear-gradient(to right, var(--accent-color,#fff) 24%, rgba(255,255,255,0.12) 24%);">
+              </div>
+
+              <div class="st-slider-field">
+                <div class="st-color-field-top">
+                  <span class="st-row-label">Размытие</span>
+                  <span class="se-hex-val" id="valBlur">5px</span>
+                </div>
+                <input type="range" id="sliderBlur" class="se-slider st-slider" min="0" max="40" step="1" value="5" style="background: linear-gradient(to right, var(--accent-color,#fff) 12.5%, rgba(255,255,255,0.12) 12.5%);">
+              </div>
+
+              <div style="display: flex; gap: 8px; margin-top: 4px;">
+                <button class="st-btn" id="btnCancelAppearance">Отмена</button>
+                <button class="st-btn" id="btnResetAppearance">Сбросить</button>
+              </div>
             </div>
+
+            <!-- Секция: Текст доски -->
             <div class="st-section">
               <div class="st-section-title" data-i18n="settings.boardText">ТЕКСТ ДОСКИ</div>
               <div class="st-row"><span class="st-row-label" data-i18n="settings.textSize">Размер</span>

@@ -1,0 +1,178 @@
+---
+name: python_fastapi
+description: Production-grade FastAPI clean architecture, Pydantic v2, Pytest async testing fixtures, Playwright & DuckDuckGo scraper integration, dependency injection, and resilient background task pipelines.
+---
+
+# Production FastAPI & Clean Architecture Standards
+
+This skill provides comprehensive architectural patterns, typing practices, and production engineering standards for building scalable, asynchronous microservices using **FastAPI**, **Pydantic v2**, **SQLAlchemy 2.0 / asyncpg**, and **Pytest**.
+
+---
+
+## 1. Clean Architecture Project Layout
+
+Enforce strict layer boundaries and Dependency Inversion:
+
+```
+src/
+├── api/                   # Presentation Layer (FastAPI Routers, Middleware, Dependencies)
+│   ├── v1/
+│   │   ├── endpoints/     # HTTP route handlers
+│   │   └── router.py      # Aggregated v1 APIRouter
+│   └── dependencies.py    # Common DI providers (Auth, DB session, Repositories)
+├── core/                  # Configuration & Cross-Cutting Concerns
+│   ├── config.py          # Pydantic-settings BaseSettings
+│   ├── logging.py         # Structlog / Loguru structured logging
+│   └── security.py        # Token generation, password hashing
+├── domain/                # Core Business Entities & Interfaces
+│   ├── models/            # Pure dataclasses or domain models
+│   └── ports/             # Abstract Repository / Service interfaces (Protocols)
+├── infrastructure/        # External Implementations
+│   ├── db/                # SQLAlchemy models, migrations, engine, sessions
+│   ├── repositories/      # Concrete repository implementations
+│   └── clients/           # External API & Scraper clients (Playwright, HTTPX)
+├── application/           # Use Cases & Orchestration Services
+│   ├── services/          # Business logic coordinators
+│   └── dtos/              # Application-level data transfer objects
+└── main.py                # App factory & Lifespan handler
+```
+
+---
+
+## 2. FastAPI Lifespan & Clean Dependency Injection
+
+```python
+from contextlib import asynccontextmanager
+from typing import AsyncGenerator
+from fastapi import FastAPI, Depends, HTTPException, status
+from pydantic_settings import BaseSettings
+import structlog
+
+logger = structlog.get_logger()
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    logger.info("service_startup", status="initializing_resources")
+    # Initialize DB connection pools, Redis clients, or browser contexts
+    yield
+    logger.info("service_shutdown", status="cleaning_up_resources")
+    # Graceful connection closure
+
+app = FastAPI(title="BestStart Microservice", lifespan=lifespan)
+```
+
+---
+
+## 3. Pydantic v2 Production Schemas & Validation
+
+Always use Pydantic v2 `ConfigDict` and typed annotations:
+
+```python
+from typing import Annotated, Optional
+from datetime import datetime
+from pydantic import BaseModel, ConfigDict, Field, field_validator, StringConstraints
+
+NonEmptyStr = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
+
+class BaseSchema(BaseModel):
+    model_config = ConfigDict(
+        from_attributes=True,
+        populate_by_name=True,
+        extra="forbid",
+        str_strip_whitespace=True,
+    )
+
+class UserCreateRequest(BaseSchema):
+    email: NonEmptyStr = Field(..., example="operator@beststart.local")
+    username: NonEmptyStr = Field(..., max_length=64)
+    role: str = Field(default="analyst")
+
+    @field_validator("email")
+    @classmethod
+    def validate_email_domain(cls, v: str) -> str:
+        if "@" not in v or "." not in v.split("@")[-1]:
+            raise ValueError("Invalid email format")
+        return v.lower()
+
+class UserResponse(BaseSchema):
+    id: int
+    email: str
+    username: str
+    is_active: bool
+    created_at: datetime
+```
+
+---
+
+## 4. Pytest Asynchronous Testing Fixtures
+
+Utilize `pytest-asyncio` and `httpx.AsyncClient` with dependency overrides:
+
+```python
+import pytest
+import pytest_asyncio
+from httpx import AsyncClient, ASGITransport
+from typing import AsyncGenerator
+from main import app
+from api.dependencies import get_db_session
+
+@pytest_asyncio.fixture(scope="function")
+async def async_client() -> AsyncGenerator[AsyncClient, None]:
+    async def override_get_db():
+        # In-memory mock or transactional rollback session
+        yield None
+
+    app.dependency_overrides[get_db_session] = override_get_db
+    transport = ASGITransport(app=app)
+    
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        yield client
+        
+    app.dependency_overrides.clear()
+
+@pytest.mark.asyncio
+async def test_create_user_endpoint(async_client: AsyncClient):
+    payload = {"email": "test@example.com", "username": "tester"}
+    response = await async_client.post("/api/v1/users", json=payload)
+    
+    assert response.status_code == 201
+    data = response.json()
+    assert data["email"] == "test@example.com"
+```
+
+---
+
+## 5. Playwright Async Web Scraper & DuckDuckGo Search Integration
+
+```python
+from playwright.async_api import async_playwright, BrowserContext
+from tenacity import retry, stop_after_attempt, wait_exponential
+import urllib.parse
+
+class AsyncWebScraper:
+    def __init__(self, proxy_url: Optional[str] = None):
+        self._proxy_url = proxy_url
+
+    @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=10))
+    async def fetch_page_content(self, url: str) -> str:
+        async with async_playwright() as p:
+            launch_args = ["--disable-blink-features=AutomationControlled"]
+            browser = await p.chromium.launch(headless=True, args=launch_args)
+            
+            context_opts = {
+                "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36",
+                "viewport": {"width": 1920, "height": 1080},
+            }
+            if self._proxy_url:
+                context_opts["proxy"] = {"server": self._proxy_url}
+
+            context: BrowserContext = await browser.new_context(**context_opts)
+            page = await context.new_page()
+            
+            try:
+                await page.goto(url, wait_until="domcontentloaded", timeout=15000)
+                return await page.content()
+            finally:
+                await context.close()
+                await browser.close()
+```

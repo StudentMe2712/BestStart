@@ -1,0 +1,234 @@
+---
+name: c_system
+description: Low-level C system engineering across POSIX and Win32, memory safety protocols, struct packing/alignment, IOCP & io_uring async I/O, thread pools, and sanitizers debugging.
+---
+
+# Systems Programming in C (POSIX & Win32) Engineering Standards
+
+This skill provides rigorous engineering standards, defensive programming idioms, and high-throughput architectural patterns for low-level systems development in **C (C11/C17/C23)** on Linux and Windows platforms.
+
+---
+
+## 1. Cross-Platform Abstractions & Defensive Memory Safety
+
+### 1.1 Robust Pointer Arithmetic & Bounded Buffers
+Never perform unchecked pointer increments. Always maintain pointer bounds:
+
+```c
+#include <stddef.h>
+#include <stdint.h>
+#include <stdbool.h>
+#include <string.h>
+
+typedef struct {
+    uint8_t *data;
+    size_t size;
+    size_t capacity;
+} ByteBuffer;
+
+static inline bool byte_buffer_write_bytes(
+    ByteBuffer *buf, 
+    const void *src, 
+    size_t len) 
+{
+    if (!buf || !src || (buf->size + len > buf->capacity)) {
+        return false; // Prevent buffer overrun
+    }
+    memcpy(buf->data + buf->size, src, len);
+    buf->size += len;
+    return true;
+}
+
+// Defensive pointer free macro
+#define SAFE_FREE(ptr) do { \
+    if ((ptr) != NULL) {    \
+        free((void*)(ptr)); \
+        (ptr) = NULL;       \
+    }                       \
+} while(0)
+```
+
+---
+
+## 2. Struct Alignment, Packing & Wire Protocol Serialization
+
+### 2.1 Cross-Platform Struct Packing and Endianness
+```c
+#include <stdint.h>
+
+#if defined(_MSC_VER)
+    #pragma pack(push, 1)
+    #define PACKED_STRUCT
+#elif defined(__GNUC__) || defined(__clang__)
+    #define PACKED_STRUCT __attribute__((packed))
+#else
+    #error "Unsupported compiler"
+#endif
+
+// Network packet header (exact 16 bytes, no padding holes)
+typedef struct PACKED_STRUCT {
+    uint16_t magic_number;  // 0x55AA
+    uint16_t version;       // Protocol version
+    uint32_t payload_len;   // Big-endian payload size
+    uint32_t sequence_id;   // Monotonic frame index
+    uint32_t crc32_hash;    // Checksum
+} NetworkFrameHeader;
+
+#if defined(_MSC_VER)
+    #pragma pack(pop)
+#endif
+
+// Cross-platform 32-bit endian swap
+static inline uint32_t swap_uint32_endian(uint32_t val) {
+#if defined(_MSC_VER)
+    return _byteswap_ulong(val);
+#elif defined(__GNUC__) || defined(__clang__)
+    return __builtin_bswap32(val);
+#else
+    return ((val >> 24) & 0xFF) |
+           ((val << 8)  & 0xFF0000) |
+           ((val >> 8)  & 0xFF00) |
+           ((val << 24) & 0xFF000000);
+#endif
+}
+```
+
+---
+
+## 3. High-Performance Asynchronous I/O: IOCP & io_uring
+
+### 3.1 Windows I/O Completion Ports (IOCP) Event Loop
+```c
+#ifdef _WIN32
+#include <windows.h>
+#include <stdio.h>
+
+typedef enum {
+    OP_READ,
+    OP_WRITE
+} OperationType;
+
+typedef struct {
+    OVERLAPPED overlapped;
+    WSABUF wsa_buf;
+    char buffer[4096];
+    OperationType type;
+    SOCKET client_socket;
+} IoContext;
+
+DWORD WINAPI IocpWorkerThread(LPVOID completion_port_param) {
+    HANDLE iocp = (HANDLE)completion_port_param;
+    DWORD bytes_transferred = 0;
+    ULONG_PTR completion_key = 0;
+    LPOVERLAPPED overlapped = NULL;
+
+    while (1) {
+        BOOL ok = GetQueuedCompletionStatus(
+            iocp,
+            &bytes_transferred,
+            &completion_key,
+            &overlapped,
+            INFINITE
+        );
+
+        if (!ok || !overlapped) {
+            DWORD err = GetLastError();
+            if (err == ERROR_ABANDONED_WAIT_0) break;
+            continue;
+        }
+
+        IoContext *ctx = (IoContext*)overlapped;
+        if (bytes_transferred == 0) {
+            // Client disconnected
+            closesocket(ctx->client_socket);
+            free(ctx);
+            continue;
+        }
+
+        // Process data in ctx->buffer...
+    }
+    return 0;
+}
+#endif
+```
+
+### 3.2 Linux `io_uring` Asynchronous Read Batching
+```c
+#ifdef __linux__
+#include <liburing.h>
+#include <fcntl.h>
+#include <unistd.h>
+
+#define QUEUE_DEPTH 64
+
+void SubmitAsyncFileReads(int fd, char *buf, size_t file_size) {
+    struct io_uring ring;
+    io_uring_queue_init(QUEUE_DEPTH, &ring, 0);
+
+    struct io_uring_sqe *sqe = io_uring_get_sqe(&ring);
+    io_uring_prep_read(sqe, fd, buf, file_size, 0);
+    sqe->user_data = 1;
+
+    io_uring_submit(&ring);
+
+    struct io_uring_cqe *cqe;
+    int ret = io_uring_wait_cqe(&ring, &cqe);
+    if (ret >= 0) {
+        // cqe->res contains bytes read
+        io_uring_cqe_seen(&ring, cqe);
+    }
+    io_uring_queue_exit(&ring);
+}
+#endif
+```
+
+---
+
+## 4. Multi-Platform Thread Pool Architecture
+
+```c
+#include <stdbool.h>
+
+typedef void (*task_func_t)(void *arg);
+
+typedef struct task_node {
+    task_func_t function;
+    void *arg;
+    struct task_node *next;
+} task_node_t;
+
+typedef struct {
+#ifdef _WIN32
+    CRITICAL_SECTION lock;
+    CONDITION_VARIABLE cond;
+    HANDLE *threads;
+#else
+    pthread_mutex_t lock;
+    pthread_cond_t cond;
+    pthread_t *threads;
+#endif
+    task_node_t *task_head;
+    task_node_t *task_tail;
+    size_t thread_count;
+    bool is_shutdown;
+} thread_pool_t;
+```
+
+---
+
+## 5. Low-Level Sanitizers & Debugging Protocols
+
+Always build test targets with AddressSanitizer and UndefinedBehaviorSanitizer:
+
+```bash
+# GCC / Clang Sanitizer Flags
+gcc -O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -Wall -Wextra main.c -o app_sanitized
+
+# MSVC AddressSanitizer Flags
+cl /fsanitize=address /Zi /O1 main.c /link /DEBUG
+```
+
+### 5.1 Rules for Zero-Defect C Code
+1. **Never ignore return values:** Always inspect error codes (`errno`, `HANDLE`, socket errors).
+2. **Deterministic Cleanup:** Pair every initialization with an explicit destroy function (`_init` / `_destroy`).
+3. **No magic sizes:** Derive sizes from types via `sizeof(*ptr)` instead of `sizeof(Type)`.

@@ -1,0 +1,338 @@
+---
+name: csharp_wpf
+description: Enterprise .NET 8 WPF architecture, CommunityToolkit.Mvvm / Prism, high-performance XAML, WinAPI P/Invoke interop (DwmSetWindowAttribute, dark mode titlebar, custom WndProc), async UI, and dependency injection.
+---
+
+# Modern .NET 8 WPF Architecture & Engineering Standards
+
+This skill provides comprehensive architectural guidelines, production-grade patterns, and best practices for building high-performance, native Windows desktop applications using **C# 12 / .NET 8+**, **WPF**, **CommunityToolkit.Mvvm**, **WinAPI P/Invoke**, and **Microsoft.Extensions.DependencyInjection**.
+
+---
+
+## 1. Modern C# 12 & .NET 8 Core Features
+
+### 1.1 Primary Constructors & Collection Expressions
+```csharp
+// Primary constructors in Services and ViewModels
+public sealed class OrderProcessingService(
+    ILogger<OrderProcessingService> logger,
+    IOrderRepository repository,
+    IMessenger messenger) : IOrderProcessingService
+{
+    public async Task<IReadOnlyList<OrderDto>> ProcessBatchAsync(
+        IEnumerable<OrderId> orderIds, 
+        CancellationToken ct = default)
+    {
+        // C# 12 Collection expressions & Frozen collections
+        List<OrderDto> results = [];
+        FrozenSet<OrderId> idSet = orderIds.ToFrozenSet();
+
+        foreach (var id in idSet)
+        {
+            ct.ThrowIfCancellationRequested();
+            var order = await repository.GetByIdAsync(id, ct).ConfigureAwait(false);
+            if (order is not null)
+            {
+                results.Add(order.ToDto());
+            }
+        }
+        return results;
+    }
+}
+```
+
+---
+
+## 2. MVVM with CommunityToolkit.Mvvm & Prism
+
+### 2.1 ViewModel Implementation with Source Generators
+Use `CommunityToolkit.Mvvm.ComponentModel` and `Input` source generators to eliminate boilerplate and avoid runtime reflection.
+
+```csharp
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
+using CommunityToolkit.Mvvm.Messaging;
+
+namespace BestStart.Wpf.ViewModels;
+
+public sealed partial class DashboardViewModel : ObservableValidator
+{
+    private readonly ITelemetryService _telemetryService;
+    private readonly IMessenger _messenger;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanExecuteActions))]
+    [NotifyCanExecuteChangedFor(nameof(RefreshDataCommand))]
+    private bool _isLoading;
+
+    [ObservableProperty]
+    private string _statusMessage = "Ready";
+
+    [ObservableProperty]
+    private ObservableCollection<TelemetryRecordViewModel> _records = [];
+
+    public bool CanExecuteActions => !IsLoading;
+
+    public DashboardViewModel(ITelemetryService telemetryService, IMessenger messenger)
+    {
+        _telemetryService = telemetryService;
+        _messenger = messenger;
+
+        // Register WeakReferenceMessenger for decoupled event aggregation
+        _messenger.Register<DashboardViewModel, StatusUpdateMessage>(this, static (r, m) =>
+        {
+            r.StatusMessage = m.Value;
+        });
+    }
+
+    [RelayCommand(CanExecute = nameof(CanExecuteActions))]
+    private async Task RefreshDataAsync(CancellationToken ct)
+    {
+        IsLoading = true;
+        StatusMessage = "Fetching latest metrics...";
+
+        try
+        {
+            var data = await _telemetryService.FetchMetricsAsync(ct).ConfigureAwait(true);
+            Records.Clear();
+            foreach (var item in data)
+            {
+                Records.Add(new TelemetryRecordViewModel(item));
+            }
+            StatusMessage = $"Updated {Records.Count} metrics successfully.";
+        }
+        catch (OperationCanceledException)
+        {
+            StatusMessage = "Operation cancelled by user.";
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"Error: {ex.Message}";
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+}
+```
+
+---
+
+## 3. High-Performance XAML Data Binding & Virtualization
+
+### 3.1 Optimized Virtualizing Controls
+For large data sets (>1,000 items), always enforce UI virtualization with container recycling:
+
+```xml
+<ListView ItemsSource="{Binding Records}"
+          VirtualizingStackPanel.IsVirtualizing="True"
+          VirtualizingStackPanel.VirtualizationMode="Recycling"
+          VirtualizingStackPanel.ScrollUnit="Pixel"
+          VirtualizingStackPanel.CacheLengthUnit="Page"
+          VirtualizingStackPanel.CacheLength="2,2"
+          ScrollViewer.IsDeferredScrollingEnabled="False"
+          ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+    <ListView.ItemTemplate>
+        <DataTemplate DataType="{x:Type vm:TelemetryRecordViewModel}">
+            <Border Margin="2,1" Padding="8,4" Background="{DynamicResource SurfaceBrush}" CornerRadius="4">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    
+                    <TextBlock Grid.Column="0" Text="{Binding Timestamp, StringFormat='{}{0:HH:mm:ss.fff}'}" 
+                               Foreground="{DynamicResource MutedTextBrush}" FontWeight="SemiBold"/>
+                    <TextBlock Grid.Column="1" Text="{Binding Target}" Margin="12,0" 
+                               TextTrimming="CharacterEllipsis"/>
+                    <TextBlock Grid.Column="2" Text="{Binding Status}" 
+                               Foreground="{Binding Status, Converter={StaticResource StatusToColorConverter}}"/>
+                </Grid>
+            </Border>
+        </DataTemplate>
+    </ListView.ItemTemplate>
+</ListView>
+```
+
+---
+
+## 4. WinAPI Interop (P/Invoke) & Window Modernization
+
+### 4.1 Modern Windows 11 / 10 Dark Mode & Mica Backdrops
+Modernize the Win32 window chrome using Desktop Window Manager (DWM) attributes via P/Invoke.
+
+```csharp
+using System.Runtime.InteropServices;
+using System.Windows;
+using System.Windows.Interop;
+
+namespace BestStart.Wpf.Interop;
+
+public static partial class Win32Dwm
+{
+    private const int DWMWA_USE_IMMERSIVE_DARK_MODE = 20;
+    private const int DWMWA_WINDOW_CORNER_PREFERENCE = 33;
+    private const int DWMWA_SYSTEMBACKDROP_TYPE = 38;
+
+    public enum DWM_WINDOW_CORNER_PREFERENCE
+    {
+        DWMWCP_DEFAULT = 0,
+        DWMWCP_DONOTROUND = 1,
+        DWMWCP_ROUND = 2,
+        DWMWCP_ROUNDSMALL = 3
+    }
+
+    public enum DWM_SYSTEMBACKDROP_TYPE
+    {
+        DWMSBT_AUTO = 0,
+        DWMSBT_NONE = 1,
+        DWMSBT_MAINWINDOW = 2, // Mica
+        DWMSBT_TRANSIENTWINDOW = 3, // Acrylic
+        DWMSBT_TABBEDWINDOW = 4 // Mica Alt
+    }
+
+    [LibraryImport("dwmapi.dll")]
+    private static partial int DwmSetWindowAttribute(
+        IntPtr hwnd, 
+        int dwAttribute, 
+        in int pvAttribute, 
+        int cbAttribute);
+
+    public static void EnableImmersiveDarkMode(Window window, bool enable = true)
+    {
+        var hwnd = new WindowInteropHelper(window).EnsureHandle();
+        int value = enable ? 1 : 0;
+        DwmSetWindowAttribute(hwnd, DWMWA_USE_IMMERSIVE_DARK_MODE, in value, sizeof(int));
+    }
+
+    public static void SetWindowBackdrop(Window window, DWM_SYSTEMBACKDROP_TYPE backdrop)
+    {
+        var hwnd = new WindowInteropHelper(window).EnsureHandle();
+        int value = (int)backdrop;
+        DwmSetWindowAttribute(hwnd, DWMWA_SYSTEMBACKDROP_TYPE, in value, sizeof(int));
+    }
+
+    public static void SetRoundedCorners(Window window, DWM_WINDOW_CORNER_PREFERENCE preference)
+    {
+        var hwnd = new WindowInteropHelper(window).EnsureHandle();
+        int value = (int)preference;
+        DwmSetWindowAttribute(hwnd, DWMWA_WINDOW_CORNER_PREFERENCE, in value, sizeof(int));
+    }
+}
+```
+
+### 4.2 Custom Window Message Hook (WndProc & WM_NCHITTEST)
+Enables custom borderless titlebar dragging, maximize bounds snapping, and native resizing.
+
+```csharp
+public partial class MainWindow : Window
+{
+    private const int WM_NCHITTEST = 0x0084;
+    private const int HTCLIENT = 1;
+    private const int HTCAPTION = 2;
+
+    public MainWindow()
+    {
+        InitializeComponent();
+        Loaded += OnWindowLoaded;
+    }
+
+    private void OnWindowLoaded(object sender, RoutedEventArgs e)
+    {
+        Win32Dwm.EnableImmersiveDarkMode(this, true);
+        Win32Dwm.SetRoundedCorners(this, Win32Dwm.DWM_WINDOW_CORNER_PREFERENCE.DWMWCP_ROUND);
+
+        var hwndSource = HwndSource.FromHwnd(new WindowInteropHelper(this).Handle);
+        hwndSource?.AddHook(WndProc);
+    }
+
+    private IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
+    {
+        if (msg == WM_NCHITTEST)
+        {
+            // Custom hit-test logic for borderless title bar drag region
+            // Return HTCAPTION when pointer is inside title bar area
+        }
+        return IntPtr.Zero;
+    }
+}
+```
+
+---
+
+## 5. Asynchronous UI & Threading Architecture
+
+1. **Dispatcher Handling:** Use `Dispatcher.InvokeAsync()` only when writing directly to UI-bound elements from non-UI threads.
+2. **ConfigureAwait Guidelines:**
+   - In Library/Repository code: Always use `ConfigureAwait(false)`.
+   - In ViewModel async command handlers: Let execution resume on the UI thread (`ConfigureAwait(true)`).
+3. **Progress Reporting:** Use `IProgress<T>` and `Progress<T>` for seamless marshaling back to UI context.
+
+```csharp
+public async Task ExecuteLongOperationAsync(IProgress<int> progress, CancellationToken ct)
+{
+    await Task.Run(() =>
+    {
+        for (int i = 0; i <= 100; i += 10)
+        {
+            ct.ThrowIfCancellationRequested();
+            Thread.Sleep(50); // Heavy background computation
+            progress.Report(i);
+        }
+    }, ct).ConfigureAwait(false);
+}
+```
+
+---
+
+## 6. Dependency Injection & WPF App Lifecycle
+
+Set up `Microsoft.Extensions.Hosting` in `App.xaml.cs`:
+
+```csharp
+public partial class App : Application
+{
+    private readonly IHost _host;
+
+    public App()
+    {
+        _host = Host.CreateDefaultBuilder()
+            .ConfigureServices((context, services) =>
+            {
+                // Core Singletons
+                services.AddSingleton<IMessenger>(WeakReferenceMessenger.Default);
+                services.AddSingleton<ITelemetryService, TelemetryService>();
+
+                // ViewModels
+                services.AddTransient<DashboardViewModel>();
+                services.AddTransient<SettingsViewModel>();
+
+                // Windows & Views
+                services.AddSingleton<MainWindow>(sp => new MainWindow
+                {
+                    DataContext = sp.GetRequiredService<DashboardViewModel>()
+                });
+            })
+            .Build();
+    }
+
+    protected override async void OnStartup(StartupEventArgs e)
+    {
+        await _host.StartAsync();
+        var mainWindow = _host.Services.GetRequiredService<MainWindow>();
+        mainWindow.Show();
+        base.OnStartup(e);
+    }
+
+    protected override async void OnExit(ExitEventArgs e)
+    {
+        using (_host)
+        {
+            await _host.StopAsync(TimeSpan.FromSeconds(5));
+        }
+        base.OnExit(e);
+    }
+}
+```
