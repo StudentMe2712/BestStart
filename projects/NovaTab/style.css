@@ -175,6 +175,35 @@ body {
   color: var(--board-text-hover, #fff);
 }
 
+/* Стили виджета погоды (Из дампа пользователя) */
+.weather-widget {
+  min-width: 90px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 1px;
+  padding: 5px 12px;
+  border-radius: 12px;
+  background: rgba(var(--board-rgb, 255,255,255), var(--board-alpha, 0.05));
+  border: none;
+  box-shadow: 0 0 24px rgba(0,0,0,0.22);
+  cursor: pointer;
+  transition: background 0.15s;
+  position: relative;
+  isolation: isolate;
+  user-select: none;
+}
+.weather-widget:hover {
+  background: var(--board-hover-bg, rgba(255,255,255,0.07));
+}
+.focus-today-label { font-size: 11px; color: var(--board-text-secondary); text-transform: uppercase; font-weight: 700; }
+.focus-today-value { font-size: 14px; color: var(--board-text); font-weight: 600; }
+
+/* Реактивный класс для показа погоды */
+body.setting-show-weather #weatherWidget {
+  display: flex !important;
+}
+
 /* ==========================================================================
    Search Bar
    ========================================================================== */

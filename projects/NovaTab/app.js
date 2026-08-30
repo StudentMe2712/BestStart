@@ -13,10 +13,10 @@
 
   const SETTINGS_MAP = {
     'navSearchToggle': 'setting-show-search',
+    'weatherToggle': 'setting-show-weather',
     'descToggle': 'setting-show-descriptions',
     'sidebarAlwaysOpenToggle': 'setting-sidebar-always-open',
     'clockToggle': 'setting-show-clock',
-    'weatherToggle': 'setting-show-weather',
     'openNewTabToggle': 'setting-open-new-tab',
     'hideExcessBookmarksToggle': 'setting-hide-excess-bookmarks'
   };
@@ -803,6 +803,17 @@
     const dict = I18N_STRINGS[currentLanguage] || I18N_STRINGS.ru;
 
     currentTab.boards.forEach((board) => {
+      // 0. EMPTY SLOT PLACEHOLDER
+      if (board.type === 'empty') {
+        const slot = document.createElement('div');
+        slot.className = 'board-placeholder';
+        slot.dataset.slotId = board.id || generateId('slot');
+        slot.innerHTML = '<span class="plus-icon">+</span>';
+        slot.addEventListener('click', () => initiateInlineBoardCreation(slot));
+        boardsGrid.appendChild(slot);
+        return;
+      }
+
       // 1. NOTES WIDGET
       if (board.type === 'notes') {
         const card = document.createElement('div');
@@ -1162,20 +1173,15 @@
   function renderGridPlaceholders() {
     const grid = document.querySelector('.boards-grid') || boardsGrid;
     if (!grid) return;
-    // Remove old placeholders
-    grid.querySelectorAll('.board-placeholder').forEach(el => el.remove());
     
-    // Count current boards
-    const boardsCount = grid.querySelectorAll('.board:not(.board-placeholder):not(.inline-creating), .board-card:not(.board-placeholder):not(.inline-creating)').length;
-    // Fill up empty slots (at least 1, up to 10 - boardsCount)
-    const placeholdersNeeded = Math.max(1, 10 - boardsCount);
+    const totalSlots = grid.querySelectorAll('.board, .board-card, .board-placeholder').length;
+    const placeholdersNeeded = Math.max(0, 10 - totalSlots);
 
     for (let i = 0; i < placeholdersNeeded; i++) {
       const slot = document.createElement('div');
       slot.className = 'board-placeholder';
+      slot.dataset.slotId = generateId('slot');
       slot.innerHTML = '<span class="plus-icon">+</span>';
-      
-      // Clicking any slot starts inline board creation at that position
       slot.addEventListener('click', () => initiateInlineBoardCreation(slot));
       grid.appendChild(slot);
     }
@@ -1192,6 +1198,8 @@
       existingInput?.focus();
       return;
     }
+
+    const slotId = targetSlot?.dataset?.slotId || generateId('slot');
 
     const tempCard = document.createElement('div');
     tempCard.className = 'board-card inline-creating';
@@ -1227,6 +1235,20 @@
 
     let isCommitted = false;
 
+    function restorePlaceholder() {
+      if (tempCard.parentNode === grid) {
+        const placeholder = document.createElement('div');
+        placeholder.className = 'board-placeholder';
+        placeholder.dataset.slotId = slotId;
+        placeholder.innerHTML = '<span class="plus-icon">+</span>';
+        placeholder.addEventListener('click', () => initiateInlineBoardCreation(placeholder));
+        tempCard.replaceWith(placeholder);
+      } else {
+        tempCard.remove();
+        renderGridPlaceholders();
+      }
+    }
+
     function commit() {
       if (isCommitted) return;
       isCommitted = true;
@@ -1241,24 +1263,27 @@
             title: title,
             links: []
           };
-          const allBoardElements = [...grid.querySelectorAll('.board:not(.board-placeholder), .board-card:not(.board-placeholder)')];
-          const insertIdx = allBoardElements.indexOf(tempCard);
-          if (insertIdx >= 0 && insertIdx <= currentTab.boards.length) {
-            currentTab.boards.splice(insertIdx, 0, newBoard);
+          const slotIdx = currentTab.boards.findIndex(b => b && b.id === slotId);
+          if (slotIdx !== -1) {
+            currentTab.boards[slotIdx] = newBoard;
           } else {
-            currentTab.boards.push(newBoard);
+            const allElements = [...grid.querySelectorAll('.board, .board-card, .board-placeholder')];
+            const insertIdx = allElements.indexOf(tempCard);
+            if (insertIdx >= 0 && insertIdx <= currentTab.boards.length) {
+              currentTab.boards.splice(insertIdx, 0, newBoard);
+            } else {
+              currentTab.boards.push(newBoard);
+            }
           }
           saveState();
           renderBoards();
           populateQuickBoardSelect();
           showToast(`Доска "${title}" создана`);
         } else {
-          tempCard.remove();
-          renderGridPlaceholders();
+          restorePlaceholder();
         }
       } else {
-        tempCard.remove();
-        renderGridPlaceholders();
+        restorePlaceholder();
       }
     }
 
@@ -1269,8 +1294,7 @@
       } else if (e.key === 'Escape') {
         e.preventDefault();
         isCommitted = true;
-        tempCard.remove();
-        renderGridPlaceholders();
+        restorePlaceholder();
       }
     });
 
@@ -1506,14 +1530,27 @@
       bmDelete.addEventListener('click', (e) => {
         e.stopPropagation();
         if (currentBoardMenuTarget) {
-          const { board } = currentBoardMenuTarget;
+          const { board, card } = currentBoardMenuTarget;
           hideBoardMenu();
           const currentTab = getActiveTab();
           if (currentTab && currentTab.boards) {
-            currentTab.boards = currentTab.boards.filter((b) => b.id !== board.id);
+            const placeholder = document.createElement('div');
+            placeholder.className = 'board-placeholder';
+            placeholder.dataset.slotId = generateId('slot');
+            placeholder.innerHTML = '<span class="plus-icon">+</span>';
+            placeholder.addEventListener('click', () => initiateInlineBoardCreation(placeholder));
+
+            // Replace board in DOM with placeholder
+            if (card && card.parentNode) {
+              card.replaceWith(placeholder);
+            }
+
+            // Replace board in state with empty slot
+            const bIdx = currentTab.boards.findIndex(b => b && b.id === board.id);
+            if (bIdx !== -1) {
+              currentTab.boards[bIdx] = { id: placeholder.dataset.slotId, type: 'empty' };
+            }
             saveState();
-            renderBoards();
-            renderGridPlaceholders();
             populateQuickBoardSelect();
             showToast('Доска удалена');
           }
@@ -1646,10 +1683,12 @@
     if (action === 'delete') {
       const tab = appState.tabs.find((t) => t.id === target.tabId);
       if (!tab) return;
-      tab.boards = tab.boards.filter((b) => b.id !== target.boardId);
+      const bIdx = tab.boards.findIndex((b) => b && b.id === target.boardId);
+      if (bIdx !== -1) {
+        tab.boards[bIdx] = { id: generateId('slot'), type: 'empty' };
+      }
       saveState();
       renderBoards();
-      renderGridPlaceholders();
       populateQuickBoardSelect();
       showToast('Доска удалена');
     } else if (action === 'edit') {
@@ -2220,6 +2259,11 @@
         searchBar.style.display = isEnabled ? 'flex' : 'none';
       }
     }
+    if (settingId === 'weatherToggle') {
+      const weatherWidget = document.getElementById('weatherWidget');
+      if (weatherWidget) weatherWidget.style.display = isEnabled ? 'flex' : 'none';
+      document.body.classList.toggle('setting-show-weather', isEnabled);
+    }
   }
 
   function saveSetting(key, value) {
@@ -2287,8 +2331,12 @@
     const currentTab = getActiveTab();
     select.innerHTML = '';
 
-    if (currentTab && Array.isArray(currentTab.boards) && currentTab.boards.length > 0) {
-      currentTab.boards.forEach((b) => {
+    const validBoards = (currentTab && Array.isArray(currentTab.boards))
+      ? currentTab.boards.filter(b => b && b.type !== 'empty')
+      : [];
+
+    if (validBoards.length > 0) {
+      validBoards.forEach((b) => {
         const opt = document.createElement('option');
         opt.value = b.id;
         opt.textContent = b.title || (b.type === 'notes' ? 'Заметки' : b.type === 'calendar' ? 'Календарь' : 'Доска');
@@ -3595,7 +3643,48 @@
     }
   }
 
-  // --- Drag and Drop Engine: Board Dragging ---
+  // --- Drag and Drop Engine: Board Dragging & Fixed Slots Architecture ---
+
+  function swapDOMNodes(node1, node2) {
+    if (!node1 || !node2 || node1 === node2) return;
+    const parent1 = node1.parentNode;
+    const next1 = node1.nextSibling === node2 ? node1 : node1.nextSibling;
+    const parent2 = node2.parentNode;
+    const next2 = node2.nextSibling === node1 ? node2 : node2.nextSibling;
+
+    parent1.insertBefore(node2, next1);
+    parent2.insertBefore(node1, next2);
+  }
+
+  function commitBoardOrder() {
+    const grid = document.querySelector('.boards-grid') || boardsGrid;
+    const currentTab = getActiveTab();
+    if (!grid || !currentTab) return;
+
+    const allSlots = [...grid.querySelectorAll('.board, .board-card, .board-placeholder')];
+    const newBoardsList = [];
+
+    allSlots.forEach((el) => {
+      if (el.classList.contains('board-placeholder')) {
+        newBoardsList.push({ id: el.dataset.slotId || generateId('slot'), type: 'empty' });
+      } else {
+        const bId = el.dataset.boardId || el.dataset.id;
+        const found = currentTab.boards.find(b => b && String(b.id) === String(bId));
+        if (found) {
+          newBoardsList.push(found);
+        }
+      }
+    });
+
+    // Remove trailing empty slots beyond 10 if unnecessary
+    while (newBoardsList.length > 10 && newBoardsList[newBoardsList.length - 1].type === 'empty') {
+      newBoardsList.pop();
+    }
+
+    currentTab.boards = newBoardsList;
+    saveState();
+  }
+
   function initDragAndDrop() {
     const grid = document.querySelector('.boards-grid') || boardsGrid;
     if (!grid) return;
@@ -3603,7 +3692,7 @@
     let draggedItem = null;
 
     grid.addEventListener('dragstart', (e) => {
-      if (e.target.closest('input, textarea, button, select, .st-toggle, .notes-resize-handle')) {
+      if (e.target.closest('input, textarea, button, select, .st-toggle, .notes-resize-handle, .link-menu-btn')) {
         return;
       }
 
@@ -3621,71 +3710,38 @@
       }
     });
 
-    // ОБЯЗАТЕЛЬНО: Разрешаем зону сброса
     grid.addEventListener('dragenter', (e) => {
       e.preventDefault();
     });
 
     grid.addEventListener('dragover', (e) => {
-      e.preventDefault(); // Обязательно для разрешения drop
+      e.preventDefault();
       if (!draggedItem) return;
       if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
-
-      const target = e.target.closest('.board, .board-card, .board-placeholder');
-      
-      if (target && target !== draggedItem && target.parentNode === grid) {
-        if (target.classList.contains('board-placeholder')) {
-          // Если навели на пустой слот (плейсхолдер) — вставляем доску ПЕРЕД ним.
-          // Таким образом доска логически уходит в конец списка.
-          target.before(draggedItem);
-        } else {
-          // Стандартная логика смены мест между двумя реальными досками
-          const rect = target.getBoundingClientRect();
-          const isAfter = e.clientX > rect.left + rect.width / 2;
-          
-          if (isAfter) {
-            target.after(draggedItem);
-          } else {
-            target.before(draggedItem);
-          }
-        }
-      }
     });
 
-    function commitBoardOrder() {
-      const currentTab = getActiveTab();
-      if (currentTab && Array.isArray(currentTab.boards)) {
-        const boardElements = [...grid.querySelectorAll('.board:not(.board-placeholder):not(.inline-creating), .board-card:not(.board-placeholder):not(.inline-creating)')];
-        const newBoards = [];
-        boardElements.forEach((el) => {
-          const bId = el.dataset.boardId || el.dataset.id;
-          if (bId) {
-            const found = currentTab.boards.find(b => String(b.id) === String(bId));
-            if (found && !newBoards.includes(found)) {
-              newBoards.push(found);
-            }
-          }
-        });
-        currentTab.boards.forEach(b => {
-          if (!newBoards.includes(b)) newBoards.push(b);
-        });
-        currentTab.boards = newBoards;
-        saveState();
-      }
-    }
-
-    // ОБЯЗАТЕЛЬНО: Перехватываем сам сброс, чтобы браузер не отменил операцию
     grid.addEventListener('drop', (e) => {
       e.preventDefault();
       grid.classList.remove('is-dragging');
-      if (draggedItem) {
-        draggedItem.classList.remove('dragging');
-        draggedItem = null;
+      if (!draggedItem) return;
+
+      const target = e.target.closest('.board, .board-card, .board-placeholder');
+      if (target && target !== draggedItem && target.parentNode === grid) {
+        if (target.classList.contains('board-placeholder')) {
+          // Fixed Slots: Swap board with empty slot placeholder
+          swapDOMNodes(draggedItem, target);
+        } else {
+          // Board over another board: standard position shift
+          const rect = target.getBoundingClientRect();
+          const isAfter = e.clientX > rect.left + rect.width / 2;
+          if (isAfter) target.after(draggedItem);
+          else target.before(draggedItem);
+        }
       }
+
+      draggedItem.classList.remove('dragging');
+      draggedItem = null;
       commitBoardOrder();
-      if (typeof renderGridPlaceholders === 'function') {
-        renderGridPlaceholders();
-      }
     });
 
     grid.addEventListener('dragend', () => {
@@ -3693,22 +3749,6 @@
       if (draggedItem) {
         draggedItem.classList.remove('dragging');
         draggedItem = null;
-      }
-      commitBoardOrder();
-      if (typeof renderGridPlaceholders === 'function') {
-        renderGridPlaceholders();
-      }
-    });
-
-    document.addEventListener('dragend', () => {
-      if (draggedItem) {
-        grid.classList.remove('is-dragging');
-        draggedItem.classList.remove('dragging');
-        draggedItem = null;
-        commitBoardOrder();
-        if (typeof renderGridPlaceholders === 'function') {
-          renderGridPlaceholders();
-        }
       }
     });
   }
