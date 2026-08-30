@@ -191,6 +191,10 @@
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"></circle><line x1="3" y1="12" x2="21" y2="12"></line><path d="M12 3a14 14 0 0 1 0 18 14 14 0 0 1 0-18z"></path></svg>
             <span>Язык и регион</span>
           </button>
+          <button class="settings-nav-item" data-tab="tab-account">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            <span data-i18n="settings.tabAccount">Данные и Приватность</span>
+          </button>
           <button class="settings-nav-item" id="supportNavBtn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"></circle><line x1="12" y1="16" x2="12" y2="11"></line><line x1="12" y1="7.5" x2="12" y2="7.51"></line></svg><span>Поддержка</span></button>
         </nav>
 
@@ -318,6 +322,24 @@
                   <button class="st-group-btn active" data-val="C">°C</button>
                   <button class="st-group-btn" data-val="F">°F</button>
                 </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Вкладка: Данные и Приватность -->
+          <div class="settings-tab-content" id="tab-account" style="display: none;">
+            <div class="st-section">
+              <div class="st-section-title" data-i18n="settings.tabAccount">Данные и Приватность</div>
+              <p class="st-plan-guest" style="margin: 0 0 14px; line-height: 1.6; color: var(--ui-text-secondary); font-size: 13px;">
+                NovaTab работает в полностью локальном и безлимитном режиме. Все ваши закладки, доски и настройки надежно хранятся исключительно на вашем устройстве. Мы не собираем и не синхронизируем ваши личные данные на сторонних серверах.
+              </p>
+              <div class="st-row" style="margin-top: 14px;">
+                <span class="st-row-label">Режим хранилища</span>
+                <span style="font-size: 13px; font-weight: 500; color: #10b981;">100% Локальный (chrome.storage.local)</span>
+              </div>
+              <div class="st-row">
+                <span class="st-row-label">Лимиты на доски и закладки</span>
+                <span style="font-size: 13px; font-weight: 500; color: #10b981;">Безлимитно</span>
               </div>
             </div>
           </div>
