@@ -2367,14 +2367,62 @@
     }
   }
 
+  let savedWeatherCityData = null;
+
+  const debounce = (fn, delay) => {
+    let timeout;
+    return (...args) => {
+      clearTimeout(timeout);
+      timeout = setTimeout(() => fn(...args), delay);
+    };
+  };
+
+  async function fetchAndRenderWeather(cityData) {
+    const weatherWidget = document.getElementById('weatherWidget');
+    const widgetCityLabel = document.getElementById('weatherWidgetCity') || document.querySelector('.focus-today-label');
+    const widgetTempLabel = document.getElementById('weatherWidgetTemp') || document.querySelector('.focus-today-value');
+    const weatherToggle = document.getElementById('weatherToggle');
+
+    if (!cityData || !weatherWidget) {
+      if (weatherWidget) weatherWidget.style.display = 'none';
+      return;
+    }
+    
+    try {
+      const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${cityData.lat}&longitude=${cityData.lon}&current_weather=true`);
+      const data = await res.json();
+      
+      if (data && data.current_weather) {
+        const temp = Math.round(data.current_weather.temperature);
+        const wCode = data.current_weather.weathercode;
+        let icon = '☀️';
+        if (wCode >= 1 && wCode <= 3) icon = '⛅';
+        else if (wCode >= 45 && wCode <= 48) icon = '🌫️';
+        else if (wCode >= 51 && wCode <= 67) icon = '🌧️';
+        else if (wCode >= 71 && wCode <= 77) icon = '❄️';
+        else if (wCode >= 80 && wCode <= 82) icon = '🌦️';
+        else if (wCode >= 95) icon = '⛈️';
+
+        if (widgetCityLabel) widgetCityLabel.textContent = cityData.name;
+        if (widgetTempLabel) widgetTempLabel.textContent = `${icon} ${temp > 0 ? '+' : ''}${temp}°C`;
+        
+        const isToggleOn = weatherToggle ? weatherToggle.classList.contains('on') : document.body.classList.contains('setting-show-weather');
+        weatherWidget.style.display = isToggleOn ? 'flex' : 'none';
+      }
+    } catch (err) {
+      console.error('Ошибка загрузки погоды:', err);
+    }
+  }
+
   function initWeatherConfig() {
     const weatherToggle = document.getElementById('weatherToggle');
     const weatherConfig = document.getElementById('weatherCardConfig');
     const cityInput = document.getElementById('weatherCityInput');
     const suggestList = document.getElementById('weatherCitySuggest');
     const applyBtn = document.getElementById('weatherCityApply');
+    const weatherWidget = document.getElementById('weatherWidget');
 
-    const MOCK_CITIES = ['Атырау', 'Алматы', 'Астана', 'Актобе', 'Актау', 'Москва', 'Лондон', 'Париж', 'Нью-Йорк', 'Токио', 'Берлин', 'Рим', 'Шымкент', 'Караганда'];
+    let selectedCityData = null;
 
     // 1. Появление/Скрытие блока конфигурации при клике на тумблер
     if (weatherToggle && weatherConfig) {
@@ -2383,32 +2431,49 @@
           const isOn = weatherToggle.classList.contains('on');
           weatherConfig.style.display = isOn ? 'flex' : 'none';
           if (isOn && cityInput) cityInput.focus();
+          if (!isOn && weatherWidget) weatherWidget.style.display = 'none';
         }, 10);
       });
     }
 
-    // 2. Логика ввода и показа подсказок
+    // 2. Логика ввода и поиска через Geocoding API Open-Meteo
     if (cityInput && suggestList) {
-      cityInput.addEventListener('input', (e) => {
-        const val = e.target.value.trim().toLowerCase();
-        
-        if (val.length > 0) {
-          const filtered = MOCK_CITIES.filter(c => c.toLowerCase().includes(val));
-          if (filtered.length > 0) {
-            suggestList.innerHTML = filtered.map(c => `<li>${c}</li>`).join('');
+      cityInput.addEventListener('input', debounce(async (e) => {
+        const query = e.target.value.trim();
+        if (query.length < 2) {
+          suggestList.style.display = 'none';
+          return;
+        }
+
+        try {
+          const res = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(query)}&count=5&language=ru&format=json`);
+          const data = await res.json();
+          
+          if (data && data.results && data.results.length > 0) {
+            suggestList.innerHTML = data.results.map(c => 
+              `<li data-lat="${c.latitude}" data-lon="${c.longitude}" data-name="${c.name}">
+                ${c.name}${c.country ? ', ' + c.country : ''}
+              </li>`
+            ).join('');
             suggestList.style.display = 'block';
           } else {
             suggestList.style.display = 'none';
           }
-        } else {
-          suggestList.style.display = 'none';
+        } catch (err) {
+          console.error('Ошибка геокодирования:', err);
         }
-      });
+      }, 350));
 
       // 3. Выбор города из списка
       suggestList.addEventListener('click', (e) => {
-        if (e.target.tagName === 'LI') {
-          cityInput.value = e.target.textContent;
+        const li = e.target.closest('li');
+        if (li) {
+          selectedCityData = {
+            name: li.dataset.name,
+            lat: parseFloat(li.dataset.lat),
+            lon: parseFloat(li.dataset.lon)
+          };
+          cityInput.value = li.dataset.name;
           suggestList.style.display = 'none';
         }
       });
@@ -2423,16 +2488,35 @@
 
     // 4. Применение города и сохранение в chrome.storage
     if (applyBtn && cityInput) {
-      applyBtn.addEventListener('click', () => {
-        const city = cityInput.value.trim();
-        if (city) {
-          saveSetting('weather_city', city);
-          
-          // Обновляем виджет в top-bar
-          const widgetLabel = document.querySelector('.focus-today-label');
-          if (widgetLabel) widgetLabel.textContent = city;
-          
-          // Визуальный фидбек на кнопке
+      applyBtn.addEventListener('click', async () => {
+        const rawVal = cityInput.value.trim();
+        if (!rawVal) return;
+
+        if (!selectedCityData || selectedCityData.name.toLowerCase() !== rawVal.toLowerCase()) {
+          try {
+            const res = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(rawVal)}&count=1&language=ru&format=json`);
+            const data = await res.json();
+            if (data && data.results && data.results.length > 0) {
+              const first = data.results[0];
+              selectedCityData = {
+                name: first.name,
+                lat: parseFloat(first.latitude),
+                lon: parseFloat(first.longitude)
+              };
+            } else {
+              selectedCityData = { name: rawVal, lat: 47.1167, lon: 51.8833 };
+            }
+          } catch (e) {
+            selectedCityData = { name: rawVal, lat: 47.1167, lon: 51.8833 };
+          }
+        }
+
+        if (selectedCityData) {
+          savedWeatherCityData = selectedCityData;
+          saveSetting('weather_city_data', selectedCityData);
+          saveSetting('weather_city', selectedCityData.name);
+          await fetchAndRenderWeather(selectedCityData);
+
           const originalText = applyBtn.textContent;
           applyBtn.textContent = 'Готово!';
           applyBtn.style.background = 'var(--ui-danger-strong, #ff6b6b)';
@@ -2442,7 +2526,7 @@
             applyBtn.style.background = '';
           }, 1500);
 
-          showToast(`Город изменен на: ${city}`);
+          showToast(`Погода установлена: ${selectedCityData.name}`);
         }
       });
     }
@@ -2452,10 +2536,18 @@
       if (settings['weatherToggle'] && weatherConfig) {
         weatherConfig.style.display = 'flex';
       }
-      if (settings['weather_city']) {
-        if (cityInput) cityInput.value = settings['weather_city'];
-        const widgetLabel = document.querySelector('.focus-today-label');
-        if (widgetLabel) widgetLabel.textContent = settings['weather_city'];
+      if (settings['weather_city_data']) {
+        try {
+          savedWeatherCityData = typeof settings['weather_city_data'] === 'string' ? JSON.parse(settings['weather_city_data']) : settings['weather_city_data'];
+        } catch (e) {
+          savedWeatherCityData = settings['weather_city_data'];
+        }
+        if (cityInput && savedWeatherCityData) cityInput.value = savedWeatherCityData.name;
+        if (settings['weatherToggle'] && savedWeatherCityData) {
+          fetchAndRenderWeather(savedWeatherCityData);
+        }
+      } else if (weatherWidget) {
+        weatherWidget.style.display = 'none';
       }
     });
   }
@@ -2475,10 +2567,29 @@
     }
     if (settingId === 'weatherToggle') {
       const weatherWidget = document.getElementById('weatherWidget');
-      if (weatherWidget) weatherWidget.style.display = isEnabled ? 'flex' : 'none';
       const weatherConfig = document.getElementById('weatherCardConfig');
       if (weatherConfig) weatherConfig.style.display = isEnabled ? 'flex' : 'none';
       document.body.classList.toggle('setting-show-weather', isEnabled);
+      if (isEnabled) {
+        if (savedWeatherCityData) {
+          fetchAndRenderWeather(savedWeatherCityData);
+        } else {
+          loadAllSettings((settings) => {
+            if (settings['weather_city_data']) {
+              try {
+                savedWeatherCityData = typeof settings['weather_city_data'] === 'string' ? JSON.parse(settings['weather_city_data']) : settings['weather_city_data'];
+              } catch (e) {
+                savedWeatherCityData = settings['weather_city_data'];
+              }
+              fetchAndRenderWeather(savedWeatherCityData);
+            } else if (weatherWidget) {
+              weatherWidget.style.display = 'none';
+            }
+          });
+        }
+      } else if (weatherWidget) {
+        weatherWidget.style.display = 'none';
+      }
     }
   }
 
