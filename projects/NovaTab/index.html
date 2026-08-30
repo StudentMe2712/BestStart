@@ -9,6 +9,10 @@
 </head>
 <body class="dark">
 
+  <!-- DYNAMIC BACKGROUND LAYERS (VIDEO & GLASS OVERLAY) -->
+  <video id="bg-video" class="bg-video-layer hidden" autoplay loop muted playsinline></video>
+  <div id="bg-overlay" class="bg-overlay-layer"></div>
+
   <!-- TOP NAV (BOARDS / TABS PILLS) -->
   <nav class="top-nav-container glass-panel" id="top-nav-bar">
     <div id="boards-pills-wrapper" class="boards-pills-wrapper"></div>
@@ -25,6 +29,12 @@
   <!-- MAIN SCROLLABLE VIEWPORT -->
   <main class="main-viewport custom-scrollbar" id="main-viewport">
     
+    <!-- Dynamic Quotes Module -->
+    <div id="quote-container" class="quote-container" title="Нажмите, чтобы обновить цитату">
+      <p id="quote-text" class="quote-text">«...»</p>
+      <span id="quote-author" class="quote-author">— ...</span>
+    </div>
+
     <!-- Category Cards Masonry / Grid Container -->
     <div id="cards-container" class="cards-masonry-grid">
       <!-- Category cards rendered dynamically by app.js -->
@@ -124,7 +134,7 @@
     </svg>
     <span class="tooltip-left">Сменить фон (ПКМ — сброс)</span>
   </button>
-  <input type="file" id="bg-file-input" accept="image/*" class="hidden">
+  <input type="file" id="bg-file-input" accept="image/*, video/mp4, video/webm, video/ogg" class="hidden">
 
   <!-- SEARCH MODAL (SEARCH PALETTE) -->
   <div id="search-modal" class="modal-overlay">
@@ -271,7 +281,7 @@
         <!-- Wallpaper Section -->
         <div class="settings-section">
           <h4 class="settings-section-title text-purple">Фон и Обои</h4>
-          <p class="settings-section-desc">Загрузите любое изображение. Оно автоматически оптимизируется (Full HD WebP 80%) для мгновенного отклика.</p>
+          <p class="settings-section-desc">Загрузите изображение или видео (MP4, WebM). Изображения оптимизируются в WebP 80%, а живые видео-обои сохраняются локально в IndexedDB.</p>
           <div class="settings-action-row">
             <button id="settings-upload-bg-btn" class="btn btn-secondary">
               <span>🖼️</span>
@@ -279,8 +289,16 @@
             </button>
             <button id="settings-reset-bg-btn" class="btn btn-danger">
               <span>↺</span>
-              <span>Сбросить градиент</span>
+              <span>Сбросить фон</span>
             </button>
+          </div>
+
+          <div class="settings-group" style="margin-top: 14px;">
+            <div class="settings-group-header">
+              <label for="overlay-opacity-slider" class="settings-label">Затемнение фона / Прозрачность</label>
+              <span id="overlay-opacity-value" class="settings-value-badge">30%</span>
+            </div>
+            <input type="range" id="overlay-opacity-slider" min="0" max="0.85" step="0.05" value="0.30" class="glass-slider">
           </div>
         </div>
 

@@ -1,7 +1,7 @@
 # NovaTab — Visual Bookmark Manager Specification
-**Version:** 1.3.0 (Enhanced Deletion & Root Folder Clearing System)  
+**Version:** 1.4.0 (Lively Video Wallpapers, Dynamic Quotes, Drag-and-Drop Sorting, IndexedDB Engine & Concurrency Mutex)  
 **Target Platform:** Google Chrome / Chromium-based Browsers (Manifest V3)  
-**Design Philosophy:** Ultra-modern, responsive Glassmorphism dashboard with hardware-accelerated backdrop blur, pure Native CSS3 design system, custom high-performance wallpaper engine, and board-based category organization.
+**Design Philosophy:** Ultra-modern, responsive Glassmorphism dashboard with hardware-accelerated backdrop blur, pure Native CSS3 design system, custom high-performance video & image wallpaper engine, and board-based category organization.
 
 ---
 
@@ -37,12 +37,15 @@ NovaTab is strictly engineered to comply with Chrome Manifest V3 Content Securit
         |        (background.js)          |               |      (index.html / app.js)      |
         +---------------------------------+               +---------------------------------+
         | • Global shortcut Ctrl+Shift+Y  |               | • 100% Native CSS3 Layout       |
-        | • Active tab metadata capture   |               | • Top Board Pills Navigation    |
-        | • Automatic target folder seed  |               | • Responsive Masonry Cards Grid |
-        | • Action badge visual feedback  |               | • Canvas WebP Wallpaper Engine  |
-        +---------------------------------+               | • Right Floating Tool Dock      |
+        | • Active tab metadata capture   |               | • Dynamic Quotes Module         |
+        | • Automatic target folder seed  |               | • Video Wallpapers & Overlay    |
+        | • Action badge visual feedback  |               | • Top Board Pills Drag-and-Drop |
+        +---------------------------------+               | • Responsive Masonry Cards Grid |
+                                                          | • Native IndexedDB (NovaTabDB)  |
+                                                          | • Right Floating Tool Dock      |
                                                           | • Live Search Palette (Up/Down) |
                                                           | • Real-time Chrome Event Sync   |
+                                                          | • Concurrency Mutex Lock        |
                                                           +---------------------------------+
                                                                            |
                                                                            v
@@ -62,127 +65,120 @@ NovaTab employs a multi-tiered glassmorphism visual hierarchy powered by standar
 | Class | Properties & Aesthetics | Use Case |
 | :--- | :--- | :--- |
 | `body` | `width: 100vw; height: 100vh; overflow: hidden; margin: 0; padding: 0; background-size: cover; background-position: center; background-repeat: no-repeat; background-attachment: fixed;` with default cyberpunk aurora mesh gradient. | Base canvas for wallpaper and gradient rendering. |
+| `.bg-video-layer` | `position: fixed; inset: 0; width: 100vw; height: 100vh; object-fit: cover; z-index: -2; pointer-events: none;` | Background HTML5 video layer for high-performance looping video wallpapers. |
+| `.bg-overlay-layer` | `position: fixed; inset: 0; width: 100vw; height: 100vh; z-index: -1; pointer-events: none; background-color: rgba(0, 0, 0, var(--overlay-opacity, 0.30)); transition: background-color var(--transition-fast);` | Adjustable dimming layer ensuring Glassmorphism readability over bright backgrounds. |
+| `.quote-container` | `display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; margin: 0 auto 26px auto; max-width: 820px; padding: 12px 24px; border-radius: var(--radius-lg); cursor: pointer;` | Centered dynamic inspirational quote capsule. |
 | `.glass-panel` | `background: var(--glass-bg-panel); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid var(--glass-border);` | Floating toolbar dock, top navbar capsule, modal backgrounds. |
 | `.glass-card` | `border-radius: var(--radius-lg); background: var(--glass-bg-card); backdrop-filter: blur(16px); border: 1px solid var(--glass-border); padding: 16px;` with hover lift `-2px` and purple ambient glow. | Category/folder bookmark cards in the masonry grid. |
 | `.glass-pill` | `background: var(--glass-bg-pill); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border: 1px solid var(--glass-border-subtle); border-radius: 9999px;` | Top nav board tabs, filter chips, secondary buttons. |
+| `.glass-pill.dragging` | `opacity: 0.4; transform: scale(0.95); border-style: dashed;` | Visual feedback for category pill being dragged. |
+| `.glass-pill.drag-over` | `border-color: #8b5cf6 !important; box-shadow: 0 0 12px rgba(139, 92, 246, 0.6) !important; transform: scale(1.05);` | Visual drop indicator for category pill target. |
 | `.glass-pill-active` | `background: linear-gradient(135deg, rgba(139, 92, 246, 0.75), rgba(99, 102, 241, 0.75)); backdrop-filter: blur(12px); border: 1px solid var(--glass-border-active); box-shadow: 0 0 15px rgba(139, 92, 246, 0.35);` | Currently selected board/filter pill and primary buttons. |
 | `.cards-masonry-grid` | `display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 20px; align-items: start;` | Dynamic responsive bookmark cards layout. |
 | `.floating-toolbar` | `position: fixed; right: 24px; top: 50%; transform: translateY(-50%); z-index: 50; border-radius: 9999px; padding: 12px 8px;` | Vertical quick-action dock on the right viewport edge. |
 | `.floating-bg-btn` | `position: fixed; bottom: 24px; left: 24px; z-index: 50; width: 48px; height: 48px; border-radius: 50%; display: flex; align-items: center; justify-content: center;` | Bottom-left instant wallpaper changer button. |
 | `.modal-overlay` & `.modal-box` | Fullscreen frosted overlay with scale-animated glassmorphic modal box and responsive sizes (`.modal-box-wide`). | Search palette, bookmark CRUD, folder creator, and settings dialogs. |
+| `.glass-slider` | Custom gradient-thumb range slider for background dimming and transparency adjustment. | Settings modal overlay opacity control. |
 | `.custom-scrollbar` | `scrollbar-width: thin; scrollbar-color: rgba(255, 255, 255, 0.2) transparent;` | Minimal unobtrusive scrollbar for viewport and search results. |
 
 ---
 
-## 3. Custom Background Processing Pipeline
+## 3. Dynamic Quotes Module
 
-To ensure instantaneous loading without hitting `chrome.storage.local` storage quota limits (5MB–10MB), custom user wallpapers are processed through an in-memory client-side compression pipeline:
+Positioned centered at the top of the main scrollable viewport above the category cards grid, the Quotes Module provides inspiring, philosophical, dark academia, and lo-fi quotes:
 
-```
-[ User Selects Image ]
-          │
-          ▼
-[ FileReader (readAsDataURL) ]
-          │
-          ▼
-[ Image() Instance Loaded ]
-          │
-          ▼
-[ Aspect-Ratio Preserving Downscale ]
-  Max Width: 1920px, Max Height: 1080px
-          │
-          ▼
-[ HTML5 2D Canvas Rasterization ]
-          │
-          ▼
-[ Canvas Compression ]
-  canvas.toDataURL('image/webp', 0.8)
-  Fallback: canvas.toDataURL('image/jpeg', 0.85)
-          │
-          ▼
-[ chrome.storage.local.set({ customBackground: dataUrl }) ]
-  (Fallback to localStorage in standalone web mode)
-          │
-          ▼
-[ Direct DOM Update: document.body.style.backgroundImage = 'url(...)']
-```
-
-### Reset Mechanism
-- Right-clicking (`contextmenu`) on the `#bg-change-btn` or selecting "Сбросить градиент" in Settings clears the custom background key from storage and restores the default cyber-neon mesh gradient.
+- **Curated Quote Bank:**
+  1. *"You only live once, but if you do it right, once is enough."* — Mae West
+  2. *"The quieter you become, the more you are able to hear."* — Ram Dass
+  3. *"Simplicity is the soul of efficiency."* — Austin Freeman
+  4. *"The secret of getting ahead is getting started."* — Mark Twain
+  5. *"Waste no more time arguing what a good man should be. Be one."* — Marcus Aurelius
+  6. *"Muddy water is best cleared by leaving it alone."* — Alan Watts
+  7. *"We suffer more often in imagination than in reality."* — Seneca
+  8. *"Everything you can imagine is real."* — Pablo Picasso
+  9. *"Stay hungry, stay foolish."* — Steve Jobs
+  10. *"Do what you can, with what you have, where you are."* — Theodore Roosevelt
+- **Interaction & Animation:** On initial load (`DOMContentLoaded` / `init`), a random quote is rendered. Clicking anywhere on the `.quote-container` smoothly rolls another random quote (with anti-repetition guarantee) using subtle CSS fade and translateY animations.
 
 ---
 
-## 4. UI Layout & Component Architecture
+## 4. Lively Video Wallpapers & Native IndexedDB Storage Engine
 
-### 4.1 Top Nav (Boards / Tabs)
-- Centered at the top: `.top-nav-container.glass-panel`.
-- Contains "✦ Все доски" master pill plus dynamic pills for top bookmark folders (e.g. `📺 Стриминг`, `🎮 Гейминг`, `💻 Разработка`, `🤖 AI Platforms`), filtered and deduplicated.
-- **Board Pill Deletion Button (`.delete-board-btn`):**
-  - Rendered inside each custom folder pill (excluding system "✦ Все доски" and protected root IDs `'0'`, `'1'`, `'2'`, `'mobile'`).
-  - **Hover & Touch Reveal:** Default state is collapsed on desktop, smoothly expanding to `16x16px` on pill hover or focus-within. On touch/mobile devices (`@media (hover: none) or (max-width: 768px)`), visible with comfortable hit target. Hovering directly on the cross icon triggers danger red highlight (`#F87171` color, `rgba(239, 68, 68, 0.25)` background, and `scale(1.15)` transform).
-  - **Click Isolation & Safety:** Click handler strictly executes `event.stopPropagation()` and `event.preventDefault()` to prevent activating the tab/board when deleting.
-  - **Deletion Workflow:** Invokes `deleteCategoryFolder(folder)` with confirmation prompt (`window.confirm`), recursively removes bookmarks via `chrome.bookmarks.removeTree` (or in-memory mock tree pruning in standalone mode), resets active board to `'all'` if the deleted folder was active, displays toast feedback, and reloads the UI.
-- Invisible scrollbar rule (`scrollbar-width: none; ::-webkit-scrollbar { display: none; }`) preserving clean look.
-- Interactive horizontal mouse-wheel scrolling support on `#boards-pills-wrapper` for seamless overflow browsing.
-- "+ Новая доска" quick creator button to instantiate new bookmark categories.
+To support large video files and high-resolution images without quota restrictions, NovaTab implements a native IndexedDB storage engine (`WallpaperDB`):
 
-### 4.2 Main Viewport & Category Cards
-- `height: calc(100vh - 78px); margin-top: 78px; overflow-y: auto; padding: 24px 80px 48px 40px;`
-- Responsive dynamic columns (`.cards-masonry-grid` / `.cards-masonry-grid.list-layout`).
-- Inside each `.glass-card`:
-  - **Header:** Folder title, item counter badge, quick "+" add bookmark button, and deletion/clearing actions:
-    - **User-Created Folders:** "🗑" folder deletion button (`.btn-delete-card`) with subtle red hover styling and confirmation dialog (`chrome.bookmarks.removeTree`).
-    - **System / Root Containers (e.g. " Панель закладок / ⭐ Быстрый доступ"):** "🧹/🗑" category clearing button (`.btn-clear-card`) rendered whenever bookmarks exist (`bookmarks.length > 0`), allowing users to clean all bookmarks inside the root category safely via `chrome.bookmarks.remove(bm.id)`.
-  - **Bookmark Rows:** 16px Favicon (with Google S2 & letter avatar fallback), title, domain label, and streamlined action dock with Edit (`.action-edit`) and Delete (`.action-delete`) actions, hidden by default (`opacity: 0; pointer-events: none; transform: translateX(4px)`) and smoothly revealed only upon row hover or focus (`opacity: 1; pointer-events: auto; transform: translateX(0)`).
-  - **Bookmark Delete Button:** `.item-action-btn.btn-delete:hover` glows in danger red (`#F87171` text, `rgba(239, 68, 68, 0.25)` background) for clear visual feedback.
+### 4.1 Database Architecture (`WallpaperDB`)
+- **Database Name:** `NovaTabDB` (Version `1`)
+- **Object Store:** `wallpapers`
+- **Key:** `'activeWallpaper'`
+- **Record Schema:** `{ blob: Blob/File, type: 'video' | 'image', name: string, updatedAt: number }`
+- **Methods:**
+  - `init()`: Opens IndexedDB connection with auto-upgraded schema.
+  - `save(blob, type, name)`: Asynchronously stores media blob.
+  - `get()`: Retrieves active wallpaper record.
+  - `clear()`: Deletes stored wallpaper and releases storage.
 
-### 4.3 Right Floating Toolbar Dock
-- Fixed vertical capsule at `right: 24px, top: 50%`.
-- Glass buttons with hover tooltips:
-  1. **Search (`/`):** Launches the fuzzy search palette modal.
-  2. **Add (`+`):** Opens bookmark creation modal.
-  3. **Folder (`📁`):** Opens folder / board creation modal.
-  4. **View Toggle (`🔲`):** Switches between multi-column grid and single-column list.
-  5. **Random Bookmark (`⚡`):** Picks and opens a random bookmark from the library.
-  6. **Settings (`⚙️`):** Opens the NovaTab settings modal (wallpaper manager, statistics).
-
-### 4.4 Live Search Palette Modal
-- Triggered globally via `/` key or toolbar search icon.
-- Real-time search across titles, URLs, domains, and folder names.
-- Full keyboard navigation:
-  - `↑` / `↓` Arrow keys to navigate matches with active highlight.
-  - `Enter` to open selected bookmark URL immediately.
-  - `Escape` to close palette.
-
-### 4.5 System Root Folder Protection Rules & Clearing Capability
-To avoid Chrome Bookmarks API runtime exceptions (`Error: Can't modify the root bookmark folders`), NovaTab implements strict multi-tiered protection combined with root container bookmark clearing:
-- **Chrome API Constraints:** Chrome strictly forbids executing `chrome.bookmarks.removeTree()` or `chrome.bookmarks.remove()` on root folders (`id: "0"`, `"1"` - Bookmarks Bar / Панель закладок, `"2"` - Other Bookmarks / Другие закладки, `"3"` / `"mobile"` - Mobile Bookmarks / Мобильные закладки, `parentId === "0"`, or nodes marked `unmodifiable: "managed"`).
-- **System Node Tagging (`parseBookmarkNodes`):** During tree traversal, folder objects are tagged with `isSystem: Boolean(...)` based on node IDs, parent ID hierarchy, and unmodifiable flags.
-- **Validation Engine (`isRootOrSystemFolder`):** A centralized helper inspects folder IDs, parent IDs, system flags, and localized system titles ("Панель закладок", "Bookmarks Bar", "⭐ Быстрый доступ", etc.) to definitively identify root containers.
-- **Root Clearing Engine (`clearCategoryBookmarks`):** When bookmarks exist directly in a root container (e.g. `id: '1'`), the card header renders `.btn-clear-card`. Clicking prompts the user and iterates over each bookmark, removing them individually with `chrome.bookmarks.remove(bm.id)` without violating root folder modification constraints.
-- **Defensive API Guard (`deleteCategoryFolder`):** Programmatically aborts folder tree deletion attempts on system folders with an informative toast notice (`Системную папку браузера нельзя удалить`) and catches any Chrome API rejections gracefully.
+### 4.2 Wallpaper Processing Pipeline
+- **Video Uploads (`video/mp4`, `video/webm`, `video/ogg`):**
+  1. Stored directly as a binary `Blob`/`File` in `NovaTabDB`.
+  2. Object URL generated via `URL.createObjectURL(blob)`.
+  3. Bound to `#bg-video` layer (`autoplay`, `loop`, `muted`, `playsinline`), unhidden and played.
+  4. Static background reset (`document.body.style.backgroundImage = 'none'`).
+  5. Storage metadata updated (`{ wallpaperType: 'video' }`).
+- **Image Uploads (`image/*`):**
+  1. Canvas aspect-ratio downscale to max 1920x1080.
+  2. WebP 80% compression (fallback JPEG 85%).
+  3. Stored in IndexedDB and cached in `chrome.storage.local`.
+  4. Video stopped, hidden, and previous object URLs revoked via `URL.revokeObjectURL()`.
+  5. Applied to `document.body.style.backgroundImage`.
+- **Adjustable Dimming Overlay & Glassmorphism Slider:**
+  - `#bg-overlay` layer with `--overlay-opacity` CSS Custom Property (default `0.30`, range `0`–`0.85`).
+  - Real-time interactive slider in Settings modal updates dimming and persists preference in storage.
+- **Reset Mechanism:**
+  - Clears `WallpaperDB`, stops/hides video, revokes object URLs, removes background image, and restores default cyberpunk aurora neon mesh gradient.
 
 ---
 
-## 5. Favicon Resolution Strategy
+## 5. Drag-and-Drop Category Sorting
 
-1. **Tier 1 (Chrome Mv3 Context):**
-   `chrome-extension://${chrome.runtime.id}/_favicon/?pageUrl=${encodeURIComponent(url)}&size=16`
-2. **Tier 2 (Google S2 Favicon API):**
-   `https://www.google.com/s2/favicons?domain=${encodeURIComponent(hostname)}&sz=32`
-3. **Tier 3 (Client Fallback):**
-   Generated letter avatar with consistent domain-hashed color palette (`hsl(hue, 65%, 50%)`).
+Users can reorder category board tabs directly in the top navigation bar via intuitive HTML5 drag-and-drop:
+
+- **Draggable Elements:** All custom category folder pills (excluding the master "✦ Все доски" pill) are marked `draggable="true"`.
+- **Drag Events:**
+  - `dragstart`: Captures `state.draggedFolderId` and sets `dataTransfer.setData('text/plain', folder.id)`, applying `.dragging` class (dashed border, `0.4` opacity).
+  - `dragover`: Prevents default, sets `dropEffect = 'move'`, and applies `.drag-over` class (purple glow highlight, `scale(1.05)`).
+  - `dragleave`: Cleans up `.drag-over` styling.
+  - `dragend`: Resets drag state and clears styling from all pills.
+  - `drop`: Calculates dragged folder ID and drop target folder ID.
+    - **Extension Mode:** Identifies target folder index in parent bookmark container and reorders via `chrome.bookmarks.move(draggedId, { parentId, index: targetIndex })`.
+    - **Standalone / Mock Mode:** Reorders in `state.allFolders` and `MOCK_BOOKMARK_TREE`.
+    - Automatically refreshes the UI via `loadBookmarks()` with toast feedback (`Порядок досок обновлен!`).
 
 ---
 
-## 6. Implementation Checklist & Status
+## 6. Concurrency Mutex & Concurrency Race Condition Prevention
 
-- [x] **100% Manifest V3 CSP Compliance:** Removed Tailwind CDN and inline configuration, removed inline handlers, zero remote dependencies, zero `eval()`, pure native event binding.
+To eliminate race conditions between explicit UI CRUD operations and Chrome reactive bookmark listeners:
+
+### 6.1 Mutex Reload Lock (`isLoadingBookmarks` & `pendingBookmarkReload`)
+When user actions (e.g. deleting or moving bookmarks/folders) trigger an immediate `await loadBookmarks()` while Chrome simultaneously fires reactive lifecycle listeners (`chrome.bookmarks.onRemoved`, `chrome.bookmarks.onMoved`), the mutex ensures:
+1. Only ONE asynchronous bookmarks tree traversal executes at any time.
+2. Interleaved calls set `pendingBookmarkReload = true` and return immediately.
+3. Upon completion of the active reload, the lock invokes the pending reload once, guaranteeing consistent state.
+
+### 6.2 Atomic State Swapping & Multi-Level Folder Deduplication
+- `parseBookmarkNodes` builds temporary local arrays (`tempAllBookmarks`, `tempAllFolders`) and Maps (`tempFolderMap`, `tempBookmarksByFolder`) in memory before atomically updating `state`.
+- `renderCardsView` uses a strict `Set` of folder IDs (`seenCardFolderIds`) to deduplicate categories and ensures the root container (`id: '1'`) renders at most ONE card for its loose bookmarks only when direct bookmarks exist.
+
+---
+
+## 7. Implementation Checklist & Status
+
+- [x] **100% Manifest V3 CSP Compliance:** Removed Tailwind CDN, zero inline handlers, zero remote dependencies, zero `eval()`, pure native event binding.
 - [x] **Pure Native CSS3 Refactor (`style.css`):** Comprehensive CSS variables, glassmorphism design tokens (`.glass-panel`, `.glass-card`, `.glass-pill`, `.glass-pill-active`), responsive grid, modals, and toolbars.
-- [x] **Semantic HTML Architecture (`index.html`):** Pristine `<head>` with only required meta/title/link elements, semantic classes, clean empty `#boards-pills-wrapper`, and single bottom script tag.
-- [x] **Wallpaper Engine & Compression (`app.js`):** Canvas downscaling to 1920x1080, WebP 80% compression, `chrome.storage.local` persistence, right-click reset.
-- [x] **Dynamic Chrome Bookmarks Parser & Category Management (`app.js`):** Tree crawling, folder grouping into cards, category folder deletion (`chrome.bookmarks.removeTree`), rich standalone mock data fallback, live reactive listeners (`onCreated`, `onRemoved`, `onChanged`, `onMoved`).
-- [x] **Root Container Clearing Capability (`app.js`):** Implemented `.btn-clear-card` and `clearCategoryBookmarks` to safely clear bookmarks from system/root categories (e.g. "Панель закладок" / "⭐ Быстрый доступ") via `chrome.bookmarks.remove(bm.id)`.
-- [x] **Streamlined Hover-Only Bookmark Actions & Delete Feedback:** Streamlined bookmark row actions exclusively to Edit and Delete, hidden by default (`opacity: 0; pointer-events: none; transform: translateX(4px)`) and smoothly revealed only upon hover or focus (`opacity: 1; pointer-events: auto; transform: translateX(0)`), with bright red hover states on `.item-action-btn.btn-delete:hover` (`#F87171` / `rgba(239, 68, 68, 0.25)`).
-- [x] **Responsive Tab Bar & Navigation Usability:** Invisible scrollbars, deduplicated dynamic board pills, hover & touch revealed pill deletion buttons (`.delete-board-btn`) with isolated event bubbling, horizontal mouse-wheel scrolling support.
+- [x] **Dynamic Quotes Module (`index.html`, `style.css`, `app.js`):** Curated inspirational quote collection, random roll on load and click, soft text shadow, responsive container.
+- [x] **Lively Video Wallpapers & Native IndexedDB Engine (`app.js`, `style.css`, `index.html`):** Native `NovaTabDB` IndexedDB store for video/image blobs, HTML5 video background layer, adjustable dimming overlay with Settings slider (`--overlay-opacity`).
+- [x] **Drag-and-Drop Category Sorting (`app.js`, `style.css`):** HTML5 drag-and-drop on category pills with `chrome.bookmarks.move` integration and mock tree reordering.
+- [x] **Concurrency Mutex & Duplicate Folder Prevention (`app.js`):** Asynchronous mutex lock (`isLoadingBookmarks`, `pendingBookmarkReload`), atomic state swap, strict `seenCardFolderIds` card deduplication.
+- [x] **Root Container Clearing Capability (`app.js`):** Implemented `.btn-clear-card` and `clearCategoryBookmarks` to safely clear bookmarks from system/root categories via `chrome.bookmarks.remove(bm.id)`.
+- [x] **Streamlined Hover-Only Bookmark Actions & Delete Feedback:** Streamlined bookmark row actions exclusively to Edit and Delete with red hover glow on `.item-action-btn.btn-delete:hover`.
 - [x] **Interactive Controls & Hotkeys:** Global `/` search shortcut, search palette keyboard navigation (`↑`, `↓`, `Enter`, `Escape`), board filtering, bookmark CRUD, view mode toggle.

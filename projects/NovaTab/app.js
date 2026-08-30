@@ -25,10 +25,49 @@
     searchQuery: '',
     currentSearchResults: [],
     selectedSearchIndex: -1,
-    editingBookmarkId: null
+    editingBookmarkId: null,
+    draggedFolderId: null
   };
 
-  // --- 2. RICH MOCK DATA FOR LOCAL / STANDALONE PREVIEW ---
+  // --- 2. DYNAMIC QUOTES MODULE DATA ---
+  const QUOTES = [
+    { text: 'You only live once, but if you do it right, once is enough.', author: 'Mae West' },
+    { text: 'The quieter you become, the more you are able to hear.', author: 'Ram Dass' },
+    { text: 'Simplicity is the soul of efficiency.', author: 'Austin Freeman' },
+    { text: 'The secret of getting ahead is getting started.', author: 'Mark Twain' },
+    { text: 'Waste no more time arguing what a good man should be. Be one.', author: 'Marcus Aurelius' },
+    { text: 'Muddy water is best cleared by leaving it alone.', author: 'Alan Watts' },
+    { text: 'We suffer more often in imagination than in reality.', author: 'Seneca' },
+    { text: 'Everything you can imagine is real.', author: 'Pablo Picasso' },
+    { text: 'Stay hungry, stay foolish.', author: 'Steve Jobs' },
+    { text: 'Do what you can, with what you have, where you are.', author: 'Theodore Roosevelt' }
+  ];
+
+  let currentQuoteIndex = -1;
+
+  function renderRandomQuote() {
+    if (!elements.quoteContainer || !elements.quoteText || !elements.quoteAuthor) return;
+    if (QUOTES.length === 0) return;
+
+    let newIndex;
+    do {
+      newIndex = Math.floor(Math.random() * QUOTES.length);
+    } while (QUOTES.length > 1 && newIndex === currentQuoteIndex);
+    currentQuoteIndex = newIndex;
+    const quote = QUOTES[newIndex];
+
+    elements.quoteContainer.style.opacity = '0';
+    elements.quoteContainer.style.transform = 'translateY(-4px)';
+
+    setTimeout(() => {
+      elements.quoteText.textContent = `«${quote.text}»`;
+      elements.quoteAuthor.textContent = `— ${quote.author}`;
+      elements.quoteContainer.style.opacity = '1';
+      elements.quoteContainer.style.transform = 'translateY(0)';
+    }, 150);
+  }
+
+  // --- 3. RICH MOCK DATA FOR LOCAL / STANDALONE PREVIEW ---
   const MOCK_BOOKMARK_TREE = [
     {
       id: '0',
@@ -116,8 +155,17 @@
     }
   ];
 
-  // --- 3. DOM ELEMENTS CACHE ---
+  // --- 4. DOM ELEMENTS CACHE ---
   const elements = {
+    // Background Layers & Dimming
+    bgVideo: document.getElementById('bg-video'),
+    bgOverlay: document.getElementById('bg-overlay'),
+
+    // Dynamic Quotes
+    quoteContainer: document.getElementById('quote-container'),
+    quoteText: document.getElementById('quote-text'),
+    quoteAuthor: document.getElementById('quote-author'),
+
     // Top Nav Boards
     boardsPillsWrapper: document.getElementById('boards-pills-wrapper'),
     btnAddBoard: document.getElementById('btn-add-board'),
@@ -177,11 +225,87 @@
     settingsBtnDone: document.getElementById('settings-btn-done'),
     settingsUploadBgBtn: document.getElementById('settings-upload-bg-btn'),
     settingsResetBgBtn: document.getElementById('settings-reset-bg-btn'),
+    overlayOpacitySlider: document.getElementById('overlay-opacity-slider'),
+    overlayOpacityValue: document.getElementById('overlay-opacity-value'),
     settingsStatBookmarks: document.getElementById('settings-stat-bookmarks'),
     settingsStatFolders: document.getElementById('settings-stat-folders'),
 
     // Toast Container
     toastContainer: document.getElementById('toast-container')
+  };
+
+  // --- 5. NATIVE INDEXEDDB WALLPAPER ENGINE ---
+  const WallpaperDB = {
+    db: null,
+
+    async init() {
+      if (this.db) return this.db;
+      return new Promise((resolve, reject) => {
+        const req = indexedDB.open('NovaTabDB', 1);
+        req.onupgradeneeded = (e) => {
+          const db = e.target.result;
+          if (!db.objectStoreNames.contains('wallpapers')) {
+            db.createObjectStore('wallpapers');
+          }
+        };
+        req.onsuccess = (e) => {
+          this.db = e.target.result;
+          resolve(this.db);
+        };
+        req.onerror = (e) => {
+          console.error('[WallpaperDB] Open error:', e);
+          reject(e);
+        };
+      });
+    },
+
+    async save(blob, type, name = '') {
+      try {
+        const db = await this.init();
+        return new Promise((resolve, reject) => {
+          const tx = db.transaction('wallpapers', 'readwrite');
+          const store = tx.objectStore('wallpapers');
+          const record = { blob, type, name, updatedAt: Date.now() };
+          const req = store.put(record, 'activeWallpaper');
+          req.onsuccess = () => resolve(true);
+          req.onerror = (e) => reject(e);
+        });
+      } catch (e) {
+        console.error('[WallpaperDB] Save error:', e);
+        throw e;
+      }
+    },
+
+    async get() {
+      try {
+        const db = await this.init();
+        return new Promise((resolve, reject) => {
+          const tx = db.transaction('wallpapers', 'readonly');
+          const store = tx.objectStore('wallpapers');
+          const req = store.get('activeWallpaper');
+          req.onsuccess = (e) => resolve(e.target.result || null);
+          req.onerror = (e) => reject(e);
+        });
+      } catch (e) {
+        console.error('[WallpaperDB] Get error:', e);
+        return null;
+      }
+    },
+
+    async clear() {
+      try {
+        const db = await this.init();
+        return new Promise((resolve, reject) => {
+          const tx = db.transaction('wallpapers', 'readwrite');
+          const store = tx.objectStore('wallpapers');
+          const req = store.delete('activeWallpaper');
+          req.onsuccess = () => resolve(true);
+          req.onerror = (e) => reject(e);
+        });
+      } catch (e) {
+        console.error('[WallpaperDB] Clear error:', e);
+      }
+    }
   };
 
   // --- 4. UTILITIES ---
@@ -274,221 +398,226 @@
     }
   }
 
-  // --- 5. CUSTOM BACKGROUND COMPRESSION & STORAGE ENGINE ---
+  // --- 7. WALLPAPER ENGINE (VIDEO & IMAGE + INDEXEDDB) ---
 
-  function applyBackground(dataUrl) {
-    if (dataUrl) {
-      document.body.style.backgroundImage = `url("${dataUrl}")`;
+  let currentVideoBlobUrl = null;
+  let currentImageBlobUrl = null;
+
+  function stopAndHideVideo() {
+    if (elements.bgVideo) {
+      elements.bgVideo.pause();
+      elements.bgVideo.removeAttribute('src');
+      elements.bgVideo.load();
+      elements.bgVideo.classList.add('hidden');
+    }
+    if (currentVideoBlobUrl) {
+      URL.revokeObjectURL(currentVideoBlobUrl);
+      currentVideoBlobUrl = null;
+    }
+  }
+
+  function setVideoWallpaper(blob) {
+    stopAndHideVideo();
+    if (currentImageBlobUrl) {
+      URL.revokeObjectURL(currentImageBlobUrl);
+      currentImageBlobUrl = null;
+    }
+    currentVideoBlobUrl = URL.createObjectURL(blob);
+    if (elements.bgVideo) {
+      elements.bgVideo.src = currentVideoBlobUrl;
+      elements.bgVideo.classList.remove('hidden');
+      elements.bgVideo.play().catch(err => console.warn('[NovaTab] Video playback notification:', err));
+    }
+    document.body.style.backgroundImage = 'none';
+  }
+
+  function applyImageBackground(dataOrBlobUrl) {
+    stopAndHideVideo();
+    if (dataOrBlobUrl) {
+      document.body.style.backgroundImage = `url("${dataOrBlobUrl}")`;
     } else {
       document.body.style.backgroundImage = '';
     }
   }
 
+  function setOverlayOpacity(val) {
+    const num = Math.max(0, Math.min(0.85, parseFloat(val) || 0.30));
+    document.documentElement.style.setProperty('--overlay-opacity', num.toString());
+    if (elements.overlayOpacitySlider) {
+      elements.overlayOpacitySlider.value = num.toString();
+    }
+    if (elements.overlayOpacityValue) {
+      elements.overlayOpacityValue.textContent = `${Math.round(num * 100)}%`;
+    }
+  }
+
+  function handleOverlayOpacityChange(e) {
+    const val = parseFloat(e.target.value);
+    setOverlayOpacity(val);
+    if (state.isExtension && chrome.storage?.local) {
+      chrome.storage.local.set({ overlayOpacity: val });
+    } else {
+      localStorage.setItem('novatab_overlayOpacity', val.toString());
+    }
+  }
+
   async function loadSavedBackground() {
     try {
-      if (state.isExtension && chrome.storage?.local) {
-        const stored = await chrome.storage.local.get(['customBackground', 'viewMode']);
-        if (stored.customBackground) {
-          applyBackground(stored.customBackground);
-        }
-        if (stored.viewMode) {
-          state.viewMode = stored.viewMode;
+      // 1. Try loading from native IndexedDB
+      const savedWallpaper = await WallpaperDB.get();
+      if (savedWallpaper && savedWallpaper.blob) {
+        if (savedWallpaper.type === 'video' || (savedWallpaper.blob.type && savedWallpaper.blob.type.startsWith('video/'))) {
+          setVideoWallpaper(savedWallpaper.blob);
+        } else {
+          if (currentImageBlobUrl) URL.revokeObjectURL(currentImageBlobUrl);
+          currentImageBlobUrl = URL.createObjectURL(savedWallpaper.blob);
+          applyImageBackground(currentImageBlobUrl);
         }
       } else {
-        const savedBg = localStorage.getItem('novatab_customBackground');
-        if (savedBg) applyBackground(savedBg);
+        // Fallback to storage
+        if (state.isExtension && chrome.storage?.local) {
+          const stored = await chrome.storage.local.get(['customBackground', 'wallpaperType']);
+          if (stored.customBackground && stored.wallpaperType !== 'video') {
+            applyImageBackground(stored.customBackground);
+          }
+        } else {
+          const savedBg = localStorage.getItem('novatab_customBackground');
+          const savedType = localStorage.getItem('novatab_wallpaperType');
+          if (savedBg && savedType !== 'video') {
+            applyImageBackground(savedBg);
+          }
+        }
+      }
+
+      // 2. Load View Mode & Overlay Opacity
+      let overlayOpacity = 0.30;
+      if (state.isExtension && chrome.storage?.local) {
+        const stored = await chrome.storage.local.get(['viewMode', 'overlayOpacity']);
+        if (stored.viewMode) state.viewMode = stored.viewMode;
+        if (stored.overlayOpacity !== undefined) overlayOpacity = parseFloat(stored.overlayOpacity);
+      } else {
         const savedView = localStorage.getItem('novatab_viewMode');
         if (savedView) state.viewMode = savedView;
+        const savedOpacity = localStorage.getItem('novatab_overlayOpacity');
+        if (savedOpacity !== null) overlayOpacity = parseFloat(savedOpacity);
       }
+      setOverlayOpacity(overlayOpacity);
+
     } catch (e) {
-      console.warn('[NovaTab] Failed loading background from storage:', e);
+      console.warn('[NovaTab] Failed loading background from storage/IndexedDB:', e);
     }
     updateViewModeUI();
   }
 
-  function handleBgFileSelect(e) {
+  async function handleBgFileSelect(e) {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const img = new Image();
-      img.onload = () => {
-        // High quality scale down to max 1920x1080 maintaining aspect ratio
-        let width = img.width;
-        let height = img.height;
-        const maxW = 1920;
-        const maxH = 1080;
-
-        if (width > maxW || height > maxH) {
-          const ratio = Math.min(maxW / width, maxH / height);
-          width = Math.round(width * ratio);
-          height = Math.round(height * ratio);
-        }
-
-        const canvas = document.createElement('canvas');
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(img, 0, 0, width, height);
-
-        let dataUrl;
-        try {
-          dataUrl = canvas.toDataURL('image/webp', 0.8);
-        } catch {
-          dataUrl = canvas.toDataURL('image/jpeg', 0.85);
-        }
-
-        // Store compressed background
+    if (file.type.startsWith('video/')) {
+      try {
+        await WallpaperDB.save(file, 'video', file.name);
+        setVideoWallpaper(file);
         if (state.isExtension && chrome.storage?.local) {
-          chrome.storage.local.set({ customBackground: dataUrl }, () => {
-            applyBackground(dataUrl);
-            showToast('Пользовательский фон успешно сохранен!');
-          });
+          chrome.storage.local.set({ wallpaperType: 'video' });
+          chrome.storage.local.remove('customBackground');
         } else {
-          try {
-            localStorage.setItem('novatab_customBackground', dataUrl);
-            applyBackground(dataUrl);
-            showToast('Пользовательский фон успешно сохранен!');
-          } catch (storageErr) {
-            console.warn('[NovaTab] LocalStorage quota exceeded:', storageErr);
-            applyBackground(dataUrl);
-            showToast('Фон применен на текущую сессию');
-          }
+          localStorage.setItem('novatab_wallpaperType', 'video');
+          localStorage.removeItem('novatab_customBackground');
         }
+        showToast('Видео-обои установлены!');
+      } catch (err) {
+        console.error('[NovaTab] Failed saving video wallpaper:', err);
+        showToast('Ошибка сохранения видео', 'error');
+      }
+    } else if (file.type.startsWith('image/')) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const img = new Image();
+        img.onload = () => {
+          let width = img.width;
+          let height = img.height;
+          const maxW = 1920;
+          const maxH = 1080;
+
+          if (width > maxW || height > maxH) {
+            const ratio = Math.min(maxW / width, maxH / height);
+            width = Math.round(width * ratio);
+            height = Math.round(height * ratio);
+          }
+
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+
+          let dataUrl;
+          try {
+            dataUrl = canvas.toDataURL('image/webp', 0.8);
+          } catch {
+            dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+          }
+
+          canvas.toBlob(async (blob) => {
+            if (blob) {
+              await WallpaperDB.save(blob, 'image', file.name);
+            }
+          }, 'image/webp', 0.8);
+
+          if (state.isExtension && chrome.storage?.local) {
+            chrome.storage.local.set({ customBackground: dataUrl, wallpaperType: 'image' }, () => {
+              applyImageBackground(dataUrl);
+              showToast('Пользовательский фон успешно сохранен!');
+            });
+          } else {
+            try {
+              localStorage.setItem('novatab_customBackground', dataUrl);
+              localStorage.setItem('novatab_wallpaperType', 'image');
+              applyImageBackground(dataUrl);
+              showToast('Пользовательский фон успешно сохранен!');
+            } catch (storageErr) {
+              console.warn('[NovaTab] LocalStorage quota exceeded:', storageErr);
+              applyImageBackground(dataUrl);
+              showToast('Фон применен на текущую сессию');
+            }
+          }
+        };
+        img.src = event.target.result;
       };
-      img.src = event.target.result;
-    };
-    reader.readAsDataURL(file);
-    // Reset file input value so user can re-select same file if needed
+      reader.readAsDataURL(file);
+    } else {
+      showToast('Неподдерживаемый формат файла', 'error');
+    }
     e.target.value = '';
   }
 
-  function resetBackground() {
+  async function resetBackground() {
+    stopAndHideVideo();
+    if (currentImageBlobUrl) {
+      URL.revokeObjectURL(currentImageBlobUrl);
+      currentImageBlobUrl = null;
+    }
+    await WallpaperDB.clear();
     if (state.isExtension && chrome.storage?.local) {
-      chrome.storage.local.remove('customBackground', () => {
-        applyBackground(null);
+      chrome.storage.local.remove(['customBackground', 'wallpaperType'], () => {
+        applyImageBackground(null);
         showToast('Фон сброшен по умолчанию');
       });
     } else {
       localStorage.removeItem('novatab_customBackground');
-      applyBackground(null);
+      localStorage.removeItem('novatab_wallpaperType');
+      applyImageBackground(null);
       showToast('Фон сброшен по умолчанию');
     }
   }
 
-  // --- 6. BOOKMARK PARSING & HIERARCHY ---
-
-  function isRootOrSystemFolder(folder) {
-    if (!folder) return true;
-    if (folder.isSystem) return true;
-    const id = String(folder.id || '');
-    const parentId = String(folder.parentId || '');
-    if (id === '0' || id === '1' || id === '2' || id === '3' || id === 'mobile' || id === 'root') return true;
-    if (parentId === '0' || parentId === '' || folder.unmodifiable) return true;
-    const title = (folder.title || '').trim().toLowerCase();
-    if (title === 'панель закладок' || title === 'bookmarks bar' || title === 'другие закладки' || 
-        title === 'other bookmarks' || title === 'мобильные закладки' || title === 'mobile bookmarks' ||
-        title === '⭐ быстрый доступ' || title === 'быстрый доступ') {
-      return true;
-    }
-    return false;
-  }
-
-  function parseBookmarkNodes(nodes, parentPath = [], parentId = null) {
-    for (const node of nodes) {
-      if (node.url) {
-        // Bookmark item
-        const hostname = extractHostname(node.url);
-        const folderName = parentPath[parentPath.length - 1] || 'Избранное';
-        const bookmark = {
-          id: String(node.id),
-          parentId: String(parentId || node.parentId || '1'),
-          title: node.title || hostname || 'Без названия',
-          url: node.url,
-          dateAdded: node.dateAdded || Date.now(),
-          hostname,
-          folderName,
-          folderPath: [...parentPath]
-        };
-        state.allBookmarks.push(bookmark);
-
-        if (!state.bookmarksByFolder.has(bookmark.parentId)) {
-          state.bookmarksByFolder.set(bookmark.parentId, []);
-        }
-        state.bookmarksByFolder.get(bookmark.parentId).push(bookmark);
-      } else if (node.children || (!node.url && node.title !== undefined)) {
-        // Folder node
-        const isRootWrapper = node.id === '0' || node.title === 'Root' || node.title === '';
-        const currentPath = isRootWrapper ? parentPath : [...parentPath, node.title];
-
-        if (!isRootWrapper) {
-          const isSystem = Boolean(
-            node.id === '0' ||
-            node.id === '1' ||
-            node.id === '2' ||
-            node.id === '3' ||
-            node.id === 'mobile' ||
-            String(parentId || node.parentId) === '0' ||
-            node.unmodifiable
-          );
-          const folderObj = {
-            id: String(node.id),
-            title: node.title || 'Папка',
-            parentId: String(parentId || node.parentId || '0'),
-            path: currentPath,
-            depth: currentPath.length - 1,
-            childrenFolderIds: [],
-            isSystem
-          };
-          state.allFolders.push(folderObj);
-          state.folderMap.set(folderObj.id, folderObj);
-
-          if (parentId && state.folderMap.has(parentId)) {
-            state.folderMap.get(parentId).childrenFolderIds.push(folderObj.id);
-          }
-        }
-
-        if (node.children && node.children.length > 0) {
-          parseBookmarkNodes(node.children, currentPath, isRootWrapper ? null : String(node.id));
-        }
-      }
-    }
-  }
-
-  async function loadBookmarks() {
-    state.allBookmarks = [];
-    state.allFolders = [];
-    state.folderMap.clear();
-    state.bookmarksByFolder.clear();
-
-    try {
-      if (state.isExtension) {
-        const tree = await chrome.bookmarks.getTree();
-        state.rawTree = tree;
-        parseBookmarkNodes(tree);
-      } else {
-        state.rawTree = MOCK_BOOKMARK_TREE;
-        parseBookmarkNodes(MOCK_BOOKMARK_TREE);
-      }
-    } catch (err) {
-      console.error('[NovaTab] Failed loading bookmarks tree:', err);
-      showToast('Ошибка чтения закладок', 'error');
-    }
-
-    renderBoardsPills();
-    populateFolderSelectDropdowns();
-    renderCardsView();
-    updateStatsDisplay();
-  }
-
-  // --- 7. RENDERING BOARDS (TOP NAV PILLS) ---
+  // --- 9. RENDERING BOARDS (TOP NAV PILLS & DRAG AND DROP) ---
 
   function renderBoardsPills() {
     if (!elements.boardsPillsWrapper) return;
     elements.boardsPillsWrapper.innerHTML = '';
 
-    // 1. "✦ Все доски" Master Pill
+    // 1. "✦ Все доски" Master Pill (Non-draggable)
     const allPill = document.createElement('button');
     allPill.className = `glass-pill ${state.activeBoardId === 'all' ? 'glass-pill-active' : ''}`;
     allPill.setAttribute('data-board', 'all');
@@ -515,12 +644,90 @@
       const pill = document.createElement('button');
       pill.className = `glass-pill ${isActive ? 'glass-pill-active' : ''}`;
       pill.setAttribute('data-board', folder.id);
+      pill.setAttribute('draggable', 'true');
 
       pill.innerHTML = `
         <span class="pill-title" title="${escapeHtml(folder.title)}">${escapeHtml(folder.title)}</span>
         <span class="pill-count">${bCount}</span>
         ${canDelete ? `<span class="delete-board-btn" title="Удалить папку «${escapeHtml(folder.title)}»">×</span>` : ''}
       `;
+
+      // Drag and Drop listeners for pill reordering
+      pill.addEventListener('dragstart', (e) => {
+        state.draggedFolderId = folder.id;
+        e.dataTransfer.setData('text/plain', folder.id);
+        e.dataTransfer.effectAllowed = 'move';
+        pill.classList.add('dragging');
+      });
+
+      pill.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        if (state.draggedFolderId && state.draggedFolderId !== folder.id) {
+          pill.classList.add('drag-over');
+        }
+      });
+
+      pill.addEventListener('dragleave', () => {
+        pill.classList.remove('drag-over');
+      });
+
+      pill.addEventListener('dragend', () => {
+        state.draggedFolderId = null;
+        if (elements.boardsPillsWrapper) {
+          elements.boardsPillsWrapper.querySelectorAll('.glass-pill').forEach(p => {
+            p.classList.remove('dragging', 'drag-over');
+          });
+        }
+      });
+
+      pill.addEventListener('drop', async (e) => {
+        e.preventDefault();
+        pill.classList.remove('drag-over');
+        const draggedId = e.dataTransfer.getData('text/plain') || state.draggedFolderId;
+        const targetId = folder.id;
+
+        if (!draggedId || draggedId === targetId) return;
+
+        const draggedFolder = state.folderMap.get(draggedId);
+        const targetFolder = state.folderMap.get(targetId);
+        if (!draggedFolder || !targetFolder) return;
+
+        try {
+          if (state.isExtension) {
+            const parentId = targetFolder.parentId || '1';
+            const children = await chrome.bookmarks.getChildren(parentId);
+            const targetIndex = children.findIndex(c => c.id === targetId);
+            if (targetIndex !== -1) {
+              await chrome.bookmarks.move(draggedId, { parentId, index: targetIndex });
+            }
+          } else {
+            // Reorder in local mock mode
+            const draggedIdx = state.allFolders.findIndex(f => f.id === draggedId);
+            const targetIdx = state.allFolders.findIndex(f => f.id === targetId);
+            if (draggedIdx !== -1 && targetIdx !== -1) {
+              const [removed] = state.allFolders.splice(draggedIdx, 1);
+              state.allFolders.splice(targetIdx, 0, removed);
+            }
+
+            const parentNode = findNodeInTree(MOCK_BOOKMARK_TREE, targetFolder.parentId || '1') || (MOCK_BOOKMARK_TREE[0]?.children?.[0]);
+            if (parentNode && parentNode.children) {
+              const mDraggedIdx = parentNode.children.findIndex(c => c.id === draggedId);
+              const mTargetIdx = parentNode.children.findIndex(c => c.id === targetId);
+              if (mDraggedIdx !== -1 && mTargetIdx !== -1) {
+                const [removed] = parentNode.children.splice(mDraggedIdx, 1);
+                parentNode.children.splice(mTargetIdx, 0, removed);
+              }
+            }
+          }
+
+          showToast('Порядок досок обновлен!');
+          await loadBookmarks();
+        } catch (err) {
+          console.error('[NovaTab] Failed to reorder folder:', err);
+          showToast('Ошибка при перемещении папки', 'error');
+        }
+      });
 
       const deleteBtn = pill.querySelector('.delete-board-btn');
       if (deleteBtn) {
@@ -542,25 +749,28 @@
     renderCardsView();
   }
 
-  // --- 8. RENDERING CATEGORY GLASS CARDS ---
+  // --- 10. RENDERING CATEGORY GLASS CARDS ---
 
   function renderCardsView() {
     elements.cardsContainer.innerHTML = '';
 
     // Determine which folders to render cards for
-    let targetFolders = [];
+    let rawFolders = [];
 
     if (state.activeBoardId === 'all') {
-      // Find all folders that have bookmarks or subfolders
-      targetFolders = state.allFolders.filter(f => {
+      // Find all folders that have bookmarks or subfolders (excluding system roots)
+      rawFolders = state.allFolders.filter(f => {
+        if (isRootOrSystemFolder(f) && (f.id === '0' || f.id === '1' || f.id === '2' || f.id === 'mobile')) {
+          return false;
+        }
         const directBookmarks = state.bookmarksByFolder.get(f.id) || [];
         return directBookmarks.length > 0 || (f.depth === 1);
       });
 
-      // Also check if there are loose bookmarks directly on root parent (id: '1')
+      // Check if there are loose bookmarks directly on root parent (id: '1')
       const rootBookmarks = state.bookmarksByFolder.get('1') || [];
-      if (rootBookmarks.length > 0 && !targetFolders.some(f => f.id === '1')) {
-        targetFolders.unshift({
+      if (rootBookmarks.length > 0) {
+        rawFolders.unshift({
           id: '1',
           title: '⭐ Быстрый доступ',
           path: ['Панель закладок'],
@@ -572,13 +782,25 @@
     } else {
       const selected = state.folderMap.get(state.activeBoardId);
       if (selected) {
-        targetFolders = [selected];
+        rawFolders.push(selected);
         if (selected.childrenFolderIds && selected.childrenFolderIds.length > 0) {
           selected.childrenFolderIds.forEach(cid => {
             const childF = state.folderMap.get(cid);
-            if (childF) targetFolders.push(childF);
+            if (childF) rawFolders.push(childF);
           });
         }
+      }
+    }
+
+    // Strictly deduplicate targetFolders by folder ID
+    const seenCardFolderIds = new Set();
+    const targetFolders = [];
+    for (const folder of rawFolders) {
+      if (!folder || !folder.id) continue;
+      const fid = String(folder.id);
+      if (!seenCardFolderIds.has(fid)) {
+        seenCardFolderIds.add(fid);
+        targetFolders.push(folder);
       }
     }
 
@@ -1188,6 +1410,11 @@
   // --- 13. EVENT LISTENERS INITIALIZATION ---
 
   function setupEventListeners() {
+    // Dynamic Quote Module Click Event -> Roll new quote
+    if (elements.quoteContainer) {
+      elements.quoteContainer.addEventListener('click', renderRandomQuote);
+    }
+
     // Horizontal wheel scrolling on board pills
     if (elements.boardsPillsWrapper) {
       elements.boardsPillsWrapper.addEventListener('wheel', (e) => {
@@ -1307,6 +1534,11 @@
     });
     elements.settingsResetBgBtn.addEventListener('click', resetBackground);
 
+    // Settings Opacity Slider listener
+    if (elements.overlayOpacitySlider) {
+      elements.overlayOpacitySlider.addEventListener('input', handleOverlayOpacityChange);
+    }
+
     // Chrome Live Bookmarks Reactive Sync
     if (state.isExtension) {
       chrome.bookmarks.onCreated.addListener(() => loadBookmarks());
@@ -1319,6 +1551,7 @@
   // --- 14. BOOTSTRAP INITIALIZATION ---
   async function init() {
     console.log(`[NovaTab] Initializing Glassmorphism Engine (Extension mode: ${state.isExtension})`);
+    renderRandomQuote();
     setupEventListeners();
     await loadSavedBackground();
     await loadBookmarks();
