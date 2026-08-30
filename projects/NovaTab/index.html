@@ -408,6 +408,39 @@
     </div>
   </div>
 
+  <!-- Модальное окно: Корзина -->
+  <div class="trash-overlay modal-overlay" id="trashOverlay" style="display: none;">
+    <div class="trash-modal modal-base">
+      <div class="trash-header">
+        <span data-i18n="trash.title" style="font-weight: 600; font-size: 14px;">Корзина</span>
+        <div class="trash-confirm" id="trashConfirm" style="display:none; gap: 8px; align-items: center;">
+          <span class="trash-confirm-label" data-i18n="trash.emptyConfirm" style="font-size: 12px; color: var(--ui-danger-strong);">Очистить корзину?</span>
+          <button class="trash-confirm-btn trash-confirm-cancel st-btn-small" id="trashConfirmCancel" data-i18n="common.cancel">Отмена</button>
+          <button class="trash-confirm-btn trash-confirm-yes st-btn-small" style="background: var(--ui-danger); border-color: var(--ui-danger-border);" id="trashConfirmYes" data-i18n="trash.deleteAll">Удалить всё</button>
+        </div>
+        <div style="display: flex; gap: 12px; margin-left: auto; align-items: center;">
+          <button class="trash-empty-btn" id="trashEmptyBtn" data-i18n="trash.empty" style="background: none; border: none; color: var(--ui-text-secondary); cursor: pointer; font-size: 13px;">Очистить корзину</button>
+          <button class="trash-close-btn modal-close-btn" id="trashCloseBtn">×</button>
+        </div>
+      </div>
+      <div class="trash-list" id="trashList" style="flex: 1; padding: 24px; overflow-y: auto; display: flex; align-items: center; justify-content: center;">
+        <div class="trash-empty-msg" style="color: var(--ui-text-tertiary); font-size: 13px;">Корзина пуста</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Модальное окно: Поиск -->
+  <div class="search-overlay modal-overlay" id="searchOverlay" style="display: none; align-items: flex-start; padding-top: 15vh;">
+    <div class="search-modal" style="width: 600px; max-width: 90vw; background: var(--ui-modal); border: 0.5px solid var(--ui-border); border-radius: 16px; box-shadow: 0 24px 64px rgba(0,0,0,0.6); overflow: hidden; display: flex; flex-direction: column;">
+      <div class="search-input-wrap">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.3)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+        <input type="text" id="modalSearchInput" placeholder="Поиск по закладкам…" autocomplete="off" spellcheck="false" style="flex: 1; background: transparent; border: none; color: var(--ui-text); font-size: 16px; outline: none; font-family: inherit;">
+        <kbd class="search-esc-hint" style="background: rgba(255,255,255,0.1); padding: 4px 8px; border-radius: 4px; font-size: 11px; color: var(--ui-text-secondary); font-family: monospace;">Esc</kbd>
+      </div>
+      <div class="search-results" id="searchResults" style="padding: 0 20px; max-height: 400px; overflow-y: auto;"></div>
+    </div>
+  </div>
+
   <script src="app.js"></script>
 </body>
 </html>

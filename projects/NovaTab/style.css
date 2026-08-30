@@ -1350,6 +1350,53 @@ dialog h3 {
   opacity: 1;
 }
 
+/* ==========================================================================
+   Trash & Search Modals
+   ========================================================================== */
+
+/* Контейнер корзины */
+.trash-modal {
+  width: 480px;
+  max-height: 70vh;
+  background: var(--ui-modal, rgba(28,29,38,0.97));
+  border: 0.5px solid var(--ui-border, rgba(255,255,255,0.1));
+  border-radius: 16px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 24px 64px rgba(0,0,0,0.6);
+  color: var(--ui-text);
+  animation: modalPopIn 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.trash-header {
+  display: flex; align-items: center; padding: 16px 20px;
+  border-bottom: 1px solid var(--ui-border-subtle, rgba(255,255,255,0.06));
+}
+
+/* Обертка инпута поиска */
+.search-input-wrap {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 20px;
+  border-bottom: 0.5px solid var(--ui-border-subtle, rgba(255,255,255,0.06));
+}
+
+.search-results-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.15s;
+  color: var(--ui-text);
+  text-decoration: none;
+}
+.search-results-item:hover {
+  background: var(--ui-fill-hover);
+}
+
 /* Responsive Tweaks */
 @media (max-width: 640px) {
   .top-bar {
