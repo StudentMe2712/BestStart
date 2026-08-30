@@ -145,6 +145,15 @@
     }, duration);
   }
 
+  function insertWidgetToGrid(widgetBoard) {
+    const currentTab = getActiveTab();
+    if (!currentTab) return;
+    if (!currentTab.boards) currentTab.boards = [];
+    currentTab.boards.push(widgetBoard);
+    saveState();
+    renderBoards();
+  }
+
   // --- Storage Operations ---
   function loadState(callback) {
     if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
@@ -234,13 +243,174 @@
     if (!boardsGrid) return;
 
     // Remove all existing board cards (keep addBoardPlaceholder)
-    const existingCards = boardsGrid.querySelectorAll('.board-card');
+    const existingCards = boardsGrid.querySelectorAll('.board-card, .board');
     existingCards.forEach((c) => c.remove());
 
     const currentTab = getActiveTab();
     if (!currentTab || !currentTab.boards) return;
 
     currentTab.boards.forEach((board) => {
+      // 1. NOTES WIDGET
+      if (board.type === 'notes') {
+        const card = document.createElement('div');
+        card.className = 'board board-card';
+        card.dataset.id = board.id;
+        card.dataset.boardId = board.id;
+
+        if (board.customColor) {
+          card.style.setProperty('--card-accent', board.customColor);
+          card.dataset.customMode = board.customMode || 'corner';
+        }
+
+        // Header
+        const header = document.createElement('div');
+        header.className = 'board-header';
+
+        const title = document.createElement('div');
+        title.className = 'board-title';
+        title.textContent = board.title || 'Заметки';
+        title.title = board.title || 'Заметки';
+
+        const menuBtn = document.createElement('button');
+        menuBtn.className = 'board-menu-btn';
+        menuBtn.title = 'Меню доски';
+        menuBtn.textContent = '···';
+
+        header.appendChild(title);
+        header.appendChild(menuBtn);
+        card.appendChild(header);
+
+        // Textarea
+        const textarea = document.createElement('textarea');
+        textarea.className = 'notes-textarea';
+        textarea.placeholder = 'Введите текст...';
+        textarea.value = board.content || '';
+        textarea.addEventListener('input', () => {
+          board.content = textarea.value;
+          saveState();
+        });
+        card.appendChild(textarea);
+
+        // Resize handle
+        const resizeHandle = document.createElement('div');
+        resizeHandle.className = 'notes-resize-handle';
+        resizeHandle.innerHTML = '<svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 1L1 9M9 5L5 9M9 9L9 9"/></svg>';
+        card.appendChild(resizeHandle);
+
+        // Context menu
+        card.addEventListener('contextmenu', (e) => {
+          if (e.target.closest('.notes-textarea')) return;
+          e.preventDefault();
+          e.stopPropagation();
+          openBoardMenu(e, board, card);
+        });
+
+        boardsGrid.insertBefore(card, addBoardPlaceholder);
+        return;
+      }
+
+      // 2. CALENDAR WIDGET
+      if (board.type === 'calendar') {
+        const card = document.createElement('div');
+        card.className = 'board board-card';
+        card.dataset.id = board.id;
+        card.dataset.boardId = board.id;
+
+        if (board.customColor) {
+          card.style.setProperty('--card-accent', board.customColor);
+          card.dataset.customMode = board.customMode || 'corner';
+        }
+
+        // Header
+        const header = document.createElement('div');
+        header.className = 'board-header';
+
+        const leftGroup = document.createElement('div');
+        leftGroup.style.display = 'flex';
+        leftGroup.style.alignItems = 'center';
+        leftGroup.style.gap = '4px';
+
+        const prevBtn = document.createElement('button');
+        prevBtn.className = 'cal-nav-btn';
+        prevBtn.title = 'Предыдущий месяц';
+        prevBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>';
+
+        const nextBtn = document.createElement('button');
+        nextBtn.className = 'cal-nav-btn';
+        nextBtn.title = 'Следующий месяц';
+        nextBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>';
+
+        const title = document.createElement('div');
+        title.className = 'board-title';
+        title.textContent = board.title || 'Август 2026';
+        title.title = board.title || 'Август 2026';
+        title.style.marginLeft = '4px';
+
+        leftGroup.appendChild(prevBtn);
+        leftGroup.appendChild(nextBtn);
+        leftGroup.appendChild(title);
+
+        const menuBtn = document.createElement('button');
+        menuBtn.className = 'board-menu-btn';
+        menuBtn.title = 'Меню доски';
+        menuBtn.textContent = '···';
+
+        header.appendChild(leftGroup);
+        header.appendChild(menuBtn);
+        card.appendChild(header);
+
+        // Days row
+        const daysRow = document.createElement('div');
+        daysRow.className = 'cal-days-row';
+        const dayNames = ['ПН', 'ВТ', 'СР', 'ЧТ', 'ПТ', 'СБ', 'ВС'];
+        dayNames.forEach((name) => {
+          const dayNameEl = document.createElement('div');
+          dayNameEl.className = 'cal-day-name';
+          dayNameEl.textContent = name;
+          daysRow.appendChild(dayNameEl);
+        });
+        card.appendChild(daysRow);
+
+        // Calendar Grid
+        const calGrid = document.createElement('div');
+        calGrid.className = 'cal-grid';
+
+        // August 2026 starts on Saturday (5 blank days: Mon, Tue, Wed, Thu, Fri)
+        for (let i = 0; i < 5; i++) {
+          const blank = document.createElement('div');
+          blank.className = 'cal-day cal-day-blank';
+          calGrid.appendChild(blank);
+        }
+
+        // 31 days in August 2026
+        for (let day = 1; day <= 31; day++) {
+          const dayEl = document.createElement('div');
+          const dayOfWeek = (5 + day - 1) % 7; // 0=Mon, 1=Tue, 2=Wed, 3=Thu, 4=Fri, 5=Sat, 6=Sun
+          const isWeekend = dayOfWeek === 5 || dayOfWeek === 6;
+          const isToday = day === 30;
+
+          let classNames = ['cal-day'];
+          if (isWeekend) classNames.push('cal-day-weekend');
+          if (isToday) classNames.push('cal-day-today');
+
+          dayEl.className = classNames.join(' ');
+          dayEl.textContent = day;
+          calGrid.appendChild(dayEl);
+        }
+        card.appendChild(calGrid);
+
+        // Context menu
+        card.addEventListener('contextmenu', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          openBoardMenu(e, board, card);
+        });
+
+        boardsGrid.insertBefore(card, addBoardPlaceholder);
+        return;
+      }
+
+      // 3. REGULAR BOOKMARK BOARD
       const card = document.createElement('div');
       card.className = 'board-card';
       card.dataset.id = board.id;
@@ -482,15 +652,14 @@
   function startInlineBoardRename(board, card) {
     hideBoardMenu();
     if (!card) {
-      card = boardsGrid?.querySelector(`.board-card[data-board-id="${board.id}"]`);
+      card = boardsGrid?.querySelector(`.board-card[data-board-id="${board.id}"], .board[data-board-id="${board.id}"]`);
     }
     if (!card) return;
 
-    const header = card.querySelector('.board-header');
     const titleEl = card.querySelector('.board-title');
-    if (!header || !titleEl) return;
+    if (!titleEl || !titleEl.parentNode) return;
 
-    const currentTitle = board.title;
+    const currentTitle = board.title || '';
     const input = document.createElement('input');
     input.type = 'text';
     input.className = 'board-title-input';
@@ -498,7 +667,7 @@
     input.placeholder = 'Название доски';
     input.maxLength = 50;
 
-    header.replaceChild(input, titleEl);
+    titleEl.parentNode.replaceChild(input, titleEl);
 
     let isCommitted = false;
 
@@ -1026,12 +1195,22 @@
   function applySearchFilter() {
     if (!searchInput) return;
     const query = searchInput.value.trim().toLowerCase();
-    const cards = boardsGrid.querySelectorAll('.board-card');
+    const cards = boardsGrid.querySelectorAll('.board-card, .board');
 
     cards.forEach((card) => {
       const links = card.querySelectorAll('.link-item');
-      let visibleLinksCount = 0;
+      if (links.length === 0) {
+        const boardTitle = (card.querySelector('.board-title')?.textContent || '').toLowerCase();
+        const notesText = (card.querySelector('.notes-textarea')?.value || '').toLowerCase();
+        if (!query || boardTitle.includes(query) || notesText.includes(query)) {
+          card.style.opacity = '1';
+        } else {
+          card.style.opacity = '0.35';
+        }
+        return;
+      }
 
+      let visibleLinksCount = 0;
       links.forEach((link) => {
         const title = (link.dataset.title || '').toLowerCase();
         const url = (link.dataset.url || '').toLowerCase();
@@ -1254,7 +1433,14 @@
     if (wcNotesBtn) {
       wcNotesBtn.addEventListener('click', (e) => {
         e.stopPropagation();
-        showToast('Виджет "Заметки" скоро будет доступен');
+        insertWidgetToGrid({
+          id: 'note_' + Date.now(),
+          type: 'notes',
+          title: 'Заметки',
+          content: ''
+        });
+        if (widgetGallery) widgetGallery.style.display = 'none';
+        showToast('Виджет "Заметки" добавлен');
       });
     }
 
@@ -1263,7 +1449,13 @@
     if (wcCalendarBtn) {
       wcCalendarBtn.addEventListener('click', (e) => {
         e.stopPropagation();
-        showToast('Виджет "Календарь" скоро будет доступен');
+        insertWidgetToGrid({
+          id: 'cal_' + Date.now(),
+          type: 'calendar',
+          title: 'Август 2026'
+        });
+        if (widgetGallery) widgetGallery.style.display = 'none';
+        showToast('Виджет "Календарь" добавлен');
       });
     }
 
