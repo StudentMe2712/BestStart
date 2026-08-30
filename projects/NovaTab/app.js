@@ -1,11 +1,8 @@
 /**
- * NovaTab — Visual Bookmark Manager: Glassmorphism Edition Core
- * Full-featured visual new tab extension with custom wallpaper engine,
- * folder-based category glass cards, top board pills, and instant search.
- * 
+ * NovaTab — Aesthetic Glassmorphism Dashboard Core Engine
  * 100% Manifest V3 CSP Compliant:
- * - Zero external CDN runtime dependencies
- * - Zero inline scripts and zero inline HTML event handlers
+ * - Zero remote scripts / external dependencies
+ * - Zero inline event handlers / scripts
  * - Safe DOM event binding & delegated event listeners
  */
 
@@ -21,7 +18,6 @@
     folderMap: new Map(),
     bookmarksByFolder: new Map(),
     activeBoardId: 'all', // 'all' or folder ID
-    viewMode: 'grid', // 'grid' | 'list'
     searchQuery: '',
     currentSearchResults: [],
     selectedSearchIndex: -1,
@@ -80,75 +76,69 @@
           title: 'Панель закладок',
           children: [
             {
-              id: 'cat-streaming',
-              title: '📺 Стриминг & Видео',
+              id: 'cat-ai',
+              title: '🤖 AI',
               children: [
-                { id: 'str-1', title: 'YouTube — Видеохостинг и стримы', url: 'https://youtube.com', dateAdded: Date.now() - 1000 * 60 * 60 * 2 },
-                { id: 'str-2', title: 'Twitch — Live Game Streaming', url: 'https://twitch.tv', dateAdded: Date.now() - 1000 * 60 * 60 * 8 },
-                { id: 'str-3', title: 'Netflix — Кино и сериалы онлайн', url: 'https://netflix.com', dateAdded: Date.now() - 1000 * 60 * 60 * 24 },
-                { id: 'str-4', title: 'Spotify Web Player — Музыка', url: 'https://open.spotify.com', dateAdded: Date.now() - 1000 * 60 * 60 * 48 },
-                { id: 'str-5', title: 'Кинопоиск — Фильмы и премьеры', url: 'https://kinopoisk.ru', dateAdded: Date.now() - 1000 * 60 * 60 * 72 }
+                { id: 'ai-1', title: 'ChatGPT by OpenAI', url: 'https://chatgpt.com', dateAdded: Date.now() - 1000 * 60 * 60 * 1 },
+                { id: 'ai-2', title: 'Claude by Anthropic', url: 'https://claude.ai', dateAdded: Date.now() - 1000 * 60 * 60 * 4 },
+                { id: 'ai-3', title: 'Perplexity AI Answer Engine', url: 'https://perplexity.ai', dateAdded: Date.now() - 1000 * 60 * 60 * 12 },
+                { id: 'ai-4', title: 'Midjourney Prompt Hub', url: 'https://midjourney.com', dateAdded: Date.now() - 1000 * 60 * 60 * 24 },
+                { id: 'ai-5', title: 'Hugging Face ML Community', url: 'https://huggingface.co', dateAdded: Date.now() - 1000 * 60 * 60 * 48 }
               ]
             },
             {
-              id: 'cat-gaming',
-              title: '🎮 Гейминг & Сообщества',
+              id: 'cat-work',
+              title: '💼 Work',
               children: [
-                { id: 'gam-1', title: 'Steam Community — Магазин и хаб', url: 'https://steamcommunity.com', dateAdded: Date.now() - 1000 * 60 * 60 * 12 },
-                { id: 'gam-2', title: 'Discord Web — Чаты и сообщества', url: 'https://discord.com/app', dateAdded: Date.now() - 1000 * 60 * 60 * 20 },
-                { id: 'gam-3', title: 'Reddit /r/gaming — Игровые обсуждения', url: 'https://reddit.com/r/gaming', dateAdded: Date.now() - 1000 * 60 * 60 * 36 },
-                { id: 'gam-4', title: 'IGN — Новости игр и рецензии', url: 'https://ign.com', dateAdded: Date.now() - 1000 * 60 * 60 * 80 }
+                { id: 'work-1', title: 'Notion — All-in-one Workspace', url: 'https://notion.so', dateAdded: Date.now() - 1000 * 60 * 60 * 2 },
+                { id: 'work-2', title: 'Google Drive Cloud Storage', url: 'https://drive.google.com', dateAdded: Date.now() - 1000 * 60 * 60 * 8 },
+                { id: 'work-3', title: 'Figma Interface Design Tool', url: 'https://figma.com', dateAdded: Date.now() - 1000 * 60 * 60 * 16 },
+                { id: 'work-4', title: 'Jira Software & Agile Sprint', url: 'https://jira.atlassian.com', dateAdded: Date.now() - 1000 * 60 * 60 * 30 },
+                { id: 'work-5', title: 'Slack Workspace Chat', url: 'https://slack.com', dateAdded: Date.now() - 1000 * 60 * 60 * 60 }
+              ]
+            },
+            {
+              id: 'cat-finance',
+              title: '💳 Finance',
+              children: [
+                { id: 'fin-1', title: 'Kaspi.kz — Банк и платежи', url: 'https://kaspi.kz', dateAdded: Date.now() - 1000 * 60 * 60 * 5 },
+                { id: 'fin-2', title: 'TradingView Financial Charts', url: 'https://tradingview.com', dateAdded: Date.now() - 1000 * 60 * 60 * 14 },
+                { id: 'fin-3', title: 'Binance Crypto Exchange', url: 'https://binance.com', dateAdded: Date.now() - 1000 * 60 * 60 * 28 },
+                { id: 'fin-4', title: 'CoinMarketCap Crypto Tracker', url: 'https://coinmarketcap.com', dateAdded: Date.now() - 1000 * 60 * 60 * 70 },
+                { id: 'fin-5', title: 'Bloomberg Global Markets', url: 'https://bloomberg.com', dateAdded: Date.now() - 1000 * 60 * 60 * 95 }
+              ]
+            },
+            {
+              id: 'cat-social',
+              title: '🌐 Social',
+              children: [
+                { id: 'soc-1', title: 'Telegram Web Messenger', url: 'https://web.telegram.org', dateAdded: Date.now() - 1000 * 60 * 60 * 3 },
+                { id: 'soc-2', title: 'Twitter / X Feed', url: 'https://x.com', dateAdded: Date.now() - 1000 * 60 * 60 * 10 },
+                { id: 'soc-3', title: 'Reddit Frontpage Discussions', url: 'https://reddit.com', dateAdded: Date.now() - 1000 * 60 * 60 * 20 },
+                { id: 'soc-4', title: 'Discord Web App & Chats', url: 'https://discord.com/app', dateAdded: Date.now() - 1000 * 60 * 60 * 40 },
+                { id: 'soc-5', title: 'LinkedIn Professional Network', url: 'https://linkedin.com', dateAdded: Date.now() - 1000 * 60 * 60 * 80 }
               ]
             },
             {
               id: 'cat-dev',
-              title: '💻 Разработка & Код',
+              title: '💻 Dev',
               children: [
-                { id: 'dev-1', title: 'GitHub — Where the world builds software', url: 'https://github.com', dateAdded: Date.now() - 1000 * 60 * 60 * 1 },
-                { id: 'dev-2', title: 'Stack Overflow — Q&A for Developers', url: 'https://stackoverflow.com', dateAdded: Date.now() - 1000 * 60 * 60 * 15 },
-                { id: 'dev-3', title: 'MDN Web Docs — JavaScript, CSS & HTML', url: 'https://developer.mozilla.org', dateAdded: Date.now() - 1000 * 60 * 60 * 50 },
-                { id: 'dev-4', title: 'Tailwind CSS Documentation', url: 'https://tailwindcss.com', dateAdded: Date.now() - 1000 * 60 * 60 * 90 },
-                { id: 'dev-5', title: 'npm — JavaScript Package Registry', url: 'https://npmjs.com', dateAdded: Date.now() - 1000 * 60 * 60 * 110 }
+                { id: 'dev-1', title: 'GitHub — Where developers build', url: 'https://github.com', dateAdded: Date.now() - 1000 * 60 * 60 * 1 },
+                { id: 'dev-2', title: 'Stack Overflow Q&A for Devs', url: 'https://stackoverflow.com', dateAdded: Date.now() - 1000 * 60 * 60 * 7 },
+                { id: 'dev-3', title: 'MDN Web Docs Reference', url: 'https://developer.mozilla.org', dateAdded: Date.now() - 1000 * 60 * 60 * 22 },
+                { id: 'dev-4', title: 'Tailwind CSS Documentation', url: 'https://tailwindcss.com', dateAdded: Date.now() - 1000 * 60 * 60 * 50 },
+                { id: 'dev-5', title: 'npm — JavaScript Registry', url: 'https://npmjs.com', dateAdded: Date.now() - 1000 * 60 * 60 * 100 }
               ]
             },
             {
-              id: 'cat-ai',
-              title: '🤖 Искусственный Интеллект',
+              id: 'cat-streaming',
+              title: '📺 Streaming',
               children: [
-                { id: 'ai-1', title: 'Claude by Anthropic — AI Research', url: 'https://claude.ai', dateAdded: Date.now() - 1000 * 60 * 60 * 5 },
-                { id: 'ai-2', title: 'ChatGPT by OpenAI — Assistant', url: 'https://chatgpt.com', dateAdded: Date.now() - 1000 * 60 * 60 * 18 },
-                { id: 'ai-3', title: 'Hugging Face — Open-source ML Community', url: 'https://huggingface.co', dateAdded: Date.now() - 1000 * 60 * 60 * 60 },
-                { id: 'ai-4', title: 'Perplexity AI — Answer Engine', url: 'https://perplexity.ai', dateAdded: Date.now() - 1000 * 60 * 60 * 120 }
-              ]
-            },
-            {
-              id: 'cat-news',
-              title: '📰 Новости технологий',
-              children: [
-                { id: 'news-1', title: 'Hacker News — Tech & Startups', url: 'https://news.ycombinator.com', dateAdded: Date.now() - 1000 * 60 * 60 * 6 },
-                { id: 'news-2', title: 'The Verge — Technology, Science & Art', url: 'https://theverge.com', dateAdded: Date.now() - 1000 * 60 * 60 * 30 },
-                { id: 'news-3', title: 'Habr — Русскоязычное IT сообщество', url: 'https://habr.com', dateAdded: Date.now() - 1000 * 60 * 60 * 70 },
-                { id: 'news-4', title: 'TechCrunch — Startup and Tech News', url: 'https://techcrunch.com', dateAdded: Date.now() - 1000 * 60 * 60 * 140 }
-              ]
-            },
-            {
-              id: 'cat-design',
-              title: '🎨 Дизайн & Ресурсы',
-              children: [
-                { id: 'des-1', title: 'Figma: The Collaborative Interface Tool', url: 'https://figma.com', dateAdded: Date.now() - 1000 * 60 * 60 * 10 },
-                { id: 'des-2', title: 'Dribbble — Top Designer Showcase', url: 'https://dribbble.com', dateAdded: Date.now() - 1000 * 60 * 60 * 45 },
-                { id: 'des-3', title: 'Mobbin — UI & UX Design Patterns', url: 'https://mobbin.com', dateAdded: Date.now() - 1000 * 60 * 60 * 100 },
-                { id: 'des-4', title: 'Google Fonts — Free Web Typography', url: 'https://fonts.google.com', dateAdded: Date.now() - 1000 * 60 * 60 * 160 }
-              ]
-            },
-            {
-              id: 'cat-daily',
-              title: '⚡ Повседневные сервисы',
-              children: [
-                { id: 'day-1', title: 'Google Drive — Cloud Workspace', url: 'https://drive.google.com', dateAdded: Date.now() - 1000 * 60 * 60 * 14 },
-                { id: 'day-2', title: 'Notion — All-in-one Workspace', url: 'https://notion.so', dateAdded: Date.now() - 1000 * 60 * 60 * 32 },
-                { id: 'day-3', title: 'Telegram Web — Messenger', url: 'https://web.telegram.org', dateAdded: Date.now() - 1000 * 60 * 60 * 65 },
-                { id: 'day-4', title: 'Gmail: Private and Secure Email', url: 'https://mail.google.com', dateAdded: Date.now() - 1000 * 60 * 60 * 115 }
+                { id: 'str-1', title: 'YouTube — Video & Music', url: 'https://youtube.com', dateAdded: Date.now() - 1000 * 60 * 60 * 2 },
+                { id: 'str-2', title: 'Twitch — Live Game Streams', url: 'https://twitch.tv', dateAdded: Date.now() - 1000 * 60 * 60 * 9 },
+                { id: 'str-3', title: 'Netflix — Movies & Series', url: 'https://netflix.com', dateAdded: Date.now() - 1000 * 60 * 60 * 25 },
+                { id: 'str-4', title: 'Spotify Web Music Player', url: 'https://open.spotify.com', dateAdded: Date.now() - 1000 * 60 * 60 * 55 },
+                { id: 'str-5', title: 'Кинопоиск — Фильмы и премьеры', url: 'https://kinopoisk.ru', dateAdded: Date.now() - 1000 * 60 * 60 * 90 }
               ]
             }
           ]
@@ -163,39 +153,34 @@
     bgVideo: document.getElementById('bg-video'),
     bgOverlay: document.getElementById('bg-overlay'),
 
-    // Dynamic Quotes
+    // Top Bar Floating Blocks
+    boardsPillsWrapper: document.getElementById('boards-pills-wrapper'),
+    btnAddBoard: document.getElementById('btn-add-board'),
+    globalSearchInput: document.getElementById('global-search-input'),
+    searchGoogleBtn: document.getElementById('search-google-btn'),
+    widgetLocation: document.getElementById('widget-location'),
+    widgetWeatherIcon: document.getElementById('widget-weather-icon'),
+    widgetTemp: document.getElementById('widget-temp'),
+    widgetDate: document.getElementById('widget-date'),
+    widgetTime: document.getElementById('widget-time'),
+
+    // Main Viewport & Cards Container
+    mainViewport: document.getElementById('main-viewport'),
     quoteContainer: document.getElementById('quote-container'),
     quoteText: document.getElementById('quote-text'),
     quoteAuthor: document.getElementById('quote-author'),
-
-    // Top Nav Boards
-    boardsPillsWrapper: document.getElementById('boards-pills-wrapper'),
-    btnAddBoard: document.getElementById('btn-add-board'),
-
-    // Main Viewport & Cards
-    mainViewport: document.getElementById('main-viewport'),
     cardsContainer: document.getElementById('cards-container'),
     emptyState: document.getElementById('empty-state'),
     emptyStateTitle: document.getElementById('empty-state-title'),
     emptyStateDesc: document.getElementById('empty-state-desc'),
     btnEmptyAdd: document.getElementById('btn-empty-add'),
 
-    // Floating Toolbar
-    toolbarSearchBtn: document.getElementById('toolbar-search-btn'),
-    toolbarAddBtn: document.getElementById('toolbar-add-btn'),
-    toolbarFolderBtn: document.getElementById('toolbar-folder-btn'),
-    toolbarViewBtn: document.getElementById('toolbar-view-btn'),
-    viewIconGrid: document.getElementById('view-icon-grid'),
-    viewIconList: document.getElementById('view-icon-list'),
-    tooltipViewMode: document.getElementById('tooltip-view-mode'),
-    toolbarRandomBtn: document.getElementById('toolbar-random-btn'),
-    toolbarSettingsBtn: document.getElementById('toolbar-settings-btn'),
-
-    // Floating Background Button & Input
+    // Floating Bottom Controls
     bgChangeBtn: document.getElementById('bg-change-btn'),
     bgFileInput: document.getElementById('bg-file-input'),
+    floatingSettingsBtn: document.getElementById('floating-settings-btn'),
 
-    // Search Modal
+    // Search Palette Modal
     searchModal: document.getElementById('search-modal'),
     searchModalInput: document.getElementById('search-modal-input'),
     searchResultsList: document.getElementById('search-results-list'),
@@ -310,7 +295,7 @@
     }
   };
 
-  // --- 4. UTILITIES ---
+  // --- 6. UTILITIES ---
   function findNodeInTree(nodes, id) {
     if (!nodes || !Array.isArray(nodes)) return null;
     for (const node of nodes) {
@@ -368,7 +353,7 @@
 
   function getFaviconUrl(pageUrl) {
     if (state.isExtension && chrome.runtime?.id) {
-      return `chrome-extension://${chrome.runtime.id}/_favicon/?pageUrl=${encodeURIComponent(pageUrl)}&size=16`;
+      return `chrome-extension://${chrome.runtime.id}/_favicon/?pageUrl=${encodeURIComponent(pageUrl)}&size=32`;
     }
     const host = extractHostname(pageUrl);
     return `https://www.google.com/s2/favicons?domain=${encodeURIComponent(host)}&sz=32`;
@@ -410,8 +395,25 @@
     return false;
   }
 
-  // --- 7. WALLPAPER ENGINE (VIDEO & IMAGE + INDEXEDDB) ---
+  // --- 7. LIVE CLOCK & WEATHER WIDGET ENGINE ---
+  function updateLiveClockAndDate() {
+    const now = new Date();
+    if (elements.widgetTime) {
+      const h = String(now.getHours()).padStart(2, '0');
+      const m = String(now.getMinutes()).padStart(2, '0');
+      elements.widgetTime.textContent = `${h}:${m}`;
+    }
+    if (elements.widgetDate) {
+      const weekdays = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
+      const months = ['янв', 'фев', 'мар', 'апр', 'мая', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'];
+      const w = weekdays[now.getDay()];
+      const d = now.getDate();
+      const m = months[now.getMonth()];
+      elements.widgetDate.textContent = `${w}, ${d} ${m}`;
+    }
+  }
 
+  // --- 8. WALLPAPER ENGINE (VIDEO & IMAGE + INDEXEDDB) ---
   let currentVideoBlobUrl = null;
   let currentImageBlobUrl = null;
 
@@ -501,15 +503,12 @@
         }
       }
 
-      // 2. Load View Mode & Overlay Opacity
+      // 2. Load Overlay Opacity
       let overlayOpacity = 0.30;
       if (state.isExtension && chrome.storage?.local) {
-        const stored = await chrome.storage.local.get(['viewMode', 'overlayOpacity']);
-        if (stored.viewMode) state.viewMode = stored.viewMode;
+        const stored = await chrome.storage.local.get(['overlayOpacity']);
         if (stored.overlayOpacity !== undefined) overlayOpacity = parseFloat(stored.overlayOpacity);
       } else {
-        const savedView = localStorage.getItem('novatab_viewMode');
-        if (savedView) state.viewMode = savedView;
         const savedOpacity = localStorage.getItem('novatab_overlayOpacity');
         if (savedOpacity !== null) overlayOpacity = parseFloat(savedOpacity);
       }
@@ -518,7 +517,6 @@
     } catch (e) {
       console.warn('[NovaTab] Failed loading background from storage/IndexedDB:', e);
     }
-    updateViewModeUI();
   }
 
   async function handleBgFileSelect(e) {
@@ -623,8 +621,7 @@
     }
   }
 
-  // --- 8. BOOKMARK TREE PARSER & LOADER ---
-
+  // --- 9. BOOKMARK TREE PARSER & LOADER ---
   let isLoadingBookmarks = false;
   let pendingBookmarkReload = false;
 
@@ -763,17 +760,16 @@
     }
   }
 
-  // --- 9. RENDERING BOARDS (TOP NAV PILLS & DRAG AND DROP) ---
-
+  // --- 10. RENDERING BOARDS (TOP NAV PILLS & DRAG AND DROP) ---
   function renderBoardsPills() {
     if (!elements.boardsPillsWrapper) return;
     elements.boardsPillsWrapper.innerHTML = '';
 
-    // 1. "✦ Все доски" Master Pill (Non-draggable)
+    // 1. "✦ Home" Master Pill (Non-draggable)
     const allPill = document.createElement('button');
-    allPill.className = `glass-pill ${state.activeBoardId === 'all' ? 'glass-pill-active' : ''}`;
+    allPill.className = `nav-pill-btn ${state.activeBoardId === 'all' ? 'active' : ''}`;
     allPill.setAttribute('data-board', 'all');
-    allPill.innerHTML = `<span>✦</span><span>Все доски</span>`;
+    allPill.innerHTML = `<span>✦</span><span>Home</span>`;
     allPill.addEventListener('click', () => selectBoard('all'));
     elements.boardsPillsWrapper.appendChild(allPill);
 
@@ -794,14 +790,14 @@
       const canDelete = !isRootOrSystemFolder(folder);
 
       const pill = document.createElement('button');
-      pill.className = `glass-pill ${isActive ? 'glass-pill-active' : ''}`;
+      pill.className = `nav-pill-btn ${isActive ? 'active' : ''}`;
       pill.setAttribute('data-board', folder.id);
       pill.setAttribute('draggable', 'true');
 
       pill.innerHTML = `
         <span class="pill-title" title="${escapeHtml(folder.title)}">${escapeHtml(folder.title)}</span>
         <span class="pill-count">${bCount}</span>
-        ${canDelete ? `<span class="delete-board-btn" title="Удалить папку «${escapeHtml(folder.title)}»">×</span>` : ''}
+        ${canDelete ? `<span class="delete-board-btn" title="Удалить категорию «${escapeHtml(folder.title)}»">×</span>` : ''}
       `;
 
       // Drag and Drop listeners for pill reordering
@@ -827,7 +823,7 @@
       pill.addEventListener('dragend', () => {
         state.draggedFolderId = null;
         if (elements.boardsPillsWrapper) {
-          elements.boardsPillsWrapper.querySelectorAll('.glass-pill').forEach(p => {
+          elements.boardsPillsWrapper.querySelectorAll('.nav-pill-btn').forEach(p => {
             p.classList.remove('dragging', 'drag-over');
           });
         }
@@ -873,11 +869,11 @@
             }
           }
 
-          showToast('Порядок досок обновлен!');
+          showToast('Порядок категорий обновлен!');
           await loadBookmarks();
         } catch (err) {
           console.error('[NovaTab] Failed to reorder folder:', err);
-          showToast('Ошибка при перемещении папки', 'error');
+          showToast('Ошибка при перемещении категории', 'error');
         }
       });
 
@@ -901,8 +897,7 @@
     renderCardsView();
   }
 
-  // --- 10. RENDERING CATEGORY GLASS CARDS ---
-
+  // --- 11. RENDERING CATEGORY GLASS CARDS ---
   function renderCardsView() {
     elements.cardsContainer.innerHTML = '';
 
@@ -978,7 +973,7 @@
 
   function createCategoryCard(folder, bookmarks) {
     const card = document.createElement('div');
-    card.className = 'glass-card';
+    card.className = 'glass-panel category-card';
     card.setAttribute('data-folder-id', folder.id);
 
     // Card Header
@@ -987,7 +982,7 @@
     const canDeleteFolder = !isRootOrSystemFolder(folder);
     header.innerHTML = `
       <div class="card-title-group">
-        <span class="card-title-text" title="${escapeHtml(folder.title)}">${escapeHtml(folder.title)}</span>
+        <h3 class="card-category-title" title="${escapeHtml(folder.title)}">${escapeHtml(folder.title)}</h3>
         <span class="card-badge">${bookmarks.length}</span>
       </div>
       <div class="card-header-actions">
@@ -1042,7 +1037,7 @@
 
     // Bookmark Items Container
     const itemsList = document.createElement('div');
-    itemsList.className = 'bookmark-list';
+    itemsList.className = 'category-bookmarks-list';
 
     if (bookmarks.length === 0) {
       itemsList.innerHTML = `
@@ -1063,7 +1058,7 @@
 
   function createBookmarkRow(bookmark) {
     const row = document.createElement('div');
-    row.className = 'bookmark-item';
+    row.className = 'bookmark-row-item';
     row.setAttribute('data-bookmark-id', bookmark.id);
 
     const faviconSrc = getFaviconUrl(bookmark.url);
@@ -1071,7 +1066,7 @@
     const firstLetter = (bookmark.title || bookmark.hostname || 'N').charAt(0).toUpperCase();
 
     row.innerHTML = `
-      <div class="bookmark-left">
+      <div class="bookmark-row-left">
         <div class="favicon-wrapper">
           <img 
             class="favicon-img" 
@@ -1083,20 +1078,17 @@
             ${escapeHtml(firstLetter)}
           </div>
         </div>
-        <div class="bookmark-info">
-          <span class="bookmark-title" title="${escapeHtml(bookmark.title)}">${escapeHtml(bookmark.title)}</span>
-          <span class="bookmark-domain" title="${escapeHtml(bookmark.hostname)}">${escapeHtml(bookmark.hostname)}</span>
-        </div>
+        <span class="bookmark-row-title" title="${escapeHtml(bookmark.title)}">${escapeHtml(bookmark.title)}</span>
       </div>
 
-      <div class="bookmark-actions">
-        <button class="item-action-btn action-edit" title="Редактировать">
+      <div class="bookmark-row-actions">
+        <button class="bookmark-row-action-btn action-edit" title="Редактировать">
           <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
             <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
             <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
           </svg>
         </button>
-        <button class="item-action-btn btn-delete action-delete" title="Удалить">
+        <button class="bookmark-row-action-btn btn-delete action-delete" title="Удалить">
           <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
             <polyline points="3 6 5 6 21 6"></polyline>
             <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
@@ -1115,7 +1107,7 @@
 
     // Primary click -> open URL
     row.addEventListener('click', (e) => {
-      if (e.target.closest('.bookmark-actions')) return;
+      if (e.target.closest('.bookmark-row-actions')) return;
       openUrl(bookmark.url);
     });
 
@@ -1133,14 +1125,13 @@
     return row;
   }
 
-  // --- 9. SEARCH PALETTE MODAL ENGINE ---
-
-  function openSearchModal() {
+  // --- 12. SEARCH PALETTE MODAL ENGINE ---
+  function openSearchModal(initialQuery = '') {
     elements.searchModal.classList.add('open');
-    elements.searchModalInput.value = '';
+    elements.searchModalInput.value = initialQuery;
     elements.searchModalInput.focus();
     state.selectedSearchIndex = 0;
-    renderSearchResults('');
+    renderSearchResults(initialQuery);
   }
 
   function closeSearchModal() {
@@ -1226,8 +1217,7 @@
     });
   }
 
-  // --- 10. CRUD MODALS & ACTIONS ---
-
+  // --- 13. CRUD MODALS & ACTIONS ---
   function populateFolderSelectDropdowns() {
     if (!elements.folderParentSelect || !elements.modalBookmarkFolder) return;
     elements.folderParentSelect.innerHTML = '';
@@ -1402,7 +1392,7 @@
       return;
     }
 
-    if (!window.confirm(`Вы уверены, что хотите удалить папку «${folder.title}» и все её закладки?`)) {
+    if (!window.confirm(`Вы уверены, что хотите удалить категорию «${folder.title}» и все её закладки?`)) {
       return;
     }
 
@@ -1425,12 +1415,12 @@
         state.activeBoardId = 'all';
       }
 
-      showToast(`Папка «${folder.title}» удалена`);
+      showToast(`Категория «${folder.title}» удалена`);
       await loadBookmarks();
     } catch (err) {
       console.error('[NovaTab] Delete folder error:', err);
       const isRootError = err?.message && (err.message.includes('root') || err.message.includes('modify'));
-      showToast(isRootError ? 'Системную папку браузера нельзя удалить' : 'Ошибка при удалении папки', 'error');
+      showToast(isRootError ? 'Системную папку браузера нельзя удалить' : 'Ошибка при удалении категории', 'error');
     }
   }
 
@@ -1467,8 +1457,7 @@
     }
   }
 
-  // --- 11. FOLDER CREATION MODAL ---
-
+  // --- 14. FOLDER CREATION MODAL ---
   function openFolderModal() {
     populateFolderSelectDropdowns();
     const validFolders = state.allFolders.filter(f => f && f.id !== '0' && f.title !== 'Root');
@@ -1520,17 +1509,16 @@
           parentNode.children.push({ id: newFolderId, title, children: [] });
         }
       }
-      showToast(`Папка «${title}» создана!`);
+      showToast(`Категория «${title}» создана!`);
       closeFolderModal();
       await loadBookmarks();
     } catch (err) {
       console.error('[NovaTab] Create folder error:', err);
-      showToast('Ошибка создания папки', 'error');
+      showToast('Ошибка создания категории', 'error');
     }
   }
 
-  // --- 12. SETTINGS & VIEW TOGGLE ---
-
+  // --- 15. SETTINGS MODAL ---
   function openSettingsModal() {
     updateStatsDisplay();
     elements.settingsModal.classList.add('open');
@@ -1545,47 +1533,35 @@
     elements.settingsStatFolders.textContent = state.allFolders.length;
   }
 
-  function toggleViewMode() {
-    state.viewMode = state.viewMode === 'grid' ? 'list' : 'grid';
-    if (state.isExtension && chrome.storage?.local) {
-      chrome.storage.local.set({ viewMode: state.viewMode });
-    } else {
-      localStorage.setItem('novatab_viewMode', state.viewMode);
-    }
-    updateViewModeUI();
-  }
-
-  function updateViewModeUI() {
-    if (state.viewMode === 'list') {
-      elements.cardsContainer.classList.add('list-layout');
-      elements.viewIconGrid.classList.add('hidden');
-      elements.viewIconList.classList.remove('hidden');
-      elements.tooltipViewMode.textContent = 'Вид: Список (переключить на сетку)';
-    } else {
-      elements.cardsContainer.classList.remove('list-layout');
-      elements.viewIconGrid.classList.remove('hidden');
-      elements.viewIconList.classList.add('hidden');
-      elements.tooltipViewMode.textContent = 'Вид: Сетка (переключить на список)';
-    }
-  }
-
-  function jumpToRandomBookmark() {
-    if (state.allBookmarks.length === 0) {
-      showToast('Нет доступных закладок для перехода', 'error');
-      return;
-    }
-    const randomIndex = Math.floor(Math.random() * state.allBookmarks.length);
-    const chosen = state.allBookmarks[randomIndex];
-    showToast(`Открываем: ${chosen.title}`);
-    setTimeout(() => openUrl(chosen.url), 200);
-  }
-
-  // --- 13. EVENT LISTENERS INITIALIZATION ---
-
+  // --- 16. EVENT LISTENERS INITIALIZATION ---
   function setupEventListeners() {
     // Dynamic Quote Module Click Event -> Roll new quote
     if (elements.quoteContainer) {
       elements.quoteContainer.addEventListener('click', renderRandomQuote);
+    }
+
+    // Top Search Input Enter key -> Direct Google Search redirect
+    if (elements.globalSearchInput) {
+      elements.globalSearchInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          const query = elements.globalSearchInput.value.trim();
+          if (query) {
+            window.location.href = 'https://www.google.com/search?q=' + encodeURIComponent(query);
+          }
+        }
+      });
+    }
+
+    // Top Search Google Button click -> Redirect to Google Search
+    if (elements.searchGoogleBtn) {
+      elements.searchGoogleBtn.addEventListener('click', () => {
+        const query = elements.globalSearchInput.value.trim();
+        if (query) {
+          window.location.href = 'https://www.google.com/search?q=' + encodeURIComponent(query);
+        } else {
+          elements.globalSearchInput.focus();
+        }
+      });
     }
 
     // Horizontal wheel scrolling on board pills
@@ -1609,17 +1585,20 @@
 
     elements.bgFileInput.addEventListener('change', handleBgFileSelect);
 
-    // Floating Toolbar actions
-    elements.toolbarSearchBtn.addEventListener('click', openSearchModal);
-    elements.toolbarAddBtn.addEventListener('click', () => openAddModal());
-    elements.toolbarFolderBtn.addEventListener('click', openFolderModal);
-    elements.btnAddBoard.addEventListener('click', openFolderModal);
-    elements.toolbarViewBtn.addEventListener('click', toggleViewMode);
-    elements.toolbarRandomBtn.addEventListener('click', jumpToRandomBookmark);
-    elements.toolbarSettingsBtn.addEventListener('click', openSettingsModal);
+    // Floating Gear button -> Open Settings Modal
+    if (elements.floatingSettingsBtn) {
+      elements.floatingSettingsBtn.addEventListener('click', openSettingsModal);
+    }
+
+    // Add board button in top bar
+    if (elements.btnAddBoard) {
+      elements.btnAddBoard.addEventListener('click', openFolderModal);
+    }
 
     // Empty state add button
-    elements.btnEmptyAdd.addEventListener('click', () => openAddModal());
+    if (elements.btnEmptyAdd) {
+      elements.btnEmptyAdd.addEventListener('click', () => openAddModal());
+    }
 
     // Search Modal events
     elements.searchModalClose.addEventListener('click', closeSearchModal);
@@ -1658,7 +1637,7 @@
 
     // Global Keydown shortcuts
     window.addEventListener('keydown', (e) => {
-      // Press '/' to open fast search modal if not in another modal or input
+      // Press '/' to open fast search palette if not in another modal or input
       if (
         e.key === '/' && 
         !elements.searchModal.classList.contains('open') && 
@@ -1721,9 +1700,11 @@
     }
   }
 
-  // --- 14. BOOTSTRAP INITIALIZATION ---
+  // --- 17. BOOTSTRAP INITIALIZATION ---
   async function init() {
-    console.log(`[NovaTab] Initializing Glassmorphism Engine (Extension mode: ${state.isExtension})`);
+    console.log(`[NovaTab] Initializing Aesthetic Glassmorphism Dashboard (Extension mode: ${state.isExtension})`);
+    updateLiveClockAndDate();
+    setInterval(updateLiveClockAndDate, 1000);
     renderRandomQuote();
     setupEventListeners();
     await loadSavedBackground();
@@ -1732,3 +1713,4 @@
 
   document.addEventListener('DOMContentLoaded', init);
 })();
+

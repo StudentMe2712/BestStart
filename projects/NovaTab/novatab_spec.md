@@ -1,13 +1,13 @@
-# NovaTab — Visual Bookmark Manager Specification
-**Version:** 1.4.1 (Bugfixes: Core Bookmark Loader & Mutex, Safe Folder Creation, Russian Quotes Localization & Select Dropdown Theming)  
+# NovaTab — Aesthetic Glassmorphism Dashboard Specification
+**Version:** 2.0.0 (Aesthetic Glassmorphism Dashboard 1:1 Transformation)  
 **Target Platform:** Google Chrome / Chromium-based Browsers (Manifest V3)  
-**Design Philosophy:** Ultra-modern, responsive Glassmorphism dashboard with hardware-accelerated backdrop blur, pure Native CSS3 design system, custom high-performance video & image wallpaper engine, and board-based category organization.
+**Design Philosophy:** Ultra-modern, responsive Glassmorphism dashboard with hardware-accelerated backdrop blur (`blur(24px)`), pure Native CSS3 design system, top floating capsules (Navigation Pills, Global Search Bar, Time & Weather Widget), open category cards grid, and custom video/image wallpaper engine.
 
 ---
 
 ## 1. Architectural Overview & Manifest V3 CSP Compliance
 
-NovaTab overrides the default browser "New Tab" page (`chrome_url_overrides: { "newtab": "index.html" }`), transforming it into an aesthetic, distraction-free visual hub with layered glass surfaces and reactive bookmarks management.
+NovaTab overrides the default browser "New Tab" page (`chrome_url_overrides: { "newtab": "index.html" }`), transforming it into an aesthetic, distraction-free visual dashboard with layered frosted glass surfaces and reactive bookmarks management.
 
 ### 1.1 Manifest V3 Content Security Policy (CSP) Architecture
 
@@ -15,15 +15,15 @@ NovaTab is strictly engineered to comply with Chrome Manifest V3 Content Securit
 
 | CSP Rule | NovaTab Implementation & Compliance Strategy |
 | :--- | :--- |
-| **Zero Remote Scripts** | All external CDNs (including `cdn.tailwindcss.com`) are completely eliminated. The extension operates 100% offline with zero external script fetching. |
+| **Zero Remote Scripts** | All external CDNs are completely eliminated. The extension operates 100% offline with zero external script fetching. |
 | **Zero Inline Scripts** | All `<script>...</script>` tags in `index.html` were removed. The single entry point script is `<script src="app.js"></script>` loaded at the bottom of `<body>`. |
 | **Zero Inline Event Handlers** | No `onclick`, `onchange`, `onerror`, or other inline event handler attributes exist in `index.html` or dynamically generated DOM strings. All interactions use `addEventListener` or event delegation. |
 | **Zero Dynamic Code Evaluation** | Strictly NO `eval()`, NO `new Function()`, and NO string-evaluated timers (`setTimeout("...", ms)`). All asynchronous timers execute native callback closures. |
-| **Zero External Fonts / Stylesheets** | `@import` of Google Fonts was replaced with native modern system font stacks (`system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, ...`) for instantaneous render with zero network delay. |
+| **Zero External Fonts / Stylesheets** | System font stacks (`system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`) for instantaneous render with zero network delay. |
 
 ```
 +---------------------------------------------------------------------------------------------------+
-|                                        NovaTab Extension (Mv3)                                    |
+|                                        NovaTab Dashboard (Mv3)                                    |
 +---------------------------------------------------------------------------------------------------+
 |  Manifest Configuration: permissions: ["bookmarks", "storage", "tabs", "favicon"]                 |
 |  Overrides: { "newtab": "index.html" } | Service Worker: background.js                           |
@@ -36,17 +36,16 @@ NovaTab is strictly engineered to comply with Chrome Manifest V3 Content Securit
         |    Background Service Worker    |               |    Glassmorphic SPA Viewport    |
         |        (background.js)          |               |      (index.html / app.js)      |
         +---------------------------------+               +---------------------------------+
-        | • Global shortcut Ctrl+Shift+Y  |               | • 100% Native CSS3 Layout       |
-        | • Active tab metadata capture   |               | • Dynamic Quotes Module         |
-        | • Automatic target folder seed  |               | • Video Wallpapers & Overlay    |
-        | • Action badge visual feedback  |               | • Top Board Pills Drag-and-Drop |
-        +---------------------------------+               | • Responsive Masonry Cards Grid |
+        | • Global shortcut Ctrl+Shift+Y  |               | • Top Bar: 3 Floating Capsules  |
+        | • Active tab metadata capture   |               |   - Left: Navigation Pills      |
+        | • Automatic target folder seed  |               |   - Center: Search Bar          |
+        | • Action badge visual feedback  |               |   - Right: Time & Weather       |
+        +---------------------------------+               | • Dynamic Russian Quotes Capsule|
+                                                          | • Open Category Glass Cards     |
                                                           | • Native IndexedDB (NovaTabDB)  |
-                                                          | • Right Floating Tool Dock      |
+                                                          | • Bottom Floating Gear & Bg Btns|
                                                           | • Live Search Palette (Up/Down) |
                                                           | • Real-time Chrome Event Sync   |
-                                                          | • Concurrency Mutex Lock        |
-                                                          | • Safe Parent Hierarchy Select  |
                                                           +---------------------------------+
                                                                            |
                                                                            v
@@ -59,138 +58,85 @@ NovaTab is strictly engineered to comply with Chrome Manifest V3 Content Securit
 
 ## 2. Visual System & Pure Native CSS3 Design Tokens
 
-NovaTab employs a multi-tiered glassmorphism visual hierarchy powered by standard CSS `backdrop-filter: blur(...)` and alpha-channel RGBA borders, defined cleanly via CSS Custom Properties in `:root`.
+NovaTab employs a multi-tiered glassmorphism visual hierarchy powered by standard CSS `backdrop-filter: blur(24px)` and alpha-channel RGBA borders.
 
 ### 2.1 CSS Utility Tokens (`style.css`)
 
 | Class | Properties & Aesthetics | Use Case |
 | :--- | :--- | :--- |
-| `body` | `width: 100vw; height: 100vh; overflow: hidden; margin: 0; padding: 0; background-size: cover; background-position: center; background-repeat: no-repeat; background-attachment: fixed;` with default cyberpunk aurora mesh gradient. | Base canvas for wallpaper and gradient rendering. |
+| `body` | `width: 100vw; height: 100vh; overflow: hidden; margin: 0; padding: 0; display: flex; flex-direction: column; box-sizing: border-box; font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;` | Base flex container for top bar and main content. |
 | `.bg-video-layer` | `position: fixed; inset: 0; width: 100vw; height: 100vh; object-fit: cover; z-index: -2; pointer-events: none;` | Background HTML5 video layer for high-performance looping video wallpapers. |
 | `.bg-overlay-layer` | `position: fixed; inset: 0; width: 100vw; height: 100vh; z-index: -1; pointer-events: none; background-color: rgba(0, 0, 0, var(--overlay-opacity, 0.30)); transition: background-color var(--transition-fast);` | Adjustable dimming layer ensuring Glassmorphism readability over bright backgrounds. |
-| `.quote-container` | `display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; margin: 0 auto 26px auto; max-width: 820px; padding: 12px 24px; border-radius: var(--radius-lg); cursor: pointer;` | Centered dynamic inspirational quote capsule. |
-| `.glass-panel` | `background: var(--glass-bg-panel); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid var(--glass-border);` | Floating toolbar dock, top navbar capsule, modal backgrounds. |
-| `.glass-card` | `border-radius: var(--radius-lg); background: var(--glass-bg-card); backdrop-filter: blur(16px); border: 1px solid var(--glass-border); padding: 16px;` with hover lift `-2px` and purple ambient glow. | Category/folder bookmark cards in the masonry grid. |
-| `.glass-pill` | `background: var(--glass-bg-pill); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border: 1px solid var(--glass-border-subtle); border-radius: 9999px;` | Top nav board tabs, filter chips, secondary buttons. |
-| `.glass-pill.dragging` | `opacity: 0.4; transform: scale(0.95); border-style: dashed;` | Visual feedback for category pill being dragged. |
-| `.glass-pill.drag-over` | `border-color: #8b5cf6 !important; box-shadow: 0 0 12px rgba(139, 92, 246, 0.6) !important; transform: scale(1.05);` | Visual drop indicator for category pill target. |
-| `.glass-pill-active` | `background: linear-gradient(135deg, rgba(139, 92, 246, 0.75), rgba(99, 102, 241, 0.75)); backdrop-filter: blur(12px); border: 1px solid var(--glass-border-active); box-shadow: 0 0 15px rgba(139, 92, 246, 0.35);` | Currently selected board/filter pill and primary buttons. |
-| `select, .form-select` | `background-color: #1A1D29 !important; color: #FFFFFF !important; border: 1px solid rgba(255,255,255,0.15) !important; color-scheme: dark !important;` with dark option items (`#161922`). | High-contrast dark select menus with zero white edge artifacts. |
-| `.cards-masonry-grid` | `display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 20px; align-items: start;` | Dynamic responsive bookmark cards layout. |
-| `.floating-toolbar` | `position: fixed; right: 24px; top: 50%; transform: translateY(-50%); z-index: 50; border-radius: 9999px; padding: 12px 8px;` | Vertical quick-action dock on the right viewport edge. |
-| `.floating-bg-btn` | `position: fixed; bottom: 24px; left: 24px; z-index: 50; width: 48px; height: 48px; border-radius: 50%; display: flex; align-items: center; justify-content: center;` | Bottom-left instant wallpaper changer button. |
-| `.modal-overlay` & `.modal-box` | Fullscreen frosted overlay with scale-animated glassmorphic modal box and responsive sizes (`.modal-box-wide`). | Search palette, bookmark CRUD, folder creator, and settings dialogs. |
-| `.glass-slider` | Custom gradient-thumb range slider for background dimming and transparency adjustment. | Settings modal overlay opacity control. |
-| `.custom-scrollbar` | `scrollbar-width: thin; scrollbar-color: rgba(255, 255, 255, 0.2) transparent;` | Minimal unobtrusive scrollbar for viewport and search results. |
+| `.top-bar` | `display: flex; justify-content: space-between; align-items: center; padding: 24px 40px; width: 100%; box-sizing: border-box; gap: 20px; z-index: 40;` | Top horizontal floating capsules bar. |
+| `.glass-panel` | `background: rgba(0, 0, 0, 0.15) !important; backdrop-filter: blur(24px) !important; -webkit-backdrop-filter: blur(24px) !important; border: 1px solid rgba(255, 255, 255, 0.08) !important; border-radius: 24px; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1) !important; color: #FFFFFF; transition: all 0.3s ease;` | Unified glass panel foundation for capsules, category cards, buttons, and modals. |
+| `.top-nav-block` | `border-radius: 100px !important; padding: 4px 8px; display: flex; align-items: center; gap: 4px; max-width: 42vw;` | Left floating navigation pills capsule. |
+| `.nav-pill-btn` | `padding: 6px 16px; border-radius: 100px; font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.3s ease; background: transparent; border: none; color: rgba(255,255,255,0.8);` | Category/board filter pill. |
+| `.nav-pill-btn.active` | `background: rgba(0, 0, 0, 0.40) !important; color: #FFFFFF !important; font-weight: 600;` | Currently active category/board pill. |
+| `.top-search-block` | `border-radius: 100px !important; padding: 8px 16px; width: 420px; max-width: 35vw; display: flex; align-items: center; gap: 10px;` | Center floating search bar capsule with Google redirect on Enter. |
+| `.top-widget-block` | `border-radius: 100px !important; padding: 8px 20px; display: flex; align-items: center; gap: 10px; font-size: 13px; font-weight: 500; white-space: nowrap;` | Right floating time & weather widget capsule. |
+| `.main-content-viewport` | `flex: 1; display: flex; flex-direction: column; align-items: center; padding: 10px 40px 40px; overflow-y: auto; width: 100%; box-sizing: border-box; gap: 20px;` | Scrollable viewport hosting quote and category cards. |
+| `.quote-container` | `display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; margin: 0 auto; max-width: 820px; padding: 8px 20px; border-radius: 16px; cursor: pointer;` | Centered dynamic inspirational quote capsule. |
+| `.cards-container` | `display: flex; gap: 24px; justify-content: center; align-items: flex-start; flex-wrap: wrap; width: 100%; max-width: 1600px;` | Flex wrap container for vertical category cards. |
+| `.category-card` | `width: 240px; min-width: 220px; max-width: 260px; padding: 20px; border-radius: 24px !important; display: flex; flex-direction: column; gap: 14px;` | Open category cards (AI, Work, Finance, Social, Dev, Streaming). |
+| `.bookmark-row-item` | `display: flex; align-items: center; justify-content: space-between; gap: 8px; text-decoration: none; color: #FFFFFF; padding: 4px 0; border-radius: 6px; cursor: pointer; transition: all 0.2s ease;` | Bookmark row with 16x16 favicon, 14px title (`opacity: 0.8` -> `1.0`), and hover action dock. |
+| `.floating-gear-btn` | `position: fixed; right: 28px; bottom: 28px; width: 42px; height: 42px; border-radius: 50% !important; z-index: 50; display: flex; align-items: center; justify-content: center;` | Bottom-right floating gear button with rotation hover effect. |
+| `.floating-bg-btn` | `position: fixed; left: 28px; bottom: 28px; width: 42px; height: 42px; border-radius: 50% !important; z-index: 50; display: flex; align-items: center; justify-content: center;` | Bottom-left floating wallpaper upload button. |
+| `.modal-overlay` & `.modal-box` | Fullscreen frosted overlay with scale-animated glassmorphic modal box. | Search palette, bookmark CRUD, category creator, and settings dialogs. |
 
 ---
 
-## 3. Dynamic Quotes Module (Strict Russian Localization)
+## 3. Top Floating Bar & Live Widgets
 
-Positioned centered at the top of the main scrollable viewport above the category cards grid, the Quotes Module provides inspiring, philosophical, dark academia, and lo-fi quotes translated into Russian:
+### 3.1 Left Floating Block: Navigation Pills
+- Renders master `"✦ Home"` pill alongside user category pills (e.g. AI, Work, Finance, Social, Dev, Streaming) and the `+` Add Category button.
+- Custom pills feature HTML5 Drag & Drop reordering and hover-revealed `.delete-board-btn` cross.
 
-- **Curated Russian Quote Bank:**
-  1. *«Вы живете только один раз, но если вы все сделаете правильно, одного раза достаточно.»* — Мэй Уэст
-  2. *«Чем тише ты становишься, тем больше начинаешь слышать.»* — Рам Дасс
-  3. *«Кораблю безопаснее в порту, но он не для того строился.»* — Грейс Хоппер
-  4. *«Никогда не поздно стать тем, кем ты мог бы быть.»* — Джордж Элиот
-  5. *«Простота — это душа эффективности.»* — Остин Фриман
-  6. *«Секрет того, чтобы двигаться вперед — это начать.»* — Марк Твен
-  7. *«Не тратьте время на споры о том, каким должен быть хороший человек. Будьте им.»* — Марк Аврелий
-  8. *«Мутная вода лучше всего очищается, если оставить ее в покое.»* — Алан Уоттс
-  9. *«Мы чаще страдаем в воображении, чем в реальности.»* — Сенека
-  10. *«Все, что ты можешь вообразить — реально.»* — Пабло Пикассо
-  11. *«Оставайтесь голодными, оставайтесь безрассудными.»* — Стив Джобс
-  12. *«Делай, что можешь, с тем, что имеешь, там, где ты есть.»* — Теодор Рузвельт
-- **Interaction & Animation:** On initial load (`DOMContentLoaded` / `init`), a random quote is rendered. Clicking anywhere on the `.quote-container` smoothly rolls another random quote (with anti-repetition guarantee) using subtle CSS fade and translateY animations.
+### 3.2 Center Floating Block: Search Bar
+- Magnifying glass SVG icon on the left.
+- `#global-search-input` text field with transparent background, white text, 14px font size.
+- Google `"G"` icon on the right.
+- On `Enter` key or Google icon click, redirects to `https://www.google.com/search?q=` + `encodeURIComponent(query)`.
+- Live search modal remains accessible via `/` keyboard shortcut.
+
+### 3.3 Right Floating Block: Time & Weather Widget
+- Displays Location (`"Атырау"`), weather icon (`🌤️`), temperature (`"20°C"`), date in Russian (`"Вс, 30 авг"`), and live clock (`"13:00"`).
+- Real-time time & date updates every 1,000ms.
 
 ---
 
 ## 4. Lively Video Wallpapers & Native IndexedDB Storage Engine
-
-To support large video files and high-resolution images without quota restrictions, NovaTab implements a native IndexedDB storage engine (`WallpaperDB`):
 
 ### 4.1 Database Architecture (`WallpaperDB`)
 - **Database Name:** `NovaTabDB` (Version `1`)
 - **Object Store:** `wallpapers`
 - **Key:** `'activeWallpaper'`
 - **Record Schema:** `{ blob: Blob/File, type: 'video' | 'image', name: string, updatedAt: number }`
-- **Methods:**
-  - `init()`: Opens IndexedDB connection with auto-upgraded schema.
-  - `save(blob, type, name)`: Asynchronously stores media blob.
-  - `get()`: Retrieves active wallpaper record.
-  - `clear()`: Deletes stored wallpaper and releases storage.
 
 ### 4.2 Wallpaper Processing Pipeline
 - **Video Uploads (`video/mp4`, `video/webm`, `video/ogg`):**
   1. Stored directly as a binary `Blob`/`File` in `NovaTabDB`.
   2. Object URL generated via `URL.createObjectURL(blob)`.
-  3. Bound to `#bg-video` layer (`autoplay`, `loop`, `muted`, `playsinline`), unhidden and played.
+  3. Bound to `#bg-video` layer (`autoplay`, `loop`, `muted`, `playsinline`).
   4. Static background reset (`document.body.style.backgroundImage = 'none'`).
-  5. Storage metadata updated (`{ wallpaperType: 'video' }`).
 - **Image Uploads (`image/*`):**
   1. Canvas aspect-ratio downscale to max 1920x1080.
-  2. WebP 80% compression (fallback JPEG 85%).
-  3. Stored in IndexedDB and cached in `chrome.storage.local`.
-  4. Video stopped, hidden, and previous object URLs revoked via `URL.revokeObjectURL()`.
-  5. Applied to `document.body.style.backgroundImage`.
-- **Adjustable Dimming Overlay & Glassmorphism Slider:**
+  2. WebP 80% compression.
+  3. Stored in IndexedDB and cached in storage.
+  4. Applied to `document.body.style.backgroundImage`.
+- **Adjustable Dimming Overlay:**
   - `#bg-overlay` layer with `--overlay-opacity` CSS Custom Property (default `0.30`, range `0`–`0.85`).
-  - Real-time interactive slider in Settings modal updates dimming and persists preference in storage.
-- **Reset Mechanism:**
-  - Clears `WallpaperDB`, stops/hides video, revokes object URLs, removes background image, and restores default cyberpunk aurora neon mesh gradient.
+  - Interactive slider in Settings modal updates dimming and persists preference.
 
 ---
 
-## 5. Drag-and-Drop Category Sorting
+## 5. Implementation Checklist & Status
 
-Users can reorder category board tabs directly in the top navigation bar via intuitive HTML5 drag-and-drop:
+- [x] **100% Manifest V3 CSP Compliance:** Removed all external CDNs, zero inline handlers, zero remote scripts, zero `eval()`.
+- [x] **Aesthetic Glassmorphism Dashboard Layout (`index.html`, `style.css`):** Top bar with 3 floating glass capsules (Nav Pills, Search Bar, Time & Weather Widget), main viewport with open category cards, bottom floating gear and wallpaper buttons.
+- [x] **Live Clock & Weather Engine (`app.js`):** 1-second interval timer updating `#widget-time` and `#widget-date` in Russian (`Вс, 30 авг`, `13:00`).
+- [x] **Global Google Search Integration (`app.js`):** Direct Google Search redirection on Enter in `#global-search-input` + live search palette on `/`.
+- [x] **Open Category Cards Grid (`app.js`, `style.css`):** Vertical `.glass-panel.category-card` (240px wide) with 16px bold title, 16x16 favicons, 14px titles (`opacity: 0.8` -> `1.0`), and hover action docks.
+- [x] **Drag-and-Drop Category Sorting (`app.js`):** HTML5 drag-and-drop on category pills with `chrome.bookmarks.move` integration and mock tree reordering.
+- [x] **IndexedDB Lively Video & Image Wallpapers (`app.js`):** Binary storage in `NovaTabDB` supporting large video wallpapers and WebP compressed images.
+- [x] **Floating Settings & Controls (`app.js`, `style.css`):** Bottom-right `#floating-settings-btn` with 45deg rotation hover, bottom-left `#bg-change-btn`.
 
-- **Draggable Elements:** All custom category folder pills (excluding the master "✦ Все доски" pill) are marked `draggable="true"`.
-- **Drag Events:**
-  - `dragstart`: Captures `state.draggedFolderId` and sets `dataTransfer.setData('text/plain', folder.id)`, applying `.dragging` class (dashed border, `0.4` opacity).
-  - `dragover`: Prevents default, sets `dropEffect = 'move'`, and applies `.drag-over` class (purple glow highlight, `scale(1.05)`).
-  - `dragleave`: Cleans up `.drag-over` styling.
-  - `dragend`: Resets drag state and clears styling from all pills.
-  - `drop`: Calculates dragged folder ID and drop target folder ID.
-    - **Extension Mode:** Identifies target folder index in parent bookmark container and reorders via `chrome.bookmarks.move(draggedId, { parentId, index: targetIndex })`.
-    - **Standalone / Mock Mode:** Reorders in `state.allFolders` and `MOCK_BOOKMARK_TREE`.
-    - Automatically refreshes the UI via `loadBookmarks()` with toast feedback (`Порядок досок обновлен!`).
-
----
-
-## 6. Concurrency Mutex & Folder Hierarchy Management
-
-### 6.1 Mutex Reload Lock (`isLoadingBookmarks` & `pendingBookmarkReload`)
-When user actions (e.g. deleting or moving bookmarks/folders) trigger an immediate `await loadBookmarks()` while Chrome simultaneously fires reactive lifecycle listeners (`chrome.bookmarks.onRemoved`, `chrome.bookmarks.onMoved`), the mutex ensures:
-1. Only ONE asynchronous bookmarks tree traversal executes at any time.
-2. Interleaved calls set `pendingBookmarkReload = true` and return immediately.
-3. Upon completion of the active reload, the lock invokes the pending reload once, guaranteeing consistent state.
-
-### 6.2 Atomic State Swapping & Multi-Level Folder Parsing
-- `parseBookmarkNodes(nodes, parentPath, parentId, depth, collections)` recursively builds temporary local collections in memory:
-  - `tempAllBookmarks` & `tempAllFolders`
-  - `tempFolderMap` & `tempBookmarksByFolder`
-- Atomically applies parsed collections to `state`.
-- Recursively tracks folder tree depths to provide clean visual indentations (`'— '.repeat(folder.depth)`) in `<select>` dropdowns.
-
-### 6.3 Safe Parent Folder Fallback for Modal Forms
-- `populateFolderSelectDropdowns()` cleans and populates both `folderParentSelect` and `modalBookmarkFolder`, filtering out virtual root wrapper node (`id: '0'`).
-- Sets default selection to `'1'` (Панель закладок) or the first available folder ID.
-- `handleFolderFormSubmit()` validates `parentId` existence in `state.folderMap`, safely falling back to `'1'` before calling `chrome.bookmarks.create({ parentId, title })` to prevent `Error: Can't find parent bookmark for id`.
-
----
-
-## 7. Implementation Checklist & Status
-
-- [x] **100% Manifest V3 CSP Compliance:** Removed Tailwind CDN, zero inline handlers, zero remote dependencies, zero `eval()`, pure native event binding.
-- [x] **Pure Native CSS3 Refactor (`style.css`):** Comprehensive CSS variables, glassmorphism design tokens (`.glass-panel`, `.glass-card`, `.glass-pill`, `.glass-pill-active`), responsive grid, modals, and toolbars.
-- [x] **Select & Option Styling Fix (`style.css`):** Dark select boxes with `#1A1D29` / `#161922`, `color-scheme: dark`, purple focus rings, and zero white strips.
-- [x] **Russian Literary Quotes Module (`index.html`, `style.css`, `app.js`):** 12 curated Russian translations of philosophical quotes, random roll on load and click, soft text shadow.
-- [x] **Lively Video Wallpapers & Native IndexedDB Engine (`app.js`, `style.css`, `index.html`):** Native `NovaTabDB` IndexedDB store for video/image blobs, HTML5 video background layer, adjustable dimming overlay with Settings slider (`--overlay-opacity`).
-- [x] **Drag-and-Drop Category Sorting (`app.js`, `style.css`):** HTML5 drag-and-drop on category pills with `chrome.bookmarks.move` integration and mock tree reordering.
-- [x] **Concurrency Mutex & Core Loader (`app.js`):** Fully implemented `loadBookmarks()` and `parseBookmarkNodes()`, protected by `isLoadingBookmarks` & `pendingBookmarkReload` mutex lock.
-- [x] **Safe Folder Creation & Parent Dropdown Validation (`app.js`):** Dynamic hierarchy population, root ID exclusion, and fallback to `'1'` to prevent `Can't find parent bookmark for id` errors.
-- [x] **Root Container Clearing Capability (`app.js`):** Implemented `.btn-clear-card` and `clearCategoryBookmarks` to safely clear bookmarks from system/root categories via `chrome.bookmarks.remove(bm.id)`.
-- [x] **Streamlined Hover-Only Bookmark Actions & Delete Feedback:** Streamlined bookmark row actions exclusively to Edit and Delete with red hover glow on `.item-action-btn.btn-delete:hover`.
-- [x] **Interactive Controls & Hotkeys:** Global `/` search shortcut, search palette keyboard navigation (`↑`, `↓`, `Enter`, `Escape`), board filtering, bookmark CRUD, view mode toggle.
