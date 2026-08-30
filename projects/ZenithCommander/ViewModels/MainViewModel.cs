@@ -716,22 +716,27 @@ public class MainViewModel : ViewModelBase
         // Pinned Windows 11 standard folders
         string userProfile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
         string pictures = Environment.GetFolderPath(Environment.SpecialFolder.MyPictures);
+        string desktop = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
+        string downloads = Path.Combine(userProfile, "Downloads");
+        string documents = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+        string music = Environment.GetFolderPath(Environment.SpecialFolder.MyMusic);
+        string videos = Environment.GetFolderPath(Environment.SpecialFolder.MyVideos);
 
         AddQuickAccessFolder("Главная", "🏠", userProfile);
-        AddQuickAccessFolder("Галерея", "🖼️", pictures);
-        AddQuickAccessFolder("Рабочий стол", "🖥️", Environment.GetFolderPath(Environment.SpecialFolder.Desktop));
-        AddQuickAccessFolder("Загрузки", "📥", Path.Combine(userProfile, "Downloads"));
-        AddQuickAccessFolder("Документы", "📄", Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments));
+        AddQuickAccessFolder("Галерея", "🖼️", Directory.Exists(pictures) ? pictures : userProfile);
+        AddQuickAccessFolder("Рабочий стол", "🖥️", desktop);
+        AddQuickAccessFolder("Загрузки", "📥", Directory.Exists(downloads) ? downloads : userProfile);
+        AddQuickAccessFolder("Документы", "📄", documents);
         AddQuickAccessFolder("Изображения", "🌄", pictures);
-        AddQuickAccessFolder("Музыка", "🎵", Environment.GetFolderPath(Environment.SpecialFolder.MyMusic));
-        AddQuickAccessFolder("Видео", "🎬", Environment.GetFolderPath(Environment.SpecialFolder.MyVideos));
+        AddQuickAccessFolder("Музыка", "🎵", music);
+        AddQuickAccessFolder("Видео", "🎬", videos);
 
         RefreshDrives();
     }
 
     private void AddQuickAccessFolder(string title, string icon, string path)
     {
-        if (Directory.Exists(path))
+        if (!string.IsNullOrWhiteSpace(path))
         {
             QuickAccessItems.Add(new SidebarItem
             {
@@ -739,7 +744,7 @@ public class MainViewModel : ViewModelBase
                 IconGlyph = icon,
                 Path = path,
                 IsDrive = false,
-                Section = "Быстрый доступ"
+                Section = "Главная"
             });
         }
     }
@@ -765,7 +770,7 @@ public class MainViewModel : ViewModelBase
                         IconGlyph = "💾",
                         Path = drive.RootDirectory.FullName,
                         IsDrive = true,
-                        Section = "Диски",
+                        Section = "Этот компьютер",
                         FreeSpaceBytes = drive.AvailableFreeSpace,
                         TotalSizeBytes = drive.TotalSize,
                         UsagePercent = usagePercent,
@@ -780,7 +785,7 @@ public class MainViewModel : ViewModelBase
                         IconGlyph = "💾",
                         Path = drive.Name,
                         IsDrive = true,
-                        Section = "Диски",
+                        Section = "Этот компьютер",
                         Subtitle = "Устройство не готово"
                     });
                 }

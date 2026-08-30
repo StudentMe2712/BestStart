@@ -5,16 +5,16 @@
              StartupUri="MainWindow.xaml">
     <Application.Resources>
         <!-- Windows 11 Dark Mode Color Palette -->
-        <Color x:Key="ColorBackground">#191919</Color>
-        <Color x:Key="ColorMica">#202020</Color>
-        <Color x:Key="ColorMicaSecondary">#242424</Color>
-        <Color x:Key="ColorSidebar">#202020</Color>
-        <Color x:Key="ColorSurface">#2C2C2C</Color>
-        <Color x:Key="ColorSurfaceHover">#333333</Color>
-        <Color x:Key="ColorSurfacePressed">#383838</Color>
-        <Color x:Key="ColorBorder">#333333</Color>
-        <Color x:Key="ColorBorderLight">#3A3A3A</Color>
-        <Color x:Key="ColorBorderSubtle">#2D2D2D</Color>
+        <Color x:Key="ColorBackground">#191919</Color>       <!-- Main List Area Background (distinctly darker) -->
+        <Color x:Key="ColorMica">#202020</Color>             <!-- Top / Header / Command Bar Background -->
+        <Color x:Key="ColorMicaSecondary">#202020</Color>    <!-- Secondary Mica Surface -->
+        <Color x:Key="ColorSidebar">#1C1C1C</Color>          <!-- Sidebar Background: #1C1C1C -->
+        <Color x:Key="ColorSurface">#2D2D2D</Color>          <!-- Input & Card Surface -->
+        <Color x:Key="ColorSurfaceHover">#383838</Color>
+        <Color x:Key="ColorSurfacePressed">#303030</Color>
+        <Color x:Key="ColorBorder">#2C2C2C</Color>           <!-- Dividers & Separators: #2C2C2C -->
+        <Color x:Key="ColorBorderLight">#333333</Color>      <!-- Subtle Outer Borders: #333333 -->
+        <Color x:Key="ColorBorderSubtle">#2C2C2C</Color>
         <Color x:Key="ColorAccent">#0078D4</Color>
         <Color x:Key="ColorAccentLight">#4CC2FF</Color>
         <Color x:Key="ColorAccentDark">#005A9E</Color>
@@ -24,9 +24,9 @@
         <Color x:Key="ColorTextMuted">#8A8A8A</Color>
         <Color x:Key="ColorFolder">#F5C842</Color>
         <Color x:Key="ColorFile">#F0F0F0</Color>
-        <Color x:Key="ColorItemHover">#2D2D2D</Color>
-        <Color x:Key="ColorItemSelected">#2A3A4E</Color>
-        <Color x:Key="ColorItemSelectedInactive">#262E38</Color>
+        <Color x:Key="ColorItemHover">#242424</Color>
+        <Color x:Key="ColorItemSelected">#2E2E2E</Color>
+        <Color x:Key="ColorItemSelectedInactive">#242424</Color>
         <Color x:Key="ColorError">#FF99A4</Color>
         <Color x:Key="ColorErrorBg">#4A1E24</Color>
         <Color x:Key="ColorSuccess">#6CCB5F</Color>
@@ -71,7 +71,7 @@
         <!-- Base Windows 11 Typography -->
         <FontFamily x:Key="AppFont">Segoe UI Variable Display, Segoe UI Variable Text, Segoe UI, -apple-system, BlinkMacSystemFont, Roboto, sans-serif</FontFamily>
         <FontFamily x:Key="MonoFont">Cascadia Code, Consolas, Segoe UI Mono, monospace</FontFamily>
-        <FontFamily x:Key="IconFont">Segoe Fluent Icons, Segoe MDL2 Assets, Segoe UI Emoji, Segoe UI Symbol</FontFamily>
+        <FontFamily x:Key="IconFont">Segoe UI Emoji, Segoe Fluent Icons, Segoe MDL2 Assets, Segoe UI Symbol</FontFamily>
 
         <!-- Modern Sleek ScrollBar Style -->
         <Style x:Key="ScrollBarThumbStyle" TargetType="{x:Type Thumb}">
@@ -143,9 +143,9 @@
         <Style TargetType="{x:Type GridViewColumnHeader}">
             <Setter Property="Background" Value="{StaticResource BrushBackground}" />
             <Setter Property="Foreground" Value="{StaticResource BrushTextSecondary}" />
-            <Setter Property="BorderBrush" Value="{StaticResource BrushBorderSubtle}" />
-            <Setter Property="BorderThickness" Value="0,0,1,1" />
-            <Setter Property="Padding" Value="10,7" />
+            <Setter Property="BorderBrush" Value="{StaticResource BrushBorder}" />
+            <Setter Property="BorderThickness" Value="0,0,0,1" />
+            <Setter Property="Padding" Value="10,6" />
             <Setter Property="FontFamily" Value="{StaticResource AppFont}" />
             <Setter Property="FontSize" Value="12" />
             <Setter Property="FontWeight" Value="Normal" />
@@ -167,11 +167,11 @@
                         </Grid>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="HeaderBorder" Property="Background" Value="{StaticResource BrushItemHover}" />
+                                <Setter TargetName="HeaderBorder" Property="Background" Value="#12FFFFFF" />
                                 <Setter Property="Foreground" Value="{StaticResource BrushTextPrimary}" />
                             </Trigger>
                             <Trigger Property="IsPressed" Value="True">
-                                <Setter TargetName="HeaderBorder" Property="Background" Value="{StaticResource BrushSurfacePressed}" />
+                                <Setter TargetName="HeaderBorder" Property="Background" Value="#1EFFFFFF" />
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -179,7 +179,7 @@
             </Setter>
         </Style>
 
-        <!-- ListViewItem Style (Windows 11 Fluent Row ~38px) -->
+        <!-- ListViewItem Style (Windows 11 Fluent Row ~36px) -->
         <Style TargetType="{x:Type ListViewItem}">
             <Setter Property="Foreground" Value="{StaticResource BrushTextPrimary}" />
             <Setter Property="Background" Value="Transparent" />
@@ -187,7 +187,7 @@
             <Setter Property="BorderThickness" Value="1" />
             <Setter Property="Margin" Value="6,1,6,1" />
             <Setter Property="Padding" Value="8,5" />
-            <Setter Property="MinHeight" Value="38" />
+            <Setter Property="MinHeight" Value="36" />
             <Setter Property="FontFamily" Value="{StaticResource AppFont}" />
             <Setter Property="FontSize" Value="12" />
             <Setter Property="HorizontalContentAlignment" Value="Stretch" />
@@ -206,22 +206,26 @@
                             <GridViewRowPresenter VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
                         </Border>
                         <ControlTemplate.Triggers>
+                            <!-- Hover -->
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="ItemBorder" Property="Background" Value="{StaticResource BrushItemHover}" />
-                                <Setter TargetName="ItemBorder" Property="BorderBrush" Value="{StaticResource BrushBorderLight}" />
+                                <Setter TargetName="ItemBorder" Property="Background" Value="#0FFFFFFF" />
+                                <Setter TargetName="ItemBorder" Property="BorderBrush" Value="#15FFFFFF" />
                             </Trigger>
+                            <!-- Selected Active / Focused -->
                             <Trigger Property="IsSelected" Value="True">
-                                <Setter TargetName="ItemBorder" Property="Background" Value="{StaticResource BrushItemSelected}" />
-                                <Setter TargetName="ItemBorder" Property="BorderBrush" Value="{StaticResource BrushAccentLight}" />
+                                <Setter TargetName="ItemBorder" Property="Background" Value="#18FFFFFF" />
+                                <Setter TargetName="ItemBorder" Property="BorderBrush" Value="#25FFFFFF" />
                                 <Setter Property="Foreground" Value="#FFFFFF" />
                             </Trigger>
+                            <!-- Selected Inactive -->
                             <MultiTrigger>
                                 <MultiTrigger.Conditions>
                                     <Condition Property="IsSelected" Value="True" />
                                     <Condition Property="Selector.IsSelectionActive" Value="False" />
                                 </MultiTrigger.Conditions>
-                                <Setter TargetName="ItemBorder" Property="Background" Value="{StaticResource BrushItemSelectedInactive}" />
-                                <Setter TargetName="ItemBorder" Property="BorderBrush" Value="{StaticResource BrushBorderLight}" />
+                                <Setter TargetName="ItemBorder" Property="Background" Value="#12FFFFFF" />
+                                <Setter TargetName="ItemBorder" Property="BorderBrush" Value="Transparent" />
+                                <Setter Property="Foreground" Value="#FFFFFF" />
                             </MultiTrigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -245,15 +249,17 @@
 
         <!-- Modern TextBox Style (Win11 Pill Input) -->
         <Style TargetType="{x:Type TextBox}">
-            <Setter Property="Background" Value="{StaticResource BrushSurface}" />
+            <Setter Property="Background" Value="#2D2D2D" />
             <Setter Property="Foreground" Value="{StaticResource BrushTextPrimary}" />
             <Setter Property="CaretBrush" Value="{StaticResource BrushAccentLight}" />
             <Setter Property="SelectionBrush" Value="{StaticResource BrushAccent}" />
-            <Setter Property="BorderBrush" Value="{StaticResource BrushBorderLight}" />
+            <Setter Property="BorderBrush" Value="#383838" />
             <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="Padding" Value="8,5" />
+            <Setter Property="Padding" Value="8,4" />
+            <Setter Property="Height" Value="32" />
             <Setter Property="FontFamily" Value="{StaticResource AppFont}" />
             <Setter Property="FontSize" Value="12" />
+            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="{x:Type TextBox}">
@@ -261,25 +267,45 @@
                                 Background="{TemplateBinding Background}"
                                 BorderBrush="{TemplateBinding BorderBrush}"
                                 BorderThickness="{TemplateBinding BorderThickness}"
-                                CornerRadius="5"
+                                CornerRadius="4"
                                 SnapsToDevicePixels="True">
                             <ScrollViewer x:Name="PART_ContentHost"
                                           Focusable="False"
                                           HorizontalScrollBarVisibility="Hidden"
-                                          VerticalScrollBarVisibility="Hidden" />
+                                          VerticalScrollBarVisibility="Hidden"
+                                          VerticalAlignment="Center" />
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="border" Property="BorderBrush" Value="#4E4E4E" />
+                                <Setter TargetName="border" Property="BorderBrush" Value="#484848" />
                             </Trigger>
                             <Trigger Property="IsFocused" Value="True">
                                 <Setter TargetName="border" Property="BorderBrush" Value="{StaticResource BrushAccentLight}" />
-                                <Setter TargetName="border" Property="Background" Value="#252525" />
+                                <Setter TargetName="border" Property="Background" Value="#2D2D2D" />
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
+        </Style>
+
+        <!-- Windows 11 Input Container Border Style (for Address Bar & Search Box) -->
+        <Style x:Key="Win11InputContainerStyle" TargetType="{x:Type Border}">
+            <Setter Property="Background" Value="#2D2D2D" />
+            <Setter Property="BorderBrush" Value="#383838" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="4" />
+            <Setter Property="Height" Value="32" />
+            <Setter Property="Padding" Value="6,2" />
+            <Setter Property="SnapsToDevicePixels" Value="True" />
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="BorderBrush" Value="#484848" />
+                </Trigger>
+                <Trigger Property="IsKeyboardFocusWithin" Value="True">
+                    <Setter Property="BorderBrush" Value="{StaticResource BrushAccentLight}" />
+                </Trigger>
+            </Style.Triggers>
         </Style>
 
         <!-- Standard Button Style -->
@@ -326,7 +352,7 @@
             </Setter>
         </Style>
 
-        <!-- Nav Icon Button Style (Circular / Rounded Frame: Back/Forward/Up/Refresh) -->
+        <!-- Nav Icon Button Style (Circular / Rounded Frame: Back/Forward/Up/Refresh/Tabs) -->
         <Style x:Key="NavIconButton" TargetType="{x:Type Button}">
             <Setter Property="Background" Value="Transparent" />
             <Setter Property="Foreground" Value="{StaticResource BrushTextPrimary}" />
@@ -349,10 +375,10 @@
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="navBorder" Property="Background" Value="{StaticResource BrushSurfaceHover}" />
+                                <Setter TargetName="navBorder" Property="Background" Value="#1AFFFFFF" />
                             </Trigger>
                             <Trigger Property="IsPressed" Value="True">
-                                <Setter TargetName="navBorder" Property="Background" Value="{StaticResource BrushSurfacePressed}" />
+                                <Setter TargetName="navBorder" Property="Background" Value="#25FFFFFF" />
                             </Trigger>
                             <Trigger Property="IsEnabled" Value="False">
                                 <Setter Property="Foreground" Value="{StaticResource BrushTextMuted}" />
@@ -382,6 +408,8 @@
                     <ControlTemplate TargetType="{x:Type Button}">
                         <Border x:Name="cmdBorder"
                                 Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
                                 CornerRadius="4"
                                 Padding="{TemplateBinding Padding}"
                                 SnapsToDevicePixels="True">
@@ -390,10 +418,10 @@
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="cmdBorder" Property="Background" Value="{StaticResource BrushSurfaceHover}" />
+                                <Setter TargetName="cmdBorder" Property="Background" Value="#1AFFFFFF" />
                             </Trigger>
                             <Trigger Property="IsPressed" Value="True">
-                                <Setter TargetName="cmdBorder" Property="Background" Value="{StaticResource BrushSurfacePressed}" />
+                                <Setter TargetName="cmdBorder" Property="Background" Value="#25FFFFFF" />
                             </Trigger>
                             <Trigger Property="IsEnabled" Value="False">
                                 <Setter Property="Foreground" Value="{StaticResource BrushTextMuted}" />
@@ -428,10 +456,10 @@
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="actBorder" Property="Background" Value="{StaticResource BrushSurfaceHover}" />
+                                <Setter TargetName="actBorder" Property="Background" Value="#1AFFFFFF" />
                             </Trigger>
                             <Trigger Property="IsPressed" Value="True">
-                                <Setter TargetName="actBorder" Property="Background" Value="{StaticResource BrushSurfacePressed}" />
+                                <Setter TargetName="actBorder" Property="Background" Value="#25FFFFFF" />
                             </Trigger>
                             <Trigger Property="IsEnabled" Value="False">
                                 <Setter Property="Foreground" Value="{StaticResource BrushTextMuted}" />
@@ -450,7 +478,7 @@
             <Setter Property="BorderBrush" Value="Transparent" />
             <Setter Property="BorderThickness" Value="0" />
             <Setter Property="Padding" Value="6,2" />
-            <Setter Property="Height" Value="26" />
+            <Setter Property="Height" Value="24" />
             <Setter Property="FontSize" Value="12" />
             <Setter Property="FontWeight" Value="Normal" />
             <Setter Property="Cursor" Value="Hand" />
@@ -468,11 +496,11 @@
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="crumbBorder" Property="Background" Value="{StaticResource BrushSurfaceHover}" />
+                                <Setter TargetName="crumbBorder" Property="Background" Value="#1AFFFFFF" />
                                 <Setter Property="Foreground" Value="{StaticResource BrushAccentLight}" />
                             </Trigger>
                             <Trigger Property="IsPressed" Value="True">
-                                <Setter TargetName="crumbBorder" Property="Background" Value="{StaticResource BrushSurfacePressed}" />
+                                <Setter TargetName="crumbBorder" Property="Background" Value="#25FFFFFF" />
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -486,6 +514,7 @@
             <Setter Property="Foreground" Value="{StaticResource BrushTextPrimary}" />
             <Setter Property="BorderBrush" Value="Transparent" />
             <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Margin" Value="6,1,6,1" />
             <Setter Property="Padding" Value="8,6" />
             <Setter Property="HorizontalContentAlignment" Value="Stretch" />
             <Setter Property="Cursor" Value="Hand" />
@@ -495,6 +524,8 @@
                     <ControlTemplate TargetType="{x:Type Button}">
                         <Border x:Name="sideBorder"
                                 Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
                                 CornerRadius="4"
                                 Padding="{TemplateBinding Padding}"
                                 SnapsToDevicePixels="True">
@@ -502,11 +533,24 @@
                                               VerticalAlignment="Center" />
                         </Border>
                         <ControlTemplate.Triggers>
+                            <!-- Normal Active / Selected State (soft elevated gray #303030 / #1EFFFFFF, no blue strip) -->
+                            <DataTrigger Binding="{Binding IsActive}" Value="True">
+                                <Setter TargetName="sideBorder" Property="Background" Value="#1EFFFFFF" />
+                            </DataTrigger>
+                            <!-- Hover -->
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="sideBorder" Property="Background" Value="{StaticResource BrushItemHover}" />
+                                <Setter TargetName="sideBorder" Property="Background" Value="#12FFFFFF" />
                             </Trigger>
+                            <!-- Selected + Hover -->
+                            <MultiDataTrigger>
+                                <MultiDataTrigger.Conditions>
+                                    <Condition Binding="{Binding IsActive}" Value="True" />
+                                    <Condition Property="IsMouseOver" Value="True" />
+                                </MultiDataTrigger.Conditions>
+                                <Setter TargetName="sideBorder" Property="Background" Value="#25FFFFFF" />
+                            </MultiDataTrigger>
                             <Trigger Property="IsPressed" Value="True">
-                                <Setter TargetName="sideBorder" Property="Background" Value="{StaticResource BrushSurfacePressed}" />
+                                <Setter TargetName="sideBorder" Property="Background" Value="#2AFFFFFF" />
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -537,10 +581,10 @@
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="topActBorder" Property="Background" Value="{StaticResource BrushSurfaceHover}" />
+                                <Setter TargetName="topActBorder" Property="Background" Value="#1AFFFFFF" />
                             </Trigger>
                             <Trigger Property="IsPressed" Value="True">
-                                <Setter TargetName="topActBorder" Property="Background" Value="{StaticResource BrushSurfacePressed}" />
+                                <Setter TargetName="topActBorder" Property="Background" Value="#25FFFFFF" />
                             </Trigger>
                             <Trigger Property="IsEnabled" Value="False">
                                 <Setter TargetName="topActBorder" Property="Opacity" Value="0.35" />
@@ -553,7 +597,7 @@
 
         <!-- Modern Windows 11 Context Menu Style -->
         <Style TargetType="{x:Type ContextMenu}">
-            <Setter Property="Background" Value="{StaticResource BrushSurface}" />
+            <Setter Property="Background" Value="#2C2C2C" />
             <Setter Property="BorderBrush" Value="{StaticResource BrushBorderLight}" />
             <Setter Property="BorderThickness" Value="1" />
             <Setter Property="Foreground" Value="{StaticResource BrushTextPrimary}" />
@@ -604,7 +648,7 @@
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsHighlighted" Value="True">
-                                <Setter TargetName="menuBorder" Property="Background" Value="{StaticResource BrushSurfaceHover}" />
+                                <Setter TargetName="menuBorder" Property="Background" Value="#1AFFFFFF" />
                             </Trigger>
                             <Trigger Property="IsEnabled" Value="False">
                                 <Setter Property="Foreground" Value="{StaticResource BrushTextMuted}" />
@@ -617,7 +661,7 @@
 
         <!-- Modern Windows 11 Separator Style -->
         <Style TargetType="{x:Type Separator}">
-            <Setter Property="Background" Value="{StaticResource BrushBorderLight}" />
+            <Setter Property="Background" Value="{StaticResource BrushBorder}" />
             <Setter Property="Height" Value="1" />
             <Setter Property="Margin" Value="4,4" />
         </Style>

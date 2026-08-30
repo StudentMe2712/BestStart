@@ -69,8 +69,8 @@ public class ItemTypeToBrushConverter : IValueConverter
 
 public class SidebarActiveBrushConverter : IValueConverter
 {
-    // Windows 11 Fluent active item soft highlight: #2D3540
-    private static readonly SolidColorBrush ActiveBgBrush = new SolidColorBrush(Color.FromArgb(0x40, 0x4C, 0xC2, 0xFF));
+    // Windows 11 Fluent active item soft highlight: #1EFFFFFF
+    private static readonly SolidColorBrush ActiveBgBrush = new SolidColorBrush(Color.FromArgb(0x1E, 0xFF, 0xFF, 0xFF));
     private static readonly SolidColorBrush InactiveBgBrush = new SolidColorBrush(Colors.Transparent);
 
     static SidebarActiveBrushConverter()

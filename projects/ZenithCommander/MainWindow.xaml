@@ -23,7 +23,7 @@
 
     <!-- Outer Window Container with Rounded Corners and Windows 11 Drop Shadow -->
     <Grid Margin="10">
-        <Border Background="{StaticResource BrushBackground}"
+        <Border Background="{StaticResource BrushMica}"
                 BorderBrush="{StaticResource BrushBorderLight}"
                 BorderThickness="1"
                 CornerRadius="8"
@@ -40,7 +40,7 @@
                 <Grid.RowDefinitions>
                     <RowDefinition Height="42" />  <!-- 0: Windows 11 Title Bar with Tabs -->
                     <RowDefinition Height="46" />  <!-- 1: Navigation & Address Bar & Search -->
-                    <RowDefinition Height="42" />  <!-- 2: Windows 11 Command Bar -->
+                    <RowDefinition Height="44" />  <!-- 2: Windows 11 Command Bar (~44px) -->
                     <RowDefinition Height="*" />   <!-- 3: Sidebar + Main File View -->
                     <RowDefinition Height="30" />  <!-- 4: Bottom Status Bar -->
                 </Grid.RowDefinitions>
@@ -48,7 +48,7 @@
                 <!-- ================= 0: TOP TITLE BAR WITH TABS ================= -->
                 <Border Grid.Row="0"
                         Background="{StaticResource BrushMica}"
-                        BorderBrush="{StaticResource BrushBorderSubtle}"
+                        BorderBrush="{StaticResource BrushBorder}"
                         BorderThickness="0,0,0,1"
                         CornerRadius="8,8,0,0"
                         MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
@@ -167,7 +167,7 @@
                 <!-- ================= 1: TOP NAVIGATION & ADDRESS BAR & SEARCH ================= -->
                 <Border Grid.Row="1"
                         Background="{StaticResource BrushMica}"
-                        BorderBrush="{StaticResource BrushBorderSubtle}"
+                        BorderBrush="{StaticResource BrushBorder}"
                         BorderThickness="0,0,0,1"
                         Padding="10,6">
                     <Grid>
@@ -209,14 +209,9 @@
 
                         <!-- Windows 11 Breadcrumb Address Bar -->
                         <Border Grid.Column="1"
-                                Background="{StaticResource BrushSurface}"
-                                BorderBrush="{StaticResource BrushBorderLight}"
-                                BorderThickness="1"
-                                CornerRadius="6"
+                                Style="{StaticResource Win11InputContainerStyle}"
                                 Margin="0,0,8,0"
-                                Padding="6,2"
-                                VerticalAlignment="Center"
-                                Height="32">
+                                VerticalAlignment="Center">
                             <Grid>
                                 <!-- Mode A: Clickable Breadcrumb Segments -->
                                 <Grid Visibility="{Binding IsEditingPath, Converter={StaticResource InverseBoolToVis}}"
@@ -292,9 +287,10 @@
                                              BorderThickness="0"
                                              Background="Transparent"
                                              Foreground="{StaticResource BrushTextPrimary}"
+                                             CaretBrush="{StaticResource BrushAccentLight}"
                                              VerticalAlignment="Center"
                                              FontSize="12"
-                                             Padding="6,0"
+                                             Padding="4,0"
                                              KeyDown="AddressTextBox_KeyDown"
                                              LostFocus="AddressTextBox_LostFocus" />
 
@@ -321,13 +317,8 @@
 
                         <!-- Windows 11 Search Box -->
                         <Border Grid.Column="2"
-                                Background="{StaticResource BrushSurface}"
-                                BorderBrush="{StaticResource BrushBorderLight}"
-                                BorderThickness="1"
-                                CornerRadius="6"
-                                VerticalAlignment="Center"
-                                Height="32"
-                                Padding="6,2">
+                                Style="{StaticResource Win11InputContainerStyle}"
+                                VerticalAlignment="Center">
                             <Grid>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="Auto" />
@@ -348,6 +339,7 @@
                                          BorderThickness="0"
                                          Background="Transparent"
                                          Foreground="{StaticResource BrushTextPrimary}"
+                                         CaretBrush="{StaticResource BrushAccentLight}"
                                          VerticalAlignment="Center"
                                          FontSize="12"
                                          Padding="2,0" />
@@ -377,12 +369,12 @@
                     </Grid>
                 </Border>
 
-                <!-- ================= 2: WINDOWS 11 COMMAND BAR ================= -->
+                <!-- ================= 2: WINDOWS 11 COMMAND BAR (~44px) ================= -->
                 <Border Grid.Row="2"
                         Background="{StaticResource BrushMicaSecondary}"
-                        BorderBrush="{StaticResource BrushBorderSubtle}"
+                        BorderBrush="{StaticResource BrushBorder}"
                         BorderThickness="0,0,0,1"
-                        Padding="8,4">
+                        Padding="8,0">
                     <Grid>
                         <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                             <!-- [ ➕ Создать ▾ ] Button with ContextMenu -->
@@ -409,7 +401,7 @@
                             <!-- Thin Vertical Separator -->
                             <Border Width="1" Height="18" Background="{StaticResource BrushBorderLight}" Margin="6,0" />
 
-                            <!-- Compact Icon Action Group -->
+                            <!-- Compact Icon Action Group (Width=32, Height=32, CornerRadius=4) -->
                             <!-- ✂ Cut -->
                             <Button Style="{StaticResource CommandBarActionButton}"
                                     Command="{Binding CutCommand}"
@@ -535,10 +527,10 @@
                         <ColumnDefinition Width="*" MinWidth="300" />                   <!-- Fluent File List View -->
                     </Grid.ColumnDefinitions>
 
-                    <!-- SIDEBAR (Windows 11 Navigation Pane) -->
+                    <!-- SIDEBAR (Windows 11 Navigation Pane: #1C1C1C, rounded items, no blue strip) -->
                     <Border Grid.Column="0"
                             Background="{StaticResource BrushSidebar}"
-                            BorderBrush="{StaticResource BrushBorderSubtle}"
+                            BorderBrush="{StaticResource BrushBorder}"
                             BorderThickness="0,0,1,0">
                         <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                             <StackPanel Margin="4,6">
@@ -547,39 +539,26 @@
                                            FontSize="11"
                                            FontWeight="SemiBold"
                                            Foreground="{StaticResource BrushTextMuted}"
-                                           Margin="12,6,0,4" />
+                                           Margin="12,8,0,4" />
 
                                 <ItemsControl ItemsSource="{Binding QuickAccessItems}">
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate>
-                                            <Border Background="{Binding IsActive, Converter={StaticResource SidebarActiveBrushConv}}"
-                                                    CornerRadius="4"
-                                                    Margin="6,1,6,1">
-                                                <Grid>
-                                                    <!-- Left Active Indicator Bar (Win11 Signature Blue) -->
-                                                    <Border Width="3"
-                                                            HorizontalAlignment="Left"
-                                                            Background="{StaticResource BrushAccentLight}"
-                                                            CornerRadius="1.5"
-                                                            Visibility="{Binding IsActive, Converter={StaticResource SidebarIndicatorVisConv}}" />
-
-                                                    <Button Style="{StaticResource SidebarItemButton}"
-                                                            Command="{Binding DataContext.SelectSidebarItemCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                                            CommandParameter="{Binding}"
-                                                            ToolTip="{Binding Path}">
-                                                        <StackPanel Orientation="Horizontal" Margin="6,0,0,0">
-                                                            <TextBlock Text="{Binding IconGlyph}"
-                                                                       FontSize="14"
-                                                                       VerticalAlignment="Center"
-                                                                       Margin="0,0,8,0" />
-                                                            <TextBlock Text="{Binding Title}"
-                                                                       FontSize="12"
-                                                                       Foreground="{StaticResource BrushTextPrimary}"
-                                                                       VerticalAlignment="Center" />
-                                                        </StackPanel>
-                                                    </Button>
-                                                </Grid>
-                                            </Border>
+                                            <Button Style="{StaticResource SidebarItemButton}"
+                                                    Command="{Binding DataContext.SelectSidebarItemCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                    CommandParameter="{Binding}"
+                                                    ToolTip="{Binding Path}">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <TextBlock Text="{Binding IconGlyph}"
+                                                               FontSize="14"
+                                                               VerticalAlignment="Center"
+                                                               Margin="0,0,8,0" />
+                                                    <TextBlock Text="{Binding Title}"
+                                                               FontSize="12"
+                                                               Foreground="{StaticResource BrushTextPrimary}"
+                                                               VerticalAlignment="Center" />
+                                                </StackPanel>
+                                            </Button>
                                         </DataTemplate>
                                     </ItemsControl.ItemTemplate>
                                 </ItemsControl>
@@ -596,58 +575,45 @@
                                 <ItemsControl ItemsSource="{Binding DriveItems}">
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate>
-                                            <Border Background="{Binding IsActive, Converter={StaticResource SidebarActiveBrushConv}}"
-                                                    CornerRadius="4"
-                                                    Margin="6,1,6,1">
+                                            <Button Style="{StaticResource SidebarItemButton}"
+                                                    Command="{Binding DataContext.SelectSidebarItemCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                    CommandParameter="{Binding}"
+                                                    ToolTip="{Binding Path}">
                                                 <Grid>
-                                                    <!-- Left Active Indicator Bar -->
-                                                    <Border Width="3"
-                                                            HorizontalAlignment="Left"
-                                                            Background="{StaticResource BrushAccentLight}"
-                                                            CornerRadius="1.5"
-                                                            Visibility="{Binding IsActive, Converter={StaticResource SidebarIndicatorVisConv}}" />
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="Auto" />
+                                                        <ColumnDefinition Width="*" />
+                                                    </Grid.ColumnDefinitions>
 
-                                                    <Button Style="{StaticResource SidebarItemButton}"
-                                                            Command="{Binding DataContext.SelectSidebarItemCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                                            CommandParameter="{Binding}"
-                                                            ToolTip="{Binding Path}">
-                                                        <Grid Margin="6,0,0,0">
-                                                            <Grid.ColumnDefinitions>
-                                                                <ColumnDefinition Width="Auto" />
-                                                                <ColumnDefinition Width="*" />
-                                                            </Grid.ColumnDefinitions>
+                                                    <TextBlock Grid.Column="0"
+                                                               Text="{Binding IconGlyph}"
+                                                               FontSize="15"
+                                                               VerticalAlignment="Center"
+                                                               Margin="0,0,8,0" />
 
-                                                            <TextBlock Grid.Column="0"
-                                                                       Text="{Binding IconGlyph}"
-                                                                       FontSize="15"
-                                                                       VerticalAlignment="Center"
-                                                                       Margin="0,0,8,0" />
+                                                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                                        <TextBlock Text="{Binding Title}"
+                                                                   FontSize="12"
+                                                                   FontWeight="Medium"
+                                                                   Foreground="{StaticResource BrushTextPrimary}"
+                                                                   TextTrimming="CharacterEllipsis" />
+                                                        <TextBlock Text="{Binding Subtitle}"
+                                                                   FontSize="10"
+                                                                   Foreground="{StaticResource BrushTextMuted}"
+                                                                   Margin="0,1,0,2"
+                                                                   TextTrimming="CharacterEllipsis" />
 
-                                                            <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                                                <TextBlock Text="{Binding Title}"
-                                                                           FontSize="12"
-                                                                           FontWeight="Medium"
-                                                                           Foreground="{StaticResource BrushTextPrimary}"
-                                                                           TextTrimming="CharacterEllipsis" />
-                                                                <TextBlock Text="{Binding Subtitle}"
-                                                                           FontSize="10"
-                                                                           Foreground="{StaticResource BrushTextMuted}"
-                                                                           Margin="0,1,0,2"
-                                                                           TextTrimming="CharacterEllipsis" />
-
-                                                                <!-- Mini Storage Usage Bar -->
-                                                                <ProgressBar Height="3"
-                                                                             Value="{Binding UsagePercent}"
-                                                                             Maximum="100"
-                                                                             Foreground="{StaticResource BrushAccentLight}"
-                                                                             Background="{StaticResource BrushBorderLight}"
-                                                                             BorderThickness="0"
-                                                                             Margin="0,1,6,0" />
-                                                            </StackPanel>
-                                                        </Grid>
-                                                    </Button>
+                                                        <!-- Mini Storage Usage Bar -->
+                                                        <ProgressBar Height="3"
+                                                                     Value="{Binding UsagePercent}"
+                                                                     Maximum="100"
+                                                                     Foreground="{StaticResource BrushAccentLight}"
+                                                                     Background="#33FFFFFF"
+                                                                     BorderThickness="0"
+                                                                     Margin="0,1,6,0" />
+                                                    </StackPanel>
                                                 </Grid>
-                                            </Border>
+                                            </Button>
                                         </DataTemplate>
                                     </ItemsControl.ItemTemplate>
                                 </ItemsControl>
@@ -668,7 +634,7 @@
                                 <Border Background="Transparent">
                                     <Border x:Name="SplitterBar"
                                             Width="1"
-                                            Background="{StaticResource BrushBorderSubtle}"
+                                            Background="{StaticResource BrushBorder}"
                                             HorizontalAlignment="Center" />
                                 </Border>
                                 <ControlTemplate.Triggers>
@@ -994,7 +960,7 @@
                 <!-- ================= 4: BOTTOM STATUS BAR ================= -->
                 <Border Grid.Row="4"
                         Background="{StaticResource BrushMica}"
-                        BorderBrush="{StaticResource BrushBorderSubtle}"
+                        BorderBrush="{StaticResource BrushBorder}"
                         BorderThickness="0,1,0,0"
                         CornerRadius="0,0,8,8"
                         Padding="12,4">
