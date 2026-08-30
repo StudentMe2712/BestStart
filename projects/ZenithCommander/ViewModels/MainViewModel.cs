@@ -726,8 +726,9 @@ public class MainViewModel : ViewModelBase
         {
             Title = "Главная",
             Path = userProfile,
-            Icon = IconExtractor.GetSpecialFolderIcon(Environment.SpecialFolder.UserProfile) ?? IconExtractor.GetFolderIcon(true),
-            IconGlyph = "🏠"
+            Icon = IconExtractor.GetHomeIcon(true) ?? IconExtractor.GetFolderIcon(true),
+            IconGlyph = "🏠",
+            IsPinned = false
         });
 
         // 2. Галерея
@@ -735,8 +736,9 @@ public class MainViewModel : ViewModelBase
         {
             Title = "Галерея",
             Path = Directory.Exists(pictures) ? pictures : userProfile,
-            Icon = IconExtractor.GetSpecialFolderIcon(Environment.SpecialFolder.MyPictures) ?? IconExtractor.GetFolderIcon(true),
-            IconGlyph = "🖼️"
+            Icon = IconExtractor.GetGalleryIcon(true) ?? IconExtractor.GetSpecialFolderIcon(Environment.SpecialFolder.MyPictures) ?? IconExtractor.GetFolderIcon(true),
+            IconGlyph = "🖼️",
+            IsPinned = false
         });
 
         // 3. Separator
@@ -748,7 +750,8 @@ public class MainViewModel : ViewModelBase
             Title = "Рабочий стол",
             Path = desktop,
             Icon = IconExtractor.GetSpecialFolderIcon(Environment.SpecialFolder.Desktop) ?? IconExtractor.GetFolderIcon(true),
-            IconGlyph = "🖥️"
+            IconGlyph = "🖥️",
+            IsPinned = true
         });
 
         // 5. Загрузки
@@ -757,7 +760,8 @@ public class MainViewModel : ViewModelBase
             Title = "Загрузки",
             Path = Directory.Exists(downloads) ? downloads : userProfile,
             Icon = IconExtractor.GetCustomFolderIcon(downloads) ?? IconExtractor.GetFolderIcon(true),
-            IconGlyph = "📥"
+            IconGlyph = "📥",
+            IsPinned = true
         });
 
         // 6. Документы
@@ -766,7 +770,8 @@ public class MainViewModel : ViewModelBase
             Title = "Документы",
             Path = documents,
             Icon = IconExtractor.GetSpecialFolderIcon(Environment.SpecialFolder.MyDocuments) ?? IconExtractor.GetFolderIcon(true),
-            IconGlyph = "📄"
+            IconGlyph = "📄",
+            IsPinned = true
         });
 
         // 7. Изображения
@@ -775,7 +780,8 @@ public class MainViewModel : ViewModelBase
             Title = "Изображения",
             Path = pictures,
             Icon = IconExtractor.GetSpecialFolderIcon(Environment.SpecialFolder.MyPictures) ?? IconExtractor.GetFolderIcon(true),
-            IconGlyph = "🌄"
+            IconGlyph = "🌄",
+            IsPinned = true
         });
 
         // 8. Музыка
@@ -784,7 +790,8 @@ public class MainViewModel : ViewModelBase
             Title = "Музыка",
             Path = music,
             Icon = IconExtractor.GetSpecialFolderIcon(Environment.SpecialFolder.MyMusic) ?? IconExtractor.GetFolderIcon(true),
-            IconGlyph = "🎵"
+            IconGlyph = "🎵",
+            IsPinned = true
         });
 
         // 9. Видео
@@ -793,7 +800,8 @@ public class MainViewModel : ViewModelBase
             Title = "Видео",
             Path = videos,
             Icon = IconExtractor.GetSpecialFolderIcon(Environment.SpecialFolder.MyVideos) ?? IconExtractor.GetFolderIcon(true),
-            IconGlyph = "🎬"
+            IconGlyph = "🎬",
+            IsPinned = true
         });
 
         // 10. Separator
@@ -806,7 +814,8 @@ public class MainViewModel : ViewModelBase
             IsExpanded = true,
             Path = null,
             Icon = IconExtractor.GetThisPcIcon(true) ?? IconExtractor.GetFolderIcon(true),
-            IconGlyph = "💻"
+            IconGlyph = "💻",
+            IsPinned = false
         };
         PopulateDrives(thisPcNode);
         SidebarNodes.Add(thisPcNode);
@@ -820,7 +829,8 @@ public class MainViewModel : ViewModelBase
             Title = "Сеть",
             Path = null,
             Icon = IconExtractor.GetNetworkIcon(true) ?? IconExtractor.GetFolderIcon(true),
-            IconGlyph = "🌐"
+            IconGlyph = "🌐",
+            IsPinned = false
         });
     }
 

@@ -8,6 +8,7 @@ public class SidebarItem : ViewModelBase
 {
     private bool _isActive;
     private bool _isExpanded;
+    private bool _isPinned;
     private string? _subtitle;
     private double _usagePercent;
 
@@ -50,5 +51,11 @@ public class SidebarItem : ViewModelBase
     {
         get => _isExpanded;
         set => SetField(ref _isExpanded, value);
+    }
+
+    public bool IsPinned
+    {
+        get => _isPinned;
+        set => SetField(ref _isPinned, value);
     }
 }
