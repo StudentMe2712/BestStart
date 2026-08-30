@@ -429,6 +429,9 @@
   const modalSearchInput = document.getElementById('modalSearchInput');
   const searchResults = document.getElementById('searchResults');
 
+  // Appearance Snapshot for Cancel / Restore
+  let initialAppearanceSnapshot = null;
+
   // --- Utility Functions ---
   function generateId(prefix = 'id') {
     return `${prefix}-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`;
@@ -467,6 +470,33 @@
     toastTimer = setTimeout(() => {
       toast.classList.remove('show');
     }, duration);
+  }
+
+  function hexToRgb(hex) {
+    if (!hex || typeof hex !== 'string') return '33,24,29';
+    let c = hex.replace(/^#/, '').trim();
+    if (c.length === 3) {
+      c = c.split('').map(x => x + x).join('');
+    }
+    if (c.length !== 6) return '33,24,29';
+    const num = parseInt(c, 16);
+    if (isNaN(num)) return '33,24,29';
+    const r = (num >> 16) & 255;
+    const g = (num >> 8) & 255;
+    const b = num & 255;
+    return `${r},${g},${b}`;
+  }
+
+  function hexToRgba(hex, alpha) {
+    if (!hex || typeof hex !== 'string') return `rgba(255, 255, 255, ${alpha})`;
+    let c = hex.replace('#', '').trim();
+    if (c.length === 3) c = c.split('').map(x => x + x).join('');
+    const num = parseInt(c, 16);
+    if (isNaN(num)) return `rgba(255, 255, 255, ${alpha})`;
+    const r = (num >> 16) & 255;
+    const g = (num >> 8) & 255;
+    const b = num & 255;
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
   }
 
   function insertWidgetToGrid(widgetBoard) {
@@ -571,6 +601,146 @@
       appState.activeTabId = tab.id;
     }
     return tab;
+  }
+
+  // --- Drag and Drop: Link Drag Handlers ---
+  let draggedLink = null; // { linkId, sourceBoardId, element }
+
+  function handleLinkDragStart(e) {
+    e.stopPropagation();
+    const item = e.currentTarget;
+    draggedLink = {
+      linkId: item.dataset.linkId,
+      sourceBoardId: item.dataset.boardId,
+      element: item
+    };
+    if (e.dataTransfer) {
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', item.dataset.linkId || 'link');
+    }
+    setTimeout(() => {
+      if (draggedLink && draggedLink.element) {
+        draggedLink.element.classList.add('dragging');
+        draggedLink.element.style.opacity = '0.4';
+      }
+    }, 0);
+  }
+
+  function handleLinkDragEnd(e) {
+    if (draggedLink && draggedLink.element) {
+      draggedLink.element.classList.remove('dragging');
+      draggedLink.element.style.opacity = '';
+    }
+    commitLinkReorder();
+    draggedLink = null;
+  }
+
+  function handleLinkDragOver(e) {
+    if (!draggedLink) return;
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
+
+    const targetItem = e.currentTarget;
+    if (targetItem === draggedLink.element) return;
+
+    const rect = targetItem.getBoundingClientRect();
+    const isAfter = e.clientY > rect.top + rect.height / 2;
+    const parent = targetItem.parentNode;
+    if (!parent) return;
+
+    if (isAfter) {
+      if (targetItem.nextSibling !== draggedLink.element) {
+        parent.insertBefore(draggedLink.element, targetItem.nextSibling);
+      }
+    } else {
+      if (targetItem.previousSibling !== draggedLink.element) {
+        parent.insertBefore(draggedLink.element, targetItem);
+      }
+    }
+  }
+
+  function handleLinksListDragOver(e) {
+    if (!draggedLink) return;
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
+
+    const linksList = e.currentTarget;
+    if (!linksList.contains(draggedLink.element)) {
+      linksList.appendChild(draggedLink.element);
+    }
+  }
+
+  function handleBoardCardDragOver(e) {
+    if (!draggedLink) return;
+    const card = e.currentTarget;
+    const linksList = card.querySelector('.links-list');
+    if (linksList && !linksList.contains(draggedLink.element) && !e.target.closest('.link-item')) {
+      e.preventDefault();
+      e.stopPropagation();
+      if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
+      linksList.appendChild(draggedLink.element);
+    }
+  }
+
+  function handleLinkDrop(e) {
+    if (!draggedLink) return;
+    e.preventDefault();
+    e.stopPropagation();
+    if (draggedLink && draggedLink.element) {
+      draggedLink.element.classList.remove('dragging');
+      draggedLink.element.style.opacity = '';
+    }
+    commitLinkReorder();
+    draggedLink = null;
+  }
+
+  function commitLinkReorder() {
+    const currentTab = getActiveTab();
+    if (!currentTab || !Array.isArray(currentTab.boards)) return;
+
+    // Gather all links across boards in currentTab
+    const allLinksMap = new Map();
+    currentTab.boards.forEach((b) => {
+      if (Array.isArray(b.links)) {
+        b.links.forEach((l) => {
+          allLinksMap.set(String(l.id), l);
+        });
+      }
+    });
+
+    let changed = false;
+
+    currentTab.boards.forEach((board) => {
+      if (board.type === 'notes' || board.type === 'calendar') return;
+
+      const card = boardsGrid?.querySelector(`.board-card[data-board-id="${board.id}"], .board[data-board-id="${board.id}"]`);
+      if (!card) return;
+
+      const linkElements = [...card.querySelectorAll('.links-list .link-item')];
+      const newLinks = [];
+
+      linkElements.forEach((el) => {
+        const lId = el.dataset.linkId;
+        if (lId && allLinksMap.has(String(lId))) {
+          const linkObj = allLinksMap.get(String(lId));
+          newLinks.push(linkObj);
+          el.dataset.boardId = board.id;
+        }
+      });
+
+      const oldIds = (board.links || []).map((l) => l.id).join(',');
+      const newIds = newLinks.map((l) => l.id).join(',');
+      if (oldIds !== newIds) {
+        changed = true;
+        board.links = newLinks;
+      }
+    });
+
+    if (changed) {
+      saveState();
+    }
   }
 
   // --- Rendering Functions ---
@@ -745,7 +915,7 @@
         header.appendChild(menuBtn);
         card.appendChild(header);
 
-        // Days row headers based on currentLanguage and currentWeekStart ('mon' vs 'sun')
+        // Days row headers
         const daysRow = document.createElement('div');
         daysRow.className = 'cal-days-row';
 
@@ -780,9 +950,6 @@
         const calGrid = document.createElement('div');
         calGrid.className = 'cal-grid';
 
-        // Saturday index:
-        // When week starts on Monday: Mon(0), Tue(1), Wed(2), Thu(3), Fri(4), Sat(5), Sun(6) -> 5 blank days before Aug 1
-        // When week starts on Sunday: Sun(0), Mon(1), Tue(2), Wed(3), Thu(4), Fri(5), Sat(6) -> 6 blank days before Aug 1
         const blankDaysCount = currentWeekStart === 'sun' ? 6 : 5;
 
         for (let i = 0; i < blankDaysCount; i++) {
@@ -840,6 +1007,10 @@
         card.dataset.customMode = board.customMode || 'corner';
       }
 
+      // Drag listeners on card
+      card.addEventListener('dragover', handleBoardCardDragOver);
+      card.addEventListener('drop', handleLinkDrop);
+
       // Board Header
       const header = document.createElement('div');
       header.className = 'board-header';
@@ -876,11 +1047,15 @@
       // Links List
       const linksList = document.createElement('div');
       linksList.className = 'links-list';
+      linksList.addEventListener('dragover', handleLinksListDragOver);
+      linksList.addEventListener('drop', handleLinkDrop);
 
       if (board.links && board.links.length > 0) {
         board.links.forEach((link) => {
           const item = document.createElement('div');
           item.className = 'link-item';
+          item.setAttribute('draggable', 'true');
+          item.draggable = true;
           item.dataset.url = link.url;
           item.dataset.title = link.title;
           item.dataset.linkId = link.id;
@@ -890,6 +1065,8 @@
           img.className = 'favicon';
           img.alt = '';
           img.src = getFaviconUrl(link.url);
+          img.setAttribute('draggable', 'false');
+          img.draggable = false;
           img.addEventListener('error', () => {
             img.src = FALLBACK_FAVICON;
           });
@@ -906,6 +1083,12 @@
             descSpan.textContent = link.desc;
             item.appendChild(descSpan);
           }
+
+          // Link Drag and Drop events
+          item.addEventListener('dragstart', handleLinkDragStart);
+          item.addEventListener('dragend', handleLinkDragEnd);
+          item.addEventListener('dragover', handleLinkDragOver);
+          item.addEventListener('drop', handleLinkDrop);
 
           // Left Click: Open Link
           item.addEventListener('click', (e) => {
@@ -1422,11 +1605,6 @@
     showToast('Ссылка удалена');
   }
 
-  function showBoardContextMenu(e, board) {
-    const card = boardsGrid?.querySelector(`.board-card[data-board-id="${board.id}"], .board[data-board-id="${board.id}"]`);
-    openBoardMenu(e, board, card);
-  }
-
   function handleBoardAction(action, target) {
     if (action === 'delete') {
       const tab = appState.tabs.find((t) => t.id === target.tabId);
@@ -1688,7 +1866,7 @@
   function applySearchFilter() {
     if (!searchInput) return;
     const query = searchInput.value.trim().toLowerCase();
-    const cards = boardsGrid.querySelectorAll('.board-card, .board');
+    const cards = boardsGrid?.querySelectorAll('.board-card, .board') || [];
 
     cards.forEach((card) => {
       const links = card.querySelectorAll('.link-item');
@@ -2097,16 +2275,114 @@
     });
   }
 
-  function hexToRgba(hex, alpha) {
-    if (!hex || typeof hex !== 'string') return `rgba(255, 255, 255, ${alpha})`;
-    let c = hex.replace('#', '');
-    if (c.length === 3) c = c.split('').map(x => x + x).join('');
-    const num = parseInt(c, 16);
-    if (isNaN(num)) return `rgba(255, 255, 255, ${alpha})`;
-    const r = (num >> 16) & 255;
-    const g = (num >> 8) & 255;
-    const b = num & 255;
-    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+  // --- Appearance Settings Engine: Functions ---
+
+  function applyAccentColor(hex) {
+    if (!hex) hex = '#002449';
+    document.documentElement.style.setProperty('--accent-color', hex);
+    document.documentElement.style.setProperty('--accent-tab-bg', hexToRgba(hex, 0.8));
+    document.documentElement.style.setProperty('--accent-tab-border', hexToRgba(hex, 0.95));
+
+    const swatchAccent = document.getElementById('swatchAccent');
+    if (swatchAccent) swatchAccent.style.backgroundColor = hex;
+    const colorAccent = document.getElementById('colorAccent');
+    if (colorAccent && colorAccent.value !== hex) colorAccent.value = hex;
+
+    saveSetting('app_accent_color', hex);
+
+    // Dispatch input to sliderAlpha and sliderBlur to update their slider gradient backgrounds
+    const sliderAlpha = document.getElementById('sliderAlpha');
+    if (sliderAlpha) sliderAlpha.dispatchEvent(new Event('input'));
+    const sliderBlur = document.getElementById('sliderBlur');
+    if (sliderBlur) sliderBlur.dispatchEvent(new Event('input'));
+  }
+
+  function applyBoardColor(hex) {
+    if (!hex) hex = '#21181d';
+    const rgb = hexToRgb(hex);
+    document.documentElement.style.setProperty('--board-rgb', rgb);
+    document.documentElement.style.setProperty('--board-border', `rgba(${rgb},0.350)`);
+    document.documentElement.style.setProperty('--board-outline-theme-color', `rgba(${rgb},0.400)`);
+
+    const swatchBoard = document.getElementById('swatchBoard');
+    if (swatchBoard) swatchBoard.style.backgroundColor = hex;
+    const colorBoard = document.getElementById('colorBoard');
+    if (colorBoard && colorBoard.value !== hex) colorBoard.value = hex;
+
+    saveSetting('app_board_rgb', rgb);
+    saveSetting('app_board_hex', hex);
+  }
+
+  function applyBoardAlpha(percent) {
+    const p = parseInt(percent, 10);
+    const percentVal = isNaN(p) ? 24 : p;
+    const alphaVal = (percentVal / 100).toFixed(3);
+
+    const valAlpha = document.getElementById('valAlpha');
+    if (valAlpha) valAlpha.textContent = `${percentVal}%`;
+
+    const sliderAlpha = document.getElementById('sliderAlpha');
+    if (sliderAlpha) {
+      if (sliderAlpha.value != percentVal) sliderAlpha.value = percentVal;
+      sliderAlpha.style.background = `linear-gradient(to right, var(--accent-color,#fff) ${percentVal}%, rgba(255,255,255,0.12) ${percentVal}%)`;
+    }
+
+    document.documentElement.style.setProperty('--board-alpha', alphaVal);
+    saveSetting('app_board_alpha', alphaVal);
+    saveSetting('app_board_alpha_percent', percentVal);
+  }
+
+  function applyBoardBlur(px) {
+    const p = parseInt(px, 10);
+    const pxVal = isNaN(p) ? 5 : p;
+    const progress = (pxVal / 40) * 100;
+
+    const valBlur = document.getElementById('valBlur');
+    if (valBlur) valBlur.textContent = `${pxVal}px`;
+
+    const sliderBlur = document.getElementById('sliderBlur');
+    if (sliderBlur) {
+      if (sliderBlur.value != pxVal) sliderBlur.value = pxVal;
+      sliderBlur.style.background = `linear-gradient(to right, var(--accent-color,#fff) ${progress}%, rgba(255,255,255,0.12) ${progress}%)`;
+    }
+
+    document.documentElement.style.setProperty('--board-blur', `${pxVal}px`);
+    saveSetting('app_board_blur', `${pxVal}px`);
+    saveSetting('app_board_blur_val', pxVal);
+  }
+
+  function resetAppearance() {
+    applyAccentColor('#002449');
+    applyBoardColor('#21181d');
+    applyBoardAlpha(24);
+    applyBoardBlur(5);
+    showToast('Настройки внешнего вида сброшены');
+  }
+
+  function snapshotAppearance() {
+    const currentAccent = document.documentElement.style.getPropertyValue('--accent-color').trim() || '#002449';
+    const currentBoardHex = document.getElementById('colorBoard')?.value || '#21181d';
+    const sliderAlpha = document.getElementById('sliderAlpha');
+    const currentAlphaPercent = sliderAlpha ? parseInt(sliderAlpha.value, 10) : 24;
+    const sliderBlur = document.getElementById('sliderBlur');
+    const currentBlurVal = sliderBlur ? parseInt(sliderBlur.value, 10) : 5;
+
+    initialAppearanceSnapshot = {
+      accent: currentAccent,
+      boardHex: currentBoardHex,
+      alphaPercent: isNaN(currentAlphaPercent) ? 24 : currentAlphaPercent,
+      blurVal: isNaN(currentBlurVal) ? 5 : currentBlurVal
+    };
+  }
+
+  function cancelAppearance() {
+    if (initialAppearanceSnapshot) {
+      applyAccentColor(initialAppearanceSnapshot.accent);
+      applyBoardColor(initialAppearanceSnapshot.boardHex);
+      applyBoardAlpha(initialAppearanceSnapshot.alphaPercent);
+      applyBoardBlur(initialAppearanceSnapshot.blurVal);
+    }
+    closeSettingsModal();
   }
 
   function applySearchAppearance(color, alphaVal, blurVal, widthVal) {
@@ -2147,6 +2423,17 @@
     // 1. Load all saved settings
     loadAllSettings((settings) => {
       if (!settings) settings = {};
+
+      // Load Appearance Settings
+      const accentColor = settings['app_accent_color'] || '#002449';
+      const boardHex = settings['app_board_hex'] || '#21181d';
+      const boardAlphaPercent = settings['app_board_alpha_percent'] !== undefined ? parseInt(settings['app_board_alpha_percent'], 10) : (settings['app_board_alpha'] !== undefined ? Math.round(parseFloat(settings['app_board_alpha']) * 100) : 24);
+      const boardBlurVal = settings['app_board_blur_val'] !== undefined ? parseInt(settings['app_board_blur_val'], 10) : (settings['app_board_blur'] !== undefined ? parseInt(settings['app_board_blur'], 10) : 5);
+
+      applyAccentColor(accentColor);
+      applyBoardColor(boardHex);
+      applyBoardAlpha(boardAlphaPercent);
+      applyBoardBlur(boardBlurVal);
 
       // Open new tab default true
       const openNewTabVal = settings['openNewTabToggle'] !== undefined ? Boolean(settings['openNewTabToggle']) : true;
@@ -2305,6 +2592,7 @@
           const bVal = btn.dataset.val || (btn.textContent.trim() === 'Воскресенье' || btn.textContent.trim() === 'Sunday' ? 'sun' : 'mon');
           btn.classList.toggle('active', bVal === weekStartVal);
         });
+        saveSetting('stGroupWeekStart', weekStartVal);
       }
 
       // Temperature
@@ -2322,7 +2610,54 @@
       setLanguage(langVal);
     });
 
-    // 2. Attach Event Listeners to Settings Controls
+    // 2. Attach Event Listeners to Appearance Engine Controls
+    const colorAccent = document.getElementById('colorAccent');
+    const swatchAccent = document.getElementById('swatchAccent');
+    if (swatchAccent && colorAccent) {
+      swatchAccent.addEventListener('click', () => colorAccent.click());
+    }
+    if (colorAccent) {
+      colorAccent.addEventListener('input', (e) => applyAccentColor(e.target.value));
+      colorAccent.addEventListener('change', (e) => applyAccentColor(e.target.value));
+    }
+
+    const colorBoard = document.getElementById('colorBoard');
+    const swatchBoard = document.getElementById('swatchBoard');
+    if (swatchBoard && colorBoard) {
+      swatchBoard.addEventListener('click', () => colorBoard.click());
+    }
+    if (colorBoard) {
+      colorBoard.addEventListener('input', (e) => applyBoardColor(e.target.value));
+      colorBoard.addEventListener('change', (e) => applyBoardColor(e.target.value));
+    }
+
+    const sliderAlpha = document.getElementById('sliderAlpha');
+    if (sliderAlpha) {
+      sliderAlpha.addEventListener('input', (e) => applyBoardAlpha(e.target.value));
+    }
+
+    const sliderBlur = document.getElementById('sliderBlur');
+    if (sliderBlur) {
+      sliderBlur.addEventListener('input', (e) => applyBoardBlur(e.target.value));
+    }
+
+    const btnResetAppearance = document.getElementById('btnResetAppearance');
+    if (btnResetAppearance) {
+      btnResetAppearance.addEventListener('click', (e) => {
+        e.stopPropagation();
+        resetAppearance();
+      });
+    }
+
+    const btnCancelAppearance = document.getElementById('btnCancelAppearance');
+    if (btnCancelAppearance) {
+      btnCancelAppearance.addEventListener('click', (e) => {
+        e.stopPropagation();
+        cancelAppearance();
+      });
+    }
+
+    // 3. Attach Event Listeners to Other Settings Controls
 
     // Toggles
     allToggles.forEach((toggle) => {
@@ -2711,6 +3046,7 @@
 
   function openSettingsModal() {
     if (!settingsOverlay) return;
+    snapshotAppearance();
     populateQuickBoardSelect();
     settingsOverlay.style.display = 'flex';
   }
@@ -2900,6 +3236,8 @@
       img.style.height = '18px';
       img.style.borderRadius = '4px';
       img.style.flexShrink = '0';
+      img.setAttribute('draggable', 'false');
+      img.draggable = false;
       img.addEventListener('error', () => {
         img.src = FALLBACK_FAVICON;
       });
@@ -3076,58 +3414,63 @@
     }
   }
 
-  // --- Drag and Drop Engine ---
+  // --- Drag and Drop Engine: Board Dragging ---
   function initDragAndDrop() {
     const grid = document.querySelector('.boards-grid') || boardsGrid;
     if (!grid) return;
-    let draggedItem = null;
+    let draggedBoard = null;
 
     grid.addEventListener('dragstart', (e) => {
-      if (e.target.closest('input, textarea, button, select, .st-toggle, .notes-resize-handle')) {
+      // If drag started from inside a link-item, input, button, textarea, etc., ignore for board dragging!
+      if (e.target.closest('.link-item, input, textarea, button, select, .st-toggle, .notes-resize-handle, .cal-nav-btn, .board-menu-btn, .add-link-btn')) {
         return;
       }
 
       const card = e.target.closest('.board, .board-card');
       if (card && !card.classList.contains('board-placeholder')) {
-        draggedItem = card;
+        draggedBoard = card;
         if (e.dataTransfer) {
           e.dataTransfer.effectAllowed = 'move';
           e.dataTransfer.setData('text/plain', card.dataset.boardId || card.dataset.id || 'board');
         }
         grid.classList.add('is-dragging');
         setTimeout(() => {
-          if (draggedItem) draggedItem.classList.add('dragging');
+          if (draggedBoard) draggedBoard.classList.add('dragging');
         }, 0);
       }
     });
 
     grid.addEventListener('dragover', (e) => {
+      if (draggedLink) {
+        // If a link is currently being dragged, let link handlers handle it
+        return;
+      }
+      if (!draggedBoard) return;
       e.preventDefault();
-      if (!draggedItem) return;
       if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
 
       const target = e.target.closest('.board, .board-card, .board-placeholder');
-      if (target && target !== draggedItem && target.parentNode === grid) {
+      if (target && target !== draggedBoard && target.parentNode === grid) {
         const rect = target.getBoundingClientRect();
         const isAfter = (e.clientX > rect.left + rect.width / 2) || (e.clientY > rect.bottom - rect.height / 3);
         if (isAfter) {
-          if (target.nextSibling !== draggedItem) {
-            target.after(draggedItem);
+          if (target.nextSibling !== draggedBoard) {
+            target.after(draggedBoard);
           }
         } else {
-          if (target.previousSibling !== draggedItem) {
-            target.before(draggedItem);
+          if (target.previousSibling !== draggedBoard) {
+            target.before(draggedBoard);
           }
         }
       }
     });
 
-    function commitOrderAndCleanup() {
-      if (!draggedItem && !grid.classList.contains('is-dragging')) return;
+    function commitBoardOrderAndCleanup() {
+      if (!draggedBoard && !grid.classList.contains('is-dragging')) return;
 
-      if (draggedItem) {
-        draggedItem.classList.remove('dragging');
-        draggedItem = null;
+      if (draggedBoard) {
+        draggedBoard.classList.remove('dragging');
+        draggedBoard = null;
       }
       grid.classList.remove('is-dragging');
 
@@ -3156,14 +3499,22 @@
     }
 
     grid.addEventListener('drop', (e) => {
+      if (draggedLink) {
+        handleLinkDrop(e);
+        return;
+      }
       e.preventDefault();
-      commitOrderAndCleanup();
+      commitBoardOrderAndCleanup();
     });
 
-    grid.addEventListener('dragend', commitOrderAndCleanup);
+    grid.addEventListener('dragend', (e) => {
+      if (draggedBoard) {
+        commitBoardOrderAndCleanup();
+      }
+    });
 
     document.addEventListener('dragend', () => {
-      if (draggedItem) commitOrderAndCleanup();
+      if (draggedBoard) commitBoardOrderAndCleanup();
     });
   }
 
