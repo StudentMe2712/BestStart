@@ -805,7 +805,7 @@ public class MainViewModel : ViewModelBase
             Title = "Этот компьютер",
             IsExpanded = true,
             Path = null,
-            Icon = IconExtractor.GetDriveIcon("C:\\", true) ?? IconExtractor.GetFolderIcon(true),
+            Icon = IconExtractor.GetThisPcIcon(true) ?? IconExtractor.GetFolderIcon(true),
             IconGlyph = "💻"
         };
         PopulateDrives(thisPcNode);
@@ -819,7 +819,7 @@ public class MainViewModel : ViewModelBase
         {
             Title = "Сеть",
             Path = null,
-            Icon = IconExtractor.GetSpecialFolderIcon(Environment.SpecialFolder.NetworkShortcuts) ?? IconExtractor.GetFolderIcon(true),
+            Icon = IconExtractor.GetNetworkIcon(true) ?? IconExtractor.GetFolderIcon(true),
             IconGlyph = "🌐"
         });
     }

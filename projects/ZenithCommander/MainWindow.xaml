@@ -623,6 +623,8 @@
                                   Background="Transparent"
                                   BorderThickness="0"
                                   Padding="6,6"
+                                  FontSize="14"
+                                  FontFamily="Segoe UI Variable Text, Segoe UI"
                                   ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                                   ScrollViewer.VerticalScrollBarVisibility="Auto"
                                   ItemContainerStyle="{StaticResource Win11TreeViewItemStyle}"
@@ -640,7 +642,8 @@
                                                    Visibility="{Binding IsSeparator, Converter={StaticResource BoolToVis}}" />
 
                                         <!-- Regular Sidebar Item View -->
-                                        <Grid Visibility="{Binding IsSeparator, Converter={StaticResource InverseBoolToVis}}">
+                                        <Grid Visibility="{Binding IsSeparator, Converter={StaticResource InverseBoolToVis}}"
+                                              Margin="6,0,0,0">
                                             <Grid.ColumnDefinitions>
                                                 <ColumnDefinition Width="Auto" />
                                                 <ColumnDefinition Width="*" />
@@ -657,13 +660,13 @@
                                             <!-- Item Content (Title, optional Subtitle & Mini Storage Bar) -->
                                             <StackPanel Grid.Column="1" VerticalAlignment="Center">
                                                 <TextBlock Text="{Binding Title}"
-                                                           FontSize="12"
+                                                           FontSize="14"
                                                            Foreground="{StaticResource BrushTextPrimary}"
                                                            VerticalAlignment="Center"
                                                            TextTrimming="CharacterEllipsis" />
 
                                                 <TextBlock Text="{Binding Subtitle}"
-                                                           FontSize="10"
+                                                           FontSize="11"
                                                            Foreground="{StaticResource BrushTextMuted}"
                                                            Margin="0,1,0,2"
                                                            TextTrimming="CharacterEllipsis"
@@ -676,7 +679,7 @@
                                                              Foreground="{StaticResource BrushAccentLight}"
                                                              Background="#33FFFFFF"
                                                              BorderThickness="0"
-                                                             Margin="0,1,6,0"
+                                                             Margin="0,2,6,0"
                                                              Visibility="{Binding IsDrive, Converter={StaticResource BoolToVis}}" />
                                             </StackPanel>
                                         </Grid>

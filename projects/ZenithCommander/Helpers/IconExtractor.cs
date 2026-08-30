@@ -25,11 +25,31 @@ public static class IconExtractor
         public string szTypeName;
     }
 
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+    private struct SHSTOCKICONINFO
+    {
+        public uint cbSize;
+        public IntPtr hIcon;
+        public int iSysImageIndex;
+        public int iIcon;
+        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 260)]
+        public string szPath;
+    }
+
     private const uint SHGFI_ICON = 0x000000100;
     private const uint SHGFI_SMALLICON = 0x000000001;
     private const uint SHGFI_LARGEICON = 0x000000000;
     private const uint SHGFI_USEFILEATTRIBUTES = 0x000000010;
     private const uint SHGFI_OPENICON = 0x000000002;
+
+    private const uint SHGSI_ICON = 0x000000100;
+    private const uint SHGSI_SMALLICON = 0x000000001;
+    private const uint SHGSI_LARGEICON = 0x000000000;
+
+    public const uint SIID_DRIVE525 = 5;
+    public const uint SIID_MYNETWORK = 17;
+    public const uint SIID_DESKTOPPC = 35;
+    public const uint SIID_WORLD = 49;
 
     private const uint FILE_ATTRIBUTE_NORMAL = 0x00000080;
     private const uint FILE_ATTRIBUTE_DIRECTORY = 0x00000010;
@@ -41,6 +61,12 @@ public static class IconExtractor
         ref SHFILEINFO psfi,
         uint cbFileInfo,
         uint uFlags);
+
+    [DllImport("shell32.dll", SetLastError = false)]
+    private static extern int SHGetStockIconInfo(
+        uint siid,
+        uint uFlags,
+        ref SHSTOCKICONINFO psii);
 
     [DllImport("user32.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
@@ -215,6 +241,130 @@ public static class IconExtractor
         }
 
         return icon;
+    }
+
+    /// <summary>
+    /// Gets the authentic Windows 11 "This PC" (Computer tower & monitor blue icon).
+    /// Queries shell virtual folder GUID and falls back to SIID_DESKTOPPC / SIID_DRIVE525.
+    /// </summary>
+    public static ImageSource? GetThisPcIcon(bool isSmall = true)
+    {
+        string cacheKey = $"__this_pc_{(isSmall ? "s" : "l")}";
+        if (IconCache.TryGetValue(cacheKey, out var cached))
+        {
+            return cached;
+        }
+
+        ImageSource? icon = null;
+
+        // 1. Query shell virtual folder GUID for This PC
+        try
+        {
+            icon = ExtractIconFromPath(@"shell:::{20D04FE0-3AEA-1069-A2D8-08002B30309D}", isSmall);
+            if (icon == null)
+            {
+                icon = ExtractIconFromPath(@"::{20D04FE0-3AEA-1069-A2D8-08002B30309D}", isSmall);
+            }
+        }
+        catch { }
+
+        // 2. Fallback to Shell Stock Icon SIID_DESKTOPPC (35) or SIID_DRIVE525 (5)
+        if (icon == null)
+        {
+            icon = GetStockIcon(SIID_DESKTOPPC, isSmall) ?? GetStockIcon(SIID_DRIVE525, isSmall);
+        }
+
+        // 3. Fallback to drive C:
+        if (icon == null)
+        {
+            icon = GetDriveIcon("C:\\", isSmall);
+        }
+
+        if (icon != null)
+        {
+            IconCache[cacheKey] = icon;
+        }
+
+        return icon;
+    }
+
+    /// <summary>
+    /// Gets the authentic Windows 11 "Network" icon (Network monitor with globe, never yellow folder).
+    /// Queries shell virtual folder GUID and falls back to SIID_MYNETWORK / SIID_WORLD.
+    /// </summary>
+    public static ImageSource? GetNetworkIcon(bool isSmall = true)
+    {
+        string cacheKey = $"__network_{(isSmall ? "s" : "l")}";
+        if (IconCache.TryGetValue(cacheKey, out var cached))
+        {
+            return cached;
+        }
+
+        ImageSource? icon = null;
+
+        // 1. Query shell virtual folder GUID for Network Places
+        try
+        {
+            icon = ExtractIconFromPath(@"shell:::{F02C1A0D-BE21-4350-88B0-7367FC96EF3C}", isSmall);
+            if (icon == null)
+            {
+                icon = ExtractIconFromPath(@"::{F02C1A0D-BE21-4350-88B0-7367FC96EF3C}", isSmall);
+            }
+        }
+        catch { }
+
+        // 2. Fallback to Shell Stock Icon SIID_MYNETWORK (17) or SIID_WORLD (49)
+        if (icon == null)
+        {
+            icon = GetStockIcon(SIID_MYNETWORK, isSmall) ?? GetStockIcon(SIID_WORLD, isSmall);
+        }
+
+        if (icon != null)
+        {
+            IconCache[cacheKey] = icon;
+        }
+
+        return icon;
+    }
+
+    /// <summary>
+    /// Extracts a Windows stock shell icon by Stock Icon ID (SHSTOCKICONID).
+    /// </summary>
+    public static ImageSource? GetStockIcon(uint siid, bool isSmall = true)
+    {
+        string cacheKey = $"stock_{siid}_{(isSmall ? "s" : "l")}";
+        if (IconCache.TryGetValue(cacheKey, out var cached))
+        {
+            return cached;
+        }
+
+        var psii = new SHSTOCKICONINFO();
+        psii.cbSize = (uint)Marshal.SizeOf(typeof(SHSTOCKICONINFO));
+        uint flags = SHGSI_ICON | (isSmall ? SHGSI_SMALLICON : SHGSI_LARGEICON);
+
+        try
+        {
+            int hr = SHGetStockIconInfo(siid, flags, ref psii);
+            if (hr == 0 && psii.hIcon != IntPtr.Zero)
+            {
+                var icon = ConvertHIconToImageSource(psii.hIcon);
+                if (icon != null)
+                {
+                    IconCache[cacheKey] = icon;
+                }
+                return icon;
+            }
+        }
+        catch { }
+        finally
+        {
+            if (psii.hIcon != IntPtr.Zero)
+            {
+                DestroyIcon(psii.hIcon);
+            }
+        }
+
+        return null;
     }
 
     private static ImageSource? GetGenericFileIcon(bool isSmall)
