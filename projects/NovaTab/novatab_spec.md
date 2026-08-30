@@ -1,5 +1,5 @@
 # NovaTab — Visual Bookmark Manager Specification
-**Version:** 1.4.0 (Lively Video Wallpapers, Dynamic Quotes, Drag-and-Drop Sorting, IndexedDB Engine & Concurrency Mutex)  
+**Version:** 1.4.1 (Bugfixes: Core Bookmark Loader & Mutex, Safe Folder Creation, Russian Quotes Localization & Select Dropdown Theming)  
 **Target Platform:** Google Chrome / Chromium-based Browsers (Manifest V3)  
 **Design Philosophy:** Ultra-modern, responsive Glassmorphism dashboard with hardware-accelerated backdrop blur, pure Native CSS3 design system, custom high-performance video & image wallpaper engine, and board-based category organization.
 
@@ -46,6 +46,7 @@ NovaTab is strictly engineered to comply with Chrome Manifest V3 Content Securit
                                                           | • Live Search Palette (Up/Down) |
                                                           | • Real-time Chrome Event Sync   |
                                                           | • Concurrency Mutex Lock        |
+                                                          | • Safe Parent Hierarchy Select  |
                                                           +---------------------------------+
                                                                            |
                                                                            v
@@ -74,6 +75,7 @@ NovaTab employs a multi-tiered glassmorphism visual hierarchy powered by standar
 | `.glass-pill.dragging` | `opacity: 0.4; transform: scale(0.95); border-style: dashed;` | Visual feedback for category pill being dragged. |
 | `.glass-pill.drag-over` | `border-color: #8b5cf6 !important; box-shadow: 0 0 12px rgba(139, 92, 246, 0.6) !important; transform: scale(1.05);` | Visual drop indicator for category pill target. |
 | `.glass-pill-active` | `background: linear-gradient(135deg, rgba(139, 92, 246, 0.75), rgba(99, 102, 241, 0.75)); backdrop-filter: blur(12px); border: 1px solid var(--glass-border-active); box-shadow: 0 0 15px rgba(139, 92, 246, 0.35);` | Currently selected board/filter pill and primary buttons. |
+| `select, .form-select` | `background-color: #1A1D29 !important; color: #FFFFFF !important; border: 1px solid rgba(255,255,255,0.15) !important; color-scheme: dark !important;` with dark option items (`#161922`). | High-contrast dark select menus with zero white edge artifacts. |
 | `.cards-masonry-grid` | `display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 20px; align-items: start;` | Dynamic responsive bookmark cards layout. |
 | `.floating-toolbar` | `position: fixed; right: 24px; top: 50%; transform: translateY(-50%); z-index: 50; border-radius: 9999px; padding: 12px 8px;` | Vertical quick-action dock on the right viewport edge. |
 | `.floating-bg-btn` | `position: fixed; bottom: 24px; left: 24px; z-index: 50; width: 48px; height: 48px; border-radius: 50%; display: flex; align-items: center; justify-content: center;` | Bottom-left instant wallpaper changer button. |
@@ -83,21 +85,23 @@ NovaTab employs a multi-tiered glassmorphism visual hierarchy powered by standar
 
 ---
 
-## 3. Dynamic Quotes Module
+## 3. Dynamic Quotes Module (Strict Russian Localization)
 
-Positioned centered at the top of the main scrollable viewport above the category cards grid, the Quotes Module provides inspiring, philosophical, dark academia, and lo-fi quotes:
+Positioned centered at the top of the main scrollable viewport above the category cards grid, the Quotes Module provides inspiring, philosophical, dark academia, and lo-fi quotes translated into Russian:
 
-- **Curated Quote Bank:**
-  1. *"You only live once, but if you do it right, once is enough."* — Mae West
-  2. *"The quieter you become, the more you are able to hear."* — Ram Dass
-  3. *"Simplicity is the soul of efficiency."* — Austin Freeman
-  4. *"The secret of getting ahead is getting started."* — Mark Twain
-  5. *"Waste no more time arguing what a good man should be. Be one."* — Marcus Aurelius
-  6. *"Muddy water is best cleared by leaving it alone."* — Alan Watts
-  7. *"We suffer more often in imagination than in reality."* — Seneca
-  8. *"Everything you can imagine is real."* — Pablo Picasso
-  9. *"Stay hungry, stay foolish."* — Steve Jobs
-  10. *"Do what you can, with what you have, where you are."* — Theodore Roosevelt
+- **Curated Russian Quote Bank:**
+  1. *«Вы живете только один раз, но если вы все сделаете правильно, одного раза достаточно.»* — Мэй Уэст
+  2. *«Чем тише ты становишься, тем больше начинаешь слышать.»* — Рам Дасс
+  3. *«Кораблю безопаснее в порту, но он не для того строился.»* — Грейс Хоппер
+  4. *«Никогда не поздно стать тем, кем ты мог бы быть.»* — Джордж Элиот
+  5. *«Простота — это душа эффективности.»* — Остин Фриман
+  6. *«Секрет того, чтобы двигаться вперед — это начать.»* — Марк Твен
+  7. *«Не тратьте время на споры о том, каким должен быть хороший человек. Будьте им.»* — Марк Аврелий
+  8. *«Мутная вода лучше всего очищается, если оставить ее в покое.»* — Алан Уоттс
+  9. *«Мы чаще страдаем в воображении, чем в реальности.»* — Сенека
+  10. *«Все, что ты можешь вообразить — реально.»* — Пабло Пикассо
+  11. *«Оставайтесь голодными, оставайтесь безрассудными.»* — Стив Джобс
+  12. *«Делай, что можешь, с тем, что имеешь, там, где ты есть.»* — Теодор Рузвельт
 - **Interaction & Animation:** On initial load (`DOMContentLoaded` / `init`), a random quote is rendered. Clicking anywhere on the `.quote-container` smoothly rolls another random quote (with anti-repetition guarantee) using subtle CSS fade and translateY animations.
 
 ---
@@ -155,9 +159,7 @@ Users can reorder category board tabs directly in the top navigation bar via int
 
 ---
 
-## 6. Concurrency Mutex & Concurrency Race Condition Prevention
-
-To eliminate race conditions between explicit UI CRUD operations and Chrome reactive bookmark listeners:
+## 6. Concurrency Mutex & Folder Hierarchy Management
 
 ### 6.1 Mutex Reload Lock (`isLoadingBookmarks` & `pendingBookmarkReload`)
 When user actions (e.g. deleting or moving bookmarks/folders) trigger an immediate `await loadBookmarks()` while Chrome simultaneously fires reactive lifecycle listeners (`chrome.bookmarks.onRemoved`, `chrome.bookmarks.onMoved`), the mutex ensures:
@@ -165,9 +167,17 @@ When user actions (e.g. deleting or moving bookmarks/folders) trigger an immedia
 2. Interleaved calls set `pendingBookmarkReload = true` and return immediately.
 3. Upon completion of the active reload, the lock invokes the pending reload once, guaranteeing consistent state.
 
-### 6.2 Atomic State Swapping & Multi-Level Folder Deduplication
-- `parseBookmarkNodes` builds temporary local arrays (`tempAllBookmarks`, `tempAllFolders`) and Maps (`tempFolderMap`, `tempBookmarksByFolder`) in memory before atomically updating `state`.
-- `renderCardsView` uses a strict `Set` of folder IDs (`seenCardFolderIds`) to deduplicate categories and ensures the root container (`id: '1'`) renders at most ONE card for its loose bookmarks only when direct bookmarks exist.
+### 6.2 Atomic State Swapping & Multi-Level Folder Parsing
+- `parseBookmarkNodes(nodes, parentPath, parentId, depth, collections)` recursively builds temporary local collections in memory:
+  - `tempAllBookmarks` & `tempAllFolders`
+  - `tempFolderMap` & `tempBookmarksByFolder`
+- Atomically applies parsed collections to `state`.
+- Recursively tracks folder tree depths to provide clean visual indentations (`'— '.repeat(folder.depth)`) in `<select>` dropdowns.
+
+### 6.3 Safe Parent Folder Fallback for Modal Forms
+- `populateFolderSelectDropdowns()` cleans and populates both `folderParentSelect` and `modalBookmarkFolder`, filtering out virtual root wrapper node (`id: '0'`).
+- Sets default selection to `'1'` (Панель закладок) or the first available folder ID.
+- `handleFolderFormSubmit()` validates `parentId` existence in `state.folderMap`, safely falling back to `'1'` before calling `chrome.bookmarks.create({ parentId, title })` to prevent `Error: Can't find parent bookmark for id`.
 
 ---
 
@@ -175,10 +185,12 @@ When user actions (e.g. deleting or moving bookmarks/folders) trigger an immedia
 
 - [x] **100% Manifest V3 CSP Compliance:** Removed Tailwind CDN, zero inline handlers, zero remote dependencies, zero `eval()`, pure native event binding.
 - [x] **Pure Native CSS3 Refactor (`style.css`):** Comprehensive CSS variables, glassmorphism design tokens (`.glass-panel`, `.glass-card`, `.glass-pill`, `.glass-pill-active`), responsive grid, modals, and toolbars.
-- [x] **Dynamic Quotes Module (`index.html`, `style.css`, `app.js`):** Curated inspirational quote collection, random roll on load and click, soft text shadow, responsive container.
+- [x] **Select & Option Styling Fix (`style.css`):** Dark select boxes with `#1A1D29` / `#161922`, `color-scheme: dark`, purple focus rings, and zero white strips.
+- [x] **Russian Literary Quotes Module (`index.html`, `style.css`, `app.js`):** 12 curated Russian translations of philosophical quotes, random roll on load and click, soft text shadow.
 - [x] **Lively Video Wallpapers & Native IndexedDB Engine (`app.js`, `style.css`, `index.html`):** Native `NovaTabDB` IndexedDB store for video/image blobs, HTML5 video background layer, adjustable dimming overlay with Settings slider (`--overlay-opacity`).
 - [x] **Drag-and-Drop Category Sorting (`app.js`, `style.css`):** HTML5 drag-and-drop on category pills with `chrome.bookmarks.move` integration and mock tree reordering.
-- [x] **Concurrency Mutex & Duplicate Folder Prevention (`app.js`):** Asynchronous mutex lock (`isLoadingBookmarks`, `pendingBookmarkReload`), atomic state swap, strict `seenCardFolderIds` card deduplication.
+- [x] **Concurrency Mutex & Core Loader (`app.js`):** Fully implemented `loadBookmarks()` and `parseBookmarkNodes()`, protected by `isLoadingBookmarks` & `pendingBookmarkReload` mutex lock.
+- [x] **Safe Folder Creation & Parent Dropdown Validation (`app.js`):** Dynamic hierarchy population, root ID exclusion, and fallback to `'1'` to prevent `Can't find parent bookmark for id` errors.
 - [x] **Root Container Clearing Capability (`app.js`):** Implemented `.btn-clear-card` and `clearCategoryBookmarks` to safely clear bookmarks from system/root categories via `chrome.bookmarks.remove(bm.id)`.
 - [x] **Streamlined Hover-Only Bookmark Actions & Delete Feedback:** Streamlined bookmark row actions exclusively to Edit and Delete with red hover glow on `.item-action-btn.btn-delete:hover`.
 - [x] **Interactive Controls & Hotkeys:** Global `/` search shortcut, search palette keyboard navigation (`↑`, `↓`, `Enter`, `Escape`), board filtering, bookmark CRUD, view mode toggle.

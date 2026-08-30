@@ -31,16 +31,18 @@
 
   // --- 2. DYNAMIC QUOTES MODULE DATA ---
   const QUOTES = [
-    { text: 'You only live once, but if you do it right, once is enough.', author: 'Mae West' },
-    { text: 'The quieter you become, the more you are able to hear.', author: 'Ram Dass' },
-    { text: 'Simplicity is the soul of efficiency.', author: 'Austin Freeman' },
-    { text: 'The secret of getting ahead is getting started.', author: 'Mark Twain' },
-    { text: 'Waste no more time arguing what a good man should be. Be one.', author: 'Marcus Aurelius' },
-    { text: 'Muddy water is best cleared by leaving it alone.', author: 'Alan Watts' },
-    { text: 'We suffer more often in imagination than in reality.', author: 'Seneca' },
-    { text: 'Everything you can imagine is real.', author: 'Pablo Picasso' },
-    { text: 'Stay hungry, stay foolish.', author: 'Steve Jobs' },
-    { text: 'Do what you can, with what you have, where you are.', author: 'Theodore Roosevelt' }
+    { text: 'Вы живете только один раз, но если вы все сделаете правильно, одного раза достаточно.', author: 'Мэй Уэст' },
+    { text: 'Чем тише ты становишься, тем больше начинаешь слышать.', author: 'Рам Дасс' },
+    { text: 'Кораблю безопаснее в порту, но он не для того строился.', author: 'Грейс Хоппер' },
+    { text: 'Никогда не поздно стать тем, кем ты мог бы быть.', author: 'Джордж Элиот' },
+    { text: 'Простота — это душа эффективности.', author: 'Остин Фриман' },
+    { text: 'Секрет того, чтобы двигаться вперед — это начать.', author: 'Марк Твен' },
+    { text: 'Не тратьте время на споры о том, каким должен быть хороший человек. Будьте им.', author: 'Марк Аврелий' },
+    { text: 'Мутная вода лучше всего очищается, если оставить ее в покое.', author: 'Алан Уоттс' },
+    { text: 'Мы чаще страдаем в воображении, чем в реальности.', author: 'Сенека' },
+    { text: 'Все, что ты можешь вообразить — реально.', author: 'Пабло Пикассо' },
+    { text: 'Оставайтесь голодными, оставайтесь безрассудными.', author: 'Стив Джобс' },
+    { text: 'Делай, что можешь, с тем, что имеешь, там, где ты есть.', author: 'Теодор Рузвельт' }
   ];
 
   let currentQuoteIndex = -1;
@@ -398,6 +400,16 @@
     }
   }
 
+  function isRootOrSystemFolder(folder) {
+    if (!folder) return true;
+    const fid = String(folder.id);
+    const sysIds = new Set(['0', '1', '2', 'root', 'mobile', 'other', 'synced']);
+    if (sysIds.has(fid)) return true;
+    if (folder.isSystem) return true;
+    if (folder.parentId === '0' || !folder.parentId) return true;
+    return false;
+  }
+
   // --- 7. WALLPAPER ENGINE (VIDEO & IMAGE + INDEXEDDB) ---
 
   let currentVideoBlobUrl = null;
@@ -608,6 +620,146 @@
       localStorage.removeItem('novatab_wallpaperType');
       applyImageBackground(null);
       showToast('Фон сброшен по умолчанию');
+    }
+  }
+
+  // --- 8. BOOKMARK TREE PARSER & LOADER ---
+
+  let isLoadingBookmarks = false;
+  let pendingBookmarkReload = false;
+
+  function parseBookmarkNodes(nodes, parentPath = [], parentId = null, depth = 0, collections = null) {
+    if (!collections) {
+      collections = {
+        tempAllBookmarks: [],
+        tempAllFolders: [],
+        tempFolderMap: new Map(),
+        tempBookmarksByFolder: new Map()
+      };
+    }
+
+    if (!nodes || !Array.isArray(nodes)) return collections;
+
+    for (const node of nodes) {
+      if (!node) continue;
+      const nodeId = String(node.id);
+
+      if (node.url) {
+        // It is a bookmark node
+        const bm = {
+          id: nodeId,
+          parentId: String(node.parentId || parentId || '1'),
+          title: node.title || extractHostname(node.url) || 'Без названия',
+          url: node.url,
+          dateAdded: node.dateAdded || Date.now(),
+          hostname: extractHostname(node.url),
+          folderName: (parentPath && parentPath.length > 0) ? parentPath[parentPath.length - 1] : 'Панель закладок'
+        };
+        collections.tempAllBookmarks.push(bm);
+        const pId = bm.parentId;
+        if (!collections.tempBookmarksByFolder.has(pId)) {
+          collections.tempBookmarksByFolder.set(pId, []);
+        }
+        collections.tempBookmarksByFolder.get(pId).push(bm);
+      } else {
+        // It is a folder node
+        const title = node.title || (nodeId === '0' ? 'Root' : (nodeId === '1' ? 'Панель закладок' : (nodeId === '2' ? 'Другие закладки' : 'Папка')));
+        const isRootWrapper = (nodeId === '0' || title === 'Root');
+        const currentPath = isRootWrapper ? [] : [...parentPath, title];
+        
+        let nextDepth = depth;
+        if (!isRootWrapper) {
+          if (parentId === '0' || !parentId) {
+            nextDepth = 0;
+          } else {
+            nextDepth = depth;
+          }
+        }
+
+        const childFolderIds = [];
+        if (node.children && Array.isArray(node.children)) {
+          for (const child of node.children) {
+            if (!child.url) {
+              childFolderIds.push(String(child.id));
+            }
+          }
+        }
+
+        const folderObj = {
+          id: nodeId,
+          title: title,
+          parentId: node.parentId ? String(node.parentId) : (parentId ? String(parentId) : null),
+          path: currentPath,
+          depth: nextDepth,
+          childrenFolderIds: childFolderIds,
+          isSystem: isRootWrapper || nodeId === '1' || nodeId === '2' || nodeId === 'mobile' || parentId === '0' || !parentId
+        };
+
+        collections.tempAllFolders.push(folderObj);
+        collections.tempFolderMap.set(nodeId, folderObj);
+        if (!collections.tempBookmarksByFolder.has(nodeId)) {
+          collections.tempBookmarksByFolder.set(nodeId, []);
+        }
+
+        if (node.children && Array.isArray(node.children) && node.children.length > 0) {
+          parseBookmarkNodes(
+            node.children,
+            currentPath,
+            nodeId,
+            isRootWrapper ? 0 : (parentId === '0' || !parentId ? 1 : nextDepth + 1),
+            collections
+          );
+        }
+      }
+    }
+
+    return collections;
+  }
+
+  async function loadBookmarks() {
+    if (isLoadingBookmarks) {
+      pendingBookmarkReload = true;
+      return;
+    }
+    isLoadingBookmarks = true;
+
+    try {
+      let tree = [];
+      if (state.isExtension && chrome.bookmarks?.getTree) {
+        tree = await chrome.bookmarks.getTree();
+      } else {
+        tree = MOCK_BOOKMARK_TREE;
+      }
+
+      const collections = {
+        tempAllBookmarks: [],
+        tempAllFolders: [],
+        tempFolderMap: new Map(),
+        tempBookmarksByFolder: new Map()
+      };
+
+      parseBookmarkNodes(tree, [], null, 0, collections);
+
+      // Atomically update state
+      state.rawTree = tree;
+      state.allBookmarks = collections.tempAllBookmarks;
+      state.allFolders = collections.tempAllFolders;
+      state.folderMap = collections.tempFolderMap;
+      state.bookmarksByFolder = collections.tempBookmarksByFolder;
+
+      populateFolderSelectDropdowns();
+      renderBoardsPills();
+      renderCardsView();
+      updateStatsDisplay();
+    } catch (err) {
+      console.error('[NovaTab] Failed to load bookmarks:', err);
+      showToast('Ошибка загрузки закладок', 'error');
+    } finally {
+      isLoadingBookmarks = false;
+      if (pendingBookmarkReload) {
+        pendingBookmarkReload = false;
+        await loadBookmarks();
+      }
     }
   }
 
@@ -1077,10 +1229,13 @@
   // --- 10. CRUD MODALS & ACTIONS ---
 
   function populateFolderSelectDropdowns() {
-    elements.modalBookmarkFolder.innerHTML = '';
+    if (!elements.folderParentSelect || !elements.modalBookmarkFolder) return;
     elements.folderParentSelect.innerHTML = '';
+    elements.modalBookmarkFolder.innerHTML = '';
 
-    if (state.allFolders.length === 0) {
+    const validFolders = state.allFolders.filter(f => f && f.id !== '0' && f.title !== 'Root');
+
+    if (validFolders.length === 0) {
       const opt = document.createElement('option');
       opt.value = '1';
       opt.textContent = 'Панель закладок';
@@ -1089,31 +1244,40 @@
       return;
     }
 
-    state.allFolders.forEach(folder => {
+    validFolders.forEach(folder => {
       const opt1 = document.createElement('option');
-      opt1.value = folder.id;
-      const indent = '— '.repeat(folder.depth);
+      opt1.value = String(folder.id);
+      const indent = '— '.repeat(folder.depth || 0);
       opt1.textContent = `${indent}${folder.title}`;
       elements.modalBookmarkFolder.appendChild(opt1);
 
       const opt2 = opt1.cloneNode(true);
       elements.folderParentSelect.appendChild(opt2);
     });
+
+    const defaultFolderId = validFolders.some(f => String(f.id) === '1') ? '1' : String(validFolders[0].id);
+    elements.folderParentSelect.value = defaultFolderId;
+    elements.modalBookmarkFolder.value = defaultFolderId;
   }
 
   function openAddModal(targetFolderId = null) {
+    populateFolderSelectDropdowns();
     state.editingBookmarkId = null;
     elements.modalTitle.textContent = 'Добавить закладку';
     elements.modalBookmarkId.value = '';
     elements.modalBookmarkTitle.value = '';
     elements.modalBookmarkUrl.value = '';
 
-    if (targetFolderId && state.folderMap.has(targetFolderId)) {
-      elements.modalBookmarkFolder.value = targetFolderId;
-    } else if (state.activeBoardId !== 'all' && state.folderMap.has(state.activeBoardId)) {
-      elements.modalBookmarkFolder.value = state.activeBoardId;
-    } else if (state.allFolders.length > 0) {
-      elements.modalBookmarkFolder.value = state.allFolders[0].id;
+    if (targetFolderId && state.folderMap.has(String(targetFolderId))) {
+      elements.modalBookmarkFolder.value = String(targetFolderId);
+    } else if (state.activeBoardId !== 'all' && state.folderMap.has(String(state.activeBoardId))) {
+      elements.modalBookmarkFolder.value = String(state.activeBoardId);
+    } else {
+      elements.modalBookmarkFolder.value = '1';
+      if (!elements.modalBookmarkFolder.value && state.allFolders.length > 0) {
+        const valid = state.allFolders.filter(f => f && f.id !== '0' && f.title !== 'Root');
+        if (valid.length > 0) elements.modalBookmarkFolder.value = String(valid[0].id);
+      }
     }
 
     elements.bookmarkModal.classList.add('open');
@@ -1121,12 +1285,13 @@
   }
 
   function openEditModal(bookmark) {
+    populateFolderSelectDropdowns();
     state.editingBookmarkId = bookmark.id;
     elements.modalTitle.textContent = 'Редактировать закладку';
     elements.modalBookmarkId.value = bookmark.id;
     elements.modalBookmarkTitle.value = bookmark.title;
     elements.modalBookmarkUrl.value = bookmark.url;
-    elements.modalBookmarkFolder.value = bookmark.parentId || (state.allFolders[0]?.id || '1');
+    elements.modalBookmarkFolder.value = bookmark.parentId || (state.allFolders.find(f => f.id !== '0')?.id || '1');
 
     elements.bookmarkModal.classList.add('open');
     elements.modalBookmarkTitle.focus();
@@ -1305,6 +1470,10 @@
   // --- 11. FOLDER CREATION MODAL ---
 
   function openFolderModal() {
+    populateFolderSelectDropdowns();
+    const validFolders = state.allFolders.filter(f => f && f.id !== '0' && f.title !== 'Root');
+    const defaultId = validFolders.some(f => String(f.id) === '1') ? '1' : (validFolders[0] ? String(validFolders[0].id) : '1');
+    elements.folderParentSelect.value = defaultId;
     elements.folderTitleInput.value = '';
     elements.folderModal.classList.add('open');
     elements.folderTitleInput.focus();
@@ -1317,24 +1486,28 @@
   async function handleFolderFormSubmit(e) {
     e.preventDefault();
     const title = elements.folderTitleInput.value.trim();
-    const parentId = elements.folderParentSelect.value || '1';
+    let parentId = elements.folderParentSelect.value;
+    if (!parentId || !state.folderMap.has(String(parentId))) {
+      parentId = '1';
+    }
 
     if (!title) return;
 
     try {
       if (state.isExtension) {
         await chrome.bookmarks.create({
-          parentId,
+          parentId: String(parentId),
           title
         });
       } else {
         const newFolderId = 'mock-folder-' + Date.now();
+        const parentFolder = state.folderMap.get(String(parentId));
         const folderObj = {
           id: newFolderId,
           title,
-          parentId,
-          path: [title],
-          depth: 1,
+          parentId: String(parentId),
+          path: parentFolder ? [...parentFolder.path, title] : [title],
+          depth: parentFolder ? (parentFolder.depth + 1) : 1,
           childrenFolderIds: []
         };
         state.allFolders.push(folderObj);
