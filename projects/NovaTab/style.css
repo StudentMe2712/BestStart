@@ -1655,3 +1655,65 @@ dialog h3 {
   }
 }
 
+/* Основной контейнер конфигурации (1:1 из дампа) */
+.weather-card-config {
+  width: 100%;
+  padding: 8px 0 2px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  box-sizing: border-box;
+}
+
+/* Строка ввода и кнопки */
+.weather-config-row {
+  display: flex;
+  gap: 8px;
+  position: relative;
+}
+
+/* Инпут поиска города */
+.weather-city-input {
+  flex: 1;
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid var(--ui-border, rgba(255,255,255,0.1));
+  color: var(--ui-text, rgba(255,255,255,0.92));
+  padding: 6px 10px;
+  border-radius: 6px;
+  outline: none;
+  font-size: 12px;
+  font-family: inherit;
+  transition: border-color 0.2s;
+}
+.weather-city-input:focus {
+  border-color: var(--ui-border-strong, rgba(255,255,255,0.18));
+}
+
+/* Выпадающий список городов (Саджест) */
+.weather-city-suggest {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: var(--ui-popover, rgba(28,29,38,0.97));
+  border: 1px solid var(--ui-border, rgba(255,255,255,0.1));
+  border-radius: 6px;
+  margin-top: 4px;
+  padding: 4px 0;
+  list-style: none;
+  z-index: 10;
+  max-height: 150px;
+  overflow-y: auto;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
+.weather-city-suggest li {
+  padding: 6px 10px;
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--ui-text);
+  transition: background 0.15s;
+}
+.weather-city-suggest li:hover {
+  background: var(--ui-fill-hover, rgba(255,255,255,0.10));
+}
+

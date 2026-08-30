@@ -416,6 +416,15 @@
       <span class="widget-card-name" data-i18n="widget.weather">Погода</span>
       <button class="st-toggle on" id="weatherToggle"><span class="st-toggle-knob"></span></button>
     </div>
+
+    <!-- Блок конфигурации города (появляется при включении тумблера) -->
+    <div class="weather-card-config" id="weatherCardConfig" style="display: none;">
+      <div class="weather-config-row">
+        <input class="weather-city-input" id="weatherCityInput" placeholder="Название города…" data-i18n-ph="weather.cityPlaceholder" autocomplete="off">
+        <button class="widget-add-btn" id="weatherCityApply" data-i18n="weather.apply">Применить</button>
+        <ul class="weather-city-suggest" id="weatherCitySuggest" style="display: none;"></ul>
+      </div>
+    </div>
   </div>
 
   <!-- Глобальное контекстное меню доски (Три точки) -->

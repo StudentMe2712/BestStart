@@ -124,7 +124,9 @@
       'context.delete': 'Удалить',
       'toast.regionDetected': 'Настройки региона определены автоматически',
       'toast.hotkeySaved': 'Горячая клавиша сохранена: ',
-      'toast.quickSaveTriggered': 'Быстрое сохранение: '
+      'toast.quickSaveTriggered': 'Быстрое сохранение: ',
+      'weather.cityPlaceholder': 'Название города…',
+      'weather.apply': 'Применить'
     },
     en: {
       'settings.title': 'Settings',
@@ -218,7 +220,9 @@
       'context.delete': 'Delete',
       'toast.regionDetected': 'Region settings detected automatically',
       'toast.hotkeySaved': 'Shortcut saved: ',
-      'toast.quickSaveTriggered': 'Quick save: '
+      'toast.quickSaveTriggered': 'Quick save: ',
+      'weather.cityPlaceholder': 'City name…',
+      'weather.apply': 'Apply'
     },
     de: {
       'settings.title': 'Einstellungen',
@@ -312,7 +316,9 @@
       'context.delete': 'Löschen',
       'toast.regionDetected': 'Regionseinstellungen automatisch erkannt',
       'toast.hotkeySaved': 'Tastenkürzel gespeichert: ',
-      'toast.quickSaveTriggered': 'Schnellspeichern: '
+      'toast.quickSaveTriggered': 'Schnellspeichern: ',
+      'weather.cityPlaceholder': 'Stadtname…',
+      'weather.apply': 'Anwenden'
     }
   };
 
@@ -526,6 +532,14 @@
         } else {
           el.textContent = dict[key];
         }
+      }
+    });
+
+    // Update all elements with data-i18n-ph
+    document.querySelectorAll('[data-i18n-ph]').forEach((el) => {
+      const key = el.dataset.i18nPh;
+      if (dict[key]) {
+        el.placeholder = dict[key];
       }
     });
 
@@ -2246,6 +2260,99 @@
     }
   }
 
+  function initWeatherConfig() {
+    const weatherToggle = document.getElementById('weatherToggle');
+    const weatherConfig = document.getElementById('weatherCardConfig');
+    const cityInput = document.getElementById('weatherCityInput');
+    const suggestList = document.getElementById('weatherCitySuggest');
+    const applyBtn = document.getElementById('weatherCityApply');
+
+    const MOCK_CITIES = ['Атырау', 'Алматы', 'Астана', 'Актобе', 'Актау', 'Москва', 'Лондон', 'Париж', 'Нью-Йорк', 'Токио', 'Берлин', 'Рим', 'Шымкент', 'Караганда'];
+
+    // 1. Появление/Скрытие блока конфигурации при клике на тумблер
+    if (weatherToggle && weatherConfig) {
+      weatherToggle.addEventListener('click', () => {
+        setTimeout(() => {
+          const isOn = weatherToggle.classList.contains('on');
+          weatherConfig.style.display = isOn ? 'flex' : 'none';
+          if (isOn && cityInput) cityInput.focus();
+        }, 10);
+      });
+    }
+
+    // 2. Логика ввода и показа подсказок
+    if (cityInput && suggestList) {
+      cityInput.addEventListener('input', (e) => {
+        const val = e.target.value.trim().toLowerCase();
+        
+        if (val.length > 0) {
+          const filtered = MOCK_CITIES.filter(c => c.toLowerCase().includes(val));
+          if (filtered.length > 0) {
+            suggestList.innerHTML = filtered.map(c => `<li>${c}</li>`).join('');
+            suggestList.style.display = 'block';
+          } else {
+            suggestList.style.display = 'none';
+          }
+        } else {
+          suggestList.style.display = 'none';
+        }
+      });
+
+      // 3. Выбор города из списка
+      suggestList.addEventListener('click', (e) => {
+        if (e.target.tagName === 'LI') {
+          cityInput.value = e.target.textContent;
+          suggestList.style.display = 'none';
+        }
+      });
+
+      // Скрытие списка при клике вне
+      document.addEventListener('click', (e) => {
+        if (!e.target.closest('.weather-config-row')) {
+          suggestList.style.display = 'none';
+        }
+      });
+    }
+
+    // 4. Применение города и сохранение в chrome.storage
+    if (applyBtn && cityInput) {
+      applyBtn.addEventListener('click', () => {
+        const city = cityInput.value.trim();
+        if (city) {
+          saveSetting('weather_city', city);
+          
+          // Обновляем виджет в top-bar
+          const widgetLabel = document.querySelector('.focus-today-label');
+          if (widgetLabel) widgetLabel.textContent = city;
+          
+          // Визуальный фидбек на кнопке
+          const originalText = applyBtn.textContent;
+          applyBtn.textContent = 'Готово!';
+          applyBtn.style.background = 'var(--ui-danger-strong, #ff6b6b)';
+          
+          setTimeout(() => {
+            applyBtn.textContent = originalText;
+            applyBtn.style.background = '';
+          }, 1500);
+
+          showToast(`Город изменен на: ${city}`);
+        }
+      });
+    }
+
+    // Восстановление состояния при загрузке
+    loadAllSettings((settings) => {
+      if (settings['weatherToggle'] && weatherConfig) {
+        weatherConfig.style.display = 'flex';
+      }
+      if (settings['weather_city']) {
+        if (cityInput) cityInput.value = settings['weather_city'];
+        const widgetLabel = document.querySelector('.focus-today-label');
+        if (widgetLabel) widgetLabel.textContent = settings['weather_city'];
+      }
+    });
+  }
+
   // --- Reactive Settings Engine & State Persistence ---
 
   function applySettingToDOM(settingId, isEnabled) {
@@ -2262,6 +2369,8 @@
     if (settingId === 'weatherToggle') {
       const weatherWidget = document.getElementById('weatherWidget');
       if (weatherWidget) weatherWidget.style.display = isEnabled ? 'flex' : 'none';
+      const weatherConfig = document.getElementById('weatherCardConfig');
+      if (weatherConfig) weatherConfig.style.display = isEnabled ? 'flex' : 'none';
       document.body.classList.toggle('setting-show-weather', isEnabled);
     }
   }
@@ -3764,6 +3873,7 @@
     initBoardMenu();
     initLinkMenu();
     initWidgetGallery();
+    initWeatherConfig();
     initSettingsModal();
     initTrashModal();
     initSearchOverlay();
