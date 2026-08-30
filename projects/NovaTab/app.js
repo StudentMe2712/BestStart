@@ -458,7 +458,7 @@
       headerActions.className = 'board-header-actions';
 
       const addBtn = document.createElement('button');
-      addBtn.className = 'add-link-btn';
+      addBtn.className = 'add-link-btn board-add-link-btn';
       addBtn.title = 'Добавить ссылку';
       addBtn.textContent = '+';
       addBtn.addEventListener('click', (e) => {
@@ -1518,178 +1518,140 @@
       chrome.storage.local.set({ [key]: value });
     } else {
       try {
-        localStorage.setItem(key, value);
+        localStorage.setItem(key, typeof value === 'boolean' ? String(value) : value);
       } catch (e) {
         console.error('Error saving setting to localStorage', e);
       }
     }
   }
 
-  function saveSettingsState() {
-    if (!settingsBody) return;
-    const toggles = Array.from(settingsBody.querySelectorAll('.st-toggle')).map(t => t.classList.contains('on'));
-    const sliders = Array.from(settingsBody.querySelectorAll('.st-slider')).map(s => s.value);
-    const selects = Array.from(settingsBody.querySelectorAll('.st-select')).map(s => s.value);
-    const segments = Array.from(settingsBody.querySelectorAll('.st-segment')).map(seg => {
-      const btns = Array.from(seg.querySelectorAll('.st-seg-btn'));
-      return btns.findIndex(b => b.classList.contains('active'));
-    });
-
-    const settingsData = { toggles, sliders, selects, segments };
-
+  function loadAllSettings(callback) {
     if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-      chrome.storage.local.set({ [SETTINGS_STORAGE_KEY]: settingsData });
-    } else {
-      try {
-        localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(settingsData));
-      } catch (e) {
-        console.error('Error saving settings to localStorage', e);
-      }
-    }
-  }
-
-  function loadSettingsState(callback) {
-    if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-      chrome.storage.local.get([SETTINGS_STORAGE_KEY], (result) => {
-        if (result && result[SETTINGS_STORAGE_KEY]) {
-          callback(result[SETTINGS_STORAGE_KEY]);
-        } else {
-          callback(null);
-        }
+      chrome.storage.local.get(null, (settings) => {
+        callback(settings || {});
       });
     } else {
+      const settings = {};
       try {
-        const stored = localStorage.getItem(SETTINGS_STORAGE_KEY);
-        callback(stored ? JSON.parse(stored) : null);
-      } catch (e) {
-        console.error('Error loading settings from localStorage', e);
-        callback(null);
-      }
-    }
-  }
-
-  function applySettingsState(saved) {
-    if (!saved || !settingsBody) return;
-
-    if (Array.isArray(saved.toggles)) {
-      const toggles = settingsBody.querySelectorAll('.st-toggle');
-      toggles.forEach((toggle, i) => {
-        if (saved.toggles[i] !== undefined) {
-          toggle.classList.toggle('on', Boolean(saved.toggles[i]));
-        }
-      });
-    }
-
-    if (Array.isArray(saved.sliders)) {
-      const sliders = settingsBody.querySelectorAll('.st-slider');
-      sliders.forEach((slider, i) => {
-        if (saved.sliders[i] !== undefined) {
-          slider.value = saved.sliders[i];
-          const header = slider.closest('.st-slider-field')?.querySelector('.st-slider-header .st-val');
-          if (header) {
-            const initialText = header.textContent.trim();
-            const unit = initialText.endsWith('px') ? 'px' : initialText.endsWith('%') ? '%' : '';
-            header.textContent = `${slider.value}${unit}`;
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          const val = localStorage.getItem(key);
+          if (val === 'true') {
+            settings[key] = true;
+          } else if (val === 'false') {
+            settings[key] = false;
+          } else {
+            settings[key] = val;
           }
         }
-      });
-    }
-
-    if (Array.isArray(saved.selects)) {
-      const selects = settingsBody.querySelectorAll('.st-select');
-      selects.forEach((select, i) => {
-        if (saved.selects[i] !== undefined) {
-          select.value = saved.selects[i];
-        }
-      });
-    }
-
-    if (Array.isArray(saved.segments)) {
-      const segments = settingsBody.querySelectorAll('.st-segment');
-      segments.forEach((seg, i) => {
-        const activeIdx = saved.segments[i];
-        if (activeIdx !== undefined && activeIdx >= 0) {
-          const btns = seg.querySelectorAll('.st-seg-btn');
-          btns.forEach((btn, idx) => {
-            btn.classList.toggle('active', idx === activeIdx);
-          });
-        }
-      });
+      } catch (e) {
+        console.error('Error loading settings from localStorage', e);
+      }
+      callback(settings);
     }
   }
 
   function initSettingsLogic() {
-    if (!settingsBody) return;
+    const modal = document.getElementById('settingsModal') || document.getElementById('settingsBody');
+    if (!modal) return;
 
-    // Load saved settings and restore UI
-    loadSettingsState((saved) => {
-      if (saved) {
-        applySettingsState(saved);
-      }
-    });
+    const toggles = modal.querySelectorAll('.st-toggle');
+    const sliders = modal.querySelectorAll('.st-slider');
+    const selects = modal.querySelectorAll('.st-select');
+    const groupContainers = modal.querySelectorAll('.st-btn-group, .st-segment');
 
-    // Save on toggle change
-    settingsBody.addEventListener('click', (e) => {
-      const toggle = e.target.closest('.st-toggle');
-      if (toggle) {
-        toggle.classList.toggle('on');
-        saveSettingsState();
-      }
-    });
+    // 1. Load all saved settings using chrome.storage.local.get(null, ...) with fallback to localStorage
+    loadAllSettings((settings) => {
+      if (!settings) return;
 
-    // Save on slider input / change
-    settingsBody.querySelectorAll('.st-slider').forEach(slider => {
-      slider.addEventListener('input', () => {
-        const header = slider.closest('.st-slider-field')?.querySelector('.st-slider-header .st-val');
-        if (header) {
-          const initialText = header.textContent.trim();
-          const unit = initialText.endsWith('px') ? 'px' : initialText.endsWith('%') ? '%' : '';
-          header.textContent = `${slider.value}${unit}`;
+      // 1. Toggles: toggle.classList.toggle('on', settings[key]) for key toggle_${idx}
+      toggles.forEach((toggle, idx) => {
+        const key = `toggle_${idx}`;
+        if (settings[key] !== undefined) {
+          toggle.classList.toggle('on', Boolean(settings[key]));
         }
-        saveSettingsState();
       });
-    });
 
-    // Save on select change
-    settingsBody.querySelectorAll('.st-select').forEach(select => {
-      select.addEventListener('change', () => {
-        saveSettingsState();
-      });
-    });
-
-    // Save on segment click
-    settingsBody.querySelectorAll('.st-segment').forEach(segment => {
-      const btns = segment.querySelectorAll('.st-seg-btn');
-      btns.forEach(btn => {
-        btn.addEventListener('click', () => {
-          btns.forEach(b => b.classList.remove('active'));
-          btn.classList.add('active');
-          saveSettingsState();
-        });
-      });
-    });
-
-    document.querySelectorAll('.st-btn-group').forEach((group, index) => {
-      const btns = group.querySelectorAll('.st-group-btn');
-      const label = group.closest('.st-row')?.querySelector('.st-row-label');
-      const settingKey = label ? `format_${label.textContent.trim()}` : `format_group_${index}`;
-
-      // Restore state
-      if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-        chrome.storage.local.get([settingKey], (res) => {
-          if (res && res[settingKey]) {
-            btns.forEach(b => {
-              b.classList.toggle('active', b.textContent.trim() === res[settingKey]);
-            });
+      // 2. Sliders: slider.value = settings[key], update value display (.st-val), and dynamically update CSS variable
+      sliders.forEach((slider, idx) => {
+        const key = `slider_${idx}`;
+        if (settings[key] !== undefined) {
+          slider.value = settings[key];
+          const valDisplay = slider.closest('.st-slider-field')?.querySelector('.st-val');
+          if (valDisplay) {
+            const initialText = valDisplay.textContent.trim();
+            const unit = initialText.endsWith('%') ? '%' : 'px';
+            valDisplay.textContent = `${slider.value}${unit}`;
           }
-        });
-      }
+          if (idx === 0 || slider.min === '190' || slider.max === '380') {
+            document.documentElement.style.setProperty('--board-w', slider.value + 'px');
+          }
+        }
+      });
 
+      // 3. Selects: select.value = settings[key] for key select_${idx}
+      selects.forEach((select, idx) => {
+        const key = `select_${idx}`;
+        if (settings[key] !== undefined) {
+          select.value = settings[key];
+        }
+      });
+
+      // 4. Button groups & segments: activate button matching settings[key] for key group_${idx}
+      groupContainers.forEach((container, idx) => {
+        const key = `group_${idx}`;
+        if (settings[key] !== undefined) {
+          const btns = container.querySelectorAll('.st-group-btn, .st-seg-btn');
+          btns.forEach((btn) => {
+            btn.classList.toggle('active', btn.textContent.trim() === settings[key]);
+          });
+        }
+      });
+    });
+
+    // 2. Implement dynamic event listeners:
+    // Click on .st-toggle: toggle .on class, save toggle_${index} in storage
+    toggles.forEach((toggle, index) => {
+      toggle.addEventListener('click', (e) => {
+        e.stopPropagation();
+        toggle.classList.toggle('on');
+        const isOn = toggle.classList.contains('on');
+        saveSetting(`toggle_${index}`, isOn);
+      });
+    });
+
+    // Input on .st-slider: update value text display, save slider_${index} in storage, and dynamically apply document.documentElement.style.setProperty('--board-w', slider.value + 'px')
+    sliders.forEach((slider, index) => {
+      slider.addEventListener('input', () => {
+        const valDisplay = slider.closest('.st-slider-field')?.querySelector('.st-val');
+        if (valDisplay) {
+          const initialText = valDisplay.textContent.trim();
+          const unit = initialText.endsWith('%') ? '%' : 'px';
+          valDisplay.textContent = `${slider.value}${unit}`;
+        }
+        saveSetting(`slider_${index}`, slider.value);
+        if (index === 0 || slider.min === '190' || slider.max === '380') {
+          document.documentElement.style.setProperty('--board-w', slider.value + 'px');
+        }
+      });
+    });
+
+    // Change on .st-select: save select_${index} in storage
+    selects.forEach((select, index) => {
+      select.addEventListener('change', () => {
+        saveSetting(`select_${index}`, select.value);
+      });
+    });
+
+    // Click on .st-group-btn, .settings-modal .st-seg-btn: switch .active, save group_${index} in storage
+    groupContainers.forEach((container, index) => {
+      const btns = container.querySelectorAll('.st-group-btn, .st-seg-btn');
       btns.forEach((btn) => {
-        btn.addEventListener('click', function() {
-          btns.forEach(b => b.classList.remove('active'));
-          this.classList.add('active');
-          saveSetting(settingKey, this.textContent.trim());
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          btns.forEach((b) => b.classList.remove('active'));
+          btn.classList.add('active');
+          saveSetting(`group_${index}`, btn.textContent.trim());
         });
       });
     });
