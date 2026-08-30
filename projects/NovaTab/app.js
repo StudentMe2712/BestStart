@@ -55,9 +55,11 @@
   const sidebar = document.getElementById('sidebar');
   const menuSideBtn = document.getElementById('menuSideBtn');
   const settingsSideBtn = document.getElementById('settingsSideBtn');
-  const searchSideBtn = document.getElementById('searchSideBtn');
-  const wallpaperSideBtn = document.getElementById('wallpaperSideBtn');
-  const trashSideBtn = document.getElementById('trashSideBtn');
+  const sideSearch = document.getElementById('sideSearch');
+  const mpWallpaper = document.getElementById('mpWallpaper');
+  const sideWidgets = document.getElementById('sideWidgets');
+  const sideImport = document.getElementById('sideImport');
+  const sideTrash = document.getElementById('sideTrash');
   const toast = document.getElementById('toast');
 
   // Settings Modal Elements
@@ -73,7 +75,6 @@
   const wpUploadZone = document.getElementById('wpUploadZone');
   const wpFileInput = document.getElementById('wpFileInput');
   const wpSearchOnlineBtn = document.getElementById('wpSearchOnlineBtn');
-  const mpWallpaper = document.getElementById('mpWallpaper');
 
   // --- Utility Functions ---
   function generateId(prefix = 'id') {
@@ -778,46 +779,52 @@
     });
   }
 
-  if (settingsSideBtn && settingsOverlay) {
+  if (settingsSideBtn) {
     settingsSideBtn.addEventListener('click', (e) => {
       e.stopPropagation();
-      settingsOverlay.style.display = 'flex';
-      if (sidebar) sidebar.classList.remove('is-open');
+      openSettingsModal();
+      sidebar?.classList.remove('is-open');
     });
   }
 
-  if (searchSideBtn) {
-    searchSideBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      if (searchInput) {
-        searchInput.focus();
-        searchInput.select();
-      }
-      if (sidebar) sidebar.classList.remove('is-open');
-    });
-  }
-
-  if (wallpaperSideBtn && wpOverlay) {
-    wallpaperSideBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      openWallpaperModal();
-      if (sidebar) sidebar.classList.remove('is-open');
-    });
-  }
-
-  if (mpWallpaper && wpOverlay) {
+  if (mpWallpaper) {
     mpWallpaper.addEventListener('click', (e) => {
       e.stopPropagation();
       openWallpaperModal();
-      if (sidebar) sidebar.classList.remove('is-open');
+      sidebar?.classList.remove('is-open');
     });
   }
 
-  if (trashSideBtn) {
-    trashSideBtn.addEventListener('click', (e) => {
+  if (sideSearch) {
+    sideSearch.addEventListener('click', (e) => {
       e.stopPropagation();
-      if (sidebar) sidebar.classList.remove('is-open');
+      searchInput?.focus();
+      searchInput?.select();
+      sidebar?.classList.remove('is-open');
+    });
+  }
+
+  if (sideWidgets) {
+    sideWidgets.addEventListener('click', (e) => {
+      e.stopPropagation();
+      showToast('Виджеты в разработке');
+      sidebar?.classList.remove('is-open');
+    });
+  }
+
+  if (sideImport) {
+    sideImport.addEventListener('click', (e) => {
+      e.stopPropagation();
+      showToast('Импорт закладок');
+      sidebar?.classList.remove('is-open');
+    });
+  }
+
+  if (sideTrash) {
+    sideTrash.addEventListener('click', (e) => {
+      e.stopPropagation();
       showToast('Корзина пуста');
+      sidebar?.classList.remove('is-open');
     });
   }
 
