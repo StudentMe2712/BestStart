@@ -811,6 +811,10 @@
         card.dataset.id = board.id;
         card.dataset.boardId = board.id;
 
+        const blurBg = document.createElement('div');
+        blurBg.className = 'board-blur-bg';
+        card.appendChild(blurBg);
+
         if (board.customColor) {
           card.style.setProperty('--card-accent', board.customColor);
           card.dataset.customMode = board.customMode || 'corner';
@@ -870,6 +874,10 @@
         card.setAttribute('draggable', 'true');
         card.dataset.id = board.id;
         card.dataset.boardId = board.id;
+
+        const blurBg = document.createElement('div');
+        blurBg.className = 'board-blur-bg';
+        card.appendChild(blurBg);
 
         if (board.customColor) {
           card.style.setProperty('--card-accent', board.customColor);
@@ -1001,6 +1009,10 @@
       card.setAttribute('draggable', 'true');
       card.dataset.id = board.id;
       card.dataset.boardId = board.id;
+
+      const blurBg = document.createElement('div');
+      blurBg.className = 'board-blur-bg';
+      card.appendChild(blurBg);
 
       if (board.customColor) {
         card.style.setProperty('--card-accent', board.customColor);
@@ -1176,6 +1188,10 @@
 
     const tempCard = document.createElement('div');
     tempCard.className = 'board-card inline-creating';
+
+    const blurBg = document.createElement('div');
+    blurBg.className = 'board-blur-bg';
+    tempCard.appendChild(blurBg);
 
     const header = document.createElement('div');
     header.className = 'board-header';
@@ -2637,8 +2653,18 @@
     }
 
     const sliderBlur = document.getElementById('sliderBlur');
+    const valBlur = document.getElementById('valBlur');
     if (sliderBlur) {
-      sliderBlur.addEventListener('input', (e) => applyBoardBlur(e.target.value));
+      sliderBlur.addEventListener('input', (e) => {
+        const px = e.target.value;
+        if (valBlur) valBlur.textContent = `${px}px`;
+        const percent = (px / (e.target.max || 40)) * 100;
+        e.target.style.background = `linear-gradient(to right, var(--accent-color,#fff) ${percent}%, rgba(255,255,255,0.12) ${percent}%)`;
+        
+        document.documentElement.style.setProperty('--board-blur', `${px}px`);
+        saveSetting('app_board_blur', `${px}px`);
+        saveSetting('app_board_blur_val', px);
+      });
     }
 
     const btnResetAppearance = document.getElementById('btnResetAppearance');
@@ -3418,63 +3444,52 @@
   function initDragAndDrop() {
     const grid = document.querySelector('.boards-grid') || boardsGrid;
     if (!grid) return;
-    let draggedBoard = null;
+    
+    let draggedItem = null;
 
     grid.addEventListener('dragstart', (e) => {
-      // If drag started from inside a link-item, input, button, textarea, etc., ignore for board dragging!
-      if (e.target.closest('.link-item, input, textarea, button, select, .st-toggle, .notes-resize-handle, .cal-nav-btn, .board-menu-btn, .add-link-btn')) {
+      if (e.target.closest('input, textarea, button, select, .st-toggle, .notes-resize-handle')) {
         return;
       }
 
-      const card = e.target.closest('.board, .board-card');
-      if (card && !card.classList.contains('board-placeholder')) {
-        draggedBoard = card;
+      const board = e.target.closest('.board, .board-card');
+      if (board && !board.classList.contains('board-placeholder')) {
+        draggedItem = board;
         if (e.dataTransfer) {
           e.dataTransfer.effectAllowed = 'move';
-          e.dataTransfer.setData('text/plain', card.dataset.boardId || card.dataset.id || 'board');
+          e.dataTransfer.setData('text/plain', board.dataset.boardId || board.dataset.id || 'board');
         }
         grid.classList.add('is-dragging');
         setTimeout(() => {
-          if (draggedBoard) draggedBoard.classList.add('dragging');
+          if (draggedItem) draggedItem.classList.add('dragging');
         }, 0);
       }
     });
 
-    grid.addEventListener('dragover', (e) => {
-      if (draggedLink) {
-        // If a link is currently being dragged, let link handlers handle it
-        return;
-      }
-      if (!draggedBoard) return;
+    // ОБЯЗАТЕЛЬНО: Разрешаем зону сброса
+    grid.addEventListener('dragenter', (e) => {
       e.preventDefault();
+    });
+
+    grid.addEventListener('dragover', (e) => {
+      e.preventDefault(); // Необходимо для срабатывания события drop
+      if (!draggedItem) return;
       if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
 
       const target = e.target.closest('.board, .board-card, .board-placeholder');
-      if (target && target !== draggedBoard && target.parentNode === grid) {
+      if (target && target !== draggedItem && target.parentNode === grid) {
         const rect = target.getBoundingClientRect();
-        const isAfter = (e.clientX > rect.left + rect.width / 2) || (e.clientY > rect.bottom - rect.height / 3);
+        const isAfter = e.clientX > rect.left + rect.width / 2;
+        
         if (isAfter) {
-          if (target.nextSibling !== draggedBoard) {
-            target.after(draggedBoard);
-          }
+          target.after(draggedItem);
         } else {
-          if (target.previousSibling !== draggedBoard) {
-            target.before(draggedBoard);
-          }
+          target.before(draggedItem);
         }
       }
     });
 
-    function commitBoardOrderAndCleanup() {
-      if (!draggedBoard && !grid.classList.contains('is-dragging')) return;
-
-      if (draggedBoard) {
-        draggedBoard.classList.remove('dragging');
-        draggedBoard = null;
-      }
-      grid.classList.remove('is-dragging');
-
-      // Commit DOM order to appState
+    function commitBoardOrder() {
       const currentTab = getActiveTab();
       if (currentTab && Array.isArray(currentTab.boards)) {
         const boardElements = [...grid.querySelectorAll('.board:not(.board-placeholder):not(.inline-creating), .board-card:not(.board-placeholder):not(.inline-creating)')];
@@ -3494,27 +3509,44 @@
         currentTab.boards = newBoards;
         saveState();
       }
-
-      renderGridPlaceholders();
     }
 
+    // ОБЯЗАТЕЛЬНО: Перехватываем сам сброс, чтобы браузер не отменил операцию
     grid.addEventListener('drop', (e) => {
-      if (draggedLink) {
-        handleLinkDrop(e);
-        return;
-      }
       e.preventDefault();
-      commitBoardOrderAndCleanup();
+      grid.classList.remove('is-dragging');
+      if (draggedItem) {
+        draggedItem.classList.remove('dragging');
+        draggedItem = null;
+      }
+      commitBoardOrder();
+      if (typeof renderGridPlaceholders === 'function') {
+        renderGridPlaceholders();
+      }
     });
 
-    grid.addEventListener('dragend', (e) => {
-      if (draggedBoard) {
-        commitBoardOrderAndCleanup();
+    grid.addEventListener('dragend', () => {
+      grid.classList.remove('is-dragging');
+      if (draggedItem) {
+        draggedItem.classList.remove('dragging');
+        draggedItem = null;
+      }
+      commitBoardOrder();
+      if (typeof renderGridPlaceholders === 'function') {
+        renderGridPlaceholders();
       }
     });
 
     document.addEventListener('dragend', () => {
-      if (draggedBoard) commitBoardOrderAndCleanup();
+      if (draggedItem) {
+        grid.classList.remove('is-dragging');
+        draggedItem.classList.remove('dragging');
+        draggedItem = null;
+        commitBoardOrder();
+        if (typeof renderGridPlaceholders === 'function') {
+          renderGridPlaceholders();
+        }
+      }
     });
   }
 
