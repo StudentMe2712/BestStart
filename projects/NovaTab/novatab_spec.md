@@ -151,6 +151,16 @@ To ensure instantaneous loading without hitting `chrome.storage.local` storage q
   - `Enter` to open selected bookmark URL immediately.
   - `Escape` to close palette.
 
+### 4.5 System Root Folder Protection Rules
+To avoid Chrome Bookmarks API runtime exceptions (`Error: Can't modify the root bookmark folders`), NovaTab implements strict multi-tiered protection for root and system bookmark nodes:
+- **Chrome API Constraints:** Chrome strictly forbids executing `chrome.bookmarks.removeTree()` or `chrome.bookmarks.remove()` on root folders (`id: "0"`, `"1"` - Bookmarks Bar / Панель закладок, `"2"` - Other Bookmarks / Другие закладки, `"3"` / `"mobile"` - Mobile Bookmarks / Мобильные закладки, `parentId === "0"`, or nodes marked `unmodifiable: "managed"`).
+- **System Node Tagging (`parseBookmarkNodes`):** During tree traversal, folder objects are tagged with `isSystem: Boolean(...)` based on node IDs, parent ID hierarchy, and unmodifiable flags.
+- **Validation Engine (`isRootOrSystemFolder`):** A centralized helper inspects folder IDs, parent IDs, system flags, and localized system titles ("Панель закладок", "Bookmarks Bar", "⭐ Быстрый доступ", etc.) to definitively identify root containers.
+- **UI Guardrails:**
+  - Category Cards (`createCategoryCard`): The delete folder button (`.btn-delete-card`) is hidden for root/system folders, presenting only the `+` quick-add bookmark action.
+  - Board Pills (`renderBoardsPills`): System folder pills omit the hover-revealed delete cross (`.delete-board-btn`).
+- **Defensive API Guard (`deleteCategoryFolder`):** Programmatically aborts deletion attempts on system folders with an informative toast notice (`Системную папку браузера нельзя удалить`) and catches any Chrome API rejections gracefully.
+
 ---
 
 ## 5. Favicon Resolution Strategy
@@ -171,5 +181,6 @@ To ensure instantaneous loading without hitting `chrome.storage.local` storage q
 - [x] **Semantic HTML Architecture (`index.html`):** Pristine `<head>` with only required meta/title/link elements, semantic classes, clean empty `#boards-pills-wrapper`, and single bottom script tag.
 - [x] **Wallpaper Engine & Compression (`app.js`):** Canvas downscaling to 1920x1080, WebP 80% compression, `chrome.storage.local` persistence, right-click reset.
 - [x] **Dynamic Chrome Bookmarks Parser & Category Management (`app.js`):** Tree crawling, folder grouping into cards, category folder deletion (`chrome.bookmarks.removeTree`), rich standalone mock data fallback, live reactive listeners (`onCreated`, `onRemoved`, `onChanged`, `onMoved`).
+- [x] **System Root Folder Protection (`app.js`):** `isSystem` node tagging, `isRootOrSystemFolder` helper, UI delete button suppression for root containers ("Панель закладок", "⭐ Быстрый доступ"), defensive guard in `deleteCategoryFolder`, preventing `Can't modify the root bookmark folders` errors.
 - [x] **Tab Bar & Navigation Usability:** Invisible scrollbars, deduplicated dynamic board pills, hover-revealed pill deletion buttons (`.delete-board-btn`) with isolated event bubbling, horizontal mouse-wheel scrolling support.
 - [x] **Interactive Controls & Hotkeys:** Global `/` search shortcut, search palette keyboard navigation (`↑`, `↓`, `Enter`, `Escape`), board filtering, bookmark CRUD, view mode toggle.

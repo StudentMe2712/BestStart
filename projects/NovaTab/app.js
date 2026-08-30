@@ -379,6 +379,22 @@
 
   // --- 6. BOOKMARK PARSING & HIERARCHY ---
 
+  function isRootOrSystemFolder(folder) {
+    if (!folder) return true;
+    if (folder.isSystem) return true;
+    const id = String(folder.id || '');
+    const parentId = String(folder.parentId || '');
+    if (id === '0' || id === '1' || id === '2' || id === '3' || id === 'mobile' || id === 'root') return true;
+    if (parentId === '0' || parentId === '' || folder.unmodifiable) return true;
+    const title = (folder.title || '').trim().toLowerCase();
+    if (title === 'панель закладок' || title === 'bookmarks bar' || title === 'другие закладки' || 
+        title === 'other bookmarks' || title === 'мобильные закладки' || title === 'mobile bookmarks' ||
+        title === '⭐ быстрый доступ' || title === 'быстрый доступ') {
+      return true;
+    }
+    return false;
+  }
+
   function parseBookmarkNodes(nodes, parentPath = [], parentId = null) {
     for (const node of nodes) {
       if (node.url) {
@@ -407,13 +423,23 @@
         const currentPath = isRootWrapper ? parentPath : [...parentPath, node.title];
 
         if (!isRootWrapper) {
+          const isSystem = Boolean(
+            node.id === '0' ||
+            node.id === '1' ||
+            node.id === '2' ||
+            node.id === '3' ||
+            node.id === 'mobile' ||
+            String(parentId || node.parentId) === '0' ||
+            node.unmodifiable
+          );
           const folderObj = {
             id: String(node.id),
             title: node.title || 'Папка',
             parentId: String(parentId || node.parentId || '0'),
             path: currentPath,
             depth: currentPath.length - 1,
-            childrenFolderIds: []
+            childrenFolderIds: [],
+            isSystem
           };
           state.allFolders.push(folderObj);
           state.folderMap.set(folderObj.id, folderObj);
@@ -484,6 +510,7 @@
     displayFolders.forEach(folder => {
       const bCount = (state.bookmarksByFolder.get(folder.id) || []).length;
       const isActive = state.activeBoardId === folder.id;
+      const canDelete = !isRootOrSystemFolder(folder);
 
       const pill = document.createElement('button');
       pill.className = `glass-pill ${isActive ? 'glass-pill-active' : ''}`;
@@ -492,7 +519,7 @@
       pill.innerHTML = `
         <span class="pill-title" title="${escapeHtml(folder.title)}">${escapeHtml(folder.title)}</span>
         <span class="pill-count">${bCount}</span>
-        <span class="delete-board-btn" title="Удалить папку «${escapeHtml(folder.title)}»">×</span>
+        ${canDelete ? `<span class="delete-board-btn" title="Удалить папку «${escapeHtml(folder.title)}»">×</span>` : ''}
       `;
 
       const deleteBtn = pill.querySelector('.delete-board-btn');
@@ -538,7 +565,8 @@
           title: '⭐ Быстрый доступ',
           path: ['Панель закладок'],
           depth: 0,
-          childrenFolderIds: []
+          childrenFolderIds: [],
+          isSystem: true
         });
       }
     } else {
@@ -582,7 +610,7 @@
     // Card Header
     const header = document.createElement('div');
     header.className = 'card-header-bar';
-    const isRootFolder = folder.id === '0' || folder.id === '1' || folder.id === '2' || folder.id === 'mobile';
+    const canDeleteFolder = !isRootOrSystemFolder(folder);
     header.innerHTML = `
       <div class="card-title-group">
         <span class="card-title-text" title="${escapeHtml(folder.title)}">${escapeHtml(folder.title)}</span>
@@ -595,7 +623,7 @@
             <line x1="5" y1="12" x2="19" y2="12"></line>
           </svg>
         </button>
-        ${!isRootFolder ? `
+        ${canDeleteFolder ? `
         <button class="card-icon-btn btn-delete-card" title="Удалить категорию «${escapeHtml(folder.title)}»">
           <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
             <polyline points="3 6 5 6 21 6"></polyline>
@@ -993,13 +1021,12 @@
   }
 
   async function deleteCategoryFolder(folder) {
-    if (!folder || !folder.id) return;
-    if (folder.id === '0' || folder.id === '1' || folder.id === '2' || folder.id === 'mobile') {
-      showToast('Корневую папку нельзя удалить', 'error');
+    if (!folder || !folder.id || isRootOrSystemFolder(folder)) {
+      showToast('Системную папку браузера нельзя удалить', 'info');
       return;
     }
 
-    if (!window.confirm('Вы уверены, что хотите удалить эту папку и все её закладки?')) {
+    if (!window.confirm(`Вы уверены, что хотите удалить папку «${folder.title}» и все её закладки?`)) {
       return;
     }
 
@@ -1026,7 +1053,8 @@
       await loadBookmarks();
     } catch (err) {
       console.error('[NovaTab] Delete folder error:', err);
-      showToast('Ошибка при удалении папки', 'error');
+      const isRootError = err?.message && (err.message.includes('root') || err.message.includes('modify'));
+      showToast(isRootError ? 'Системную папку браузера нельзя удалить' : 'Ошибка при удалении папки', 'error');
     }
   }
 
