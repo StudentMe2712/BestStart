@@ -22,6 +22,7 @@
 
   --ui-bg: #0d1117;
   --ui-modal: rgba(28, 29, 38, 0.97);
+  --ui-modal-fixed: rgba(28, 29, 38, 0.97);
   --ui-border: rgba(255, 255, 255, 0.1);
   --ui-fill: rgba(255, 255, 255, 0.05);
   --ui-fill-hover: rgba(255, 255, 255, 0.10);
@@ -339,46 +340,108 @@ body {
 }
 
 /* ==========================================================================
-   Floating Controls (FAB)
+   Sidebar / Expandable Floating Menu
    ========================================================================== */
 
-.floating-controls {
+/* Контейнер сайдбара из дампа пользователя */
+.sidebar {
   position: fixed;
-  right: 24px;
-  bottom: 24px;
+  right: 20px;
+  bottom: 20px;
+  z-index: 100;
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  z-index: 100;
+  align-items: center;
+  gap: 8px;
 }
 
-.fab-btn {
+/* Базовый стиль для всех круглых кнопок сайдбара */
+.sidebar-btn {
   width: 44px;
   height: 44px;
   border-radius: 50%;
+  background: var(--ui-fill);
+  border: 1px solid var(--ui-border);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  color: var(--ui-text);
   display: flex;
   align-items: center;
   justify-content: center;
-  border: var(--glass-border);
-  background: var(--glass-bg);
-  backdrop-filter: blur(var(--glass-blur));
-  -webkit-backdrop-filter: blur(var(--glass-blur));
-  box-shadow: var(--glass-shadow);
-  color: #333;
   cursor: pointer;
-  transition: transform 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+  transition: background 0.2s ease, transform 0.2s ease, border-color 0.2s ease, color 0.2s ease;
   outline: none;
 }
 
-.fab-btn:hover {
-  background: rgba(255, 255, 255, 0.65);
-  transform: translateY(-2px);
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
-  color: #111;
+.sidebar-btn:hover {
+  background: var(--ui-fill-hover);
+  border-color: rgba(255, 255, 255, 0.25);
+  color: #ffffff;
+  transform: scale(1.05);
 }
 
-.fab-btn:active {
+.sidebar-btn:active {
   transform: scale(0.95);
+}
+
+/* Блок дополнительных кнопок (скрыт по умолчанию) */
+.sidebar-expanded {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(20px);
+  transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Состояние открытого меню */
+.sidebar.is-open .sidebar-expanded {
+  opacity: 1;
+  pointer-events: all;
+  transform: translateY(0);
+}
+
+/* Переключение иконок Гамбургер / Крестик */
+.sidebar .icon-close {
+  display: none;
+}
+
+.sidebar.is-open .icon-menu {
+  display: none;
+}
+
+.sidebar.is-open .icon-close {
+  display: block;
+}
+
+/* Текстовые метки (tooltips) слева от кнопок */
+.ex-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.ex-label {
+  position: absolute;
+  right: 56px;
+  background: var(--ui-modal-fixed);
+  border: 1px solid var(--ui-border);
+  color: var(--ui-text);
+  padding: 4px 10px;
+  border-radius: 6px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+  white-space: nowrap;
+  font-size: 13px;
+  font-weight: 500;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.ex-wrap:hover .ex-label {
+  opacity: 1;
 }
 
 /* ==========================================================================

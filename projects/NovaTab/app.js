@@ -52,8 +52,12 @@
   const modalInputUrl = document.getElementById('modalInputUrl');
   const urlGroup = document.getElementById('urlGroup');
   const modalCancelBtn = document.getElementById('modalCancelBtn');
-  const menuBtn = document.getElementById('menuBtn');
-  const settingsBtn = document.getElementById('settingsBtn');
+  const sidebar = document.getElementById('sidebar');
+  const menuSideBtn = document.getElementById('menuSideBtn');
+  const settingsSideBtn = document.getElementById('settingsSideBtn');
+  const searchSideBtn = document.getElementById('searchSideBtn');
+  const wallpaperSideBtn = document.getElementById('wallpaperSideBtn');
+  const trashSideBtn = document.getElementById('trashSideBtn');
   const toast = document.getElementById('toast');
 
   // Settings Modal Elements
@@ -734,10 +738,13 @@
     });
   }
 
-  // Close Context Menu on Document Click or Escape
+  // Close Context Menu & Sidebar on Document Click
   document.addEventListener('click', (e) => {
     if (!e.target.closest('#contextMenu')) {
       hideContextMenu();
+    }
+    if (sidebar && !sidebar.contains(e.target)) {
+      sidebar.classList.remove('is-open');
     }
   });
 
@@ -746,6 +753,13 @@
       hideContextMenu();
       closeModal();
       closeSettingsModal();
+      if (sidebar) sidebar.classList.remove('is-open');
+    } else if (e.key === '/' && document.activeElement !== searchInput && !['INPUT', 'TEXTAREA'].includes(document.activeElement?.tagName)) {
+      if (searchInput) {
+        e.preventDefault();
+        searchInput.focus();
+        searchInput.select();
+      }
     }
   });
 
@@ -757,10 +771,48 @@
     hideContextMenu();
   });
 
-  // FAB Menu Button Click
-  if (menuBtn) {
-    menuBtn.addEventListener('click', () => {
-      showToast('NovaTab v2.0 • Минималистичный дашборд');
+  // --- Expandable Sidebar Controls ---
+  if (menuSideBtn && sidebar) {
+    menuSideBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      sidebar.classList.toggle('is-open');
+    });
+  }
+
+  if (settingsSideBtn && settingsOverlay) {
+    settingsSideBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      settingsOverlay.style.display = 'flex';
+      if (sidebar) sidebar.classList.remove('is-open');
+    });
+  }
+
+  if (searchSideBtn) {
+    searchSideBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (searchInput) {
+        searchInput.focus();
+        searchInput.select();
+      }
+      if (sidebar) sidebar.classList.remove('is-open');
+    });
+  }
+
+  if (wallpaperSideBtn && settingsOverlay) {
+    wallpaperSideBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      settingsOverlay.style.display = 'flex';
+      if (sidebar) sidebar.classList.remove('is-open');
+      const wpTabBtn = document.querySelector('.settings-nav-item[data-tab="wallpapers"]');
+      if (wpTabBtn) wpTabBtn.click();
+    });
+  }
+
+  if (trashSideBtn) {
+    trashSideBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (sidebar) sidebar.classList.remove('is-open');
+      showToast('Корзина пуста');
     });
   }
 
@@ -776,13 +828,6 @@
   }
 
   function initSettingsModal() {
-    // Open Settings Modal on FAB Click
-    if (settingsBtn) {
-      settingsBtn.addEventListener('click', () => {
-        openSettingsModal();
-      });
-    }
-
     // Close Button Click
     if (settingsCloseBtn) {
       settingsCloseBtn.addEventListener('click', () => {
