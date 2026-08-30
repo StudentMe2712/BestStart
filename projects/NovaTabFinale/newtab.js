@@ -1,6 +1,9 @@
 
 // Localization shortcut. i18n.js loads before this file.
 const T = (k, p) => (window.I18N ? I18N.t(k, p) : k);
+const track = () => {};
+const trackOnce = () => {};
+const trackDaily = () => {};
 
 // Apply translations to static markup.
 (function () {
@@ -1745,7 +1748,6 @@ function addPage() {
   const page = { id: genId(), name: T('page.new'), order: maxOrder + 1 };
   S.pages.push(page);
   S.activePage = page.id;
-  track('page_created', { total_pages: S.pages.length });
   saveState(); renderAll();
   setTimeout(() => {
     const tab = document.querySelector(`.page-tab[data-id="${page.id}"]`);
@@ -1774,8 +1776,6 @@ function switchPage(pageId) {
 function addBoardAt(col, row) {
   const board = { id: genId(), pageId: S.activePage, name: '', col, row };
   S.boards.push(board);
-  track('board_created', { total_boards: S.boards.length });
-  trackOnce('mz-ga-activated', 'activated_user', { via: 'board' });
   // Not saved yet: persists only once the user types a name (see startBoardRename).
   renderBoards();
   const boardEl = document.querySelector(`.board[data-id="${board.id}"]`);
@@ -2552,7 +2552,6 @@ function buildPomodoroBoard(board) {
       playBtn.innerHTML = POM_PAUSE;
       playPomSound('start');
     }
-    if (ps.running) track('pomodoro_started', { phase: ps.phase });
     savePomTimer(board.id);
   });
 
@@ -2681,7 +2680,6 @@ function nsbEngineIcon(eng, size) {
 
 function nsbDoSearch(query) {
   const eng = SEARCH_ENGINES.find(e => e.id === (S.navSearchEngine || 'google')) || SEARCH_ENGINES[1];
-  track('search_used', { source: 'navbar', engine: eng.id });
   if (eng.id === 'default') {
     chrome.search.query({ text: query, disposition: 'NEW_TAB' });
   } else {
@@ -2737,7 +2735,6 @@ function buildSearchBoard(board) {
   input.addEventListener('keydown', e => {
     if (e.key === 'Enter' && input.value.trim()) {
       const engine = SEARCH_ENGINES.find(en => en.id === (board.searchEngine || 'google')) || SEARCH_ENGINES[1];
-      track('search_used', { source: 'widget', engine: engine.id });
       chrome.tabs.create({ url: engine.url + encodeURIComponent(input.value.trim()) });
       input.value = '';
     }
@@ -3113,8 +3110,6 @@ function addBookmark(boardId, url, title, description) {
   const bk = { id: genId(), boardId, url, title, order: count };
   if (description) bk.description = description;
   S.bookmarks.push(bk);
-  track('bookmark_added', { total_bookmarks: S.bookmarks.length });
-  trackOnce('mz-ga-activated', 'activated_user', { via: 'bookmark' });
   saveState(); renderBoards();
 }
 
@@ -3213,7 +3208,6 @@ function syncWeatherCard() {
 
 document.getElementById('weatherToggle').addEventListener('click', () => {
   S.weather.enabled = !S.weather.enabled;
-  if (S.weather.enabled) track('weather_set');
   saveState();
   syncWeatherCard();
   renderWeatherWidget();
@@ -3227,7 +3221,6 @@ document.getElementById('weatherCityApply').addEventListener('click', () => {
   S.weather.city = v;
   S.weather.lat = null; S.weather.lon = null;
   if (S.weather.cache) S.weather.cache.ts = 0;
-  track('weather_set');
   saveState();
   fetchWeatherData(true);
 });
@@ -3290,7 +3283,6 @@ function _wcPick(i) {
   S.weather.cache.name = r.name;
   S.weather.cache.ts = 0;
   _wcHideSuggest();
-  track('weather_set');
   saveState();
   fetchWeatherData(true);
 }
@@ -4056,7 +4048,6 @@ function addToWallpaperHistory(type, data, thumb, name) {
     deleteFromDB('hwp_' + old.id);
   }
   S.wallpaperHistory.unshift({ id, type, thumb, name });
-  track('wallpaper_changed', { type });
   saveState();
   saveToDB('hwp_' + id, data);
   return id;
@@ -5128,8 +5119,6 @@ document.getElementById('settingsSideBtn').addEventListener('click', e => {
 // ── Init ──
 async function init() {
   await loadState();
-  track('app_open', { total_boards: S.boards.length, total_bookmarks: S.bookmarks.length });
-  trackDaily('daily_active');
   await loadFaviconCache();
   renderAll();
   loadSavedWallpaper();
@@ -5235,7 +5224,6 @@ function hasChromeBookmarks() {
 
 function startTour() {
   if (localStorage.getItem('mz-tour-done')) return;
-  track('tour_started');
   _tourStep = 0;
   // No bookmarks to import → drop only the import step, but keep the drag demo.
   hasChromeBookmarks().then(has => {
@@ -5288,7 +5276,6 @@ function setTourOverlayMask(el, shape, customBounds) {
 
 function showTourStep(idx) {
   const step = _tourSteps[idx];
-  track('tour_step', { index: idx });
   const el = step.target ? document.querySelector(step.target) : null;
 
   // Первый шаг: подсветить все способы создать доску (FAB + «+»-слоты).
@@ -5353,7 +5340,6 @@ function positionTourTooltip(el, pos) {
 }
 
 function endTour(reason = 'skipped') {
-  track(reason === 'completed' ? 'tour_completed' : 'tour_skipped', { step: _tourStep });
   localStorage.setItem('mz-tour-done', '1');
   document.body.classList.remove('tour-show-create');
   document.getElementById('tourOverlay').style.display = 'none';
