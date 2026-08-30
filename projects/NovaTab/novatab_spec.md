@@ -117,6 +117,11 @@ To ensure instantaneous loading without hitting `chrome.storage.local` storage q
 ### 4.1 Top Nav (Boards / Tabs)
 - Centered at the top: `.top-nav-container.glass-panel`.
 - Contains "✦ Все доски" master pill plus dynamic pills for top bookmark folders (e.g. `📺 Стриминг`, `🎮 Гейминг`, `💻 Разработка`, `🤖 AI Platforms`), filtered and deduplicated.
+- **Board Pill Deletion Button (`.delete-board-btn`):**
+  - Rendered inside each custom folder pill (excluding system "✦ Все доски" and protected root IDs `'0'`, `'1'`, `'2'`, `'mobile'`).
+  - **Hover Expand Effect:** Default state is hidden (`opacity: 0; width: 0; max-width: 0; overflow: hidden; margin-left: 0;`). When hovering over the pill (`.glass-pill:hover .delete-board-btn`), smoothly expands to `16x16px` with circular glass backdrop. Hovering directly on the cross icon triggers danger red highlight (`#F87171` color, `rgba(239, 68, 68, 0.25)` background, and `scale(1.15)` transform).
+  - **Click Isolation & Safety:** Click handler strictly executes `event.stopPropagation()` and `event.preventDefault()` to prevent activating the tab/board when deleting.
+  - **Deletion Workflow:** Invokes `deleteCategoryFolder(folder)` with confirmation prompt (`window.confirm`), recursively removes bookmarks via `chrome.bookmarks.removeTree` (or in-memory mock tree pruning in standalone mode), resets active board to `'all'` if the deleted folder was active, displays toast feedback, and reloads the UI.
 - Invisible scrollbar rule (`scrollbar-width: none; ::-webkit-scrollbar { display: none; }`) preserving clean look.
 - Interactive horizontal mouse-wheel scrolling support on `#boards-pills-wrapper` for seamless overflow browsing.
 - "+ Новая доска" quick creator button to instantiate new bookmark categories.
@@ -166,5 +171,5 @@ To ensure instantaneous loading without hitting `chrome.storage.local` storage q
 - [x] **Semantic HTML Architecture (`index.html`):** Pristine `<head>` with only required meta/title/link elements, semantic classes, clean empty `#boards-pills-wrapper`, and single bottom script tag.
 - [x] **Wallpaper Engine & Compression (`app.js`):** Canvas downscaling to 1920x1080, WebP 80% compression, `chrome.storage.local` persistence, right-click reset.
 - [x] **Dynamic Chrome Bookmarks Parser & Category Management (`app.js`):** Tree crawling, folder grouping into cards, category folder deletion (`chrome.bookmarks.removeTree`), rich standalone mock data fallback, live reactive listeners (`onCreated`, `onRemoved`, `onChanged`, `onMoved`).
-- [x] **Tab Bar & Navigation Usability:** Invisible scrollbars, deduplicated dynamic board pills, horizontal mouse-wheel scrolling support.
+- [x] **Tab Bar & Navigation Usability:** Invisible scrollbars, deduplicated dynamic board pills, hover-revealed pill deletion buttons (`.delete-board-btn`) with isolated event bubbling, horizontal mouse-wheel scrolling support.
 - [x] **Interactive Controls & Hotkeys:** Global `/` search shortcut, search palette keyboard navigation (`↑`, `↓`, `Enter`, `Escape`), board filtering, bookmark CRUD, view mode toggle.

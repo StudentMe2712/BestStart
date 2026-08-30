@@ -324,6 +324,40 @@ body {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 }
 
+.delete-board-btn {
+  opacity: 0;
+  width: 0;
+  max-width: 0;
+  overflow: hidden;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition-fast);
+  margin-left: 0;
+  cursor: pointer;
+  user-select: none;
+}
+
+.glass-pill:hover .delete-board-btn,
+.glass-button:hover .delete-board-btn {
+  opacity: 0.85;
+  width: 16px;
+  max-width: 16px;
+  height: 16px;
+  margin-left: 6px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.12);
+  font-size: 13px;
+  line-height: 1;
+}
+
+.delete-board-btn:hover {
+  opacity: 1;
+  color: #F87171;
+  background: rgba(239, 68, 68, 0.25);
+  transform: scale(1.15);
+}
+
 .nav-divider {
   width: 1px;
   height: 16px;

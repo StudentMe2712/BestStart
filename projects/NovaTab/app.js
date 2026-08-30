@@ -492,7 +492,17 @@
       pill.innerHTML = `
         <span class="pill-title" title="${escapeHtml(folder.title)}">${escapeHtml(folder.title)}</span>
         <span class="pill-count">${bCount}</span>
+        <span class="delete-board-btn" title="Удалить папку «${escapeHtml(folder.title)}»">×</span>
       `;
+
+      const deleteBtn = pill.querySelector('.delete-board-btn');
+      if (deleteBtn) {
+        deleteBtn.addEventListener('click', (event) => {
+          event.stopPropagation();
+          event.preventDefault();
+          deleteCategoryFolder(folder);
+        });
+      }
 
       pill.addEventListener('click', () => selectBoard(folder.id));
       elements.boardsPillsWrapper.appendChild(pill);
@@ -989,15 +999,15 @@
       return;
     }
 
-    const count = (state.bookmarksByFolder.get(folder.id) || []).length;
-    const confirmed = window.confirm(`Удалить категорию «${folder.title}»${count > 0 ? ` и все ${count} закладок в ней` : ''}?`);
-    if (!confirmed) return;
+    if (!window.confirm('Вы уверены, что хотите удалить эту папку и все её закладки?')) {
+      return;
+    }
 
     try {
       if (state.isExtension) {
         if (chrome.bookmarks?.removeTree) {
           await chrome.bookmarks.removeTree(folder.id);
-        } else {
+        } else if (chrome.bookmarks?.remove) {
           await chrome.bookmarks.remove(folder.id);
         }
       } else {
@@ -1012,11 +1022,11 @@
         state.activeBoardId = 'all';
       }
 
-      showToast(`Категория «${folder.title}» удалена`);
+      showToast(`Папка «${folder.title}» удалена`);
       await loadBookmarks();
     } catch (err) {
-      console.error('[NovaTab] Delete category error:', err);
-      showToast('Ошибка при удалении категории', 'error');
+      console.error('[NovaTab] Delete folder error:', err);
+      showToast('Ошибка при удалении папки', 'error');
     }
   }
 
