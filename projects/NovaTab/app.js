@@ -630,7 +630,16 @@
             <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
           </svg>
         </button>
-        ` : ''}
+        ` : (bookmarks.length > 0 ? `
+        <button class="card-icon-btn btn-clear-card" title="Очистить все закладки из «${escapeHtml(folder.title)}»">
+          <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+            <polyline points="3 6 5 6 21 6"></polyline>
+            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+            <line x1="10" y1="11" x2="10" y2="17"></line>
+            <line x1="14" y1="11" x2="14" y2="17"></line>
+          </svg>
+        </button>
+        ` : '')}
       </div>
     `;
 
@@ -644,6 +653,14 @@
       deleteFolderBtn.addEventListener('click', (e) => {
         e.stopPropagation();
         deleteCategoryFolder(folder);
+      });
+    }
+
+    const clearFolderBtn = header.querySelector('.btn-clear-card');
+    if (clearFolderBtn) {
+      clearFolderBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        clearCategoryBookmarks(folder, bookmarks);
       });
     }
 
@@ -1055,6 +1072,39 @@
       console.error('[NovaTab] Delete folder error:', err);
       const isRootError = err?.message && (err.message.includes('root') || err.message.includes('modify'));
       showToast(isRootError ? 'Системную папку браузера нельзя удалить' : 'Ошибка при удалении папки', 'error');
+    }
+  }
+
+  async function clearCategoryBookmarks(folder, bookmarks) {
+    if (!folder || !bookmarks || bookmarks.length === 0) return;
+
+    if (!window.confirm(`Очистить все ${bookmarks.length} закладок из категории «${folder.title}»?`)) {
+      return;
+    }
+
+    try {
+      if (state.isExtension) {
+        for (const bm of bookmarks) {
+          try {
+            await chrome.bookmarks.remove(bm.id);
+          } catch (bmErr) {
+            console.warn(`[NovaTab] Failed to remove bookmark ${bm.id}:`, bmErr);
+          }
+        }
+      } else {
+        bookmarks.forEach(bm => {
+          removeNodeFromTree(MOCK_BOOKMARK_TREE, bm.id);
+        });
+        const bookmarkIds = new Set(bookmarks.map(b => b.id));
+        state.allBookmarks = state.allBookmarks.filter(b => !bookmarkIds.has(b.id));
+        state.bookmarksByFolder.set(folder.id, []);
+      }
+
+      showToast(`Закладки из «${folder.title}» очищены`);
+      await loadBookmarks();
+    } catch (err) {
+      console.error('[NovaTab] Clear category bookmarks error:', err);
+      showToast('Ошибка при очистке закладок', 'error');
     }
   }
 

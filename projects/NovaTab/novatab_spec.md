@@ -1,5 +1,5 @@
 # NovaTab — Visual Bookmark Manager Specification
-**Version:** 1.2.0 (100% Manifest V3 CSP Compliant & Native CSS3 Architecture)  
+**Version:** 1.3.0 (Enhanced Deletion & Root Folder Clearing System)  
 **Target Platform:** Google Chrome / Chromium-based Browsers (Manifest V3)  
 **Design Philosophy:** Ultra-modern, responsive Glassmorphism dashboard with hardware-accelerated backdrop blur, pure Native CSS3 design system, custom high-performance wallpaper engine, and board-based category organization.
 
@@ -119,7 +119,7 @@ To ensure instantaneous loading without hitting `chrome.storage.local` storage q
 - Contains "✦ Все доски" master pill plus dynamic pills for top bookmark folders (e.g. `📺 Стриминг`, `🎮 Гейминг`, `💻 Разработка`, `🤖 AI Platforms`), filtered and deduplicated.
 - **Board Pill Deletion Button (`.delete-board-btn`):**
   - Rendered inside each custom folder pill (excluding system "✦ Все доски" and protected root IDs `'0'`, `'1'`, `'2'`, `'mobile'`).
-  - **Hover Expand Effect:** Default state is hidden (`opacity: 0; width: 0; max-width: 0; overflow: hidden; margin-left: 0;`). When hovering over the pill (`.glass-pill:hover .delete-board-btn`), smoothly expands to `16x16px` with circular glass backdrop. Hovering directly on the cross icon triggers danger red highlight (`#F87171` color, `rgba(239, 68, 68, 0.25)` background, and `scale(1.15)` transform).
+  - **Hover & Touch Reveal:** Default state is collapsed on desktop, smoothly expanding to `16x16px` on pill hover or focus-within. On touch/mobile devices (`@media (hover: none) or (max-width: 768px)`), visible with comfortable hit target. Hovering directly on the cross icon triggers danger red highlight (`#F87171` color, `rgba(239, 68, 68, 0.25)` background, and `scale(1.15)` transform).
   - **Click Isolation & Safety:** Click handler strictly executes `event.stopPropagation()` and `event.preventDefault()` to prevent activating the tab/board when deleting.
   - **Deletion Workflow:** Invokes `deleteCategoryFolder(folder)` with confirmation prompt (`window.confirm`), recursively removes bookmarks via `chrome.bookmarks.removeTree` (or in-memory mock tree pruning in standalone mode), resets active board to `'all'` if the deleted folder was active, displays toast feedback, and reloads the UI.
 - Invisible scrollbar rule (`scrollbar-width: none; ::-webkit-scrollbar { display: none; }`) preserving clean look.
@@ -130,8 +130,11 @@ To ensure instantaneous loading without hitting `chrome.storage.local` storage q
 - `height: calc(100vh - 78px); margin-top: 78px; overflow-y: auto; padding: 24px 80px 48px 40px;`
 - Responsive dynamic columns (`.cards-masonry-grid` / `.cards-masonry-grid.list-layout`).
 - Inside each `.glass-card`:
-  - **Header:** Folder title, item counter badge, quick "+" add bookmark button, and "🗑" category folder deletion button (`.btn-delete-card`) with subtle red hover styling and confirmation dialog.
-  - **Bookmark Rows:** 16px Favicon (with Google S2 & letter avatar fallback), title, domain label, and hover actions dock (open, copy link, edit, delete).
+  - **Header:** Folder title, item counter badge, quick "+" add bookmark button, and deletion/clearing actions:
+    - **User-Created Folders:** "🗑" folder deletion button (`.btn-delete-card`) with subtle red hover styling and confirmation dialog (`chrome.bookmarks.removeTree`).
+    - **System / Root Containers (e.g. " Панель закладок / ⭐ Быстрый доступ"):** "🧹/🗑" category clearing button (`.btn-clear-card`) rendered whenever bookmarks exist (`bookmarks.length > 0`), allowing users to clean all bookmarks inside the root category safely via `chrome.bookmarks.remove(bm.id)`.
+  - **Bookmark Rows:** 16px Favicon (with Google S2 & letter avatar fallback), title, domain label, and always-discoverable action dock with subtle default opacity (`0.6`) and full opacity (`1.0`) on row hover (open, copy link, edit, delete).
+  - **Bookmark Delete Button:** `.item-action-btn.btn-delete:hover` glows in danger red (`#F87171` text, `rgba(239, 68, 68, 0.25)` background) for clear visual feedback.
 
 ### 4.3 Right Floating Toolbar Dock
 - Fixed vertical capsule at `right: 24px, top: 50%`.
@@ -151,15 +154,13 @@ To ensure instantaneous loading without hitting `chrome.storage.local` storage q
   - `Enter` to open selected bookmark URL immediately.
   - `Escape` to close palette.
 
-### 4.5 System Root Folder Protection Rules
-To avoid Chrome Bookmarks API runtime exceptions (`Error: Can't modify the root bookmark folders`), NovaTab implements strict multi-tiered protection for root and system bookmark nodes:
+### 4.5 System Root Folder Protection Rules & Clearing Capability
+To avoid Chrome Bookmarks API runtime exceptions (`Error: Can't modify the root bookmark folders`), NovaTab implements strict multi-tiered protection combined with root container bookmark clearing:
 - **Chrome API Constraints:** Chrome strictly forbids executing `chrome.bookmarks.removeTree()` or `chrome.bookmarks.remove()` on root folders (`id: "0"`, `"1"` - Bookmarks Bar / Панель закладок, `"2"` - Other Bookmarks / Другие закладки, `"3"` / `"mobile"` - Mobile Bookmarks / Мобильные закладки, `parentId === "0"`, or nodes marked `unmodifiable: "managed"`).
 - **System Node Tagging (`parseBookmarkNodes`):** During tree traversal, folder objects are tagged with `isSystem: Boolean(...)` based on node IDs, parent ID hierarchy, and unmodifiable flags.
 - **Validation Engine (`isRootOrSystemFolder`):** A centralized helper inspects folder IDs, parent IDs, system flags, and localized system titles ("Панель закладок", "Bookmarks Bar", "⭐ Быстрый доступ", etc.) to definitively identify root containers.
-- **UI Guardrails:**
-  - Category Cards (`createCategoryCard`): The delete folder button (`.btn-delete-card`) is hidden for root/system folders, presenting only the `+` quick-add bookmark action.
-  - Board Pills (`renderBoardsPills`): System folder pills omit the hover-revealed delete cross (`.delete-board-btn`).
-- **Defensive API Guard (`deleteCategoryFolder`):** Programmatically aborts deletion attempts on system folders with an informative toast notice (`Системную папку браузера нельзя удалить`) and catches any Chrome API rejections gracefully.
+- **Root Clearing Engine (`clearCategoryBookmarks`):** When bookmarks exist directly in a root container (e.g. `id: '1'`), the card header renders `.btn-clear-card`. Clicking prompts the user and iterates over each bookmark, removing them individually with `chrome.bookmarks.remove(bm.id)` without violating root folder modification constraints.
+- **Defensive API Guard (`deleteCategoryFolder`):** Programmatically aborts folder tree deletion attempts on system folders with an informative toast notice (`Системную папку браузера нельзя удалить`) and catches any Chrome API rejections gracefully.
 
 ---
 
@@ -181,6 +182,7 @@ To avoid Chrome Bookmarks API runtime exceptions (`Error: Can't modify the root 
 - [x] **Semantic HTML Architecture (`index.html`):** Pristine `<head>` with only required meta/title/link elements, semantic classes, clean empty `#boards-pills-wrapper`, and single bottom script tag.
 - [x] **Wallpaper Engine & Compression (`app.js`):** Canvas downscaling to 1920x1080, WebP 80% compression, `chrome.storage.local` persistence, right-click reset.
 - [x] **Dynamic Chrome Bookmarks Parser & Category Management (`app.js`):** Tree crawling, folder grouping into cards, category folder deletion (`chrome.bookmarks.removeTree`), rich standalone mock data fallback, live reactive listeners (`onCreated`, `onRemoved`, `onChanged`, `onMoved`).
-- [x] **System Root Folder Protection (`app.js`):** `isSystem` node tagging, `isRootOrSystemFolder` helper, UI delete button suppression for root containers ("Панель закладок", "⭐ Быстрый доступ"), defensive guard in `deleteCategoryFolder`, preventing `Can't modify the root bookmark folders` errors.
-- [x] **Tab Bar & Navigation Usability:** Invisible scrollbars, deduplicated dynamic board pills, hover-revealed pill deletion buttons (`.delete-board-btn`) with isolated event bubbling, horizontal mouse-wheel scrolling support.
+- [x] **Root Container Clearing Capability (`app.js`):** Implemented `.btn-clear-card` and `clearCategoryBookmarks` to safely clear bookmarks from system/root categories (e.g. "Панель закладок" / "⭐ Быстрый доступ") via `chrome.bookmarks.remove(bm.id)`.
+- [x] **Always-Discoverable Bookmark Actions & Delete Hover Feedback:** Set default `.bookmark-actions` opacity to `0.6` for immediate visual discoverability, with bright red hover states on `.item-action-btn.btn-delete:hover` (`#F87171` / `rgba(239, 68, 68, 0.25)`).
+- [x] **Responsive Tab Bar & Navigation Usability:** Invisible scrollbars, deduplicated dynamic board pills, hover & touch revealed pill deletion buttons (`.delete-board-btn`) with isolated event bubbling, horizontal mouse-wheel scrolling support.
 - [x] **Interactive Controls & Hotkeys:** Global `/` search shortcut, search palette keyboard navigation (`↑`, `↓`, `Enter`, `Escape`), board filtering, bookmark CRUD, view mode toggle.

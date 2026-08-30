@@ -339,6 +339,7 @@ body {
 }
 
 .glass-pill:hover .delete-board-btn,
+.glass-pill:focus-within .delete-board-btn,
 .glass-button:hover .delete-board-btn {
   opacity: 0.85;
   width: 16px;
@@ -356,6 +357,20 @@ body {
   color: #F87171;
   background: rgba(239, 68, 68, 0.25);
   transform: scale(1.15);
+}
+
+@media (hover: none) or (max-width: 768px) {
+  .delete-board-btn {
+    opacity: 0.75;
+    width: 16px;
+    max-width: 16px;
+    height: 16px;
+    margin-left: 6px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.12);
+    font-size: 13px;
+    line-height: 1;
+  }
 }
 
 .nav-divider {
@@ -459,6 +474,7 @@ body {
   transform: scale(1.06);
 }
 
+.card-icon-btn.btn-clear-card:hover,
 .card-icon-btn.btn-delete-card:hover {
   background: rgba(239, 68, 68, 0.2);
   color: #F87171;
@@ -570,7 +586,7 @@ body {
   display: flex;
   align-items: center;
   gap: 4px;
-  opacity: 0;
+  opacity: 0.6;
   transition: opacity var(--transition-fast);
   flex-shrink: 0;
 }
@@ -601,8 +617,9 @@ body {
 }
 
 .item-action-btn.btn-delete:hover {
-  background: var(--color-danger);
-  color: #ffffff;
+  color: #F87171;
+  background: rgba(239, 68, 68, 0.25);
+  transform: scale(1.1);
 }
 
 /* --- 7. Floating Toolbar & Background Switcher --- */
