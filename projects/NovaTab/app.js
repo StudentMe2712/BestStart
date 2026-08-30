@@ -31,6 +31,291 @@
     'hideExcessBookmarksToggle': { on: 'Лишние закладки скрыты', off: 'Все закладки показаны' }
   };
 
+  const I18N_STRINGS = {
+    ru: {
+      'settings.title': 'Настройки',
+      'settings.tabGeneral': 'Общие',
+      'settings.tabAppearance': 'Внешний вид',
+      'settings.tabRegion': 'Язык и регион',
+      'settings.tabSupport': 'Поддержка',
+      'settings.behavior': 'ПОВЕДЕНИЕ',
+      'settings.openNewTab': 'Открывать ссылки в новой вкладке',
+      'settings.hideExcess': 'Скрывать лишние закладки',
+      'settings.showDesc': 'Показывать описания',
+      'settings.layout': 'РАСПОЛОЖЕНИЕ',
+      'settings.columns': 'Количество колонок',
+      'settings.columnsAuto': 'Авто',
+      'settings.boardWidth': 'Ширина досок',
+      'settings.sidebar': 'БОКОВАЯ ПАНЕЛЬ',
+      'settings.sidebarAlwaysOpen': 'Всегда показывать все кнопки',
+      'settings.quickSave': 'БЫСТРОЕ СОХРАНЕНИЕ',
+      'settings.saveToBoard': 'Сохранять на доску',
+      'settings.hotkey': 'Горячая клавиша',
+      'settings.notSet': 'Не задано',
+      'settings.pressKeys': 'Нажмите клавиши...',
+      'settings.changeHotkey': 'Изменить',
+      'settings.searchColor': 'Цвет плашки поиска',
+      'settings.searchAlpha': 'Прозрачность',
+      'settings.searchBlur': 'Размытие',
+      'settings.searchWidth': 'Ширина',
+      'settings.boardText': 'ТЕКСТ ДОСКИ',
+      'settings.textSize': 'Размер',
+      'settings.textWeight': 'Толщина',
+      'settings.normalWeight': 'Обычный',
+      'settings.boldWeight': 'Жирный',
+      'settings.language': 'ЯЗЫК',
+      'settings.formatting': 'Форматирование',
+      'settings.autoDetect': 'Автоопределение',
+      'settings.timeFormat': 'Формат времени',
+      'settings.dateFormat': 'Формат даты',
+      'settings.weekStart': 'Начало недели',
+      'settings.monday': 'Понедельник',
+      'settings.sunday': 'Воскресенье',
+      'settings.temperature': 'Температура',
+      'search.placeholder': 'Поиск...',
+      'search.modalPlaceholder': 'Поиск по закладкам…',
+      'search.notFound': 'Ничего не найдено',
+      'sidebar.search': 'Поиск',
+      'sidebar.wallpaper': 'Обои',
+      'sidebar.widgets': 'Виджеты',
+      'sidebar.import': 'Импорт',
+      'sidebar.trash': 'Корзина',
+      'sidebar.settings': 'Настройки',
+      'sidebar.menu': 'Меню',
+      'trash.title': 'Корзина',
+      'trash.empty': 'Очистить корзину',
+      'trash.emptyMsg': 'Корзина пуста',
+      'trash.emptyConfirm': 'Очистить корзину?',
+      'trash.deleteAll': 'Удалить всё',
+      'wallpaper.title': 'Обои',
+      'wallpaper.uploadTitle': 'Загрузите изображение или видео',
+      'wallpaper.presets': 'ПРЕСЕТЫ',
+      'wallpaper.searchTitle': 'НАЙТИ ОБОИ',
+      'wallpaper.searchBtn': 'Искать обои в интернете',
+      'widgets.label': 'ВИДЖЕТЫ',
+      'widget.board': 'Доска',
+      'widget.notes': 'Заметки',
+      'widget.calendar': 'Календарь',
+      'widget.pomodoro': 'Помодоро',
+      'widget.clock': 'Часы',
+      'widget.search': 'Поиск',
+      'widget.weather': 'Погода',
+      'widget.add': 'Добавить',
+      'boardMenu.rename': 'Переименовать',
+      'boardMenu.openAll': 'Открыть все ссылки',
+      'boardMenu.customize': 'Кастомизация',
+      'boardMenu.corner': 'Уголок',
+      'boardMenu.border': 'Обводка',
+      'boardMenu.delete': 'Удалить доску',
+      'modal.addBookmark': 'Добавить закладку',
+      'modal.editBookmark': 'Изменить закладку',
+      'modal.addBoard': 'Новая доска',
+      'modal.editBoard': 'Переименовать доску',
+      'modal.addTab': 'Новая страница',
+      'modal.editTab': 'Переименовать вкладку',
+      'modal.titleLabel': 'Название',
+      'modal.urlLabel': 'URL адрес',
+      'modal.cancel': 'Отмена',
+      'modal.save': 'Сохранить',
+      'context.openNewTab': 'Открыть в новой вкладке',
+      'context.openIncognito': 'Открыть в режиме инкогнито',
+      'context.edit': 'Изменить',
+      'context.copyUrl': 'Копировать адрес ссылки',
+      'context.delete': 'Удалить',
+      'toast.regionDetected': 'Настройки региона определены автоматически',
+      'toast.hotkeySaved': 'Горячая клавиша сохранена: ',
+      'toast.quickSaveTriggered': 'Быстрое сохранение: '
+    },
+    en: {
+      'settings.title': 'Settings',
+      'settings.tabGeneral': 'General',
+      'settings.tabAppearance': 'Appearance',
+      'settings.tabRegion': 'Language & Region',
+      'settings.tabSupport': 'Support',
+      'settings.behavior': 'BEHAVIOR',
+      'settings.openNewTab': 'Open links in new tab',
+      'settings.hideExcess': 'Hide excess bookmarks',
+      'settings.showDesc': 'Show descriptions',
+      'settings.layout': 'LAYOUT',
+      'settings.columns': 'Columns count',
+      'settings.columnsAuto': 'Auto',
+      'settings.boardWidth': 'Board width',
+      'settings.sidebar': 'SIDEBAR',
+      'settings.sidebarAlwaysOpen': 'Always show all buttons',
+      'settings.quickSave': 'QUICK SAVE',
+      'settings.saveToBoard': 'Save to board',
+      'settings.hotkey': 'Shortcut',
+      'settings.notSet': 'Not set',
+      'settings.pressKeys': 'Press keys...',
+      'settings.changeHotkey': 'Change',
+      'settings.searchColor': 'Search bar color',
+      'settings.searchAlpha': 'Opacity',
+      'settings.searchBlur': 'Blur',
+      'settings.searchWidth': 'Width',
+      'settings.boardText': 'BOARD TEXT',
+      'settings.textSize': 'Size',
+      'settings.textWeight': 'Weight',
+      'settings.normalWeight': 'Normal',
+      'settings.boldWeight': 'Bold',
+      'settings.language': 'LANGUAGE',
+      'settings.formatting': 'Formatting',
+      'settings.autoDetect': 'Auto detect',
+      'settings.timeFormat': 'Time format',
+      'settings.dateFormat': 'Date format',
+      'settings.weekStart': 'First day of week',
+      'settings.monday': 'Monday',
+      'settings.sunday': 'Sunday',
+      'settings.temperature': 'Temperature',
+      'search.placeholder': 'Search...',
+      'search.modalPlaceholder': 'Search bookmarks…',
+      'search.notFound': 'Nothing found',
+      'sidebar.search': 'Search',
+      'sidebar.wallpaper': 'Wallpaper',
+      'sidebar.widgets': 'Widgets',
+      'sidebar.import': 'Import',
+      'sidebar.trash': 'Trash',
+      'sidebar.settings': 'Settings',
+      'sidebar.menu': 'Menu',
+      'trash.title': 'Trash',
+      'trash.empty': 'Empty trash',
+      'trash.emptyMsg': 'Trash is empty',
+      'trash.emptyConfirm': 'Empty trash?',
+      'trash.deleteAll': 'Delete all',
+      'wallpaper.title': 'Wallpaper',
+      'wallpaper.uploadTitle': 'Upload image or video',
+      'wallpaper.presets': 'PRESETS',
+      'wallpaper.searchTitle': 'FIND WALLPAPER',
+      'wallpaper.searchBtn': 'Search wallpapers online',
+      'widgets.label': 'WIDGETS',
+      'widget.board': 'Board',
+      'widget.notes': 'Notes',
+      'widget.calendar': 'Calendar',
+      'widget.pomodoro': 'Pomodoro',
+      'widget.clock': 'Clock',
+      'widget.search': 'Search',
+      'widget.weather': 'Weather',
+      'widget.add': 'Add',
+      'boardMenu.rename': 'Rename',
+      'boardMenu.openAll': 'Open all links',
+      'boardMenu.customize': 'Customize',
+      'boardMenu.corner': 'Corner',
+      'boardMenu.border': 'Border',
+      'boardMenu.delete': 'Delete board',
+      'modal.addBookmark': 'Add Bookmark',
+      'modal.editBookmark': 'Edit Bookmark',
+      'modal.addBoard': 'New Board',
+      'modal.editBoard': 'Rename Board',
+      'modal.addTab': 'New Page',
+      'modal.editTab': 'Rename Tab',
+      'modal.titleLabel': 'Title',
+      'modal.urlLabel': 'URL address',
+      'modal.cancel': 'Cancel',
+      'modal.save': 'Save',
+      'context.openNewTab': 'Open in new tab',
+      'context.openIncognito': 'Open in incognito mode',
+      'context.edit': 'Edit',
+      'context.copyUrl': 'Copy link address',
+      'context.delete': 'Delete',
+      'toast.regionDetected': 'Region settings detected automatically',
+      'toast.hotkeySaved': 'Shortcut saved: ',
+      'toast.quickSaveTriggered': 'Quick save: '
+    },
+    de: {
+      'settings.title': 'Einstellungen',
+      'settings.tabGeneral': 'Allgemein',
+      'settings.tabAppearance': 'Erscheinungsbild',
+      'settings.tabRegion': 'Sprache & Region',
+      'settings.tabSupport': 'Support',
+      'settings.behavior': 'VERHALTEN',
+      'settings.openNewTab': 'Links in neuem Tab öffnen',
+      'settings.hideExcess': 'Überschüssige Lesezeichen ausblenden',
+      'settings.showDesc': 'Beschreibungen anzeigen',
+      'settings.layout': 'LAYOUT',
+      'settings.columns': 'Spaltenanzahl',
+      'settings.columnsAuto': 'Auto',
+      'settings.boardWidth': 'Board-Breite',
+      'settings.sidebar': 'SEITENLEISTE',
+      'settings.sidebarAlwaysOpen': 'Alle Schaltflächen immer anzeigen',
+      'settings.quickSave': 'SCHNELLSPEICHERN',
+      'settings.saveToBoard': 'Auf Board speichern',
+      'settings.hotkey': 'Tastenkürzel',
+      'settings.notSet': 'Nicht festgelegt',
+      'settings.pressKeys': 'Tasten drücken...',
+      'settings.changeHotkey': 'Ändern',
+      'settings.searchColor': 'Suchleistenfarbe',
+      'settings.searchAlpha': 'Deckkraft',
+      'settings.searchBlur': 'Weichzeichner',
+      'settings.searchWidth': 'Breite',
+      'settings.boardText': 'BOARD-TEXT',
+      'settings.textSize': 'Größe',
+      'settings.textWeight': 'Stärke',
+      'settings.normalWeight': 'Normal',
+      'settings.boldWeight': 'Fett',
+      'settings.language': 'SPRACHE',
+      'settings.formatting': 'Formatierung',
+      'settings.autoDetect': 'Automatisch erkennen',
+      'settings.timeFormat': 'Zeitformat',
+      'settings.dateFormat': 'Datumsformat',
+      'settings.weekStart': 'Wochenbeginn',
+      'settings.monday': 'Montag',
+      'settings.sunday': 'Sonntag',
+      'settings.temperature': 'Temperatur',
+      'search.placeholder': 'Suchen...',
+      'search.modalPlaceholder': 'Lesezeichen suchen…',
+      'search.notFound': 'Nichts gefunden',
+      'sidebar.search': 'Suchen',
+      'sidebar.wallpaper': 'Hintergrund',
+      'sidebar.widgets': 'Widgets',
+      'sidebar.import': 'Importieren',
+      'sidebar.trash': 'Papierkorb',
+      'sidebar.settings': 'Einstellungen',
+      'sidebar.menu': 'Menü',
+      'trash.title': 'Papierkorb',
+      'trash.empty': 'Papierkorb leeren',
+      'trash.emptyMsg': 'Papierkorb ist leer',
+      'trash.emptyConfirm': 'Papierkorb leeren?',
+      'trash.deleteAll': 'Alles löschen',
+      'wallpaper.title': 'Hintergrund',
+      'wallpaper.uploadTitle': 'Bild oder Video hochladen',
+      'wallpaper.presets': 'VOREINSTELLUNGEN',
+      'wallpaper.searchTitle': 'HINTERGRUND FINDEN',
+      'wallpaper.searchBtn': 'Hintergründe online suchen',
+      'widgets.label': 'WIDGETS',
+      'widget.board': 'Board',
+      'widget.notes': 'Notizen',
+      'widget.calendar': 'Kalender',
+      'widget.pomodoro': 'Pomodoro',
+      'widget.clock': 'Uhr',
+      'widget.search': 'Suchen',
+      'widget.weather': 'Wetter',
+      'widget.add': 'Hinzufügen',
+      'boardMenu.rename': 'Umbenennen',
+      'boardMenu.openAll': 'Alle Links öffnen',
+      'boardMenu.customize': 'Anpassen',
+      'boardMenu.corner': 'Ecke',
+      'boardMenu.border': 'Rahmen',
+      'boardMenu.delete': 'Board löschen',
+      'modal.addBookmark': 'Lesezeichen hinzufügen',
+      'modal.editBookmark': 'Lesezeichen bearbeiten',
+      'modal.addBoard': 'Neues Board',
+      'modal.editBoard': 'Board umbenennen',
+      'modal.addTab': 'Neue Seite',
+      'modal.editTab': 'Tab umbenennen',
+      'modal.titleLabel': 'Titel',
+      'modal.urlLabel': 'URL-Adresse',
+      'modal.cancel': 'Abbrechen',
+      'modal.save': 'Speichern',
+      'context.openNewTab': 'In neuem Tab öffnen',
+      'context.openIncognito': 'Im Inkognito-Modus öffnen',
+      'context.edit': 'Bearbeiten',
+      'context.copyUrl': 'Link-Adresse kopieren',
+      'context.delete': 'Löschen',
+      'toast.regionDetected': 'Regionseinstellungen automatisch erkannt',
+      'toast.hotkeySaved': 'Tastenkürzel gespeichert: ',
+      'toast.quickSaveTriggered': 'Schnellspeichern: '
+    }
+  };
+
   const WALLPAPER_PRESETS = [
     'wallpapers/01.png',
     'wallpapers/02.jpg',
@@ -73,6 +358,10 @@
 
   // --- Application State ---
   let appState = JSON.parse(JSON.stringify(DEFAULT_STATE));
+  let currentLanguage = 'ru';
+  let currentWeekStart = 'mon';
+  let currentQuickBoardId = null;
+  let currentHotkey = 'Alt+B';
   let contextMenuTarget = null; // { type: 'link'|'board'|'tab', tabId, boardId, linkId, url, title }
   let modalAction = null; // callback (data) => void
 
@@ -189,6 +478,53 @@
     renderBoards();
   }
 
+  function setLanguage(lang) {
+    if (!I18N_STRINGS[lang]) lang = 'ru';
+    currentLanguage = lang;
+    document.documentElement.lang = lang;
+    saveSetting('stSegLanguage', lang);
+    saveSetting('language', lang);
+
+    const dict = I18N_STRINGS[lang];
+
+    // Update all elements with data-i18n
+    document.querySelectorAll('[data-i18n]').forEach((el) => {
+      const key = el.dataset.i18n;
+      if (dict[key]) {
+        if (el.tagName === 'INPUT' && el.getAttribute('placeholder')) {
+          el.placeholder = dict[key];
+        } else {
+          el.textContent = dict[key];
+        }
+      }
+    });
+
+    // Update settings nav item labels
+    const navGeneral = document.querySelector('.settings-nav-item[data-tab="tab-general"] span');
+    if (navGeneral) navGeneral.textContent = dict['settings.tabGeneral'];
+    const navApp = document.querySelector('.settings-nav-item[data-tab="tab-appearance"] span');
+    if (navApp) navApp.textContent = dict['settings.tabAppearance'];
+    const navRegion = document.querySelector('.settings-nav-item[data-tab="tab-region"] span');
+    if (navRegion) navRegion.textContent = dict['settings.tabRegion'];
+    const navSupport = document.querySelector('#supportNavBtn span');
+    if (navSupport) navSupport.textContent = dict['settings.tabSupport'];
+
+    // Update search placeholders
+    if (searchInput) searchInput.placeholder = dict['search.placeholder'];
+    if (modalSearchInput) modalSearchInput.placeholder = dict['search.modalPlaceholder'];
+
+    // Update active state in language segment
+    const langSegment = document.getElementById('stSegLanguage');
+    if (langSegment) {
+      langSegment.querySelectorAll('.st-seg-btn').forEach((btn) => {
+        const bLang = btn.dataset.lang || (btn.textContent.trim() === 'English' ? 'en' : btn.textContent.trim() === 'Deutsch' ? 'de' : 'ru');
+        btn.classList.toggle('active', bLang === lang);
+      });
+    }
+
+    renderBoards();
+  }
+
   // --- Storage Operations ---
   function loadState(callback) {
     if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
@@ -264,6 +600,7 @@
           saveState();
           renderTabs();
           renderBoards();
+          populateQuickBoardSelect();
         }
       });
 
@@ -293,6 +630,8 @@
       return;
     }
 
+    const dict = I18N_STRINGS[currentLanguage] || I18N_STRINGS.ru;
+
     currentTab.boards.forEach((board) => {
       // 1. NOTES WIDGET
       if (board.type === 'notes') {
@@ -313,8 +652,8 @@
 
         const title = document.createElement('div');
         title.className = 'board-title';
-        title.textContent = board.title || 'Заметки';
-        title.title = board.title || 'Заметки';
+        title.textContent = board.title || dict['widget.notes'] || 'Заметки';
+        title.title = board.title || dict['widget.notes'] || 'Заметки';
 
         const menuBtn = document.createElement('button');
         menuBtn.className = 'board-menu-btn';
@@ -328,7 +667,7 @@
         // Textarea
         const textarea = document.createElement('textarea');
         textarea.className = 'notes-textarea';
-        textarea.placeholder = 'Введите текст...';
+        textarea.placeholder = currentLanguage === 'en' ? 'Type notes here...' : currentLanguage === 'de' ? 'Notizen hier eingeben...' : 'Введите текст...';
         textarea.value = board.content || '';
         textarea.addEventListener('input', () => {
           board.content = textarea.value;
@@ -388,8 +727,9 @@
 
         const title = document.createElement('div');
         title.className = 'board-title';
-        title.textContent = board.title || 'Август 2026';
-        title.title = board.title || 'Август 2026';
+        const monthYearStr = currentLanguage === 'en' ? 'August 2026' : currentLanguage === 'de' ? 'August 2026' : 'Август 2026';
+        title.textContent = board.title || monthYearStr;
+        title.title = board.title || monthYearStr;
         title.style.marginLeft = '4px';
 
         leftGroup.appendChild(prevBtn);
@@ -405,10 +745,29 @@
         header.appendChild(menuBtn);
         card.appendChild(header);
 
-        // Days row
+        // Days row headers based on currentLanguage and currentWeekStart ('mon' vs 'sun')
         const daysRow = document.createElement('div');
         daysRow.className = 'cal-days-row';
-        const dayNames = ['ПН', 'ВТ', 'СР', 'ЧТ', 'ПТ', 'СБ', 'ВС'];
+
+        let dayNames;
+        if (currentWeekStart === 'sun') {
+          if (currentLanguage === 'en') {
+            dayNames = ['SU', 'MO', 'TU', 'WE', 'TH', 'FR', 'SA'];
+          } else if (currentLanguage === 'de') {
+            dayNames = ['SO', 'MO', 'DI', 'MI', 'DO', 'FR', 'SA'];
+          } else {
+            dayNames = ['ВС', 'ПН', 'ВТ', 'СР', 'ЧТ', 'ПТ', 'СБ'];
+          }
+        } else {
+          if (currentLanguage === 'en') {
+            dayNames = ['MO', 'TU', 'WE', 'TH', 'FR', 'SA', 'SU'];
+          } else if (currentLanguage === 'de') {
+            dayNames = ['MO', 'DI', 'MI', 'DO', 'FR', 'SA', 'SO'];
+          } else {
+            dayNames = ['ПН', 'ВТ', 'СР', 'ЧТ', 'ПТ', 'СБ', 'ВС'];
+          }
+        }
+
         dayNames.forEach((name) => {
           const dayNameEl = document.createElement('div');
           dayNameEl.className = 'cal-day-name';
@@ -417,12 +776,16 @@
         });
         card.appendChild(daysRow);
 
-        // Calendar Grid
+        // Calendar Grid: August 2026 (Aug 1 is Saturday)
         const calGrid = document.createElement('div');
         calGrid.className = 'cal-grid';
 
-        // August 2026 starts on Saturday (5 blank days: Mon, Tue, Wed, Thu, Fri)
-        for (let i = 0; i < 5; i++) {
+        // Saturday index:
+        // When week starts on Monday: Mon(0), Tue(1), Wed(2), Thu(3), Fri(4), Sat(5), Sun(6) -> 5 blank days before Aug 1
+        // When week starts on Sunday: Sun(0), Mon(1), Tue(2), Wed(3), Thu(4), Fri(5), Sat(6) -> 6 blank days before Aug 1
+        const blankDaysCount = currentWeekStart === 'sun' ? 6 : 5;
+
+        for (let i = 0; i < blankDaysCount; i++) {
           const blank = document.createElement('div');
           blank.className = 'cal-day cal-day-blank';
           calGrid.appendChild(blank);
@@ -431,9 +794,18 @@
         // 31 days in August 2026
         for (let day = 1; day <= 31; day++) {
           const dayEl = document.createElement('div');
-          const dayOfWeek = (5 + day - 1) % 7; // 0=Mon, 1=Tue, 2=Wed, 3=Thu, 4=Fri, 5=Sat, 6=Sun
-          const isWeekend = dayOfWeek === 5 || dayOfWeek === 6;
-          const isToday = day === 30;
+          let dayOfWeek;
+          let isWeekend;
+
+          if (currentWeekStart === 'sun') {
+            dayOfWeek = (6 + day - 1) % 7; // 0=Sun, 1=Mon, ..., 6=Sat
+            isWeekend = (dayOfWeek === 0 || dayOfWeek === 6);
+          } else {
+            dayOfWeek = (5 + day - 1) % 7; // 0=Mon, 1=Tue, ..., 5=Sat, 6=Sun
+            isWeekend = (dayOfWeek === 5 || dayOfWeek === 6);
+          }
+
+          const isToday = (day === 30);
 
           let classNames = ['cal-day'];
           if (isWeekend) classNames.push('cal-day-weekend');
@@ -528,6 +900,13 @@
           item.appendChild(img);
           item.appendChild(span);
 
+          if (link.desc) {
+            const descSpan = document.createElement('span');
+            descSpan.className = 'link-desc';
+            descSpan.textContent = link.desc;
+            item.appendChild(descSpan);
+          }
+
           // Left Click: Open Link
           item.addEventListener('click', (e) => {
             e.preventDefault();
@@ -579,14 +958,14 @@
   // --- Dynamic Grid Placeholders & Inline Board Creation ---
 
   function renderGridPlaceholders() {
-    const grid = document.querySelector('.boards-grid');
+    const grid = document.querySelector('.boards-grid') || boardsGrid;
     if (!grid) return;
     // Remove old placeholders
     grid.querySelectorAll('.board-placeholder').forEach(el => el.remove());
     
     // Count current boards
     const boardsCount = grid.querySelectorAll('.board:not(.board-placeholder):not(.inline-creating), .board-card:not(.board-placeholder):not(.inline-creating)').length;
-    // Fill up empty slots (e.g., minimum slots to fill grid nicely, at least 1, up to 10 - boardsCount)
+    // Fill up empty slots (at least 1, up to 10 - boardsCount)
     const placeholdersNeeded = Math.max(1, 10 - boardsCount);
 
     for (let i = 0; i < placeholdersNeeded; i++) {
@@ -601,7 +980,7 @@
   }
 
   function initiateInlineBoardCreation(targetSlot) {
-    const grid = document.querySelector('.boards-grid');
+    const grid = document.querySelector('.boards-grid') || boardsGrid;
     if (!grid) return;
 
     // If an inline creation card is already open, focus it
@@ -621,7 +1000,7 @@
     const input = document.createElement('input');
     input.type = 'text';
     input.className = 'board-title-input';
-    input.placeholder = 'Новая доска';
+    input.placeholder = currentLanguage === 'en' ? 'New Board' : currentLanguage === 'de' ? 'Neues Board' : 'Новая доска';
     input.maxLength = 50;
 
     header.appendChild(input);
@@ -665,6 +1044,7 @@
           }
           saveState();
           renderBoards();
+          populateQuickBoardSelect();
           showToast(`Доска "${title}" создана`);
         } else {
           tempCard.remove();
@@ -696,10 +1076,6 @@
       input.focus();
       input.select();
     }, 50);
-  }
-
-  function startInlineBoardCreation(targetSlot) {
-    initiateInlineBoardCreation(targetSlot);
   }
 
   // --- Board Context Menu Handlers ---
@@ -766,7 +1142,7 @@
     input.type = 'text';
     input.className = 'board-title-input';
     input.value = currentTitle;
-    input.placeholder = 'Название доски';
+    input.placeholder = currentLanguage === 'en' ? 'Board Title' : currentLanguage === 'de' ? 'Board-Titel' : 'Название доски';
     input.maxLength = 50;
 
     titleEl.parentNode.replaceChild(input, titleEl);
@@ -782,6 +1158,7 @@
         board.title = newTitle;
         saveState();
         renderBoards();
+        populateQuickBoardSelect();
         showToast('Доска переименована');
       } else {
         renderBoards();
@@ -931,6 +1308,7 @@
             saveState();
             renderBoards();
             renderGridPlaceholders();
+            populateQuickBoardSelect();
             showToast('Доска удалена');
           }
         }
@@ -977,7 +1355,7 @@
   }
 
   // Context Menu Actions Handler
-  contextMenu.addEventListener('click', (e) => {
+  contextMenu?.addEventListener('click', (e) => {
     const item = e.target.closest('.context-menu-item');
     if (!item || !contextMenuTarget) return;
 
@@ -1045,7 +1423,7 @@
   }
 
   function showBoardContextMenu(e, board) {
-    const card = boardsGrid?.querySelector(`.board-card[data-board-id="${board.id}"]`);
+    const card = boardsGrid?.querySelector(`.board-card[data-board-id="${board.id}"], .board[data-board-id="${board.id}"]`);
     openBoardMenu(e, board, card);
   }
 
@@ -1057,6 +1435,7 @@
       saveState();
       renderBoards();
       renderGridPlaceholders();
+      populateQuickBoardSelect();
       showToast('Доска удалена');
     } else if (action === 'edit') {
       openEditBoardModal(target);
@@ -1084,6 +1463,7 @@
       saveState();
       renderTabs();
       renderBoards();
+      populateQuickBoardSelect();
       showToast('Вкладка удалена');
     } else if (action === 'edit') {
       openEditTabModal(target);
@@ -1128,12 +1508,12 @@
     modalAction = null;
   }
 
-  modalCancelBtn.addEventListener('click', () => {
+  modalCancelBtn?.addEventListener('click', () => {
     closeModal();
   });
 
   // Close modal when clicking backdrop
-  itemModal.addEventListener('click', (e) => {
+  itemModal?.addEventListener('click', (e) => {
     const rect = itemModal.getBoundingClientRect();
     const isInDialog =
       rect.top <= e.clientY &&
@@ -1145,7 +1525,7 @@
     }
   });
 
-  modalForm.addEventListener('submit', (e) => {
+  modalForm?.addEventListener('submit', (e) => {
     e.preventDefault();
     const titleVal = modalInputTitle.value.trim();
     const urlVal = modalInputUrl.value.trim();
@@ -1164,8 +1544,9 @@
 
   // Modal Triggers
   function openAddLinkModal(boardId) {
+    const dict = I18N_STRINGS[currentLanguage] || I18N_STRINGS.ru;
     openModal({
-      title: 'Добавить закладку',
+      title: dict['modal.addBookmark'] || 'Добавить закладку',
       initialTitle: '',
       initialUrl: '',
       showUrl: true,
@@ -1190,8 +1571,9 @@
   }
 
   function openEditLinkModal(target) {
+    const dict = I18N_STRINGS[currentLanguage] || I18N_STRINGS.ru;
     openModal({
-      title: 'Изменить закладку',
+      title: dict['modal.editBookmark'] || 'Изменить закладку',
       initialTitle: target.title,
       initialUrl: target.url,
       showUrl: true,
@@ -1214,8 +1596,9 @@
   }
 
   function openAddBoardModal() {
+    const dict = I18N_STRINGS[currentLanguage] || I18N_STRINGS.ru;
     openModal({
-      title: 'Новая доска',
+      title: dict['modal.addBoard'] || 'Новая доска',
       initialTitle: '',
       showUrl: false,
       onSave: ({ title }) => {
@@ -1231,14 +1614,16 @@
 
         saveState();
         renderBoards();
+        populateQuickBoardSelect();
         showToast(`Доска "${title}" создана`);
       }
     });
   }
 
   function openEditBoardModal(target) {
+    const dict = I18N_STRINGS[currentLanguage] || I18N_STRINGS.ru;
     openModal({
-      title: 'Переименовать доску',
+      title: dict['modal.editBoard'] || 'Переименовать доску',
       initialTitle: target.title,
       showUrl: false,
       onSave: ({ title }) => {
@@ -1250,14 +1635,16 @@
         board.title = title;
         saveState();
         renderBoards();
+        populateQuickBoardSelect();
         showToast('Доска переименована');
       }
     });
   }
 
   function openAddTabModal() {
+    const dict = I18N_STRINGS[currentLanguage] || I18N_STRINGS.ru;
     openModal({
-      title: 'Новая страница',
+      title: dict['modal.addTab'] || 'Новая страница',
       initialTitle: '',
       showUrl: false,
       onSave: ({ title }) => {
@@ -1272,14 +1659,16 @@
         saveState();
         renderTabs();
         renderBoards();
+        populateQuickBoardSelect();
         showToast(`Вкладка "${title}" создана`);
       }
     });
   }
 
   function openEditTabModal(target) {
+    const dict = I18N_STRINGS[currentLanguage] || I18N_STRINGS.ru;
     openModal({
-      title: 'Переименовать вкладку',
+      title: dict['modal.editTab'] || 'Переименовать вкладку',
       initialTitle: target.title,
       showUrl: false,
       onSave: ({ title }) => {
@@ -1643,129 +2032,686 @@
     }
   }
 
-  function initSettingsLogic() {
-    const modal = document.getElementById('settingsModal') || document.getElementById('settingsBody');
-    const allToggles = document.querySelectorAll('.st-toggle');
-    const sliders = modal ? modal.querySelectorAll('.st-slider') : [];
-    const selects = modal ? modal.querySelectorAll('.st-select') : [];
-    const groupContainers = modal ? modal.querySelectorAll('.st-btn-group, .st-segment') : [];
+  function populateQuickBoardSelect() {
+    const select = document.getElementById('stSelectQuickBoard');
+    if (!select) return;
 
-    // 1. Load all saved settings using chrome.storage.local.get(null, ...) with fallback to localStorage
+    const currentTab = getActiveTab();
+    select.innerHTML = '';
+
+    if (currentTab && Array.isArray(currentTab.boards) && currentTab.boards.length > 0) {
+      currentTab.boards.forEach((b) => {
+        const opt = document.createElement('option');
+        opt.value = b.id;
+        opt.textContent = b.title || (b.type === 'notes' ? 'Заметки' : b.type === 'calendar' ? 'Календарь' : 'Доска');
+        select.appendChild(opt);
+      });
+
+      if (currentQuickBoardId) {
+        select.value = currentQuickBoardId;
+      }
+      if (!select.value && select.options.length > 0) {
+        select.selectedIndex = 0;
+        currentQuickBoardId = select.value;
+      }
+    } else {
+      const opt = document.createElement('option');
+      opt.value = '';
+      opt.textContent = 'Нет доступных досок';
+      select.appendChild(opt);
+    }
+  }
+
+  function applyColumnsSetting(colsVal) {
+    const grid = document.querySelector('.boards-grid') || boardsGrid;
+    if (!grid) return;
+    grid.classList.remove('cols-3', 'cols-4', 'cols-5', 'cols-6');
+    if (colsVal && colsVal !== 'auto' && colsVal !== 'Авто') {
+      grid.classList.add(`cols-${colsVal}`);
+    }
+  }
+
+  function applyTextSizeSetting(sizeVal) {
+    let px = '13.5px';
+    if (sizeVal === 'S' || sizeVal === '12px' || sizeVal === '12') px = '12px';
+    else if (sizeVal === 'M' || sizeVal === '13.5px' || sizeVal === '13.5') px = '13.5px';
+    else if (sizeVal === 'L' || sizeVal === '15px' || sizeVal === '15') px = '15px';
+
+    document.documentElement.style.setProperty('--board-text-size', px);
+    document.querySelectorAll('.link-item').forEach(el => {
+      el.style.fontSize = px;
+    });
+  }
+
+  function applyTextWeightSetting(weightVal) {
+    let fw = '400';
+    if (weightVal === 'bold' || weightVal === 'Жирный' || weightVal === '600' || weightVal === 'Bold') {
+      fw = '600';
+    } else {
+      fw = '400';
+    }
+    document.documentElement.style.setProperty('--board-font-weight', fw);
+    document.documentElement.style.setProperty('--link-weight', fw);
+    document.querySelectorAll('.link-item').forEach(el => {
+      el.style.fontWeight = fw;
+    });
+  }
+
+  function hexToRgba(hex, alpha) {
+    if (!hex || typeof hex !== 'string') return `rgba(255, 255, 255, ${alpha})`;
+    let c = hex.replace('#', '');
+    if (c.length === 3) c = c.split('').map(x => x + x).join('');
+    const num = parseInt(c, 16);
+    if (isNaN(num)) return `rgba(255, 255, 255, ${alpha})`;
+    const r = (num >> 16) & 255;
+    const g = (num >> 8) & 255;
+    const b = num & 255;
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+  }
+
+  function applySearchAppearance(color, alphaVal, blurVal, widthVal) {
+    const searchBar = document.querySelector('.search-bar');
+    if (alphaVal !== undefined && alphaVal !== null) {
+      document.documentElement.style.setProperty('--search-alpha', alphaVal / 100);
+    }
+    if (blurVal !== undefined && blurVal !== null) {
+      document.documentElement.style.setProperty('--search-blur', `${blurVal}px`);
+      if (searchBar) {
+        searchBar.style.backdropFilter = `blur(${blurVal}px)`;
+        searchBar.style.webkitBackdropFilter = `blur(${blurVal}px)`;
+      }
+    }
+    if (widthVal !== undefined && widthVal !== null) {
+      document.documentElement.style.setProperty('--search-width', `${widthVal}px`);
+      if (searchBar) {
+        searchBar.style.width = `${widthVal}px`;
+      }
+    }
+    if (color) {
+      document.documentElement.style.setProperty('--search-bg-color', color);
+      const effectiveAlpha = (alphaVal !== undefined && alphaVal !== null) ? alphaVal / 100 : 0.2;
+      const rgba = hexToRgba(color, effectiveAlpha);
+      if (searchBar) {
+        searchBar.style.background = rgba;
+      }
+      const preview = document.getElementById('stColorPickerSearchPreview');
+      if (preview) {
+        preview.style.background = color;
+      }
+    }
+  }
+
+  function initSettingsLogic() {
+    const allToggles = document.querySelectorAll('.st-toggle');
+
+    // 1. Load all saved settings
     loadAllSettings((settings) => {
       if (!settings) settings = {};
 
-      // Default search is OFF (navSearchToggle = false)
+      // Open new tab default true
+      const openNewTabVal = settings['openNewTabToggle'] !== undefined ? Boolean(settings['openNewTabToggle']) : true;
+      const openNewTabEl = document.getElementById('openNewTabToggle');
+      if (openNewTabEl) openNewTabEl.classList.toggle('on', openNewTabVal);
+      applySettingToDOM('openNewTabToggle', openNewTabVal);
+
+      // Search default false
       const isSearchEnabled = settings['navSearchToggle'] === true;
       applySettingToDOM('navSearchToggle', isSearchEnabled);
 
-      // Apply settings for all toggles
-      allToggles.forEach((toggle, idx) => {
-        const id = toggle.id;
-        let isEnabled;
-        if (id === 'navSearchToggle') {
-          isEnabled = isSearchEnabled;
-        } else if (id && settings[id] !== undefined) {
-          isEnabled = Boolean(settings[id]);
-        } else if (settings[`toggle_${idx}`] !== undefined) {
-          isEnabled = Boolean(settings[`toggle_${idx}`]);
-        } else {
-          isEnabled = toggle.classList.contains('on');
-        }
+      // Descriptions default true
+      const descVal = settings['descToggle'] !== undefined ? Boolean(settings['descToggle']) : true;
+      const descEl = document.getElementById('descToggle');
+      if (descEl) descEl.classList.toggle('on', descVal);
+      applySettingToDOM('descToggle', descVal);
 
-        toggle.classList.toggle('on', isEnabled);
-        if (id) {
-          applySettingToDOM(id, isEnabled);
-        }
-      });
+      // Hide excess bookmarks default false
+      const hideExcessVal = Boolean(settings['hideExcessBookmarksToggle']);
+      const hideExcessEl = document.getElementById('hideExcessBookmarksToggle');
+      if (hideExcessEl) hideExcessEl.classList.toggle('on', hideExcessVal);
+      applySettingToDOM('hideExcessBookmarksToggle', hideExcessVal);
 
-      // 2. Sliders: slider.value = settings[key], update value display (.st-val), and dynamically update CSS variable
-      sliders.forEach((slider, idx) => {
-        const key = `slider_${idx}`;
-        if (settings[key] !== undefined) {
-          slider.value = settings[key];
-          const valDisplay = slider.closest('.st-slider-field')?.querySelector('.st-val');
-          if (valDisplay) {
-            const initialText = valDisplay.textContent.trim();
-            const unit = initialText.endsWith('%') ? '%' : 'px';
-            valDisplay.textContent = `${slider.value}${unit}`;
-          }
-          if (idx === 0 || slider.min === '190' || slider.max === '380') {
-            document.documentElement.style.setProperty('--board-w', slider.value + 'px');
-          }
-        }
-      });
+      // Sidebar always open default false
+      const sidebarOpenVal = Boolean(settings['sidebarAlwaysOpenToggle']);
+      const sidebarOpenEl = document.getElementById('sidebarAlwaysOpenToggle');
+      if (sidebarOpenEl) sidebarOpenEl.classList.toggle('on', sidebarOpenVal);
+      applySettingToDOM('sidebarAlwaysOpenToggle', sidebarOpenVal);
 
-      // 3. Selects: select.value = settings[key] for key select_${idx}
-      selects.forEach((select, idx) => {
-        const key = `select_${idx}`;
-        if (settings[key] !== undefined) {
-          select.value = settings[key];
-        }
-      });
+      // Clock default true
+      const clockVal = settings['clockToggle'] !== undefined ? Boolean(settings['clockToggle']) : true;
+      const clockEl = document.getElementById('clockToggle');
+      if (clockEl) clockEl.classList.toggle('on', clockVal);
+      applySettingToDOM('clockToggle', clockVal);
 
-      // 4. Button groups & segments: activate button matching settings[key] for key group_${idx}
-      groupContainers.forEach((container, idx) => {
-        const key = `group_${idx}`;
-        if (settings[key] !== undefined) {
-          const btns = container.querySelectorAll('.st-group-btn, .st-seg-btn');
-          btns.forEach((btn) => {
-            btn.classList.toggle('active', btn.textContent.trim() === settings[key]);
-          });
-        }
-      });
+      // Weather default true
+      const weatherVal = settings['weatherToggle'] !== undefined ? Boolean(settings['weatherToggle']) : true;
+      const weatherEl = document.getElementById('weatherToggle');
+      if (weatherEl) weatherEl.classList.toggle('on', weatherVal);
+      applySettingToDOM('weatherToggle', weatherVal);
+
+      // Columns setting
+      const colsVal = settings['stSelectColumns'] || settings['grid_columns'] || 'auto';
+      const colSelect = document.getElementById('stSelectColumns');
+      if (colSelect) {
+        colSelect.value = colsVal;
+      }
+      applyColumnsSetting(colsVal);
+
+      // Board width slider
+      const boardWidthVal = settings['stSliderBoardWidth'] || settings['board_width'] || '260';
+      const boardWidthSlider = document.getElementById('stSliderBoardWidth');
+      if (boardWidthSlider) {
+        boardWidthSlider.value = boardWidthVal;
+        const valSpan = boardWidthSlider.closest('.st-slider-field')?.querySelector('.st-val');
+        if (valSpan) valSpan.textContent = `${boardWidthVal}px`;
+      }
+      document.documentElement.style.setProperty('--board-w', `${boardWidthVal}px`);
+
+      // Quick board selection
+      if (settings['stSelectQuickBoard']) {
+        currentQuickBoardId = settings['stSelectQuickBoard'];
+      }
+      populateQuickBoardSelect();
+
+      // Hotkey
+      if (settings['stKbdShortcut']) {
+        currentHotkey = settings['stKbdShortcut'];
+      }
+      const kbdEl = document.getElementById('stKbdShortcut');
+      if (kbdEl) {
+        kbdEl.textContent = currentHotkey || 'Alt+B';
+      }
+
+      // Search Appearance settings
+      const searchColor = settings['stColorPickerSearch'] || '#ffffff';
+      const searchAlpha = settings['stSliderSearchAlpha'] !== undefined ? parseInt(settings['stSliderSearchAlpha'], 10) : 20;
+      const searchBlur = settings['stSliderSearchBlur'] !== undefined ? parseInt(settings['stSliderSearchBlur'], 10) : 12;
+      const searchWidth = settings['stSliderSearchWidth'] !== undefined ? parseInt(settings['stSliderSearchWidth'], 10) : 340;
+
+      const alphaSlider = document.getElementById('stSliderSearchAlpha');
+      if (alphaSlider) {
+        alphaSlider.value = searchAlpha;
+        const valSpan = alphaSlider.closest('.st-slider-field')?.querySelector('.st-val');
+        if (valSpan) valSpan.textContent = `${searchAlpha}%`;
+      }
+
+      const blurSlider = document.getElementById('stSliderSearchBlur');
+      if (blurSlider) {
+        blurSlider.value = searchBlur;
+        const valSpan = blurSlider.closest('.st-slider-field')?.querySelector('.st-val');
+        if (valSpan) valSpan.textContent = `${searchBlur}px`;
+      }
+
+      const widthSlider = document.getElementById('stSliderSearchWidth');
+      if (widthSlider) {
+        widthSlider.value = searchWidth;
+        const valSpan = widthSlider.closest('.st-slider-field')?.querySelector('.st-val');
+        if (valSpan) valSpan.textContent = `${searchWidth}px`;
+      }
+
+      const colorInput = document.getElementById('stColorPickerSearch');
+      if (colorInput) {
+        colorInput.value = searchColor.startsWith('#') && searchColor.length === 7 ? searchColor : '#ffffff';
+      }
+      applySearchAppearance(searchColor, searchAlpha, searchBlur, searchWidth);
+
+      // Text Size
+      const textSizeVal = settings['stSegTextSize'] || 'M';
+      const textSizeSeg = document.getElementById('stSegTextSize');
+      if (textSizeSeg) {
+        textSizeSeg.querySelectorAll('.st-seg-btn').forEach((btn) => {
+          const bVal = btn.dataset.val || btn.textContent.trim();
+          btn.classList.toggle('active', bVal === textSizeVal);
+        });
+      }
+      applyTextSizeSetting(textSizeVal);
+
+      // Text Weight
+      const textWeightVal = settings['stSegTextWeight'] || 'normal';
+      const textWeightSeg = document.getElementById('stSegTextWeight');
+      if (textWeightSeg) {
+        textWeightSeg.querySelectorAll('.st-seg-btn').forEach((btn) => {
+          const bVal = btn.dataset.val || (btn.textContent.trim() === 'Жирный' || btn.textContent.trim() === 'Bold' ? 'bold' : 'normal');
+          btn.classList.toggle('active', bVal === textWeightVal || btn.textContent.trim() === textWeightVal);
+        });
+      }
+      applyTextWeightSetting(textWeightVal);
+
+      // Time Format
+      const timeFormatVal = settings['stGroupTimeFormat'] || '24h';
+      const timeFormatGroup = document.getElementById('stGroupTimeFormat');
+      if (timeFormatGroup) {
+        timeFormatGroup.querySelectorAll('.st-group-btn').forEach((btn) => {
+          const bVal = btn.dataset.val || btn.textContent.trim();
+          btn.classList.toggle('active', bVal.startsWith(timeFormatVal));
+        });
+      }
+
+      // Date Format
+      const dateFormatVal = settings['stGroupDateFormat'] || 'DD/MM/YY';
+      const dateFormatGroup = document.getElementById('stGroupDateFormat');
+      if (dateFormatGroup) {
+        dateFormatGroup.querySelectorAll('.st-group-btn').forEach((btn) => {
+          const bVal = btn.dataset.val || btn.textContent.trim();
+          btn.classList.toggle('active', bVal === dateFormatVal);
+        });
+      }
+
+      // Week Start
+      const weekStartVal = settings['stGroupWeekStart'] || 'mon';
+      currentWeekStart = weekStartVal;
+      const weekStartGroup = document.getElementById('stGroupWeekStart');
+      if (weekStartGroup) {
+        weekStartGroup.querySelectorAll('.st-group-btn').forEach((btn) => {
+          const bVal = btn.dataset.val || (btn.textContent.trim() === 'Воскресенье' || btn.textContent.trim() === 'Sunday' ? 'sun' : 'mon');
+          btn.classList.toggle('active', bVal === weekStartVal);
+        });
+      }
+
+      // Temperature
+      const tempVal = settings['stGroupTemperature'] || 'C';
+      const tempGroup = document.getElementById('stGroupTemperature');
+      if (tempGroup) {
+        tempGroup.querySelectorAll('.st-group-btn').forEach((btn) => {
+          const bVal = btn.dataset.val || (btn.textContent.trim().includes('F') ? 'F' : 'C');
+          btn.classList.toggle('active', bVal === tempVal);
+        });
+      }
+
+      // Language
+      const langVal = settings['stSegLanguage'] || settings['language'] || 'ru';
+      setLanguage(langVal);
     });
 
-    // 2. Implement dynamic event listeners:
-    allToggles.forEach((toggle, index) => {
+    // 2. Attach Event Listeners to Settings Controls
+
+    // Toggles
+    allToggles.forEach((toggle) => {
       toggle.addEventListener('click', (e) => {
         e.stopPropagation();
         handleToggleClick(toggle);
-        if (!toggle.id) {
-          const isOn = toggle.classList.contains('on');
-          saveSetting(`toggle_${index}`, isOn);
-        }
       });
     });
 
-    // Input on .st-slider: update value text display, save slider_${index} in storage, and update CSS var
-    sliders.forEach((slider, index) => {
-      slider.addEventListener('input', () => {
-        const valDisplay = slider.closest('.st-slider-field')?.querySelector('.st-val');
-        if (valDisplay) {
-          const initialText = valDisplay.textContent.trim();
-          const unit = initialText.endsWith('%') ? '%' : 'px';
-          valDisplay.textContent = `${slider.value}${unit}`;
-        }
-        saveSetting(`slider_${index}`, slider.value);
-        if (index === 0 || slider.min === '190' || slider.max === '380') {
-          document.documentElement.style.setProperty('--board-w', slider.value + 'px');
-        }
+    // #stSelectColumns
+    const stSelectColumns = document.getElementById('stSelectColumns');
+    if (stSelectColumns) {
+      stSelectColumns.addEventListener('change', () => {
+        const val = stSelectColumns.value;
+        applyColumnsSetting(val);
+        saveSetting('stSelectColumns', val);
+        saveSetting('grid_columns', val);
       });
+    }
+
+    // #stSliderBoardWidth
+    const stSliderBoardWidth = document.getElementById('stSliderBoardWidth');
+    if (stSliderBoardWidth) {
+      stSliderBoardWidth.addEventListener('input', () => {
+        const val = stSliderBoardWidth.value;
+        document.documentElement.style.setProperty('--board-w', `${val}px`);
+        const valSpan = stSliderBoardWidth.closest('.st-slider-field')?.querySelector('.st-val');
+        if (valSpan) valSpan.textContent = `${val}px`;
+        saveSetting('stSliderBoardWidth', val);
+        saveSetting('board_width', val);
+      });
+    }
+
+    // #stSelectQuickBoard
+    const stSelectQuickBoard = document.getElementById('stSelectQuickBoard');
+    if (stSelectQuickBoard) {
+      stSelectQuickBoard.addEventListener('change', () => {
+        currentQuickBoardId = stSelectQuickBoard.value;
+        saveSetting('stSelectQuickBoard', currentQuickBoardId);
+      });
+    }
+
+    // #stBtnChangeHotkey & #stKbdShortcut
+    const stBtnChangeHotkey = document.getElementById('stBtnChangeHotkey');
+    const stKbdShortcut = document.getElementById('stKbdShortcut');
+    let isRecordingHotkey = false;
+
+    if (stBtnChangeHotkey && stKbdShortcut) {
+      stBtnChangeHotkey.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (isRecordingHotkey) return;
+
+        isRecordingHotkey = true;
+        const dict = I18N_STRINGS[currentLanguage] || I18N_STRINGS.ru;
+        stBtnChangeHotkey.textContent = dict['settings.pressKeys'] || 'Нажмите клавиши...';
+        stBtnChangeHotkey.classList.add('active');
+
+        function onKeyDownCapture(evt) {
+          evt.preventDefault();
+          evt.stopPropagation();
+
+          if (evt.key === 'Escape') {
+            window.removeEventListener('keydown', onKeyDownCapture, true);
+            isRecordingHotkey = false;
+            stBtnChangeHotkey.textContent = dict['settings.changeHotkey'] || 'Изменить';
+            stBtnChangeHotkey.classList.remove('active');
+            return;
+          }
+
+          if (['Control', 'Shift', 'Alt', 'Meta'].includes(evt.key)) {
+            return; // Wait for the non-modifier key
+          }
+
+          const parts = [];
+          if (evt.ctrlKey) parts.push('Ctrl');
+          if (evt.altKey) parts.push('Alt');
+          if (evt.shiftKey) parts.push('Shift');
+          if (evt.metaKey) parts.push('Meta');
+
+          let keyName = evt.key;
+          if (keyName.length === 1) {
+            keyName = keyName.toUpperCase();
+          }
+          parts.push(keyName);
+
+          const fullShortcut = parts.join('+');
+          currentHotkey = fullShortcut;
+          stKbdShortcut.textContent = fullShortcut;
+          saveSetting('stKbdShortcut', fullShortcut);
+
+          window.removeEventListener('keydown', onKeyDownCapture, true);
+          isRecordingHotkey = false;
+          stBtnChangeHotkey.textContent = dict['settings.changeHotkey'] || 'Изменить';
+          stBtnChangeHotkey.classList.remove('active');
+          showToast((dict['toast.hotkeySaved'] || 'Горячая клавиша сохранена: ') + fullShortcut);
+        }
+
+        window.addEventListener('keydown', onKeyDownCapture, true);
+      });
+    }
+
+    // Global shortcut trigger
+    window.addEventListener('keydown', (evt) => {
+      if (isRecordingHotkey) return;
+      if (['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement?.tagName)) {
+        return;
+      }
+      if (!currentHotkey || currentHotkey === 'Не задано' || currentHotkey === 'Not set') {
+        return;
+      }
+
+      const parts = currentHotkey.split('+');
+      const mainKey = parts[parts.length - 1].toUpperCase();
+      const needsCtrl = parts.includes('Ctrl');
+      const needsAlt = parts.includes('Alt');
+      const needsShift = parts.includes('Shift');
+      const needsMeta = parts.includes('Meta');
+
+      const currentKey = evt.key.toUpperCase();
+      if (
+        currentKey === mainKey &&
+        evt.ctrlKey === needsCtrl &&
+        evt.altKey === needsAlt &&
+        evt.shiftKey === needsShift &&
+        evt.metaKey === needsMeta
+      ) {
+        evt.preventDefault();
+        const currentTab = getActiveTab();
+        if (currentTab && currentTab.boards && currentTab.boards.length > 0) {
+          let targetBoard = currentTab.boards.find(b => b.id === currentQuickBoardId);
+          if (!targetBoard) targetBoard = currentTab.boards[0];
+          if (targetBoard) {
+            openAddLinkModal(targetBoard.id);
+            const dict = I18N_STRINGS[currentLanguage] || I18N_STRINGS.ru;
+            showToast((dict['toast.quickSaveTriggered'] || 'Быстрое сохранение: ') + (targetBoard.title || 'Доска'));
+          }
+        }
+      }
     });
 
-    // Change on .st-select: save select_${index} in storage
-    selects.forEach((select, index) => {
-      select.addEventListener('change', () => {
-        saveSetting(`select_${index}`, select.value);
-      });
-    });
+    // #stColorPickerSearch & #stColorPickerSearchPreview
+    const stColorPickerSearch = document.getElementById('stColorPickerSearch');
+    const stColorPickerSearchPreview = document.getElementById('stColorPickerSearchPreview');
 
-    // Click on .st-group-btn, .st-seg-btn: switch .active, save group_${index} in storage
-    groupContainers.forEach((container, index) => {
-      const btns = container.querySelectorAll('.st-group-btn, .st-seg-btn');
+    if (stColorPickerSearchPreview && stColorPickerSearch) {
+      stColorPickerSearchPreview.addEventListener('click', () => {
+        stColorPickerSearch.click();
+      });
+
+      stColorPickerSearch.addEventListener('input', (e) => {
+        const color = e.target.value;
+        const alpha = parseInt(document.getElementById('stSliderSearchAlpha')?.value || '20', 10);
+        applySearchAppearance(color, alpha);
+        saveSetting('stColorPickerSearch', color);
+      });
+    }
+
+    // #stSliderSearchAlpha
+    const stSliderSearchAlpha = document.getElementById('stSliderSearchAlpha');
+    if (stSliderSearchAlpha) {
+      stSliderSearchAlpha.addEventListener('input', () => {
+        const val = parseInt(stSliderSearchAlpha.value, 10);
+        const valSpan = stSliderSearchAlpha.closest('.st-slider-field')?.querySelector('.st-val');
+        if (valSpan) valSpan.textContent = `${val}%`;
+        const color = document.getElementById('stColorPickerSearch')?.value || '#ffffff';
+        applySearchAppearance(color, val);
+        saveSetting('stSliderSearchAlpha', val);
+      });
+    }
+
+    // #stSliderSearchBlur
+    const stSliderSearchBlur = document.getElementById('stSliderSearchBlur');
+    if (stSliderSearchBlur) {
+      stSliderSearchBlur.addEventListener('input', () => {
+        const val = parseInt(stSliderSearchBlur.value, 10);
+        const valSpan = stSliderSearchBlur.closest('.st-slider-field')?.querySelector('.st-val');
+        if (valSpan) valSpan.textContent = `${val}px`;
+        applySearchAppearance(null, null, val);
+        saveSetting('stSliderSearchBlur', val);
+      });
+    }
+
+    // #stSliderSearchWidth
+    const stSliderSearchWidth = document.getElementById('stSliderSearchWidth');
+    if (stSliderSearchWidth) {
+      stSliderSearchWidth.addEventListener('input', () => {
+        const val = parseInt(stSliderSearchWidth.value, 10);
+        const valSpan = stSliderSearchWidth.closest('.st-slider-field')?.querySelector('.st-val');
+        if (valSpan) valSpan.textContent = `${val}px`;
+        applySearchAppearance(null, null, null, val);
+        saveSetting('stSliderSearchWidth', val);
+      });
+    }
+
+    // #stSegTextSize
+    const stSegTextSize = document.getElementById('stSegTextSize');
+    if (stSegTextSize) {
+      const btns = stSegTextSize.querySelectorAll('.st-seg-btn');
       btns.forEach((btn) => {
         btn.addEventListener('click', (e) => {
           e.stopPropagation();
-          btns.forEach((b) => b.classList.remove('active'));
+          btns.forEach(b => b.classList.remove('active'));
           btn.classList.add('active');
-          saveSetting(`group_${index}`, btn.textContent.trim());
+          const val = btn.dataset.val || btn.textContent.trim();
+          applyTextSizeSetting(val);
+          saveSetting('stSegTextSize', val);
         });
       });
-    });
+    }
+
+    // #stSegTextWeight
+    const stSegTextWeight = document.getElementById('stSegTextWeight');
+    if (stSegTextWeight) {
+      const btns = stSegTextWeight.querySelectorAll('.st-seg-btn');
+      btns.forEach((btn) => {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          btns.forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          const val = btn.dataset.val || (btn.textContent.trim() === 'Жирный' || btn.textContent.trim() === 'Bold' ? 'bold' : 'normal');
+          applyTextWeightSetting(val);
+          saveSetting('stSegTextWeight', val);
+        });
+      });
+    }
+
+    // #stSegLanguage
+    const stSegLanguage = document.getElementById('stSegLanguage');
+    if (stSegLanguage) {
+      const btns = stSegLanguage.querySelectorAll('.st-seg-btn');
+      btns.forEach((btn) => {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          btns.forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          const lang = btn.dataset.lang || (btn.textContent.trim() === 'English' ? 'en' : btn.textContent.trim() === 'Deutsch' ? 'de' : 'ru');
+          setLanguage(lang);
+        });
+      });
+    }
+
+    // #stBtnAutoDetect
+    const stBtnAutoDetect = document.getElementById('stBtnAutoDetect');
+    if (stBtnAutoDetect) {
+      stBtnAutoDetect.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const userLocale = navigator.language || 'ru-RU';
+        let detectedLang = 'en';
+        if (/^ru/i.test(userLocale)) detectedLang = 'ru';
+        else if (/^de/i.test(userLocale)) detectedLang = 'de';
+
+        // Detect 24h vs 12h
+        let detectedTimeFormat = '24h';
+        try {
+          const hourCycle = new Intl.DateTimeFormat(userLocale, { hour: 'numeric' }).resolvedOptions().hourCycle;
+          if (hourCycle === 'h11' || hourCycle === 'h12') {
+            detectedTimeFormat = '12h';
+          }
+        } catch {
+          if (/^(en-US|en-CA|en-PH)/i.test(userLocale)) detectedTimeFormat = '12h';
+        }
+
+        // Detect Date Format
+        let detectedDateFormat = 'DD/MM/YY';
+        if (/^(en-US)/i.test(userLocale)) detectedDateFormat = 'MM/DD/YY';
+        else if (/^(ja|zh|ko|hu|lt|se)/i.test(userLocale)) detectedDateFormat = 'YY-MM-DD';
+
+        // Detect Week Start
+        let detectedWeekStart = 'mon';
+        if (/^(en-US|en-CA|ja-JP|zh-TW|he-IL|ar-SA)/i.test(userLocale)) {
+          detectedWeekStart = 'sun';
+        }
+
+        // Detect Temperature
+        let detectedTemp = 'C';
+        if (/^(en-US|es-US|en-BS|en-BZ|en-KY)/i.test(userLocale)) {
+          detectedTemp = 'F';
+        }
+
+        // Apply detected values
+        setLanguage(detectedLang);
+
+        const timeGroup = document.getElementById('stGroupTimeFormat');
+        if (timeGroup) {
+          timeGroup.querySelectorAll('.st-group-btn').forEach((b) => {
+            b.classList.toggle('active', (b.dataset.val || b.textContent.trim()).startsWith(detectedTimeFormat));
+          });
+          saveSetting('stGroupTimeFormat', detectedTimeFormat);
+        }
+
+        const dateGroup = document.getElementById('stGroupDateFormat');
+        if (dateGroup) {
+          dateGroup.querySelectorAll('.st-group-btn').forEach((b) => {
+            b.classList.toggle('active', (b.dataset.val || b.textContent.trim()) === detectedDateFormat);
+          });
+          saveSetting('stGroupDateFormat', detectedDateFormat);
+        }
+
+        const weekGroup = document.getElementById('stGroupWeekStart');
+        if (weekGroup) {
+          currentWeekStart = detectedWeekStart;
+          weekGroup.querySelectorAll('.st-group-btn').forEach((b) => {
+            const bVal = b.dataset.val || (b.textContent.trim() === 'Воскресенье' || b.textContent.trim() === 'Sunday' ? 'sun' : 'mon');
+            b.classList.toggle('active', bVal === detectedWeekStart);
+          });
+          saveSetting('stGroupWeekStart', detectedWeekStart);
+        }
+
+        const tempGroup = document.getElementById('stGroupTemperature');
+        if (tempGroup) {
+          tempGroup.querySelectorAll('.st-group-btn').forEach((b) => {
+            const bVal = b.dataset.val || (b.textContent.trim().includes('F') ? 'F' : 'C');
+            b.classList.toggle('active', bVal === detectedTemp);
+          });
+          saveSetting('stGroupTemperature', detectedTemp);
+        }
+
+        renderBoards();
+        const dict = I18N_STRINGS[detectedLang] || I18N_STRINGS.ru;
+        showToast(dict['toast.regionDetected'] || 'Настройки региона определены автоматически');
+      });
+    }
+
+    // #stGroupTimeFormat
+    const stGroupTimeFormat = document.getElementById('stGroupTimeFormat');
+    if (stGroupTimeFormat) {
+      const btns = stGroupTimeFormat.querySelectorAll('.st-group-btn');
+      btns.forEach((btn) => {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          btns.forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          const val = btn.dataset.val || (btn.textContent.trim().includes('12') ? '12h' : '24h');
+          saveSetting('stGroupTimeFormat', val);
+        });
+      });
+    }
+
+    // #stGroupDateFormat
+    const stGroupDateFormat = document.getElementById('stGroupDateFormat');
+    if (stGroupDateFormat) {
+      const btns = stGroupDateFormat.querySelectorAll('.st-group-btn');
+      btns.forEach((btn) => {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          btns.forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          const val = btn.dataset.val || btn.textContent.trim();
+          saveSetting('stGroupDateFormat', val);
+        });
+      });
+    }
+
+    // #stGroupWeekStart
+    const stGroupWeekStart = document.getElementById('stGroupWeekStart');
+    if (stGroupWeekStart) {
+      const btns = stGroupWeekStart.querySelectorAll('.st-group-btn');
+      btns.forEach((btn) => {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          btns.forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          const val = btn.dataset.val || (btn.textContent.trim() === 'Воскресенье' || btn.textContent.trim() === 'Sunday' ? 'sun' : 'mon');
+          currentWeekStart = val;
+          saveSetting('stGroupWeekStart', val);
+          renderBoards();
+        });
+      });
+    }
+
+    // #stGroupTemperature
+    const stGroupTemperature = document.getElementById('stGroupTemperature');
+    if (stGroupTemperature) {
+      const btns = stGroupTemperature.querySelectorAll('.st-group-btn');
+      btns.forEach((btn) => {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          btns.forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          const val = btn.dataset.val || (btn.textContent.trim().includes('F') ? 'F' : 'C');
+          saveSetting('stGroupTemperature', val);
+        });
+      });
+    }
   }
 
   function openSettingsModal() {
     if (!settingsOverlay) return;
+    populateQuickBoardSelect();
     settingsOverlay.style.display = 'flex';
   }
 
@@ -2130,16 +3076,24 @@
     }
   }
 
-  // --- Drag and Drop ---
+  // --- Drag and Drop Engine ---
   function initDragAndDrop() {
-    const grid = document.querySelector('.boards-grid');
+    const grid = document.querySelector('.boards-grid') || boardsGrid;
     if (!grid) return;
     let draggedItem = null;
 
     grid.addEventListener('dragstart', (e) => {
+      if (e.target.closest('input, textarea, button, select, .st-toggle, .notes-resize-handle')) {
+        return;
+      }
+
       const card = e.target.closest('.board, .board-card');
       if (card && !card.classList.contains('board-placeholder')) {
         draggedItem = card;
+        if (e.dataTransfer) {
+          e.dataTransfer.effectAllowed = 'move';
+          e.dataTransfer.setData('text/plain', card.dataset.boardId || card.dataset.id || 'board');
+        }
         grid.classList.add('is-dragging');
         setTimeout(() => {
           if (draggedItem) draggedItem.classList.add('dragging');
@@ -2150,38 +3104,46 @@
     grid.addEventListener('dragover', (e) => {
       e.preventDefault();
       if (!draggedItem) return;
+      if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
 
-      // Look for closest board or placeholder under cursor
       const target = e.target.closest('.board, .board-card, .board-placeholder');
-      
-      if (target && target !== draggedItem) {
+      if (target && target !== draggedItem && target.parentNode === grid) {
         const rect = target.getBoundingClientRect();
-        const isAfter = e.clientX > rect.left + rect.width / 2;
-        
+        const isAfter = (e.clientX > rect.left + rect.width / 2) || (e.clientY > rect.bottom - rect.height / 3);
         if (isAfter) {
-          target.after(draggedItem);
+          if (target.nextSibling !== draggedItem) {
+            target.after(draggedItem);
+          }
         } else {
-          target.before(draggedItem);
+          if (target.previousSibling !== draggedItem) {
+            target.before(draggedItem);
+          }
         }
       }
     });
 
-    grid.addEventListener('dragend', () => {
+    function commitOrderAndCleanup() {
+      if (!draggedItem && !grid.classList.contains('is-dragging')) return;
+
       if (draggedItem) {
         draggedItem.classList.remove('dragging');
         draggedItem = null;
       }
       grid.classList.remove('is-dragging');
 
-      // Update boards order in appState
+      // Commit DOM order to appState
       const currentTab = getActiveTab();
-      if (currentTab && currentTab.boards) {
-        const boardElements = [...grid.querySelectorAll('.board:not(.board-placeholder), .board-card:not(.board-placeholder)')];
+      if (currentTab && Array.isArray(currentTab.boards)) {
+        const boardElements = [...grid.querySelectorAll('.board:not(.board-placeholder):not(.inline-creating), .board-card:not(.board-placeholder):not(.inline-creating)')];
         const newBoards = [];
         boardElements.forEach((el) => {
           const bId = el.dataset.boardId || el.dataset.id;
-          const found = currentTab.boards.find(b => b.id === bId);
-          if (found && !newBoards.includes(found)) newBoards.push(found);
+          if (bId) {
+            const found = currentTab.boards.find(b => String(b.id) === String(bId));
+            if (found && !newBoards.includes(found)) {
+              newBoards.push(found);
+            }
+          }
         });
         currentTab.boards.forEach(b => {
           if (!newBoards.includes(b)) newBoards.push(b);
@@ -2190,8 +3152,18 @@
         saveState();
       }
 
-      // Re-render placeholders to fill in slots at the end
       renderGridPlaceholders();
+    }
+
+    grid.addEventListener('drop', (e) => {
+      e.preventDefault();
+      commitOrderAndCleanup();
+    });
+
+    grid.addEventListener('dragend', commitOrderAndCleanup);
+
+    document.addEventListener('dragend', () => {
+      if (draggedItem) commitOrderAndCleanup();
     });
   }
 
@@ -2201,6 +3173,7 @@
     loadState(() => {
       renderTabs();
       renderBoards();
+      populateQuickBoardSelect();
     });
     initBoardMenu();
     initWidgetGallery();

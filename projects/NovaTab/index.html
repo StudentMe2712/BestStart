@@ -192,27 +192,27 @@
           <!-- Вкладка: Общие -->
           <div class="settings-tab-content active" id="tab-general">
             <div class="st-section">
-              <div class="st-section-title">ПОВЕДЕНИЕ</div>
-              <div class="st-row"><span class="st-row-label">Открывать ссылки в новой вкладке</span><button class="st-toggle on" id="openNewTabToggle"><span class="st-toggle-knob"></span></button></div>
-              <div class="st-row"><span class="st-row-label">Скрывать лишние закладки</span><button class="st-toggle" id="hideExcessBookmarksToggle"><span class="st-toggle-knob"></span></button></div>
-              <div class="st-row"><span class="st-row-label">Показывать описания</span><button class="st-toggle on" id="descToggle"><span class="st-toggle-knob"></span></button></div>
+              <div class="st-section-title" data-i18n="settings.behavior">ПОВЕДЕНИЕ</div>
+              <div class="st-row"><span class="st-row-label" data-i18n="settings.openNewTab">Открывать ссылки в новой вкладке</span><button class="st-toggle on" id="openNewTabToggle"><span class="st-toggle-knob"></span></button></div>
+              <div class="st-row"><span class="st-row-label" data-i18n="settings.hideExcess">Скрывать лишние закладки</span><button class="st-toggle" id="hideExcessBookmarksToggle"><span class="st-toggle-knob"></span></button></div>
+              <div class="st-row"><span class="st-row-label" data-i18n="settings.showDesc">Показывать описания</span><button class="st-toggle on" id="descToggle"><span class="st-toggle-knob"></span></button></div>
             </div>
             <div class="st-section">
-              <div class="st-section-title">РАСПОЛОЖЕНИЕ</div>
-              <div class="st-row"><span class="st-row-label">Количество колонок</span><select class="st-select"><option>Авто</option><option>4</option><option>5</option></select></div>
+              <div class="st-section-title" data-i18n="settings.layout">РАСПОЛОЖЕНИЕ</div>
+              <div class="st-row"><span class="st-row-label" data-i18n="settings.columns">Количество колонок</span><select class="st-select" id="stSelectColumns"><option value="auto">Авто</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option></select></div>
               <div class="st-slider-field">
-                <div class="st-slider-header"><span class="st-row-label">Ширина досок</span><span class="st-val">260px</span></div>
-                <input type="range" class="st-slider" min="190" max="380" value="260">
+                <div class="st-slider-header"><span class="st-row-label" data-i18n="settings.boardWidth">Ширина досок</span><span class="st-val">260px</span></div>
+                <input type="range" class="st-slider" id="stSliderBoardWidth" min="190" max="380" value="260">
               </div>
             </div>
             <div class="st-section">
-              <div class="st-section-title">БОКОВАЯ ПАНЕЛЬ</div>
-              <div class="st-row"><span class="st-row-label">Всегда показывать все кнопки</span><button class="st-toggle" id="sidebarAlwaysOpenToggle"><span class="st-toggle-knob"></span></button></div>
+              <div class="st-section-title" data-i18n="settings.sidebar">БОКОВАЯ ПАНЕЛЬ</div>
+              <div class="st-row"><span class="st-row-label" data-i18n="settings.sidebarAlwaysOpen">Всегда показывать все кнопки</span><button class="st-toggle" id="sidebarAlwaysOpenToggle"><span class="st-toggle-knob"></span></button></div>
             </div>
             <div class="st-section">
-              <div class="st-section-title">БЫСТРОЕ СОХРАНЕНИЕ</div>
-              <div class="st-row"><span class="st-row-label">Сохранять на доску</span><select class="st-select"><option>test</option></select></div>
-              <div class="st-row"><span class="st-row-label">Горячая клавиша</span><div class="st-flex-gap"><kbd class="st-kbd">Не задано</kbd><button class="st-btn-small">Изменить</button></div></div>
+              <div class="st-section-title" data-i18n="settings.quickSave">БЫСТРОЕ СОХРАНЕНИЕ</div>
+              <div class="st-row"><span class="st-row-label" data-i18n="settings.saveToBoard">Сохранять на доску</span><select class="st-select" id="stSelectQuickBoard"></select></div>
+              <div class="st-row"><span class="st-row-label" data-i18n="settings.hotkey">Горячая клавиша</span><div class="st-flex-gap"><kbd class="st-kbd" id="stKbdShortcut">Не задано</kbd><button class="st-btn-small" id="stBtnChangeHotkey" data-i18n="settings.changeHotkey">Изменить</button></div></div>
             </div>
           </div>
 
@@ -220,20 +220,20 @@
           <div class="settings-tab-content" id="tab-appearance" style="display: none;">
             <div class="st-section">
               <div class="st-row-col">
-                <span class="st-row-label">Цвет плашки поиска</span>
-                <div class="st-color-picker"></div>
+                <span class="st-row-label" data-i18n="settings.searchColor">Цвет плашки поиска</span>
+                <div class="st-color-picker" id="stColorPickerSearchPreview"><input type="color" id="stColorPickerSearch" style="opacity: 0; width: 100%; height: 100%; cursor: pointer;"></div>
               </div>
-              <div class="st-slider-field"><div class="st-slider-header"><span class="st-row-label">Прозрачность</span><span class="st-val">20%</span></div><input type="range" class="st-slider" value="20" min="0" max="100"></div>
-              <div class="st-slider-field"><div class="st-slider-header"><span class="st-row-label">Размытие</span><span class="st-val">12px</span></div><input type="range" class="st-slider" value="12" min="0" max="32"></div>
-              <div class="st-slider-field"><div class="st-slider-header"><span class="st-row-label">Ширина</span><span class="st-val">340px</span></div><input type="range" class="st-slider" value="340" min="200" max="600"></div>
+              <div class="st-slider-field"><div class="st-slider-header"><span class="st-row-label" data-i18n="settings.searchAlpha">Прозрачность</span><span class="st-val">20%</span></div><input type="range" class="st-slider" id="stSliderSearchAlpha" value="20" min="0" max="100"></div>
+              <div class="st-slider-field"><div class="st-slider-header"><span class="st-row-label" data-i18n="settings.searchBlur">Размытие</span><span class="st-val">12px</span></div><input type="range" class="st-slider" id="stSliderSearchBlur" value="12" min="0" max="32"></div>
+              <div class="st-slider-field"><div class="st-slider-header"><span class="st-row-label" data-i18n="settings.searchWidth">Ширина</span><span class="st-val">340px</span></div><input type="range" class="st-slider" id="stSliderSearchWidth" value="340" min="200" max="600"></div>
             </div>
             <div class="st-section">
-              <div class="st-section-title">ТЕКСТ ДОСКИ</div>
-              <div class="st-row"><span class="st-row-label">Размер</span>
-                <div class="st-segment"><button class="st-seg-btn">S</button><button class="st-seg-btn active">M</button><button class="st-seg-btn">L</button></div>
+              <div class="st-section-title" data-i18n="settings.boardText">ТЕКСТ ДОСКИ</div>
+              <div class="st-row"><span class="st-row-label" data-i18n="settings.textSize">Размер</span>
+                <div class="st-segment" id="stSegTextSize"><button class="st-seg-btn" data-val="S">S</button><button class="st-seg-btn active" data-val="M">M</button><button class="st-seg-btn" data-val="L">L</button></div>
               </div>
-              <div class="st-row"><span class="st-row-label">Толщина</span>
-                <div class="st-segment"><button class="st-seg-btn active">Обычный</button><button class="st-seg-btn">Жирный</button></div>
+              <div class="st-row"><span class="st-row-label" data-i18n="settings.textWeight">Толщина</span>
+                <div class="st-segment" id="stSegTextWeight"><button class="st-seg-btn active" data-val="normal" data-i18n="settings.normalWeight">Обычный</button><button class="st-seg-btn" data-val="bold" data-i18n="settings.boldWeight">Жирный</button></div>
               </div>
             </div>
           </div>
@@ -241,41 +241,41 @@
           <!-- Вкладка: Язык и регион -->
           <div class="settings-tab-content" id="tab-region" style="display: none;">
             <div class="st-section">
-              <div class="st-section-title">ЯЗЫК</div>
-              <div class="st-segment st-segment-full"><button class="st-seg-btn">English</button><button class="st-seg-btn">Deutsch</button><button class="st-seg-btn active">Русский</button></div>
+              <div class="st-section-title" data-i18n="settings.language">ЯЗЫК</div>
+              <div class="st-segment st-segment-full" id="stSegLanguage"><button class="st-seg-btn" data-lang="en">English</button><button class="st-seg-btn" data-lang="de">Deutsch</button><button class="st-seg-btn active" data-lang="ru">Русский</button></div>
             </div>
             <div class="st-section" style="border-bottom: none; margin-bottom: 0; padding-bottom: 16px;">
-              <div class="st-section-title">Форматирование</div>
+              <div class="st-section-title" data-i18n="settings.formatting">Форматирование</div>
               <div class="st-row">
-                <button class="st-btn">Автоопределение</button>
+                <button class="st-btn" id="stBtnAutoDetect" data-i18n="settings.autoDetect">Автоопределение</button>
               </div>
               <div class="st-row">
-                <span class="st-row-label">Формат времени</span>
-                <div class="st-btn-group">
-                  <button class="st-group-btn active">24h</button>
-                  <button class="st-group-btn">12h AM/PM</button>
+                <span class="st-row-label" data-i18n="settings.timeFormat">Формат времени</span>
+                <div class="st-btn-group" id="stGroupTimeFormat">
+                  <button class="st-group-btn active" data-val="24h">24h</button>
+                  <button class="st-group-btn" data-val="12h">12h AM/PM</button>
                 </div>
               </div>
               <div class="st-row">
-                <span class="st-row-label">Формат даты</span>
-                <div class="st-btn-group">
-                  <button class="st-group-btn active">DD/MM/YY</button>
-                  <button class="st-group-btn">MM/DD/YY</button>
-                  <button class="st-group-btn">YY-MM-DD</button>
+                <span class="st-row-label" data-i18n="settings.dateFormat">Формат даты</span>
+                <div class="st-btn-group" id="stGroupDateFormat">
+                  <button class="st-group-btn active" data-val="DD/MM/YY">DD/MM/YY</button>
+                  <button class="st-group-btn" data-val="MM/DD/YY">MM/DD/YY</button>
+                  <button class="st-group-btn" data-val="YY-MM-DD">YY-MM-DD</button>
                 </div>
               </div>
               <div class="st-row">
-                <span class="st-row-label">Начало недели</span>
-                <div class="st-btn-group">
-                  <button class="st-group-btn">Понедельник</button>
-                  <button class="st-group-btn active">Воскресенье</button>
+                <span class="st-row-label" data-i18n="settings.weekStart">Начало недели</span>
+                <div class="st-btn-group" id="stGroupWeekStart">
+                  <button class="st-group-btn" data-val="mon" data-i18n="settings.monday">Понедельник</button>
+                  <button class="st-group-btn active" data-val="sun" data-i18n="settings.sunday">Воскресенье</button>
                 </div>
               </div>
               <div class="st-row">
-                <span class="st-row-label">Температура</span>
-                <div class="st-btn-group">
-                  <button class="st-group-btn active">°C</button>
-                  <button class="st-group-btn">°F</button>
+                <span class="st-row-label" data-i18n="settings.temperature">Температура</span>
+                <div class="st-btn-group" id="stGroupTemperature">
+                  <button class="st-group-btn active" data-val="C">°C</button>
+                  <button class="st-group-btn" data-val="F">°F</button>
                 </div>
               </div>
             </div>

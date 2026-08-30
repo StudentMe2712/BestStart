@@ -184,15 +184,15 @@ body {
   align-items: center;
   gap: 10px;
   padding: 8px 16px;
-  width: 340px;
-  background: var(--glass-bg);
-  backdrop-filter: blur(var(--glass-blur));
-  -webkit-backdrop-filter: blur(var(--glass-blur));
+  width: var(--search-width, 340px);
+  background: var(--search-bg, rgba(255, 255, 255, var(--search-alpha, 0.4)));
+  backdrop-filter: blur(var(--search-blur, 12px));
+  -webkit-backdrop-filter: blur(var(--search-blur, 12px));
   border: var(--glass-border);
   border-radius: var(--radius-card);
   box-shadow: var(--glass-shadow);
   color: var(--text-main);
-  transition: box-shadow 0.2s, background 0.2s;
+  transition: box-shadow 0.2s, background 0.2s, width 0.2s;
 }
 
 body.setting-show-search .search-bar {
@@ -201,6 +201,9 @@ body.setting-show-search .search-bar {
 
 body.setting-hide-descriptions .link-desc { display: none; }
 body.setting-sidebar-always-open .sidebar-expanded { opacity: 1; pointer-events: all; transform: translateY(0); }
+body.setting-hide-excess-bookmarks .links-list .link-item:nth-child(n+6) {
+  display: none;
+}
 
 .search-bar:focus-within {
   background: rgba(255, 255, 255, 0.65);
@@ -241,13 +244,18 @@ body.setting-sidebar-always-open .sidebar-expanded { opacity: 1; pointer-events:
 
 .boards-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(var(--board-w, 260px), 1fr));
   gap: 20px;
   padding: 16px 32px 80px 32px;
   max-width: 1400px;
   margin: 0 auto;
   align-items: start;
+  transition: all 0.2s ease;
 }
+.boards-grid.cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.boards-grid.cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.boards-grid.cols-5 { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.boards-grid.cols-6 { grid-template-columns: repeat(6, minmax(0, 1fr)); }
 
 /* --- Обновленные стили карточки доски (1:1 из дампа) --- */
 .board,
@@ -264,6 +272,8 @@ body.setting-sidebar-always-open .sidebar-expanded { opacity: 1; pointer-events:
   user-select: none;
   display: flex;
   flex-direction: column;
+  font-size: var(--board-text-size, 13.5px);
+  font-weight: var(--board-font-weight, 400);
 }
 
 /* Базовые стили для draggable элементов */
@@ -278,10 +288,12 @@ body.setting-sidebar-always-open .sidebar-expanded { opacity: 1; pointer-events:
 }
 .board.dragging,
 .board-card.dragging {
-  opacity: 0.4;
-  transform: scale(0.95);
-  box-shadow: 0 12px 32px rgba(0,0,0,0.3);
-  z-index: 100;
+  opacity: 0.35;
+  transform: scale(0.96);
+  box-shadow: 0 16px 36px rgba(0,0,0,0.4);
+  border: 1px dashed rgba(255,255,255,0.4);
+  z-index: 1000;
+  pointer-events: none;
 }
 
 .board:hover,
@@ -314,7 +326,7 @@ body.setting-sidebar-always-open .sidebar-expanded { opacity: 1; pointer-events:
 
 /* Стили заголовка доски */
 .board-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
-.board-title { font-size: 14px; font-weight: 600; color: var(--board-text, #111); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.board-title { font-size: calc(var(--board-text-size, 13.5px) + 0.5px); font-weight: calc(var(--board-font-weight, 400) + 200); color: var(--board-text, #111); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .board-menu-btn { background: transparent; border: none; color: var(--board-text-secondary, #666); cursor: pointer; font-size: 16px; border-radius: 6px; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; transition: background 0.15s, opacity 0.15s; }
 .board-menu-btn:hover { background: var(--board-hover-bg, rgba(0,0,0,0.07)); opacity: 1; }
 
@@ -394,7 +406,8 @@ body.setting-sidebar-always-open .sidebar-expanded { opacity: 1; pointer-events:
   transition: background 0.2s ease, transform 0.1s ease;
   text-decoration: none;
   color: #222;
-  font-size: 13.5px;
+  font-size: var(--board-text-size, 13.5px);
+  font-weight: var(--board-font-weight, 400);
   user-select: none;
 }
 
@@ -457,11 +470,12 @@ body.setting-sidebar-always-open .sidebar-expanded { opacity: 1; pointer-events:
 
 /* Подсветка пустого слота во время Drag-and-Drop */
 .boards-grid.is-dragging .board-placeholder {
-  opacity: 0.5;
+  opacity: 0.6;
+  border-color: rgba(255,255,255,0.35);
 }
 .boards-grid.is-dragging .board-placeholder:hover {
   opacity: 1;
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255,255,255,0.12);
 }
 
 /* ==========================================================================
