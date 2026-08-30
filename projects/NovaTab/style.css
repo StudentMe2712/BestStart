@@ -489,23 +489,45 @@ body {
   text-transform: uppercase; margin-bottom: 12px; padding: 0 4px;
 }
 
-/* Карточки виджетов */
+/* Обновленные стили карточки виджета (1:1 из дампа) */
 .widget-card {
-  display: flex; align-items: center; gap: 12px;
-  background: rgba(255, 255, 255, 0.04);
-  border-radius: 10px; padding: 8px 12px; margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--ui-fill, rgba(255, 255, 255, 0.06));
+  margin-bottom: 8px;
+  box-sizing: border-box;
 }
-.widget-card-icon { color: var(--ui-text-secondary); display: flex; }
-.widget-card-name { flex: 1; font-size: 13px; font-weight: 500; }
+
+.widget-card-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ui-text-secondary, rgba(255, 255, 255, 0.70));
+}
+
+.widget-card-name {
+  flex: 1;
+  font-size: 13px; /* 75% baseline equivalent */
+  color: var(--ui-text, rgba(255, 255, 255, 0.92));
+}
 
 /* Кнопка "Добавить" */
 .widget-add-btn {
-  background: var(--accent-tab-bg, rgba(0,36,73,0.8));
-  color: #fff; border: none; padding: 6px 12px;
-  border-radius: 6px; font-size: 12px; cursor: pointer;
-  transition: background 0.2s;
+  background: var(--accent-tab-bg, rgba(0, 36, 73, 0.8));
+  color: var(--accent-tab-text, #fff);
+  border: 0.5px solid var(--accent-tab-border, rgba(255, 255, 255, 0.25));
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.2s ease;
 }
-.widget-add-btn:hover { background: var(--accent-color, #002449); }
+.widget-add-btn:hover {
+  background: var(--accent-color, #002449);
+}
 
 /* ==========================================================================
    Sidebar / Expandable Floating Menu
