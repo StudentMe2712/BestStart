@@ -106,64 +106,73 @@ body {
   gap: 20px;
 }
 
+/* --- Стили для группы вкладок (1:1 из дампа) --- */
 .tabs-group {
   display: flex;
   align-items: center;
+  gap: 2px;
+  background: rgba(var(--board-rgb, 255,255,255), var(--board-alpha, 0.05));
+  border: none;
+  border-radius: 16px;
   padding: 4px;
-  gap: 4px;
-  background: var(--glass-bg);
-  backdrop-filter: blur(var(--glass-blur));
-  -webkit-backdrop-filter: blur(var(--glass-blur));
-  border: var(--glass-border);
-  border-radius: var(--radius-card);
-  box-shadow: var(--glass-shadow);
-  color: var(--text-main);
-  user-select: none;
+  overflow-x: auto;
+  flex-wrap: nowrap;
+  scrollbar-width: none;
+  position: relative;
+  isolation: isolate;
+  box-shadow: 0 0 24px rgba(0,0,0,0.22);
+}
+.tabs-group::-webkit-scrollbar {
+  display: none;
 }
 
+/* Стили для отдельной вкладки */
+.page-tab,
 .tab {
-  padding: 8px 18px;
+  padding: 6px 16px;
   border-radius: 12px;
-  font-weight: 500;
-  font-size: 14px;
   cursor: pointer;
+  color: var(--board-text-secondary, rgba(255,255,255,0.65));
+  font-size: 13px;
+  font-weight: 500;
   transition: all 0.2s ease;
-  color: #333;
+  white-space: nowrap;
   display: flex;
   align-items: center;
   gap: 6px;
-  white-space: nowrap;
 }
-
+.page-tab:hover,
 .tab:hover {
-  background: rgba(255, 255, 255, 0.4);
+  background: var(--board-hover-bg, rgba(255,255,255,0.07));
+  color: var(--board-text-hover, #fff);
 }
-
+.page-tab.active,
 .tab.active {
-  background: rgba(255, 255, 255, 0.7);
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
-  font-weight: 600;
-  color: #111;
+  background: var(--accent-tab-bg, rgba(0,36,73,0.8));
+  color: var(--accent-tab-text, #fff);
+  border: 0.5px solid var(--accent-tab-border, rgba(0,36,73,0.95));
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
 }
 
+/* Кнопка добавления новой страницы */
+.add-page-btn,
 .add-tab-btn {
   background: transparent;
   border: none;
-  font-size: 18px;
+  color: var(--board-text-secondary, rgba(255,255,255,0.65));
   width: 32px;
   height: 32px;
   border-radius: 10px;
-  cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #555;
+  cursor: pointer;
   transition: background 0.2s, color 0.2s;
 }
-
+.add-page-btn:hover,
 .add-tab-btn:hover {
-  background: rgba(255, 255, 255, 0.5);
-  color: #111;
+  background: var(--board-hover-bg, rgba(255,255,255,0.07));
+  color: var(--board-text-hover, #fff);
 }
 
 /* ==========================================================================
@@ -233,21 +242,19 @@ body {
   align-items: start;
 }
 
-/* Базовый класс доски и карточки (Из дампа пользователя) */
+/* --- Обновленные стили карточки доски (1:1 из дампа) --- */
 .board,
 .board-card {
   width: var(--board-w, 260px);
-  background: rgba(var(--board-rgb, 255,255,255), var(--board-alpha, 0.60));
-  backdrop-filter: blur(var(--board-blur, 12px));
-  -webkit-backdrop-filter: blur(var(--board-blur, 12px));
-  border: 1px solid var(--board-border, rgba(255,255,255,0.35));
+  background: rgba(var(--board-rgb, 255,255,255), var(--board-alpha, 0.05));
+  border: none;
   border-radius: 14px;
   padding: 14px 16px 12px;
+  box-shadow: 0 0 24px rgba(0,0,0,0.22);
   transition: box-shadow 0.2s, transform 0.2s;
   position: relative;
   isolation: isolate;
   user-select: none;
-  box-shadow: 0 0 20px rgba(0,0,0,0.12);
   display: flex;
   flex-direction: column;
 }
@@ -272,8 +279,7 @@ body {
 
 .board:hover,
 .board-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(0,0,0,0.18);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.3);
 }
 
 /* Стили заголовка доски */

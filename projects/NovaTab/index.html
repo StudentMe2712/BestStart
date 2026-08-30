@@ -12,9 +12,14 @@
 
   <!-- Верхняя навигация -->
   <header class="top-bar">
+    <!-- Вкладки страниц -->
     <div class="tabs-group" id="tabsGroup">
-      <div class="tab active" data-tab-id="main">Главная</div>
-      <button class="add-tab-btn" id="addTabBtn">+</button>
+      <div class="page-tab tab active" data-id="p1" data-tab-id="main" draggable="true">
+        <span class="page-tab-name">Главная</span>
+      </div>
+      <button class="add-page-btn add-tab-btn" id="addTabBtn" title="Новая страница" data-tour="add-page">
+        <span style="font-size: 20px; line-height: 1; font-weight: 300;">+</span>
+      </button>
     </div>
     
     <div class="search-bar">

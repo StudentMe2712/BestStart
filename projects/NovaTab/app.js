@@ -223,14 +223,20 @@
     if (!tabsGroup) return;
 
     // Remove existing tab elements (keep addTabBtn)
-    const existingTabs = tabsGroup.querySelectorAll('.tab');
+    const existingTabs = tabsGroup.querySelectorAll('.page-tab, .tab');
     existingTabs.forEach((t) => t.remove());
 
     appState.tabs.forEach((tab) => {
       const tabEl = document.createElement('div');
-      tabEl.className = `tab ${tab.id === appState.activeTabId ? 'active' : ''}`;
+      tabEl.className = `page-tab tab ${tab.id === appState.activeTabId ? 'active' : ''}`;
+      tabEl.dataset.id = tab.id;
       tabEl.dataset.tabId = tab.id;
-      tabEl.textContent = tab.title;
+      tabEl.setAttribute('draggable', 'true');
+
+      const nameSpan = document.createElement('span');
+      nameSpan.className = 'page-tab-name';
+      nameSpan.textContent = tab.title;
+      tabEl.appendChild(nameSpan);
 
       tabEl.addEventListener('click', () => {
         if (appState.activeTabId !== tab.id) {
