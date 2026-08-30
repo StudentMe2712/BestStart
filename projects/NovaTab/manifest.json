@@ -1,0 +1,42 @@
+{
+  "manifest_version": 3,
+  "name": "NovaTab - Visual Bookmark Manager",
+  "description": "Visual dashboard and bookmark manager replacing default new tab (Lumi List style)",
+  "version": "1.0.0",
+  "permissions": [
+    "bookmarks",
+    "storage",
+    "tabs",
+    "favicon"
+  ],
+  "chrome_url_overrides": {
+    "newtab": "index.html"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_title": "NovaTab",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "commands": {
+    "save-current-tab": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+Y",
+        "mac": "Command+Shift+Y"
+      },
+      "description": "Quickly save current active tab to NovaTab bookmarks"
+    }
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  }
+}

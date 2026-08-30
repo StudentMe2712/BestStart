@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NovaTab — Visual Bookmark Manager</title>
+  <link rel="icon" type="image/png" href="icons/icon32.png">
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              500: '#6366F1',
+              600: '#4F46E5',
+              purple: '#8B5CF6',
+              cyan: '#38BDF8'
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <!-- NovaTab Theme Stylesheet -->
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="dark bg-[#0F1117] text-[#F3F4F6]">
+  <div class="app-layout">
+    
+    <!-- LEFT SIDEBAR -->
+    <aside class="sidebar">
+      <!-- Sidebar Header & Brand -->
+      <div class="sidebar-header">
+        <div class="brand-logo">
+          <svg class="w-5 h-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path>
+          </svg>
+        </div>
+        <div class="brand-info">
+          <div class="brand-title">
+            NovaTab
+            <span class="brand-badge">v1.0</span>
+          </div>
+          <span class="brand-subtitle">Visual Bookmark Manager</span>
+        </div>
+      </div>
+
+      <!-- Navigation & Tree -->
+      <div class="sidebar-content">
+        <!-- Main Categories -->
+        <div>
+          <div class="nav-group-title">Обзор</div>
+          <nav class="flex flex-col gap-1">
+            <div id="nav-all" class="nav-item active" data-view="all">
+              <div class="nav-item-left">
+                <span class="nav-icon">⭐</span>
+                <span>Все закладки</span>
+              </div>
+              <span id="badge-all-count" class="nav-badge">0</span>
+            </div>
+
+            <div id="nav-recent" class="nav-item" data-view="recent">
+              <div class="nav-item-left">
+                <span class="nav-icon">🕒</span>
+                <span>Недавние</span>
+              </div>
+              <span id="badge-recent-count" class="nav-badge">0</span>
+            </div>
+          </nav>
+        </div>
+
+        <!-- Folder Tree Structure -->
+        <div class="flex-1 flex flex-col min-h-0">
+          <div class="nav-group-title">
+            <span>📁 Папки браузера</span>
+            <button id="btn-refresh-tree" class="hover:text-white transition-colors" title="Обновить дерево">
+              <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
+              </svg>
+            </button>
+          </div>
+          <div id="folder-tree-container" class="flex flex-col gap-1 overflow-y-auto pr-1">
+            <!-- Dynamic Folders rendered by app.js -->
+          </div>
+        </div>
+      </div>
+
+      <!-- Sidebar Footer Stats -->
+      <div class="sidebar-footer">
+        <div class="stats-card">
+          <div class="stat-box">
+            <span id="stat-total-bookmarks" class="stat-value">0</span>
+            <span class="stat-label">Закладок</span>
+          </div>
+          <div class="w-px bg-[#2A3045]"></div>
+          <div class="stat-box">
+            <span id="stat-total-folders" class="stat-value">0</span>
+            <span class="stat-label">Папок</span>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- MAIN CONTENT VIEWPORT -->
+    <main class="main-wrapper">
+      
+      <!-- Top Action Bar -->
+      <header class="main-header">
+        <!-- Title & Breadcrumbs -->
+        <div class="flex flex-col gap-0.5 min-w-[200px]">
+          <h1 id="header-view-title" class="breadcrumbs">
+            <span>Все закладки</span>
+          </h1>
+          <div id="header-breadcrumb-path" class="breadcrumb-path">
+            <span>Главная &rsaquo; Все сохраненные страницы</span>
+          </div>
+        </div>
+
+        <!-- Search Bar -->
+        <div class="search-box-wrapper">
+          <svg class="search-icon w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+          </svg>
+          <input 
+            type="text" 
+            id="search-input" 
+            class="search-input" 
+            placeholder="Поиск по закладкам, тегам или доменам..." 
+            autocomplete="off"
+            spellcheck="false"
+          >
+          <span class="search-shortcut-badge">/</span>
+        </div>
+
+        <!-- Toolbar Actions -->
+        <div class="header-actions">
+          <!-- Sort Dropdown -->
+          <select id="sort-select" class="sort-select" title="Сортировка">
+            <option value="dateAdded-desc">Сначала новые</option>
+            <option value="dateAdded-asc">Сначала старые</option>
+            <option value="title-asc">По названию (А-Я)</option>
+            <option value="domain-asc">По домену (A-Z)</option>
+          </select>
+
+          <!-- View Mode Toggle -->
+          <div class="btn-icon-group">
+            <button id="btn-view-grid" class="btn-icon active" title="Сетка">
+              <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="3" width="7" height="7"></rect>
+                <rect x="14" y="3" width="7" height="7"></rect>
+                <rect x="14" y="14" width="7" height="7"></rect>
+                <rect x="3" y="14" width="7" height="7"></rect>
+              </svg>
+            </button>
+            <button id="btn-view-list" class="btn-icon" title="Список">
+              <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="8" y1="6" x2="21" y2="6"></line>
+                <line x1="8" y1="12" x2="21" y2="12"></line>
+                <line x1="8" y1="18" x2="21" y2="18"></line>
+                <line x1="3" y1="6" x2="3.01" y2="6"></line>
+                <line x1="3" y1="12" x2="3.01" y2="12"></line>
+                <line x1="3" y1="18" x2="3.01" y2="18"></line>
+              </svg>
+            </button>
+          </div>
+
+          <!-- Add Bookmark Button -->
+          <button id="btn-add-bookmark" class="btn btn-primary">
+            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="12" y1="5" x2="12" y2="19"></line>
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+            <span>Добавить</span>
+          </button>
+        </div>
+      </header>
+
+      <!-- Scrollable Bookmarks Viewport -->
+      <section class="content-scrollable">
+        <div id="bookmarks-container" class="bookmark-grid">
+          <!-- Dynamically populated bookmark cards -->
+        </div>
+
+        <!-- Empty State Container (hidden by default) -->
+        <div id="empty-state" class="empty-state hidden">
+          <div class="empty-state-icon">📂</div>
+          <h2 id="empty-state-title" class="empty-state-title">Нет закладок</h2>
+          <p id="empty-state-desc" class="empty-state-desc">В этой папке пока нет сохраненных страниц. Нажмите кнопку «Добавить», чтобы создать первую закладку.</p>
+          <button id="btn-empty-add" class="btn btn-primary">
+            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="12" y1="5" x2="12" y2="19"></line>
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+            <span>Добавить закладку</span>
+          </button>
+        </div>
+      </section>
+    </main>
+
+  </div>
+
+  <!-- ADD / EDIT MODAL -->
+  <div id="bookmark-modal" class="modal-overlay">
+    <div class="modal-container">
+      <div class="modal-header">
+        <h3 id="modal-title" class="modal-title">Добавить закладку</h3>
+        <button id="modal-btn-close" class="modal-close-btn" title="Закрыть">&times;</button>
+      </div>
+
+      <form id="bookmark-form">
+        <input type="hidden" id="modal-bookmark-id" value="">
+        
+        <div class="form-group">
+          <label class="form-label" for="modal-bookmark-title">Название страницы</label>
+          <input 
+            type="text" 
+            id="modal-bookmark-title" 
+            class="form-input" 
+            placeholder="Например, GitHub — Where the world builds software" 
+            required
+          >
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="modal-bookmark-url">Веб-адрес (URL)</label>
+          <input 
+            type="url" 
+            id="modal-bookmark-url" 
+            class="form-input" 
+            placeholder="https://example.com" 
+            required
+          >
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="modal-bookmark-folder">Папка сохранения</label>
+          <select id="modal-bookmark-folder" class="form-select">
+            <!-- Populated dynamically -->
+          </select>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" id="modal-btn-cancel" class="btn btn-secondary">Отмена</button>
+          <button type="submit" id="modal-btn-save" class="btn btn-primary">Сохранить</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- TOAST CONTAINER -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <!-- NovaTab Core Application Script -->
+  <script src="app.js"></script>
+</body>
+</html>

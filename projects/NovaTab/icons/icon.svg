@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="100%" height="100%">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#4F46E5"/>
+      <stop offset="50%" stop-color="#6366F1"/>
+      <stop offset="100%" stop-color="#9333EA"/>
+    </linearGradient>
+    <linearGradient id="accentGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38BDF8"/>
+      <stop offset="100%" stop-color="#818CF8"/>
+    </linearGradient>
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="3" result="blur"/>
+      <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+    </filter>
+  </defs>
+  <rect x="6" y="6" width="116" height="116" rx="26" fill="url(#bgGrad)" stroke="#A855F7" stroke-width="2" stroke-opacity="0.5"/>
+  <rect x="8" y="8" width="112" height="56" rx="24" fill="white" fill-opacity="0.08"/>
+  <path d="M40 28 C40 25.79 41.79 24 44 24 L84 24 C86.21 24 88 25.79 88 28 L88 98 C88 100.8 84.8 102.5 82.5 100.8 L64 87 L45.5 100.8 C43.2 102.5 40 100.8 40 98 Z" fill="#FFFFFF" fill-opacity="0.95" filter="url(#glow)"/>
+  <path d="M48 30 L80 30 C81.1 30 82 30.9 82 32 L82 86 L64 73 L46 86 L46 32 C46 30.9 46.9 30 48 30 Z" fill="url(#bgGrad)"/>
+  <g transform="translate(64, 52) scale(1.1)">
+    <path d="M0 -18 Q2 -4 16 0 Q2 4 0 18 Q-2 4 -16 0 Q-2 -4 0 -18 Z" fill="#F8FAFC"/>
+    <path d="M0 -10 Q1.5 -2.5 9 0 Q1.5 2.5 0 10 Q-1.5 2.5 -9 0 Q-1.5 -2.5 0 -10 Z" transform="rotate(45)" fill="#38BDF8" fill-opacity="0.9"/>
+    <circle cx="0" cy="0" r="3" fill="#FFFFFF"/>
+  </g>
+</svg>
