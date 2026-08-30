@@ -46,8 +46,8 @@ public class StringNullOrEmptyToVisibilityConverter : IValueConverter
 
 public class ItemTypeToBrushConverter : IValueConverter
 {
-    private static readonly SolidColorBrush FolderBrush = new SolidColorBrush(Color.FromRgb(0xEC, 0xC4, 0x8D)); // #ECC48D
-    private static readonly SolidColorBrush FileBrush = new SolidColorBrush(Color.FromRgb(0xED, 0xED, 0xED));   // #EDEDED
+    private static readonly SolidColorBrush FolderBrush = new SolidColorBrush(Color.FromRgb(0xF5, 0xC8, 0x42)); // Windows 11 Warm Golden Folder
+    private static readonly SolidColorBrush FileBrush = new SolidColorBrush(Color.FromRgb(0xF0, 0xF0, 0xF0));   // Clean White / Light Gray
 
     static ItemTypeToBrushConverter()
     {
@@ -69,7 +69,8 @@ public class ItemTypeToBrushConverter : IValueConverter
 
 public class SidebarActiveBrushConverter : IValueConverter
 {
-    private static readonly SolidColorBrush ActiveBgBrush = new SolidColorBrush(Color.FromArgb(0x35, 0x3B, 0x82, 0xF6)); // Semi-transparent accent
+    // Windows 11 Fluent active item soft highlight: #2D3540
+    private static readonly SolidColorBrush ActiveBgBrush = new SolidColorBrush(Color.FromArgb(0x40, 0x4C, 0xC2, 0xFF));
     private static readonly SolidColorBrush InactiveBgBrush = new SolidColorBrush(Colors.Transparent);
 
     static SidebarActiveBrushConverter()
@@ -96,4 +97,27 @@ public class SidebarIndicatorVisibilityConverter : IValueConverter
     }
 
     public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) => Binding.DoNothing;
+}
+
+public class SortColumnToGlyphConverter : IMultiValueConverter
+{
+    public object Convert(object[] values, Type targetType, object parameter, CultureInfo culture)
+    {
+        if (values.Length >= 3 &&
+            values[0] is string currentSortColumn &&
+            values[1] is bool sortAscending &&
+            values[2] is string headerColumn)
+        {
+            if (string.Equals(currentSortColumn, headerColumn, StringComparison.OrdinalIgnoreCase))
+            {
+                return sortAscending ? " ▲" : " ▼";
+            }
+        }
+        return string.Empty;
+    }
+
+    public object[] ConvertBack(object value, Type[] targetTypes, object parameter, CultureInfo culture)
+    {
+        throw new NotImplementedException();
+    }
 }

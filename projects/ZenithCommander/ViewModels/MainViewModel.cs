@@ -33,6 +33,10 @@ public class MainViewModel : ViewModelBase
     private FileSystemItem? _selectedItem;
     private SidebarItem? _selectedSidebarItem;
 
+    private string _sortColumn = "Name"; // "Name", "Date", "Type", "Size"
+    private bool _sortAscending = true;
+    private bool _showHiddenFiles = false;
+
     private List<FileSystemItem> _allItems = new();
     private List<string> _clipboardFiles = new();
     private bool _clipboardIsCut;
@@ -77,6 +81,7 @@ public class MainViewModel : ViewModelBase
         // File Operation Commands
         OpenItemCommand = new RelayCommand<FileSystemItem>(OpenItem);
         NewFolderCommand = new RelayCommand(ExecuteNewFolder);
+        NewTextFileCommand = new RelayCommand(ExecuteNewTextFile);
         CopyCommand = new RelayCommand(ExecuteCopy);
         CutCommand = new RelayCommand(ExecuteCut);
         PasteCommand = new RelayCommand(ExecutePaste, () => CanPaste);
@@ -85,7 +90,21 @@ public class MainViewModel : ViewModelBase
         CopyPathCommand = new RelayCommand(ExecuteCopyPath);
         PropertiesCommand = new RelayCommand(ExecuteProperties);
         OpenInTerminalCommand = new RelayCommand(ExecuteOpenInTerminal);
+        SelectAllCommand = new RelayCommand(ExecuteSelectAll);
         ExitCommand = new RelayCommand(() => Application.Current.Shutdown());
+
+        // Sorting Commands
+        SortByColumnCommand = new RelayCommand<string>(ExecuteSortByColumn);
+        SortByNameCommand = new RelayCommand(() => ExecuteSortByColumn("Name"));
+        SortByDateCommand = new RelayCommand(() => ExecuteSortByColumn("Date"));
+        SortByTypeCommand = new RelayCommand(() => ExecuteSortByColumn("Type"));
+        SortBySizeCommand = new RelayCommand(() => ExecuteSortByColumn("Size"));
+        ToggleSortDirectionCommand = new RelayCommand(ToggleSortDirection);
+        ToggleShowHiddenFilesCommand = new RelayCommand(ToggleShowHiddenFiles);
+
+        // Tab Commands
+        NewTabCommand = new RelayCommand(ExecuteNewTab);
+        CloseTabCommand = new RelayCommand(ExecuteCloseTab);
 
         // Initialize Sidebar & Initial Folder
         InitializeSidebar();
@@ -110,10 +129,32 @@ public class MainViewModel : ViewModelBase
             {
                 PathInputText = value;
                 OnPropertyChanged(nameof(CanGoUp));
+                OnPropertyChanged(nameof(CurrentFolderName));
+                OnPropertyChanged(nameof(SearchPlaceholder));
                 UpdateActiveSidebarHighlight(value);
             }
         }
     }
+
+    public string CurrentFolderName
+    {
+        get
+        {
+            if (string.IsNullOrWhiteSpace(CurrentPath)) return "Этот компьютер";
+            try
+            {
+                var dir = new DirectoryInfo(CurrentPath);
+                if (dir.Parent == null) return dir.FullName.TrimEnd('\\');
+                return dir.Name;
+            }
+            catch
+            {
+                return "Папка";
+            }
+        }
+    }
+
+    public string SearchPlaceholder => $"Поиск в \"{CurrentFolderName}\"";
 
     public string PathInputText
     {
@@ -187,6 +228,42 @@ public class MainViewModel : ViewModelBase
         set => SetField(ref _selectedSidebarItem, value);
     }
 
+    public string SortColumn
+    {
+        get => _sortColumn;
+        set
+        {
+            if (SetField(ref _sortColumn, value))
+            {
+                ApplySearchFilter();
+            }
+        }
+    }
+
+    public bool SortAscending
+    {
+        get => _sortAscending;
+        set
+        {
+            if (SetField(ref _sortAscending, value))
+            {
+                ApplySearchFilter();
+            }
+        }
+    }
+
+    public bool ShowHiddenFiles
+    {
+        get => _showHiddenFiles;
+        set
+        {
+            if (SetField(ref _showHiddenFiles, value))
+            {
+                _ = RefreshAsync();
+            }
+        }
+    }
+
     public bool CanGoBack => _history.CanGoBack;
     public bool CanGoForward => _history.CanGoForward;
 
@@ -247,6 +324,7 @@ public class MainViewModel : ViewModelBase
 
     public ICommand OpenItemCommand { get; }
     public ICommand NewFolderCommand { get; }
+    public ICommand NewTextFileCommand { get; }
     public ICommand CopyCommand { get; }
     public ICommand CutCommand { get; }
     public ICommand PasteCommand { get; }
@@ -255,7 +333,19 @@ public class MainViewModel : ViewModelBase
     public ICommand CopyPathCommand { get; }
     public ICommand PropertiesCommand { get; }
     public ICommand OpenInTerminalCommand { get; }
+    public ICommand SelectAllCommand { get; }
     public ICommand ExitCommand { get; }
+
+    public ICommand SortByColumnCommand { get; }
+    public ICommand SortByNameCommand { get; }
+    public ICommand SortByDateCommand { get; }
+    public ICommand SortByTypeCommand { get; }
+    public ICommand SortBySizeCommand { get; }
+    public ICommand ToggleSortDirectionCommand { get; }
+    public ICommand ToggleShowHiddenFilesCommand { get; }
+
+    public ICommand NewTabCommand { get; }
+    public ICommand CloseTabCommand { get; }
 
     #endregion
 
@@ -324,6 +414,7 @@ public class MainViewModel : ViewModelBase
             }
 
             var dirInfo = new DirectoryInfo(normalizedPath);
+            bool includeHidden = _showHiddenFiles;
 
             var (loadedList, folders, files, driveInfoStr) = await Task.Run(() =>
             {
@@ -336,15 +427,14 @@ public class MainViewModel : ViewModelBase
                 try
                 {
                     var dirs = dirInfo.EnumerateDirectories();
-                    var sortedDirs = dirs
-                        .OrderBy(d => d.Name, StringComparer.OrdinalIgnoreCase)
-                        .Select(d =>
-                        {
-                            fCount++;
-                            return FileSystemItem.FromDirectoryInfo(d);
-                        });
+                    foreach (var d in dirs)
+                    {
+                        if (!includeHidden && (d.Attributes & FileAttributes.Hidden) != 0)
+                            continue;
 
-                    results.AddRange(sortedDirs);
+                        fCount++;
+                        results.Add(FileSystemItem.FromDirectoryInfo(d));
+                    }
                 }
                 catch (UnauthorizedAccessException) { }
                 catch (Exception ex) { Debug.WriteLine($"Dir enum error: {ex.Message}"); }
@@ -354,15 +444,14 @@ public class MainViewModel : ViewModelBase
                 try
                 {
                     var fileEntries = dirInfo.EnumerateFiles();
-                    var sortedFiles = fileEntries
-                        .OrderBy(f => f.Name, StringComparer.OrdinalIgnoreCase)
-                        .Select(f =>
-                        {
-                            fileCount++;
-                            return FileSystemItem.FromFileInfo(f);
-                        });
+                    foreach (var f in fileEntries)
+                    {
+                        if (!includeHidden && (f.Attributes & FileAttributes.Hidden) != 0)
+                            continue;
 
-                    results.AddRange(sortedFiles);
+                        fileCount++;
+                        results.Add(FileSystemItem.FromFileInfo(f));
+                    }
                 }
                 catch (UnauthorizedAccessException) { }
                 catch (Exception ex) { Debug.WriteLine($"File enum error: {ex.Message}"); }
@@ -439,17 +528,43 @@ public class MainViewModel : ViewModelBase
         }
     }
 
+    public void ExecuteSortByColumn(string? column)
+    {
+        if (string.IsNullOrWhiteSpace(column)) return;
+
+        if (string.Equals(_sortColumn, column, StringComparison.OrdinalIgnoreCase))
+        {
+            SortAscending = !SortAscending;
+        }
+        else
+        {
+            _sortColumn = column;
+            SortAscending = true;
+            OnPropertyChanged(nameof(SortColumn));
+        }
+
+        ApplySearchFilter();
+    }
+
+    public void ToggleSortDirection()
+    {
+        SortAscending = !SortAscending;
+    }
+
+    public void ToggleShowHiddenFiles()
+    {
+        ShowHiddenFiles = !ShowHiddenFiles;
+    }
+
     private void ApplySearchFilter()
     {
         Items.Clear();
 
+        List<FileSystemItem> sourceList;
+
         if (string.IsNullOrWhiteSpace(_searchQuery))
         {
-            foreach (var item in _allItems)
-            {
-                Items.Add(item);
-            }
-
+            sourceList = _allItems;
             int folderCount = _allItems.Count(i => i.IsDirectory);
             int fileCount = _allItems.Count(i => !i.IsDirectory);
             StatusText = $"{_allItems.Count} элементов (папок: {folderCount}, файлов: {fileCount})";
@@ -457,18 +572,67 @@ public class MainViewModel : ViewModelBase
         else
         {
             string query = _searchQuery.Trim();
-            var matches = _allItems
+            sourceList = _allItems
                 .Where(i => i.Name.Contains(query, StringComparison.OrdinalIgnoreCase) ||
                             i.Extension.Contains(query, StringComparison.OrdinalIgnoreCase) ||
                             i.ItemType.Contains(query, StringComparison.OrdinalIgnoreCase))
                 .ToList();
 
-            foreach (var item in matches)
-            {
-                Items.Add(item);
-            }
+            StatusText = $"Найдено: {sourceList.Count} из {_allItems.Count}";
+        }
 
-            StatusText = $"Найдено: {matches.Count} из {_allItems.Count}";
+        // Apply Sorting (folders first, then files sorted by column)
+        var dirs = sourceList.Where(i => i.IsDirectory);
+        var files = sourceList.Where(i => !i.IsDirectory);
+
+        IEnumerable<FileSystemItem> sortedDirs;
+        IEnumerable<FileSystemItem> sortedFiles;
+
+        switch (_sortColumn.ToLowerInvariant())
+        {
+            case "date":
+                sortedDirs = _sortAscending
+                    ? dirs.OrderBy(d => d.DateModified ?? DateTime.MinValue)
+                    : dirs.OrderByDescending(d => d.DateModified ?? DateTime.MinValue);
+                sortedFiles = _sortAscending
+                    ? files.OrderBy(f => f.DateModified ?? DateTime.MinValue)
+                    : files.OrderByDescending(f => f.DateModified ?? DateTime.MinValue);
+                break;
+
+            case "type":
+                sortedDirs = _sortAscending
+                    ? dirs.OrderBy(d => d.ItemType, StringComparer.OrdinalIgnoreCase)
+                    : dirs.OrderByDescending(d => d.ItemType, StringComparer.OrdinalIgnoreCase);
+                sortedFiles = _sortAscending
+                    ? files.OrderBy(f => f.ItemType, StringComparer.OrdinalIgnoreCase)
+                    : files.OrderByDescending(f => f.ItemType, StringComparer.OrdinalIgnoreCase);
+                break;
+
+            case "size":
+                sortedDirs = dirs;
+                sortedFiles = _sortAscending
+                    ? files.OrderBy(f => f.Size ?? 0)
+                    : files.OrderByDescending(f => f.Size ?? 0);
+                break;
+
+            case "name":
+            default:
+                sortedDirs = _sortAscending
+                    ? dirs.OrderBy(d => d.Name, StringComparer.OrdinalIgnoreCase)
+                    : dirs.OrderByDescending(d => d.Name, StringComparer.OrdinalIgnoreCase);
+                sortedFiles = _sortAscending
+                    ? files.OrderBy(f => f.Name, StringComparer.OrdinalIgnoreCase)
+                    : files.OrderByDescending(f => f.Name, StringComparer.OrdinalIgnoreCase);
+                break;
+        }
+
+        foreach (var d in sortedDirs)
+        {
+            Items.Add(d);
+        }
+        foreach (var f in sortedFiles)
+        {
+            Items.Add(f);
         }
     }
 
@@ -549,14 +713,18 @@ public class MainViewModel : ViewModelBase
     {
         QuickAccessItems.Clear();
 
-        // Pinned standard folders
+        // Pinned Windows 11 standard folders
+        string userProfile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        string pictures = Environment.GetFolderPath(Environment.SpecialFolder.MyPictures);
+
+        AddQuickAccessFolder("Главная", "🏠", userProfile);
+        AddQuickAccessFolder("Галерея", "🖼️", pictures);
         AddQuickAccessFolder("Рабочий стол", "🖥️", Environment.GetFolderPath(Environment.SpecialFolder.Desktop));
-        AddQuickAccessFolder("Загрузки", "📥", Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads"));
+        AddQuickAccessFolder("Загрузки", "📥", Path.Combine(userProfile, "Downloads"));
         AddQuickAccessFolder("Документы", "📄", Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments));
-        AddQuickAccessFolder("Изображения", "🖼️", Environment.GetFolderPath(Environment.SpecialFolder.MyPictures));
+        AddQuickAccessFolder("Изображения", "🌄", pictures);
         AddQuickAccessFolder("Музыка", "🎵", Environment.GetFolderPath(Environment.SpecialFolder.MyMusic));
         AddQuickAccessFolder("Видео", "🎬", Environment.GetFolderPath(Environment.SpecialFolder.MyVideos));
-        AddQuickAccessFolder("Главная", "🏠", Environment.GetFolderPath(Environment.SpecialFolder.UserProfile));
 
         RefreshDrives();
     }
@@ -651,6 +819,16 @@ public class MainViewModel : ViewModelBase
         UpdateSelectionStatus();
     }
 
+    public void ExecuteSelectAll()
+    {
+        SelectedItems.Clear();
+        foreach (var item in Items)
+        {
+            SelectedItems.Add(item);
+        }
+        UpdateSelectionStatus();
+    }
+
     private void UpdateSelectionStatus()
     {
         if (SelectedItems.Count == 0)
@@ -690,7 +868,7 @@ public class MainViewModel : ViewModelBase
             int fileCount = SelectedItems.Count(i => !i.IsDirectory);
 
             string sizeStr = totalBytes > 0 ? $" ({FileSystemItem.FormatFileSize(totalBytes)})" : "";
-            SelectedStatusText = $"Выбрано элементов: {SelectedItems.Count} ({fileCount} файлов, {dirCount} папок{sizeStr})";
+            SelectedStatusText = $"Выбрано: {SelectedItems.Count} ({fileCount} файлов, {dirCount} папок{sizeStr})";
         }
     }
 
@@ -754,6 +932,33 @@ public class MainViewModel : ViewModelBase
             {
                 ErrorMessage = $"Не удалось создать папку: {ex.Message}";
             }
+        }
+    }
+
+    public void ExecuteNewTextFile()
+    {
+        if (!Directory.Exists(CurrentPath)) return;
+
+        try
+        {
+            string baseName = "Новый текстовый документ";
+            string ext = ".txt";
+            string candidate = Path.Combine(CurrentPath, baseName + ext);
+            int counter = 2;
+
+            while (File.Exists(candidate))
+            {
+                candidate = Path.Combine(CurrentPath, $"{baseName} ({counter}){ext}");
+                counter++;
+            }
+
+            File.WriteAllText(candidate, string.Empty);
+            _ = RefreshAsync();
+            StatusText = $"Создан файл: {Path.GetFileName(candidate)}";
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = $"Не удалось создать файл: {ex.Message}";
         }
     }
 
@@ -1013,6 +1218,24 @@ public class MainViewModel : ViewModelBase
             {
                 ErrorMessage = $"Не удалось запустить терминал: {ex.Message}";
             }
+        }
+    }
+
+    public void ExecuteNewTab()
+    {
+        // Navigate to home / profile or refresh current
+        string home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        if (Directory.Exists(home))
+        {
+            _ = NavigateToPathAsync(home);
+        }
+    }
+
+    public void ExecuteCloseTab()
+    {
+        if (CanGoUp)
+        {
+            NavigateUp();
         }
     }
 

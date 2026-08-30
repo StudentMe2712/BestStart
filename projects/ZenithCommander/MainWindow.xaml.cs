@@ -1,3 +1,5 @@
+using System;
+using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -51,6 +53,44 @@ public partial class MainWindow : Window
         {
             WindowState = WindowState.Maximized;
             MaximizeIconText.Text = "🗗";
+        }
+    }
+
+    private void BtnCreate_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button btn && btn.ContextMenu != null)
+        {
+            btn.ContextMenu.PlacementTarget = btn;
+            btn.ContextMenu.IsOpen = true;
+        }
+    }
+
+    private void BtnSort_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button btn && btn.ContextMenu != null)
+        {
+            btn.ContextMenu.PlacementTarget = btn;
+            btn.ContextMenu.IsOpen = true;
+        }
+    }
+
+    private void BtnView_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button btn && btn.ContextMenu != null)
+        {
+            btn.ContextMenu.PlacementTarget = btn;
+            btn.ContextMenu.IsOpen = true;
+        }
+    }
+
+    private void GridViewColumnHeader_Click(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is MainViewModel vm && sender is GridViewColumnHeader header)
+        {
+            if (header.Tag is string col && !string.IsNullOrWhiteSpace(col))
+            {
+                vm.ExecuteSortByColumn(col);
+            }
         }
     }
 
@@ -238,9 +278,31 @@ public partial class MainWindow : Window
             return;
         }
 
+        // Ctrl+T: New Tab
+        if (e.Key == Key.T && Keyboard.Modifiers.HasFlag(ModifierKeys.Control))
+        {
+            vm.NewTabCommand.Execute(null);
+            e.Handled = true;
+            return;
+        }
+
+        // Ctrl+W: Close Tab
+        if (e.Key == Key.W && Keyboard.Modifiers.HasFlag(ModifierKeys.Control))
+        {
+            vm.CloseTabCommand.Execute(null);
+            e.Handled = true;
+            return;
+        }
+
         // File list shortcuts when not typing in text boxes
         if (!isTextBoxFocused)
         {
+            if (e.Key == Key.A && Keyboard.Modifiers.HasFlag(ModifierKeys.Control))
+            {
+                FileListView.SelectAll();
+                e.Handled = true;
+                return;
+            }
             if (e.Key == Key.C && Keyboard.Modifiers.HasFlag(ModifierKeys.Control))
             {
                 vm.CopyCommand.Execute(null);

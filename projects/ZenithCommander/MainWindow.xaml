@@ -7,9 +7,9 @@
         xmlns:vm="clr-namespace:NexusCommander.ViewModels"
         xmlns:models="clr-namespace:NexusCommander.Models"
         mc:Ignorable="d"
-        Title="Nexus Commander"
-        Height="780" Width="1280"
-        MinHeight="480" MinWidth="800"
+        Title="Проводник"
+        Height="800" Width="1300"
+        MinHeight="500" MinWidth="850"
         WindowStyle="None"
         AllowsTransparency="True"
         Background="Transparent"
@@ -21,12 +21,12 @@
         <vm:MainViewModel />
     </Window.DataContext>
 
-    <!-- Outer Window Container with Rounded Corners and Drop Shadow -->
+    <!-- Outer Window Container with Rounded Corners and Windows 11 Drop Shadow -->
     <Grid Margin="10">
         <Border Background="{StaticResource BrushBackground}"
-                BorderBrush="{StaticResource BrushBorder}"
+                BorderBrush="{StaticResource BrushBorderLight}"
                 BorderThickness="1"
-                CornerRadius="10"
+                CornerRadius="8"
                 ClipToBounds="False">
             <Border.Effect>
                 <DropShadowEffect Color="#000000"
@@ -38,62 +38,80 @@
 
             <Grid>
                 <Grid.RowDefinitions>
-                    <RowDefinition Height="38" />  <!-- 0: Title Bar -->
-                    <RowDefinition Height="88" />  <!-- 1: Navigation & Ribbon Bar -->
-                    <RowDefinition Height="*" />   <!-- 2: Sidebar + Main File View -->
-                    <RowDefinition Height="30" />  <!-- 3: Bottom Status Bar -->
+                    <RowDefinition Height="42" />  <!-- 0: Windows 11 Title Bar with Tabs -->
+                    <RowDefinition Height="46" />  <!-- 1: Navigation & Address Bar & Search -->
+                    <RowDefinition Height="42" />  <!-- 2: Windows 11 Command Bar -->
+                    <RowDefinition Height="*" />   <!-- 3: Sidebar + Main File View -->
+                    <RowDefinition Height="30" />  <!-- 4: Bottom Status Bar -->
                 </Grid.RowDefinitions>
 
-                <!-- ================= 0: TOP TITLE BAR ================= -->
+                <!-- ================= 0: TOP TITLE BAR WITH TABS ================= -->
                 <Border Grid.Row="0"
-                        Background="{StaticResource BrushSecondary}"
-                        BorderBrush="{StaticResource BrushBorder}"
+                        Background="{StaticResource BrushMica}"
+                        BorderBrush="{StaticResource BrushBorderSubtle}"
                         BorderThickness="0,0,0,1"
-                        CornerRadius="10,10,0,0"
+                        CornerRadius="8,8,0,0"
                         MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
                     <Grid>
                         <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto" />
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" /> <!-- Tabs Area -->
+                            <ColumnDefinition Width="*" />    <!-- Draggable Center -->
+                            <ColumnDefinition Width="Auto" /> <!-- Window Controls (Min, Max, Close) -->
                         </Grid.ColumnDefinitions>
 
-                        <!-- App Icon & Title -->
+                        <!-- Windows 11 Tab Strip -->
                         <StackPanel Grid.Column="0"
                                     Orientation="Horizontal"
                                     VerticalAlignment="Center"
-                                    Margin="12,0,0,0">
-                            <!-- Modern Galaxy / Nexus Icon Badge -->
-                            <Border Width="24" Height="24"
-                                    Background="{StaticResource BrushAccent}"
+                                    Margin="8,0,0,0">
+                            <!-- Active Tab Card -->
+                            <Border Background="{StaticResource BrushSurface}"
+                                    BorderBrush="{StaticResource BrushBorderLight}"
+                                    BorderThickness="1"
                                     CornerRadius="6"
-                                    Margin="0,0,9,0">
-                                <TextBlock Text="🌌"
-                                           FontSize="13"
-                                           HorizontalAlignment="Center"
-                                           VerticalAlignment="Center" />
+                                    Height="32"
+                                    Margin="0,0,4,0"
+                                    Padding="10,0,6,0">
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                    <TextBlock Text="📁"
+                                               FontSize="13"
+                                               VerticalAlignment="Center"
+                                               Margin="0,0,7,0" />
+
+                                    <TextBlock Text="{Binding CurrentFolderName}"
+                                               FontSize="12"
+                                               FontWeight="Medium"
+                                               Foreground="{StaticResource BrushTextPrimary}"
+                                               VerticalAlignment="Center"
+                                               MaxWidth="180"
+                                               TextTrimming="CharacterEllipsis" />
+
+                                    <!-- Close Tab Button -->
+                                    <Button Width="20" Height="20"
+                                            Margin="8,0,0,0"
+                                            Style="{StaticResource NavIconButton}"
+                                            Command="{Binding CloseTabCommand}"
+                                            ToolTip="Закрыть вкладку">
+                                        <TextBlock Text="✕" FontSize="9" Foreground="{StaticResource BrushTextSecondary}" />
+                                    </Button>
+                                </StackPanel>
                             </Border>
 
-                            <TextBlock Text="NEXUS COMMANDER"
-                                       FontSize="12"
-                                       FontWeight="Bold"
-                                       Foreground="{StaticResource BrushTextPrimary}"
-                                       VerticalAlignment="Center" />
-
-                            <TextBlock Text=" [Современный файловый менеджер]"
-                                       FontSize="11"
-                                       FontWeight="Normal"
-                                       Foreground="{StaticResource BrushTextMuted}"
-                                       VerticalAlignment="Center"
-                                       Margin="8,0,0,0" />
+                            <!-- New Tab Button -->
+                            <Button Width="28" Height="28"
+                                    Style="{StaticResource NavIconButton}"
+                                    Command="{Binding NewTabCommand}"
+                                    ToolTip="Новая вкладка (Ctrl+T)">
+                                <TextBlock Text="➕" FontSize="10" Foreground="{StaticResource BrushTextSecondary}" />
+                            </Button>
                         </StackPanel>
 
-                        <!-- Window Control Buttons (Minimize, Maximize/Restore, Close) -->
+                        <!-- Window Controls (Minimize, Maximize/Restore, Close) -->
                         <StackPanel Grid.Column="2"
                                     Orientation="Horizontal"
                                     VerticalAlignment="Stretch">
                             <!-- Minimize Button -->
-                            <Button Width="42"
+                            <Button Width="44"
                                     Background="Transparent"
                                     BorderThickness="0"
                                     Foreground="{StaticResource BrushTextSecondary}"
@@ -103,7 +121,7 @@
                             </Button>
 
                             <!-- Maximize/Restore Button -->
-                            <Button Width="42"
+                            <Button Width="44"
                                     Background="Transparent"
                                     BorderThickness="0"
                                     Foreground="{StaticResource BrushTextSecondary}"
@@ -124,7 +142,7 @@
                                     <ControlTemplate TargetType="Button">
                                         <Border x:Name="closeBorder"
                                                 Background="{TemplateBinding Background}"
-                                                CornerRadius="0,9,0,0"
+                                                CornerRadius="0,7,0,0"
                                                 SnapsToDevicePixels="True">
                                             <TextBlock Text="✕"
                                                        FontSize="11"
@@ -135,7 +153,7 @@
                                         </Border>
                                         <ControlTemplate.Triggers>
                                              <Trigger Property="IsMouseOver" Value="True">
-                                                <Setter TargetName="closeBorder" Property="Background" Value="#E81123" />
+                                                <Setter TargetName="closeBorder" Property="Background" Value="#C42B1C" />
                                                 <Setter Property="Foreground" Value="#FFFFFF" />
                                             </Trigger>
                                         </ControlTemplate.Triggers>
@@ -146,178 +164,65 @@
                     </Grid>
                 </Border>
 
-                <!-- ================= 1: TOP COMMAND & NAVIGATION BAR ================= -->
+                <!-- ================= 1: TOP NAVIGATION & ADDRESS BAR & SEARCH ================= -->
                 <Border Grid.Row="1"
-                        Background="{StaticResource BrushSecondary}"
-                        BorderBrush="{StaticResource BrushBorder}"
+                        Background="{StaticResource BrushMica}"
+                        BorderBrush="{StaticResource BrushBorderSubtle}"
                         BorderThickness="0,0,0,1"
                         Padding="10,6">
                     <Grid>
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="36" />  <!-- Navigation Controls & Address Bar & Search -->
-                            <RowDefinition Height="36" />  <!-- Action Ribbon Toolbar -->
-                        </Grid.RowDefinitions>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" /> <!-- Navigation Buttons (Back, Forward, Up, Refresh) -->
+                            <ColumnDefinition Width="*" />    <!-- Breadcrumb / Address Bar -->
+                            <ColumnDefinition Width="280" />  <!-- Windows 11 Search Box -->
+                        </Grid.ColumnDefinitions>
 
-                        <!-- ROW 1: Navigation + Breadcrumb/Address + Search Box -->
-                        <Grid Grid.Row="0">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto" /> <!-- Back, Forward, Up, Refresh -->
-                                <ColumnDefinition Width="*" />    <!-- Breadcrumb / Address Bar -->
-                                <ColumnDefinition Width="260" />  <!-- Live Filter / Search Box -->
-                            </Grid.ColumnDefinitions>
-
-                            <!-- Navigation Buttons -->
-                            <StackPanel Grid.Column="0"
-                                        Orientation="Horizontal"
-                                        VerticalAlignment="Center"
-                                        Margin="0,0,8,0">
-                                <Button Style="{StaticResource NavIconButton}"
-                                        Command="{Binding GoBackCommand}"
-                                        ToolTip="Назад (Alt+Left)">
-                                    <TextBlock Text="◀" FontSize="11" />
-                                </Button>
-
-                                <Button Style="{StaticResource NavIconButton}"
-                                        Command="{Binding GoForwardCommand}"
-                                        ToolTip="Вперед (Alt+Right)">
-                                    <TextBlock Text="▶" FontSize="11" />
-                                </Button>
-
-                                <Button Style="{StaticResource NavIconButton}"
-                                        Command="{Binding NavigateUpCommand}"
-                                        ToolTip="Вверх (Alt+Up)">
-                                    <TextBlock Text="⬆" FontSize="12" />
-                                </Button>
-
-                                <Button Style="{StaticResource NavIconButton}"
-                                        Command="{Binding RefreshCommand}"
-                                        ToolTip="Обновить (F5)">
-                                    <TextBlock Text="🔄" FontSize="11" />
-                                </Button>
-                            </StackPanel>
-
-                            <!-- Interactive Breadcrumb / Address Bar -->
-                            <Border Grid.Column="1"
-                                    Background="{StaticResource BrushSurface}"
-                                    BorderBrush="{StaticResource BrushBorder}"
-                                    BorderThickness="1"
-                                    CornerRadius="6"
-                                    Margin="0,0,8,0"
-                                    Padding="4,2"
+                        <!-- Navigation Buttons in Rounded Frames -->
+                        <StackPanel Grid.Column="0"
+                                    Orientation="Horizontal"
                                     VerticalAlignment="Center"
-                                    Height="32">
-                                <Grid>
-                                    <!-- Mode A: Clickable Breadcrumb Segments -->
-                                    <Grid Visibility="{Binding IsEditingPath, Converter={StaticResource InverseBoolToVis}}"
-                                          Background="Transparent"
-                                          MouseDown="AddressBar_MouseDown"
-                                          Cursor="Hand">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="Auto" />
-                                            <ColumnDefinition Width="*" />
-                                            <ColumnDefinition Width="Auto" />
-                                        </Grid.ColumnDefinitions>
+                                    Margin="0,0,8,0">
+                            <Button Style="{StaticResource NavIconButton}"
+                                    Command="{Binding GoBackCommand}"
+                                    ToolTip="Назад (Alt+Left)">
+                                <TextBlock Text="◀" FontSize="11" />
+                            </Button>
 
-                                        <TextBlock Grid.Column="0"
-                                                   Text="📁"
-                                                   FontSize="12"
-                                                   VerticalAlignment="Center"
-                                                   Margin="6,0,4,0" />
+                            <Button Style="{StaticResource NavIconButton}"
+                                    Command="{Binding GoForwardCommand}"
+                                    ToolTip="Вперед (Alt+Right)">
+                                <TextBlock Text="▶" FontSize="11" />
+                            </Button>
 
-                                        <!-- Breadcrumb Segments ItemsControl -->
-                                        <ItemsControl Grid.Column="1"
-                                                      ItemsSource="{Binding Breadcrumbs}"
-                                                      VerticalAlignment="Center">
-                                            <ItemsControl.ItemsPanel>
-                                                <ItemsPanelTemplate>
-                                                    <StackPanel Orientation="Horizontal" />
-                                                </ItemsPanelTemplate>
-                                            </ItemsControl.ItemsPanel>
-                                            <ItemsControl.ItemTemplate>
-                                                <DataTemplate>
-                                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                                        <Button Content="{Binding Name}"
-                                                                Style="{StaticResource BreadcrumbButton}"
-                                                                Command="{Binding DataContext.NavigateBreadcrumbCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                                                CommandParameter="{Binding}"
-                                                                ToolTip="{Binding FullPath}" />
+                            <Button Style="{StaticResource NavIconButton}"
+                                    Command="{Binding NavigateUpCommand}"
+                                    ToolTip="Вверх (Alt+Up)">
+                                <TextBlock Text="⬆" FontSize="12" />
+                            </Button>
 
-                                                        <!-- Segment Chevron Separator -->
-                                                        <TextBlock Text="›"
-                                                                   Foreground="{StaticResource BrushTextMuted}"
-                                                                   FontSize="13"
-                                                                   FontWeight="Bold"
-                                                                   VerticalAlignment="Center"
-                                                                   Margin="2,0,2,0"
-                                                                   Visibility="{Binding IsLast, Converter={StaticResource InverseBoolToVis}}" />
-                                                    </StackPanel>
-                                                </DataTemplate>
-                                            </ItemsControl.ItemTemplate>
-                                        </ItemsControl>
+                            <Button Style="{StaticResource NavIconButton}"
+                                    Command="{Binding RefreshCommand}"
+                                    ToolTip="Обновить (F5)">
+                                <TextBlock Text="🔄" FontSize="11" />
+                            </Button>
+                        </StackPanel>
 
-                                        <!-- Switch to Edit Mode Icon Button -->
-                                        <Button Grid.Column="2"
-                                                Width="24" Height="24"
-                                                Style="{StaticResource NavIconButton}"
-                                                Command="{Binding StartEditPathCommand}"
-                                                ToolTip="Редактировать адрес (Ctrl+L)"
-                                                HorizontalAlignment="Right"
-                                                Margin="0,0,4,0">
-                                            <TextBlock Text="✏️" FontSize="10" />
-                                        </Button>
-                                    </Grid>
-
-                                    <!-- Mode B: Editable Address TextBox -->
-                                    <Grid Visibility="{Binding IsEditingPath, Converter={StaticResource BoolToVis}}">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="*" />
-                                            <ColumnDefinition Width="Auto" />
-                                            <ColumnDefinition Width="Auto" />
-                                        </Grid.ColumnDefinitions>
-
-                                        <TextBox x:Name="AddressTextBox"
-                                                 Grid.Column="0"
-                                                 Text="{Binding PathInputText, UpdateSourceTrigger=PropertyChanged}"
-                                                 BorderThickness="0"
-                                                 Background="Transparent"
-                                                 Foreground="{StaticResource BrushTextPrimary}"
-                                                 VerticalAlignment="Center"
-                                                 FontSize="12"
-                                                 Padding="6,0"
-                                                 KeyDown="AddressTextBox_KeyDown"
-                                                 LostFocus="AddressTextBox_LostFocus" />
-
-                                        <Button Grid.Column="1"
-                                                Width="24" Height="24"
-                                                Style="{StaticResource NavIconButton}"
-                                                Command="{Binding CommitEditPathCommand}"
-                                                ToolTip="Перейти"
-                                                Margin="0,0,2,0">
-                                            <TextBlock Text="➔" FontSize="11" Foreground="{StaticResource BrushAccent}" />
-                                        </Button>
-
-                                        <Button Grid.Column="2"
-                                                Width="24" Height="24"
-                                                Style="{StaticResource NavIconButton}"
-                                                Command="{Binding CancelEditPathCommand}"
-                                                ToolTip="Отмена"
-                                                Margin="0,0,4,0">
-                                            <TextBlock Text="✕" FontSize="10" />
-                                        </Button>
-                                    </Grid>
-                                </Grid>
-                            </Border>
-
-                            <!-- Live Filter / Search Box -->
-                            <Border Grid.Column="2"
-                                    Background="{StaticResource BrushSurface}"
-                                    BorderBrush="{StaticResource BrushBorder}"
-                                    BorderThickness="1"
-                                    CornerRadius="6"
-                                    VerticalAlignment="Center"
-                                    Height="32"
-                                    Padding="4,2">
-                                <Grid>
+                        <!-- Windows 11 Breadcrumb Address Bar -->
+                        <Border Grid.Column="1"
+                                Background="{StaticResource BrushSurface}"
+                                BorderBrush="{StaticResource BrushBorderLight}"
+                                BorderThickness="1"
+                                CornerRadius="6"
+                                Margin="0,0,8,0"
+                                Padding="6,2"
+                                VerticalAlignment="Center"
+                                Height="32">
+                            <Grid>
+                                <!-- Mode A: Clickable Breadcrumb Segments -->
+                                <Grid Visibility="{Binding IsEditingPath, Converter={StaticResource InverseBoolToVis}}"
+                                      Background="Transparent"
+                                      MouseDown="AddressBar_MouseDown"
+                                      Cursor="Hand">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="Auto" />
                                         <ColumnDefinition Width="*" />
@@ -325,172 +230,337 @@
                                     </Grid.ColumnDefinitions>
 
                                     <TextBlock Grid.Column="0"
-                                               Text="🔍"
-                                               FontSize="11"
-                                               Foreground="{StaticResource BrushTextMuted}"
+                                               Text="📁"
+                                               FontSize="12"
                                                VerticalAlignment="Center"
                                                Margin="4,0,4,0" />
 
-                                    <TextBox x:Name="SearchTextBox"
-                                             Grid.Column="1"
-                                             Text="{Binding SearchQuery, UpdateSourceTrigger=PropertyChanged}"
+                                    <!-- Breadcrumb Segments ItemsControl -->
+                                    <ItemsControl Grid.Column="1"
+                                                  ItemsSource="{Binding Breadcrumbs}"
+                                                  VerticalAlignment="Center">
+                                        <ItemsControl.ItemsPanel>
+                                            <ItemsPanelTemplate>
+                                                <StackPanel Orientation="Horizontal" />
+                                            </ItemsPanelTemplate>
+                                        </ItemsControl.ItemsPanel>
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                    <Button Content="{Binding Name}"
+                                                            Style="{StaticResource BreadcrumbButton}"
+                                                            Command="{Binding DataContext.NavigateBreadcrumbCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                            CommandParameter="{Binding}"
+                                                            ToolTip="{Binding FullPath}" />
+
+                                                    <!-- Segment Chevron Separator -->
+                                                    <TextBlock Text="›"
+                                                               Foreground="{StaticResource BrushTextMuted}"
+                                                               FontSize="13"
+                                                               FontWeight="Bold"
+                                                               VerticalAlignment="Center"
+                                                               Margin="2,0,2,0"
+                                                               Visibility="{Binding IsLast, Converter={StaticResource InverseBoolToVis}}" />
+                                                </StackPanel>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+
+                                    <!-- Switch to Edit Mode Icon Button -->
+                                    <Button Grid.Column="2"
+                                            Width="24" Height="24"
+                                            Style="{StaticResource NavIconButton}"
+                                            Command="{Binding StartEditPathCommand}"
+                                            ToolTip="Редактировать адрес (Ctrl+L / Alt+D)"
+                                            HorizontalAlignment="Right"
+                                            Margin="0,0,2,0">
+                                        <TextBlock Text="✏️" FontSize="10" />
+                                    </Button>
+                                </Grid>
+
+                                <!-- Mode B: Editable Address TextBox -->
+                                <Grid Visibility="{Binding IsEditingPath, Converter={StaticResource BoolToVis}}">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+
+                                    <TextBox x:Name="AddressTextBox"
+                                             Grid.Column="0"
+                                             Text="{Binding PathInputText, UpdateSourceTrigger=PropertyChanged}"
                                              BorderThickness="0"
                                              Background="Transparent"
                                              Foreground="{StaticResource BrushTextPrimary}"
                                              VerticalAlignment="Center"
-                                             FontSize="11"
-                                             Padding="2,0" />
+                                             FontSize="12"
+                                             Padding="6,0"
+                                             KeyDown="AddressTextBox_KeyDown"
+                                             LostFocus="AddressTextBox_LostFocus" />
 
-                                    <!-- Placeholder text when search box is empty -->
-                                    <TextBlock Grid.Column="1"
-                                               Text="Поиск и фильтрация..."
-                                               Foreground="{StaticResource BrushTextMuted}"
-                                               FontSize="11"
-                                               VerticalAlignment="Center"
-                                               IsHitTestVisible="False"
-                                               Margin="4,0,0,0"
-                                               Visibility="{Binding SearchQuery, Converter={StaticResource StringNullOrEmptyToVis}, ConverterParameter=invert}" />
-
-                                    <!-- Clear search button -->
-                                    <Button Grid.Column="2"
-                                            Width="20" Height="20"
+                                    <Button Grid.Column="1"
+                                            Width="24" Height="24"
                                             Style="{StaticResource NavIconButton}"
-                                            Click="BtnClearSearch_Click"
-                                            ToolTip="Очистить фильтр"
-                                            Visibility="{Binding SearchQuery, Converter={StaticResource StringNullOrEmptyToVis}}">
-                                        <TextBlock Text="✕" FontSize="9" />
+                                            Command="{Binding CommitEditPathCommand}"
+                                            ToolTip="Перейти"
+                                            Margin="0,0,2,0">
+                                        <TextBlock Text="➔" FontSize="11" Foreground="{StaticResource BrushAccentLight}" />
+                                    </Button>
+
+                                    <Button Grid.Column="2"
+                                            Width="24" Height="24"
+                                            Style="{StaticResource NavIconButton}"
+                                            Command="{Binding CancelEditPathCommand}"
+                                            ToolTip="Отмена"
+                                            Margin="0,0,2,0">
+                                        <TextBlock Text="✕" FontSize="10" />
                                     </Button>
                                 </Grid>
-                            </Border>
-                        </Grid>
+                            </Grid>
+                        </Border>
 
-                        <!-- ROW 2: Action Ribbon / Toolbar -->
-                        <Grid Grid.Row="1" Margin="0,4,0,0">
-                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                <!-- ➕ New Folder -->
-                                <Button Style="{StaticResource RibbonButton}"
-                                        Command="{Binding NewFolderCommand}"
-                                        ToolTip="Создать новую папку (Ctrl+Shift+N / F7)">
-                                    <StackPanel Orientation="Horizontal">
-                                        <TextBlock Text="➕ " FontSize="11" Foreground="{StaticResource BrushAccent}" />
-                                        <TextBlock Text="Новая папка" />
-                                    </StackPanel>
+                        <!-- Windows 11 Search Box -->
+                        <Border Grid.Column="2"
+                                Background="{StaticResource BrushSurface}"
+                                BorderBrush="{StaticResource BrushBorderLight}"
+                                BorderThickness="1"
+                                CornerRadius="6"
+                                VerticalAlignment="Center"
+                                Height="32"
+                                Padding="6,2">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+
+                                <TextBlock Grid.Column="0"
+                                           Text="🔍"
+                                           FontSize="11"
+                                           Foreground="{StaticResource BrushTextMuted}"
+                                           VerticalAlignment="Center"
+                                           Margin="4,0,4,0" />
+
+                                <TextBox x:Name="SearchTextBox"
+                                         Grid.Column="1"
+                                         Text="{Binding SearchQuery, UpdateSourceTrigger=PropertyChanged}"
+                                         BorderThickness="0"
+                                         Background="Transparent"
+                                         Foreground="{StaticResource BrushTextPrimary}"
+                                         VerticalAlignment="Center"
+                                         FontSize="12"
+                                         Padding="2,0" />
+
+                                <!-- Dynamic Placeholder Text -->
+                                <TextBlock Grid.Column="1"
+                                           Text="{Binding SearchPlaceholder}"
+                                           Foreground="{StaticResource BrushTextMuted}"
+                                           FontSize="11"
+                                           VerticalAlignment="Center"
+                                           IsHitTestVisible="False"
+                                           Margin="4,0,0,0"
+                                           TextTrimming="CharacterEllipsis"
+                                           Visibility="{Binding SearchQuery, Converter={StaticResource StringNullOrEmptyToVis}, ConverterParameter=invert}" />
+
+                                <!-- Clear search button -->
+                                <Button Grid.Column="2"
+                                        Width="20" Height="20"
+                                        Style="{StaticResource NavIconButton}"
+                                        Click="BtnClearSearch_Click"
+                                        ToolTip="Очистить поиск"
+                                        Visibility="{Binding SearchQuery, Converter={StaticResource StringNullOrEmptyToVis}}">
+                                    <TextBlock Text="✕" FontSize="9" />
                                 </Button>
-
-                                <Separator Style="{StaticResource {x:Type Separator}}" Margin="6,4" />
-
-                                <!-- 📋 Copy -->
-                                <Button Style="{StaticResource RibbonButton}"
-                                        Command="{Binding CopyCommand}"
-                                        ToolTip="Копировать (Ctrl+C)">
-                                    <StackPanel Orientation="Horizontal">
-                                        <TextBlock Text="📋 " FontSize="11" />
-                                        <TextBlock Text="Копировать" />
-                                    </StackPanel>
-                                </Button>
-
-                                <!-- ✂ Cut -->
-                                <Button Style="{StaticResource RibbonButton}"
-                                        Command="{Binding CutCommand}"
-                                        ToolTip="Вырезать (Ctrl+X)">
-                                    <StackPanel Orientation="Horizontal">
-                                        <TextBlock Text="✂ " FontSize="11" />
-                                        <TextBlock Text="Вырезать" />
-                                    </StackPanel>
-                                </Button>
-
-                                <!-- 📥 Paste -->
-                                <Button Style="{StaticResource RibbonButton}"
-                                        Command="{Binding PasteCommand}"
-                                        ToolTip="Вставить (Ctrl+V)">
-                                    <StackPanel Orientation="Horizontal">
-                                        <TextBlock Text="📥 " FontSize="11" />
-                                        <TextBlock Text="Вставить" />
-                                    </StackPanel>
-                                </Button>
-
-                                <Separator Style="{StaticResource {x:Type Separator}}" Margin="6,4" />
-
-                                <!-- ✏️ Rename -->
-                                <Button Style="{StaticResource RibbonButton}"
-                                        Command="{Binding RenameCommand}"
-                                        ToolTip="Переименовать (F2)">
-                                    <StackPanel Orientation="Horizontal">
-                                        <TextBlock Text="✏️ " FontSize="11" />
-                                        <TextBlock Text="Переименовать" />
-                                    </StackPanel>
-                                </Button>
-
-                                <!-- 🗑️ Delete -->
-                                <Button Style="{StaticResource RibbonButton}"
-                                        Command="{Binding DeleteCommand}"
-                                        ToolTip="Удалить (Delete)">
-                                    <StackPanel Orientation="Horizontal">
-                                        <TextBlock Text="🗑️ " FontSize="11" Foreground="{StaticResource BrushError}" />
-                                        <TextBlock Text="Удалить" />
-                                    </StackPanel>
-                                </Button>
-
-                                <Separator Style="{StaticResource {x:Type Separator}}" Margin="6,4" />
-
-                                <!-- ℹ️ Properties -->
-                                <Button Style="{StaticResource RibbonButton}"
-                                        Command="{Binding PropertiesCommand}"
-                                        ToolTip="Свойства (Alt+Enter)">
-                                    <StackPanel Orientation="Horizontal">
-                                        <TextBlock Text="ℹ️ " FontSize="11" Foreground="{StaticResource BrushAccentHover}" />
-                                        <TextBlock Text="Свойства" />
-                                    </StackPanel>
-                                </Button>
-
-                                <!-- 💻 Open in Terminal -->
-                                <Button Style="{StaticResource RibbonButton}"
-                                        Command="{Binding OpenInTerminalCommand}"
-                                        ToolTip="Открыть в терминале">
-                                    <StackPanel Orientation="Horizontal">
-                                        <TextBlock Text="💻 " FontSize="11" />
-                                        <TextBlock Text="Терминал" />
-                                    </StackPanel>
-                                </Button>
-                            </StackPanel>
-                        </Grid>
+                            </Grid>
+                        </Border>
                     </Grid>
                 </Border>
 
-                <!-- ================= 2: SIDEBAR + MAIN FILE VIEW ================= -->
-                <Grid Grid.Row="2">
+                <!-- ================= 2: WINDOWS 11 COMMAND BAR ================= -->
+                <Border Grid.Row="2"
+                        Background="{StaticResource BrushMicaSecondary}"
+                        BorderBrush="{StaticResource BrushBorderSubtle}"
+                        BorderThickness="0,0,0,1"
+                        Padding="8,4">
+                    <Grid>
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <!-- [ ➕ Создать ▾ ] Button with ContextMenu -->
+                            <Button x:Name="BtnCreateDropdown"
+                                    Style="{StaticResource CommandBarButton}"
+                                    Click="BtnCreate_Click"
+                                    ToolTip="Создать новый элемент (Ctrl+Shift+N)">
+                                <Button.ContextMenu>
+                                    <ContextMenu>
+                                        <MenuItem Header="📁 Папка"
+                                                  InputGestureText="Ctrl+Shift+N"
+                                                  Command="{Binding NewFolderCommand}" />
+                                        <MenuItem Header="📄 Текстовый документ"
+                                                  Command="{Binding NewTextFileCommand}" />
+                                    </ContextMenu>
+                                </Button.ContextMenu>
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                    <TextBlock Text="➕ " FontSize="11" Foreground="{StaticResource BrushAccentLight}" />
+                                    <TextBlock Text="Создать " FontWeight="Medium" />
+                                    <TextBlock Text="▾" FontSize="9" Foreground="{StaticResource BrushTextMuted}" />
+                                </StackPanel>
+                            </Button>
+
+                            <!-- Thin Vertical Separator -->
+                            <Border Width="1" Height="18" Background="{StaticResource BrushBorderLight}" Margin="6,0" />
+
+                            <!-- Compact Icon Action Group -->
+                            <!-- ✂ Cut -->
+                            <Button Style="{StaticResource CommandBarActionButton}"
+                                    Command="{Binding CutCommand}"
+                                    ToolTip="Вырезать (Ctrl+X)">
+                                <TextBlock Text="✂" FontSize="13" />
+                            </Button>
+
+                            <!-- 📋 Copy -->
+                            <Button Style="{StaticResource CommandBarActionButton}"
+                                    Command="{Binding CopyCommand}"
+                                    ToolTip="Копировать (Ctrl+C)">
+                                <TextBlock Text="📋" FontSize="12" />
+                            </Button>
+
+                            <!-- 📥 Paste -->
+                            <Button Style="{StaticResource CommandBarActionButton}"
+                                    Command="{Binding PasteCommand}"
+                                    ToolTip="Вставить (Ctrl+V)">
+                                <TextBlock Text="📥" FontSize="12" />
+                            </Button>
+
+                            <!-- ✏️ Rename -->
+                            <Button Style="{StaticResource CommandBarActionButton}"
+                                    Command="{Binding RenameCommand}"
+                                    ToolTip="Переименовать (F2)">
+                                <TextBlock Text="✏️" FontSize="12" />
+                            </Button>
+
+                            <!-- 🔗 Share / Copy Path -->
+                            <Button Style="{StaticResource CommandBarActionButton}"
+                                    Command="{Binding CopyPathCommand}"
+                                    ToolTip="Поделиться / Копировать путь">
+                                <TextBlock Text="🔗" FontSize="12" />
+                            </Button>
+
+                            <!-- 🗑️ Delete -->
+                            <Button Style="{StaticResource CommandBarActionButton}"
+                                    Command="{Binding DeleteCommand}"
+                                    ToolTip="Удалить (Delete)">
+                                <TextBlock Text="🗑️" FontSize="12" Foreground="{StaticResource BrushError}" />
+                            </Button>
+
+                            <!-- Thin Vertical Separator -->
+                            <Border Width="1" Height="18" Background="{StaticResource BrushBorderLight}" Margin="6,0" />
+
+                            <!-- ⇅ Сортировка ▾ Dropdown -->
+                            <Button x:Name="BtnSortDropdown"
+                                    Style="{StaticResource CommandBarButton}"
+                                    Click="BtnSort_Click"
+                                    ToolTip="Параметры сортировки">
+                                <Button.ContextMenu>
+                                    <ContextMenu>
+                                        <MenuItem Header="Имя"
+                                                  Command="{Binding SortByNameCommand}" />
+                                        <MenuItem Header="Дата изменения"
+                                                  Command="{Binding SortByDateCommand}" />
+                                        <MenuItem Header="Тип"
+                                                  Command="{Binding SortByTypeCommand}" />
+                                        <MenuItem Header="Размер"
+                                                  Command="{Binding SortBySizeCommand}" />
+                                        <Separator />
+                                        <MenuItem Header="По возрастанию / убыванию"
+                                                  Command="{Binding ToggleSortDirectionCommand}" />
+                                    </ContextMenu>
+                                </Button.ContextMenu>
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                    <TextBlock Text="⇅ " FontSize="12" />
+                                    <TextBlock Text="Сортировка " />
+                                    <TextBlock Text="▾" FontSize="9" Foreground="{StaticResource BrushTextMuted}" />
+                                </StackPanel>
+                            </Button>
+
+                            <!-- ☷ Вид ▾ Dropdown -->
+                            <Button x:Name="BtnViewDropdown"
+                                    Style="{StaticResource CommandBarButton}"
+                                    Click="BtnView_Click"
+                                    ToolTip="Параметры отображения">
+                                <Button.ContextMenu>
+                                    <ContextMenu>
+                                        <MenuItem Header="Таблица (подробный)" IsChecked="True" />
+                                        <Separator />
+                                        <MenuItem Header="Скрытые элементы"
+                                                  IsCheckable="True"
+                                                  IsChecked="{Binding ShowHiddenFiles}"
+                                                  Command="{Binding ToggleShowHiddenFilesCommand}" />
+                                    </ContextMenu>
+                                </Button.ContextMenu>
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                    <TextBlock Text="☷ " FontSize="12" />
+                                    <TextBlock Text="Вид " />
+                                    <TextBlock Text="▾" FontSize="9" Foreground="{StaticResource BrushTextMuted}" />
+                                </StackPanel>
+                            </Button>
+
+                            <!-- 💻 Открыть в терминале -->
+                            <Button Style="{StaticResource CommandBarButton}"
+                                    Command="{Binding OpenInTerminalCommand}"
+                                    ToolTip="Открыть в терминале PowerShell">
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                    <TextBlock Text="💻 " FontSize="12" />
+                                    <TextBlock Text="Терминал" />
+                                </StackPanel>
+                            </Button>
+
+                            <!-- ℹ️ Свойства -->
+                            <Button Style="{StaticResource CommandBarButton}"
+                                    Command="{Binding PropertiesCommand}"
+                                    ToolTip="Свойства (Alt+Enter)">
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                    <TextBlock Text="ℹ️ " FontSize="12" Foreground="{StaticResource BrushAccentLight}" />
+                                    <TextBlock Text="Свойства" />
+                                </StackPanel>
+                            </Button>
+                        </StackPanel>
+                    </Grid>
+                </Border>
+
+                <!-- ================= 3: SIDEBAR + MAIN FILE VIEW ================= -->
+                <Grid Grid.Row="3">
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="240" MinWidth="180" MaxWidth="360" /> <!-- Sidebar Navigation Pane -->
+                        <ColumnDefinition Width="240" MinWidth="180" MaxWidth="360" /> <!-- Windows 11 Navigation Pane -->
                         <ColumnDefinition Width="4" />                                   <!-- Grid Splitter -->
-                        <ColumnDefinition Width="*" MinWidth="300" />                   <!-- Main File List View -->
+                        <ColumnDefinition Width="*" MinWidth="300" />                   <!-- Fluent File List View -->
                     </Grid.ColumnDefinitions>
 
-                    <!-- SIDEBAR (Navigation Pane) -->
+                    <!-- SIDEBAR (Windows 11 Navigation Pane) -->
                     <Border Grid.Column="0"
                             Background="{StaticResource BrushSidebar}"
-                            BorderBrush="{StaticResource BrushBorder}"
+                            BorderBrush="{StaticResource BrushBorderSubtle}"
                             BorderThickness="0,0,1,0">
                         <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-                            <StackPanel Margin="6,8">
-                                <!-- Section 1: Quick Access -->
-                                <TextBlock Text="БЫСТРЫЙ ДОСТУП"
-                                           FontSize="10"
-                                           FontWeight="Bold"
+                            <StackPanel Margin="4,6">
+                                <!-- Section 1: Главная (Pinned standard folders) -->
+                                <TextBlock Text="Главная"
+                                           FontSize="11"
+                                           FontWeight="SemiBold"
                                            Foreground="{StaticResource BrushTextMuted}"
-                                           Margin="10,4,0,6" />
+                                           Margin="12,6,0,4" />
 
                                 <ItemsControl ItemsSource="{Binding QuickAccessItems}">
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate>
                                             <Border Background="{Binding IsActive, Converter={StaticResource SidebarActiveBrushConv}}"
-                                                    CornerRadius="6"
-                                                    Margin="2,1">
+                                                    CornerRadius="4"
+                                                    Margin="6,1,6,1">
                                                 <Grid>
-                                                    <!-- Left Active Indicator Bar -->
+                                                    <!-- Left Active Indicator Bar (Win11 Signature Blue) -->
                                                     <Border Width="3"
                                                             HorizontalAlignment="Left"
-                                                            Background="{StaticResource BrushAccent}"
-                                                            CornerRadius="2"
+                                                            Background="{StaticResource BrushAccentLight}"
+                                                            CornerRadius="1.5"
                                                             Visibility="{Binding IsActive, Converter={StaticResource SidebarIndicatorVisConv}}" />
 
                                                     <Button Style="{StaticResource SidebarItemButton}"
@@ -514,27 +584,27 @@
                                     </ItemsControl.ItemTemplate>
                                 </ItemsControl>
 
-                                <Separator Style="{StaticResource {x:Type Separator}}" Margin="8,10" />
+                                <Separator Style="{StaticResource {x:Type Separator}}" Margin="10,8" />
 
-                                <!-- Section 2: This PC / Drives -->
-                                <TextBlock Text="ЭТОТ КОМПЬЮТЕР"
-                                           FontSize="10"
-                                           FontWeight="Bold"
+                                <!-- Section 2: Этот компьютер (Drives & Storage) -->
+                                <TextBlock Text="Этот компьютер"
+                                           FontSize="11"
+                                           FontWeight="SemiBold"
                                            Foreground="{StaticResource BrushTextMuted}"
-                                           Margin="10,2,0,6" />
+                                           Margin="12,4,0,4" />
 
                                 <ItemsControl ItemsSource="{Binding DriveItems}">
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate>
                                             <Border Background="{Binding IsActive, Converter={StaticResource SidebarActiveBrushConv}}"
-                                                    CornerRadius="6"
-                                                    Margin="2,1">
+                                                    CornerRadius="4"
+                                                    Margin="6,1,6,1">
                                                 <Grid>
                                                     <!-- Left Active Indicator Bar -->
                                                     <Border Width="3"
                                                             HorizontalAlignment="Left"
-                                                            Background="{StaticResource BrushAccent}"
-                                                            CornerRadius="2"
+                                                            Background="{StaticResource BrushAccentLight}"
+                                                            CornerRadius="1.5"
                                                             Visibility="{Binding IsActive, Converter={StaticResource SidebarIndicatorVisConv}}" />
 
                                                     <Button Style="{StaticResource SidebarItemButton}"
@@ -549,21 +619,30 @@
 
                                                             <TextBlock Grid.Column="0"
                                                                        Text="{Binding IconGlyph}"
-                                                                       FontSize="14"
+                                                                       FontSize="15"
                                                                        VerticalAlignment="Center"
                                                                        Margin="0,0,8,0" />
 
                                                             <StackPanel Grid.Column="1" VerticalAlignment="Center">
                                                                 <TextBlock Text="{Binding Title}"
-                                                                            FontSize="12"
-                                                                            FontWeight="SemiBold"
-                                                                            Foreground="{StaticResource BrushTextPrimary}"
-                                                                            TextTrimming="CharacterEllipsis" />
+                                                                           FontSize="12"
+                                                                           FontWeight="Medium"
+                                                                           Foreground="{StaticResource BrushTextPrimary}"
+                                                                           TextTrimming="CharacterEllipsis" />
                                                                 <TextBlock Text="{Binding Subtitle}"
-                                                                            FontSize="10"
-                                                                            Foreground="{StaticResource BrushTextMuted}"
-                                                                            Margin="0,1,0,0"
-                                                                            TextTrimming="CharacterEllipsis" />
+                                                                           FontSize="10"
+                                                                           Foreground="{StaticResource BrushTextMuted}"
+                                                                           Margin="0,1,0,2"
+                                                                           TextTrimming="CharacterEllipsis" />
+
+                                                                <!-- Mini Storage Usage Bar -->
+                                                                <ProgressBar Height="3"
+                                                                             Value="{Binding UsagePercent}"
+                                                                             Maximum="100"
+                                                                             Foreground="{StaticResource BrushAccentLight}"
+                                                                             Background="{StaticResource BrushBorderLight}"
+                                                                             BorderThickness="0"
+                                                                             Margin="0,1,6,0" />
                                                             </StackPanel>
                                                         </Grid>
                                                     </Button>
@@ -589,13 +668,13 @@
                                 <Border Background="Transparent">
                                     <Border x:Name="SplitterBar"
                                             Width="1"
-                                            Background="{StaticResource BrushBorder}"
+                                            Background="{StaticResource BrushBorderSubtle}"
                                             HorizontalAlignment="Center" />
                                 </Border>
                                 <ControlTemplate.Triggers>
                                     <Trigger Property="IsMouseOver" Value="True">
-                                        <Setter TargetName="SplitterBar" Property="Background" Value="{StaticResource BrushAccent}" />
-                                        <Setter TargetName="SplitterBar" Property="Width" Value="3" />
+                                        <Setter TargetName="SplitterBar" Property="Background" Value="{StaticResource BrushAccentLight}" />
+                                        <Setter TargetName="SplitterBar" Property="Width" Value="2" />
                                     </Trigger>
                                 </ControlTemplate.Triggers>
                             </ControlTemplate>
@@ -603,7 +682,7 @@
                     </GridSplitter>
 
                     <!-- MAIN VIEW (File & Folder List) -->
-                    <Grid Grid.Column="2">
+                    <Grid Grid.Column="2" Background="{StaticResource BrushBackground}">
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto" /> <!-- Loading / Error Bar -->
                             <RowDefinition Height="*" />    <!-- Virtualized ListView -->
@@ -615,12 +694,12 @@
                             <ProgressBar Height="2"
                                          IsIndeterminate="True"
                                          BorderThickness="0"
-                                         Foreground="{StaticResource BrushAccent}"
+                                         Foreground="{StaticResource BrushAccentLight}"
                                          Background="Transparent"
                                          Visibility="{Binding IsLoading, Converter={StaticResource BoolToVis}}" />
 
                             <!-- Error Notification Banner -->
-                            <Border Background="#4A1E24"
+                            <Border Background="{StaticResource BrushErrorBg}"
                                     BorderBrush="{StaticResource BrushError}"
                                     BorderThickness="0,0,0,1"
                                     Padding="10,6"
@@ -641,7 +720,7 @@
                             </Border>
                         </StackPanel>
 
-                        <!-- Spacious Virtualized Modern File & Folder List -->
+                        <!-- Spacious Virtualized Windows 11 Fluent File List -->
                         <ListView x:Name="FileListView"
                                   Grid.Row="1"
                                   ItemsSource="{Binding Items}"
@@ -653,72 +732,152 @@
                                   MouseDoubleClick="FileListView_MouseDoubleClick"
                                   SelectionChanged="FileListView_SelectionChanged"
                                   KeyDown="FileListView_KeyDown"
-                                  Padding="6,4">
+                                  Padding="4,2"
+                                  Tag="{Binding}">
 
                             <!-- Empty Area Context Menu (Right Click on Background) -->
                             <ListView.ContextMenu>
                                 <ContextMenu>
-                                    <MenuItem Header="➕ Создать папку"
-                                              InputGestureText="Ctrl+Shift+N"
-                                              Command="{Binding NewFolderCommand}" />
+                                    <MenuItem Header="☷ Вид">
+                                        <MenuItem Header="Таблица (подробный)" IsChecked="True" />
+                                    </MenuItem>
+                                    <MenuItem Header="⇅ Сортировка">
+                                        <MenuItem Header="По имени" Command="{Binding PlacementTarget.Tag.SortByNameCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                                        <MenuItem Header="По дате изменения" Command="{Binding PlacementTarget.Tag.SortByDateCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                                        <MenuItem Header="По типу" Command="{Binding PlacementTarget.Tag.SortByTypeCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                                        <MenuItem Header="По размеру" Command="{Binding PlacementTarget.Tag.SortBySizeCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                                    </MenuItem>
                                     <MenuItem Header="🔄 Обновить"
                                               InputGestureText="F5"
-                                              Command="{Binding RefreshCommand}" />
+                                              Command="{Binding PlacementTarget.Tag.RefreshCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                                    <Separator />
                                     <MenuItem Header="📥 Вставить"
                                               InputGestureText="Ctrl+V"
-                                              Command="{Binding PasteCommand}" />
+                                              Command="{Binding PlacementTarget.Tag.PasteCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                                    <MenuItem Header="➕ Создать">
+                                        <MenuItem Header="📁 Папка"
+                                                  InputGestureText="Ctrl+Shift+N"
+                                                  Command="{Binding PlacementTarget.Tag.NewFolderCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                                        <MenuItem Header="📄 Текстовый документ"
+                                                  Command="{Binding PlacementTarget.Tag.NewTextFileCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                                    </MenuItem>
                                     <Separator />
                                     <MenuItem Header="💻 Открыть в терминале"
-                                              Command="{Binding OpenInTerminalCommand}" />
+                                              Command="{Binding PlacementTarget.Tag.OpenInTerminalCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                                    <MenuItem Header="ℹ️ Свойства"
+                                              Command="{Binding PlacementTarget.Tag.PropertiesCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
                                 </ContextMenu>
                             </ListView.ContextMenu>
 
-                            <!-- Item Container Style with Item Context Menu -->
+                            <!-- Item Container Style with Windows 11 Signature Context Menu -->
                             <ListView.ItemContainerStyle>
                                 <Style TargetType="{x:Type ListViewItem}" BasedOn="{StaticResource {x:Type ListViewItem}}">
+                                    <Setter Property="Tag" Value="{Binding DataContext, RelativeSource={RelativeSource AncestorType=Window}}" />
                                     <Setter Property="ContextMenu">
                                         <Setter.Value>
                                             <ContextMenu>
-                                                <MenuItem Header="⚡ Открыть"
-                                                          FontWeight="Bold"
-                                                          Command="{Binding DataContext.OpenItemCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                                          CommandParameter="{Binding}" />
+                                                <!-- Windows 11 Signature Top Horizontal Quick Action Bar -->
+                                                <Grid Margin="2,2,2,4">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="*" />
+                                                        <ColumnDefinition Width="*" />
+                                                        <ColumnDefinition Width="*" />
+                                                        <ColumnDefinition Width="*" />
+                                                        <ColumnDefinition Width="*" />
+                                                    </Grid.ColumnDefinitions>
+
+                                                    <!-- ✂ Cut -->
+                                                    <Button Grid.Column="0"
+                                                            Style="{StaticResource ContextMenuTopActionButton}"
+                                                            Command="{Binding PlacementTarget.Tag.CutCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                            ToolTip="Вырезать (Ctrl+X)">
+                                                        <TextBlock Text="✂" FontSize="13" />
+                                                    </Button>
+
+                                                    <!-- 📋 Copy -->
+                                                    <Button Grid.Column="1"
+                                                            Style="{StaticResource ContextMenuTopActionButton}"
+                                                            Command="{Binding PlacementTarget.Tag.CopyCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                            ToolTip="Копировать (Ctrl+C)">
+                                                        <TextBlock Text="📋" FontSize="12" />
+                                                    </Button>
+
+                                                    <!-- ✏️ Rename -->
+                                                    <Button Grid.Column="2"
+                                                            Style="{StaticResource ContextMenuTopActionButton}"
+                                                            Command="{Binding PlacementTarget.Tag.RenameCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                            ToolTip="Переименовать (F2)">
+                                                        <TextBlock Text="✏️" FontSize="12" />
+                                                    </Button>
+
+                                                    <!-- 🔗 Share / Copy Path -->
+                                                    <Button Grid.Column="3"
+                                                            Style="{StaticResource ContextMenuTopActionButton}"
+                                                            Command="{Binding PlacementTarget.Tag.CopyPathCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                            ToolTip="Поделиться / Копировать путь">
+                                                        <TextBlock Text="🔗" FontSize="12" />
+                                                    </Button>
+
+                                                    <!-- 🗑️ Delete -->
+                                                    <Button Grid.Column="4"
+                                                            Style="{StaticResource ContextMenuTopActionButton}"
+                                                            Command="{Binding PlacementTarget.Tag.DeleteCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                            ToolTip="Удалить (Delete)">
+                                                        <TextBlock Text="🗑️" FontSize="12" Foreground="{StaticResource BrushError}" />
+                                                    </Button>
+                                                </Grid>
+
                                                 <Separator />
-                                                <MenuItem Header="📋 Копировать"
-                                                          InputGestureText="Ctrl+C"
-                                                          Command="{Binding DataContext.CopyCommand, RelativeSource={RelativeSource AncestorType=Window}}" />
-                                                <MenuItem Header="✂ Вырезать"
-                                                          InputGestureText="Ctrl+X"
-                                                          Command="{Binding DataContext.CutCommand, RelativeSource={RelativeSource AncestorType=Window}}" />
+
+                                                <!-- Vertical Context Menu Items -->
+                                                <MenuItem Header="⚡ Открыть"
+                                                          FontWeight="SemiBold"
+                                                          Command="{Binding PlacementTarget.Tag.OpenItemCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                          CommandParameter="{Binding}" />
+                                                <MenuItem Header="📋 Копировать как путь"
+                                                          Command="{Binding PlacementTarget.Tag.CopyPathCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                                                <MenuItem Header="💻 Открыть в терминале"
+                                                          Command="{Binding PlacementTarget.Tag.OpenInTerminalCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
                                                 <MenuItem Header="📥 Вставить"
                                                           InputGestureText="Ctrl+V"
-                                                          Command="{Binding DataContext.PasteCommand, RelativeSource={RelativeSource AncestorType=Window}}" />
+                                                          Command="{Binding PlacementTarget.Tag.PasteCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
                                                 <Separator />
-                                                <MenuItem Header="✏️ Переименовать"
-                                                          InputGestureText="F2"
-                                                          Command="{Binding DataContext.RenameCommand, RelativeSource={RelativeSource AncestorType=Window}}" />
-                                                <MenuItem Header="🗑️ Удалить"
-                                                          InputGestureText="Delete"
-                                                          Command="{Binding DataContext.DeleteCommand, RelativeSource={RelativeSource AncestorType=Window}}" />
-                                                <MenuItem Header="📋 Копировать путь"
-                                                          Command="{Binding DataContext.CopyPathCommand, RelativeSource={RelativeSource AncestorType=Window}}" />
+                                                <MenuItem Header="➕ Создать папку"
+                                                          InputGestureText="Ctrl+Shift+N"
+                                                          Command="{Binding PlacementTarget.Tag.NewFolderCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                                                <MenuItem Header="🔄 Обновить"
+                                                          InputGestureText="F5"
+                                                          Command="{Binding PlacementTarget.Tag.RefreshCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
                                                 <Separator />
                                                 <MenuItem Header="ℹ️ Свойства"
                                                           InputGestureText="Alt+Enter"
-                                                          Command="{Binding DataContext.PropertiesCommand, RelativeSource={RelativeSource AncestorType=Window}}" />
+                                                          Command="{Binding PlacementTarget.Tag.PropertiesCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
                                             </ContextMenu>
                                         </Setter.Value>
                                     </Setter>
                                 </Style>
                             </ListView.ItemContainerStyle>
 
-                            <!-- Modern Columns View -->
+                            <!-- Modern Windows 11 Column Headers and Cells -->
                             <ListView.View>
                                 <GridView>
                                     <!-- 1. Name Column (with semantic category glyph) -->
                                     <GridViewColumn Width="380">
                                         <GridViewColumn.Header>
-                                            <TextBlock Text="Имя" />
+                                            <GridViewColumnHeader Click="GridViewColumnHeader_Click" Tag="Name">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <TextBlock Text="Имя" />
+                                                    <TextBlock>
+                                                        <TextBlock.Text>
+                                                            <MultiBinding Converter="{StaticResource SortColumnToGlyph}">
+                                                                <Binding Path="DataContext.SortColumn" RelativeSource="{RelativeSource AncestorType=Window}" />
+                                                                <Binding Path="DataContext.SortAscending" RelativeSource="{RelativeSource AncestorType=Window}" />
+                                                                <Binding Source="Name" />
+                                                            </MultiBinding>
+                                                        </TextBlock.Text>
+                                                    </TextBlock>
+                                                </StackPanel>
+                                            </GridViewColumnHeader>
                                         </GridViewColumn.Header>
                                         <GridViewColumn.CellTemplate>
                                             <DataTemplate>
@@ -741,9 +900,22 @@
                                     </GridViewColumn>
 
                                     <!-- 2. Date Modified Column -->
-                                    <GridViewColumn Width="150">
+                                    <GridViewColumn Width="160">
                                         <GridViewColumn.Header>
-                                            <TextBlock Text="Дата изменения" />
+                                            <GridViewColumnHeader Click="GridViewColumnHeader_Click" Tag="Date">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <TextBlock Text="Дата изменения" />
+                                                    <TextBlock>
+                                                        <TextBlock.Text>
+                                                            <MultiBinding Converter="{StaticResource SortColumnToGlyph}">
+                                                                <Binding Path="DataContext.SortColumn" RelativeSource="{RelativeSource AncestorType=Window}" />
+                                                                <Binding Path="DataContext.SortAscending" RelativeSource="{RelativeSource AncestorType=Window}" />
+                                                                <Binding Source="Date" />
+                                                            </MultiBinding>
+                                                        </TextBlock.Text>
+                                                    </TextBlock>
+                                                </StackPanel>
+                                            </GridViewColumnHeader>
                                         </GridViewColumn.Header>
                                         <GridViewColumn.CellTemplate>
                                             <DataTemplate>
@@ -758,7 +930,20 @@
                                     <!-- 3. Type / Category Column -->
                                     <GridViewColumn Width="180">
                                         <GridViewColumn.Header>
-                                            <TextBlock Text="Тип" />
+                                            <GridViewColumnHeader Click="GridViewColumnHeader_Click" Tag="Type">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <TextBlock Text="Тип" />
+                                                    <TextBlock>
+                                                        <TextBlock.Text>
+                                                            <MultiBinding Converter="{StaticResource SortColumnToGlyph}">
+                                                                <Binding Path="DataContext.SortColumn" RelativeSource="{RelativeSource AncestorType=Window}" />
+                                                                <Binding Path="DataContext.SortAscending" RelativeSource="{RelativeSource AncestorType=Window}" />
+                                                                <Binding Source="Type" />
+                                                            </MultiBinding>
+                                                        </TextBlock.Text>
+                                                    </TextBlock>
+                                                </StackPanel>
+                                            </GridViewColumnHeader>
                                         </GridViewColumn.Header>
                                         <GridViewColumn.CellTemplate>
                                             <DataTemplate>
@@ -774,7 +959,20 @@
                                     <!-- 4. Size Column (Formatted KB / MB / GB, blank for folders) -->
                                     <GridViewColumn Width="110">
                                         <GridViewColumn.Header>
-                                            <TextBlock Text="Размер" />
+                                            <GridViewColumnHeader Click="GridViewColumnHeader_Click" Tag="Size">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <TextBlock Text="Размер" />
+                                                    <TextBlock>
+                                                        <TextBlock.Text>
+                                                            <MultiBinding Converter="{StaticResource SortColumnToGlyph}">
+                                                                <Binding Path="DataContext.SortColumn" RelativeSource="{RelativeSource AncestorType=Window}" />
+                                                                <Binding Path="DataContext.SortAscending" RelativeSource="{RelativeSource AncestorType=Window}" />
+                                                                <Binding Source="Size" />
+                                                            </MultiBinding>
+                                                        </TextBlock.Text>
+                                                    </TextBlock>
+                                                </StackPanel>
+                                            </GridViewColumnHeader>
                                         </GridViewColumn.Header>
                                         <GridViewColumn.CellTemplate>
                                             <DataTemplate>
@@ -793,12 +991,12 @@
                     </Grid>
                 </Grid>
 
-                <!-- ================= 3: BOTTOM STATUS BAR ================= -->
-                <Border Grid.Row="3"
-                        Background="{StaticResource BrushSecondary}"
-                        BorderBrush="{StaticResource BrushBorder}"
+                <!-- ================= 4: BOTTOM STATUS BAR ================= -->
+                <Border Grid.Row="4"
+                        Background="{StaticResource BrushMica}"
+                        BorderBrush="{StaticResource BrushBorderSubtle}"
                         BorderThickness="0,1,0,0"
-                        CornerRadius="0,0,10,10"
+                        CornerRadius="0,0,8,8"
                         Padding="12,4">
                     <Grid>
                         <Grid.ColumnDefinitions>
@@ -819,20 +1017,27 @@
                         <TextBlock Grid.Column="1"
                                    Text="{Binding SelectedStatusText}"
                                    FontSize="11"
-                                   Foreground="{StaticResource BrushAccent}"
+                                   Foreground="{StaticResource BrushAccentLight}"
                                    FontWeight="Medium"
                                    TextTrimming="CharacterEllipsis"
                                    VerticalAlignment="Center"
                                    Margin="16,0" />
 
                         <!-- Right: Drive Storage Telemetry -->
-                        <TextBlock Grid.Column="2"
-                                   Text="{Binding DriveSpaceText}"
-                                   FontSize="11"
-                                   Foreground="{StaticResource BrushTextMuted}"
-                                   HorizontalAlignment="Right"
-                                   TextTrimming="CharacterEllipsis"
-                                   VerticalAlignment="Center" />
+                        <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                            <TextBlock Text="{Binding DriveSpaceText}"
+                                       FontSize="11"
+                                       Foreground="{StaticResource BrushTextMuted}"
+                                       TextTrimming="CharacterEllipsis"
+                                       VerticalAlignment="Center"
+                                       Margin="0,0,12,0" />
+
+                            <TextBlock Text="☷"
+                                       FontSize="12"
+                                       Foreground="{StaticResource BrushTextSecondary}"
+                                       VerticalAlignment="Center"
+                                       ToolTip="Таблица" />
+                        </StackPanel>
                     </Grid>
                 </Border>
             </Grid>
