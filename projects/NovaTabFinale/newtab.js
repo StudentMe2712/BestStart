@@ -5130,6 +5130,59 @@ document.getElementById('settingsSideBtn').addEventListener('click', e => {
   }
 });
 
+// ── Резервная база цитат (на случай оффлайна или падения API) ──
+const FALLBACK_QUOTES = [
+  { text: "В минуту нерешительности действуй быстро и старайся сделать первый шаг, хотя бы и лишний.", author: "Лев Толстой" },
+  { text: "Никогда не ошибается тот, кто ничего не делает.", author: "Теодор Рузвельт" },
+  { text: "Сложнее всего начать действовать, все остальное зависит только от упорства.", author: "Амелия Эрхарт" },
+  { text: "То, что мы знаем, — это капля, а то, чего мы не знаем, — это океан.", author: "Исаак Ньютон" },
+  { text: "Успех — это способность шагать от одной неудачи к другой, не теряя энтузиазма.", author: "Уинстон Черчилль" }
+];
+
+async function renderRandomQuote() {
+  const quoteText = document.getElementById('quoteText');
+  const quoteAuthor = document.getElementById('quoteAuthor');
+  const widget = document.getElementById('quoteWidget');
+  
+  if (!quoteText || !quoteAuthor || !widget) return;
+
+  // Изначально скрываем виджет, чтобы текст не "прыгал" при загрузке
+  widget.style.opacity = '0'; 
+
+  // По умолчанию берем резервную цитату
+  let finalQuote = FALLBACK_QUOTES[Math.floor(Math.random() * FALLBACK_QUOTES.length)];
+
+  try {
+    // Делаем запрос к Forismatic API (lang=ru)
+    const response = await fetch('https://api.forismatic.com/api/1.0/?method=getQuote&format=json&lang=ru', {
+      cache: 'no-store'
+    });
+    
+    if (response.ok) {
+      const textData = await response.text();
+      // Forismatic иногда отдает JSON с неэкранированными кавычками. 
+      const cleanJson = textData.replace(/\\'/g, "'").replace(/\n/g, " "); 
+      const data = JSON.parse(cleanJson);
+      
+      if (data.quoteText) {
+        finalQuote = {
+          text: data.quoteText.trim(),
+          author: data.quoteAuthor ? data.quoteAuthor.trim() : "Неизвестный автор"
+        };
+      }
+    }
+  } catch (err) {
+    console.warn('[NovaTab] API цитат недоступно (оффлайн режим).', err.message);
+  }
+
+  // Применяем текст в DOM
+  quoteText.textContent = `«${finalQuote.text}»`;
+  quoteAuthor.textContent = finalQuote.author;
+  
+  // Плавно проявляем виджет
+  widget.style.opacity = '0.85';
+}
+
 // ── Init ──
 async function init() {
   await loadState();
@@ -5150,6 +5203,8 @@ async function init() {
 
   document.getElementById('weatherWidget')?.addEventListener('click', showWeatherPopup);
 
+  renderRandomQuote();
+  document.getElementById('quoteWidget')?.addEventListener('click', renderRandomQuote);
 }
 init();
 

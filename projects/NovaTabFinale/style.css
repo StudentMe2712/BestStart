@@ -2486,4 +2486,56 @@ body.tour-show-create .grid-cell.can-add .cell-plus {
 body.theme-light.tour-show-create .grid-cell.can-add { border-color: rgba(0,0,0,0.55); }
 body.theme-light.tour-show-create .grid-cell.can-add .cell-plus { color: rgba(0,0,0,0.78); }
 
+/* ── Dynamic Quote Widget ── */
+.quote-widget {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+  max-width: min(700px, 85vw);
+  padding: 8px 18px;
+  border-radius: 14px;
+  background: rgba(var(--board-rgb, 255,255,255), var(--board-alpha, 0.05));
+  border: 1px solid var(--board-border, rgba(255,255,255,0.1));
+  box-shadow: 0 0 24px rgba(0,0,0,0.22);
+  backdrop-filter: blur(var(--board-blur, 12px));
+  -webkit-backdrop-filter: blur(var(--board-blur, 12px));
+  text-align: center;
+  cursor: pointer;
+  user-select: none;
+  opacity: 0;
+  transition: opacity 0.4s ease, transform 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  isolation: isolate;
+}
+
+.quote-widget:hover {
+  background: rgba(var(--board-rgb, 255,255,255), var(--board-alpha-hover, 0.10));
+  box-shadow: 0 4px 32px rgba(0,0,0,0.3);
+  transform: translateX(-50%) translateY(-2px);
+}
+
+.quote-widget:active {
+  transform: translateX(-50%) translateY(0);
+}
+
+.quote-text {
+  font-size: calc(13px * var(--board-text-scale, 1));
+  font-style: italic;
+  line-height: 1.4;
+  color: var(--board-text, rgba(255,255,255,0.9));
+}
+
+.quote-author {
+  font-size: calc(11px * var(--board-text-scale, 1));
+  font-weight: 500;
+  color: var(--board-text-secondary, rgba(255,255,255,0.65));
+  letter-spacing: 0.02em;
+}
+
+
 
