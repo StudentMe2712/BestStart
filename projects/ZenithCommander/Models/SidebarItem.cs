@@ -1,3 +1,4 @@
+using System.Windows.Media;
 using NexusCommander.Helpers;
 
 namespace NexusCommander.Models;
@@ -10,6 +11,7 @@ public class SidebarItem : ViewModelBase
 
     public string Title { get; set; } = string.Empty;
     public string Path { get; set; } = string.Empty;
+    public ImageSource? Icon { get; set; }
     public string IconGlyph { get; set; } = "📁";
     public bool IsDrive { get; set; }
     public string Section { get; set; } = "Быстрый доступ"; // "Быстрый доступ" or "Диски"

@@ -156,6 +156,8 @@ public class MainViewModel : ViewModelBase
 
     public string SearchPlaceholder => $"Поиск в \"{CurrentFolderName}\"";
 
+    public System.Windows.Media.ImageSource? FolderIcon => IconExtractor.GetFolderIcon(true);
+
     public string PathInputText
     {
         get => _pathInputText;
@@ -722,26 +724,27 @@ public class MainViewModel : ViewModelBase
         string music = Environment.GetFolderPath(Environment.SpecialFolder.MyMusic);
         string videos = Environment.GetFolderPath(Environment.SpecialFolder.MyVideos);
 
-        AddQuickAccessFolder("Главная", "🏠", userProfile);
-        AddQuickAccessFolder("Галерея", "🖼️", Directory.Exists(pictures) ? pictures : userProfile);
-        AddQuickAccessFolder("Рабочий стол", "🖥️", desktop);
-        AddQuickAccessFolder("Загрузки", "📥", Directory.Exists(downloads) ? downloads : userProfile);
-        AddQuickAccessFolder("Документы", "📄", documents);
-        AddQuickAccessFolder("Изображения", "🌄", pictures);
-        AddQuickAccessFolder("Музыка", "🎵", music);
-        AddQuickAccessFolder("Видео", "🎬", videos);
+        AddQuickAccessFolder("Главная", "🏠", userProfile, IconExtractor.GetSpecialFolderIcon(Environment.SpecialFolder.UserProfile));
+        AddQuickAccessFolder("Галерея", "🖼️", Directory.Exists(pictures) ? pictures : userProfile, IconExtractor.GetSpecialFolderIcon(Environment.SpecialFolder.MyPictures));
+        AddQuickAccessFolder("Рабочий стол", "🖥️", desktop, IconExtractor.GetSpecialFolderIcon(Environment.SpecialFolder.Desktop));
+        AddQuickAccessFolder("Загрузки", "📥", Directory.Exists(downloads) ? downloads : userProfile, IconExtractor.GetCustomFolderIcon(downloads));
+        AddQuickAccessFolder("Документы", "📄", documents, IconExtractor.GetSpecialFolderIcon(Environment.SpecialFolder.MyDocuments));
+        AddQuickAccessFolder("Изображения", "🌄", pictures, IconExtractor.GetSpecialFolderIcon(Environment.SpecialFolder.MyPictures));
+        AddQuickAccessFolder("Музыка", "🎵", music, IconExtractor.GetSpecialFolderIcon(Environment.SpecialFolder.MyMusic));
+        AddQuickAccessFolder("Видео", "🎬", videos, IconExtractor.GetSpecialFolderIcon(Environment.SpecialFolder.MyVideos));
 
         RefreshDrives();
     }
 
-    private void AddQuickAccessFolder(string title, string icon, string path)
+    private void AddQuickAccessFolder(string title, string iconGlyph, string path, System.Windows.Media.ImageSource? icon = null)
     {
         if (!string.IsNullOrWhiteSpace(path))
         {
             QuickAccessItems.Add(new SidebarItem
             {
                 Title = title,
-                IconGlyph = icon,
+                IconGlyph = iconGlyph,
+                Icon = icon ?? IconExtractor.GetFolderIcon(true),
                 Path = path,
                 IsDrive = false,
                 Section = "Главная"
@@ -756,6 +759,7 @@ public class MainViewModel : ViewModelBase
         {
             foreach (var drive in DriveInfo.GetDrives())
             {
+                var driveIcon = IconExtractor.GetDriveIcon(drive.Name, true);
                 if (drive.IsReady)
                 {
                     string label = string.IsNullOrWhiteSpace(drive.VolumeLabel) ? "Локальный диск" : drive.VolumeLabel;
@@ -768,6 +772,7 @@ public class MainViewModel : ViewModelBase
                     {
                         Title = $"{label} ({driveLetter})",
                         IconGlyph = "💾",
+                        Icon = driveIcon,
                         Path = drive.RootDirectory.FullName,
                         IsDrive = true,
                         Section = "Этот компьютер",
@@ -783,6 +788,7 @@ public class MainViewModel : ViewModelBase
                     {
                         Title = $"Диск ({drive.Name.TrimEnd('\\')})",
                         IconGlyph = "💾",
+                        Icon = driveIcon,
                         Path = drive.Name,
                         IsDrive = true,
                         Section = "Этот компьютер",

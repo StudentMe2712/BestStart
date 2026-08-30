@@ -1,8 +1,10 @@
 using System;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Interop;
 using NexusCommander.Models;
 using NexusCommander.ViewModels;
 
@@ -10,9 +12,73 @@ namespace NexusCommander;
 
 public partial class MainWindow : Window
 {
+    #region Win32 DWM Backdrop Interop
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct MARGINS
+    {
+        public int cxLeftWidth;
+        public int cxRightWidth;
+        public int cyTopHeight;
+        public int cyBottomHeight;
+    }
+
+    [DllImport("dwmapi.dll", PreserveSig = true)]
+    private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref int attrValue, int attrSize);
+
+    [DllImport("dwmapi.dll")]
+    private static extern int DwmExtendFrameIntoClientArea(IntPtr hWnd, ref MARGINS pMarInset);
+
+    private const int DWMWA_USE_IMMERSIVE_DARK_MODE = 20;
+    private const int DWMWA_SYSTEMBACKDROP_TYPE = 38;
+    private const int DWMWA_MICA_EFFECT = 1029;
+
+    #endregion
+
     public MainWindow()
     {
         InitializeComponent();
+        StateChanged += MainWindow_StateChanged;
+    }
+
+    protected override void OnSourceInitialized(EventArgs e)
+    {
+        base.OnSourceInitialized(e);
+
+        var hwnd = new WindowInteropHelper(this).Handle;
+        if (hwnd != IntPtr.Zero)
+        {
+            // 1. Enable Immersive Dark Mode
+            int darkMode = 1;
+            DwmSetWindowAttribute(hwnd, DWMWA_USE_IMMERSIVE_DARK_MODE, ref darkMode, sizeof(int));
+
+            // 2. Enable Mica System Backdrop (Windows 11 22H2+ DWMSBT_MAINWINDOW = 2)
+            int backdropType = 2; // DWMSBT_MAINWINDOW (Mica)
+            int hr = DwmSetWindowAttribute(hwnd, DWMWA_SYSTEMBACKDROP_TYPE, ref backdropType, sizeof(int));
+
+            // Fallback for Windows 11 21H2 (build 22000)
+            if (hr != 0)
+            {
+                int micaTrue = 1;
+                DwmSetWindowAttribute(hwnd, DWMWA_MICA_EFFECT, ref micaTrue, sizeof(int));
+            }
+
+            // 3. Extend Frame Into Client Area (-1 for full Mica window backdrop)
+            var margins = new MARGINS { cxLeftWidth = -1, cxRightWidth = -1, cyTopHeight = -1, cyBottomHeight = -1 };
+            DwmExtendFrameIntoClientArea(hwnd, ref margins);
+        }
+    }
+
+    private void MainWindow_StateChanged(object? sender, EventArgs e)
+    {
+        if (WindowState == WindowState.Maximized)
+        {
+            MaximizeIconText.Text = "🗗";
+        }
+        else
+        {
+            MaximizeIconText.Text = "🗖";
+        }
     }
 
     private void TitleBar_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)

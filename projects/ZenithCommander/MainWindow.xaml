@@ -11,158 +11,152 @@
         Height="800" Width="1300"
         MinHeight="500" MinWidth="850"
         WindowStyle="None"
-        AllowsTransparency="True"
         Background="Transparent"
-        ResizeMode="CanResizeWithGrip"
+        ResizeMode="CanResize"
         WindowStartupLocation="CenterScreen"
         PreviewKeyDown="Window_PreviewKeyDown">
+
+    <WindowChrome.WindowChrome>
+        <WindowChrome GlassFrameThickness="-1"
+                      CaptionHeight="42"
+                      CornerRadius="0"
+                      ResizeBorderThickness="6"
+                      UseAeroCaptionButtons="False" />
+    </WindowChrome.WindowChrome>
 
     <Window.DataContext>
         <vm:MainViewModel />
     </Window.DataContext>
 
-    <!-- Outer Window Container with Rounded Corners and Windows 11 Drop Shadow -->
-    <Grid Margin="10">
-        <Border Background="{StaticResource BrushMica}"
-                BorderBrush="{StaticResource BrushBorderLight}"
-                BorderThickness="1"
-                CornerRadius="8"
-                ClipToBounds="False">
-            <Border.Effect>
-                <DropShadowEffect Color="#000000"
-                                  BlurRadius="22"
-                                  ShadowDepth="6"
-                                  Opacity="0.65"
-                                  Direction="270" />
-            </Border.Effect>
+    <!-- Root Window Container for Windows 11 Mica Backdrop & Glassmorphism -->
+    <Grid Background="Transparent">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="42" />  <!-- 0: Windows 11 Title Bar with Tabs -->
+            <RowDefinition Height="46" />  <!-- 1: Navigation & Address Bar & Search -->
+            <RowDefinition Height="44" />  <!-- 2: Windows 11 Command Bar (~44px) -->
+            <RowDefinition Height="*" />   <!-- 3: Sidebar + Main File View -->
+            <RowDefinition Height="30" />  <!-- 4: Bottom Status Bar -->
+        </Grid.RowDefinitions>
 
+        <!-- ================= 0: TOP TITLE BAR WITH TABS ================= -->
+        <Border Grid.Row="0"
+                Background="{StaticResource BrushMica}"
+                BorderBrush="{StaticResource BrushBorder}"
+                BorderThickness="0,0,0,1"
+                MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
             <Grid>
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="42" />  <!-- 0: Windows 11 Title Bar with Tabs -->
-                    <RowDefinition Height="46" />  <!-- 1: Navigation & Address Bar & Search -->
-                    <RowDefinition Height="44" />  <!-- 2: Windows 11 Command Bar (~44px) -->
-                    <RowDefinition Height="*" />   <!-- 3: Sidebar + Main File View -->
-                    <RowDefinition Height="30" />  <!-- 4: Bottom Status Bar -->
-                </Grid.RowDefinitions>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" /> <!-- Tabs Area -->
+                    <ColumnDefinition Width="*" />    <!-- Draggable Center -->
+                    <ColumnDefinition Width="Auto" /> <!-- Window Controls (Min, Max, Close) -->
+                </Grid.ColumnDefinitions>
 
-                <!-- ================= 0: TOP TITLE BAR WITH TABS ================= -->
-                <Border Grid.Row="0"
-                        Background="{StaticResource BrushMica}"
-                        BorderBrush="{StaticResource BrushBorder}"
-                        BorderThickness="0,0,0,1"
-                        CornerRadius="8,8,0,0"
-                        MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto" /> <!-- Tabs Area -->
-                            <ColumnDefinition Width="*" />    <!-- Draggable Center -->
-                            <ColumnDefinition Width="Auto" /> <!-- Window Controls (Min, Max, Close) -->
-                        </Grid.ColumnDefinitions>
+                <!-- Windows 11 Tab Strip -->
+                <StackPanel Grid.Column="0"
+                            Orientation="Horizontal"
+                            VerticalAlignment="Center"
+                            Margin="8,0,0,0"
+                            WindowChrome.IsHitTestVisibleInChrome="True">
+                    <!-- Active Tab Card -->
+                    <Border Background="{StaticResource BrushSurface}"
+                            BorderBrush="{StaticResource BrushBorderLight}"
+                            BorderThickness="1"
+                            CornerRadius="6"
+                            Height="32"
+                            Margin="0,0,4,0"
+                            Padding="10,0,6,0">
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <Image Source="{Binding FolderIcon}"
+                                   Width="16" Height="16"
+                                   VerticalAlignment="Center"
+                                   Margin="0,0,7,0"
+                                   RenderOptions.BitmapScalingMode="HighQuality" />
 
-                        <!-- Windows 11 Tab Strip -->
-                        <StackPanel Grid.Column="0"
-                                    Orientation="Horizontal"
-                                    VerticalAlignment="Center"
-                                    Margin="8,0,0,0">
-                            <!-- Active Tab Card -->
-                            <Border Background="{StaticResource BrushSurface}"
-                                    BorderBrush="{StaticResource BrushBorderLight}"
-                                    BorderThickness="1"
-                                    CornerRadius="6"
-                                    Height="32"
-                                    Margin="0,0,4,0"
-                                    Padding="10,0,6,0">
-                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                    <TextBlock Text="📁"
-                                               FontSize="13"
-                                               VerticalAlignment="Center"
-                                               Margin="0,0,7,0" />
+                            <TextBlock Text="{Binding CurrentFolderName}"
+                                       FontSize="12"
+                                       FontWeight="Medium"
+                                       Foreground="{StaticResource BrushTextPrimary}"
+                                       VerticalAlignment="Center"
+                                       MaxWidth="180"
+                                       TextTrimming="CharacterEllipsis" />
 
-                                    <TextBlock Text="{Binding CurrentFolderName}"
-                                               FontSize="12"
-                                               FontWeight="Medium"
-                                               Foreground="{StaticResource BrushTextPrimary}"
-                                               VerticalAlignment="Center"
-                                               MaxWidth="180"
-                                               TextTrimming="CharacterEllipsis" />
-
-                                    <!-- Close Tab Button -->
-                                    <Button Width="20" Height="20"
-                                            Margin="8,0,0,0"
-                                            Style="{StaticResource NavIconButton}"
-                                            Command="{Binding CloseTabCommand}"
-                                            ToolTip="Закрыть вкладку">
-                                        <TextBlock Text="✕" FontSize="9" Foreground="{StaticResource BrushTextSecondary}" />
-                                    </Button>
-                                </StackPanel>
-                            </Border>
-
-                            <!-- New Tab Button -->
-                            <Button Width="28" Height="28"
+                            <!-- Close Tab Button -->
+                            <Button Width="20" Height="20"
+                                    Margin="8,0,0,0"
                                     Style="{StaticResource NavIconButton}"
-                                    Command="{Binding NewTabCommand}"
-                                    ToolTip="Новая вкладка (Ctrl+T)">
-                                <TextBlock Text="➕" FontSize="10" Foreground="{StaticResource BrushTextSecondary}" />
+                                    Command="{Binding CloseTabCommand}"
+                                    ToolTip="Закрыть вкладку">
+                                <TextBlock Text="✕" FontSize="9" Foreground="{StaticResource BrushTextSecondary}" />
                             </Button>
                         </StackPanel>
+                    </Border>
 
-                        <!-- Window Controls (Minimize, Maximize/Restore, Close) -->
-                        <StackPanel Grid.Column="2"
-                                    Orientation="Horizontal"
-                                    VerticalAlignment="Stretch">
-                            <!-- Minimize Button -->
-                            <Button Width="44"
-                                    Background="Transparent"
-                                    BorderThickness="0"
-                                    Foreground="{StaticResource BrushTextSecondary}"
-                                    Click="BtnMinimize_Click"
-                                    ToolTip="Свернуть">
-                                <TextBlock Text="—" FontSize="11" FontWeight="Bold" />
-                            </Button>
+                    <!-- New Tab Button -->
+                    <Button Width="28" Height="28"
+                            Style="{StaticResource NavIconButton}"
+                            Command="{Binding NewTabCommand}"
+                            ToolTip="Новая вкладка (Ctrl+T)">
+                        <TextBlock Text="➕" FontSize="10" Foreground="{StaticResource BrushTextSecondary}" />
+                    </Button>
+                </StackPanel>
 
-                            <!-- Maximize/Restore Button -->
-                            <Button Width="44"
-                                    Background="Transparent"
-                                    BorderThickness="0"
-                                    Foreground="{StaticResource BrushTextSecondary}"
-                                    Click="BtnMaximize_Click"
-                                    ToolTip="Развернуть / Восстановить">
-                                <TextBlock x:Name="MaximizeIconText" Text="🗖" FontSize="11" />
-                            </Button>
+                <!-- Window Controls (Minimize, Maximize/Restore, Close) -->
+                <StackPanel Grid.Column="2"
+                            Orientation="Horizontal"
+                            VerticalAlignment="Stretch"
+                            WindowChrome.IsHitTestVisibleInChrome="True">
+                    <!-- Minimize Button -->
+                    <Button Width="44"
+                            Background="Transparent"
+                            BorderThickness="0"
+                            Foreground="{StaticResource BrushTextSecondary}"
+                            Click="BtnMinimize_Click"
+                            ToolTip="Свернуть">
+                        <TextBlock Text="—" FontSize="11" FontWeight="Bold" />
+                    </Button>
 
-                            <!-- Close Button -->
-                            <Button x:Name="BtnClose"
-                                    Width="46"
-                                    Background="Transparent"
-                                    BorderThickness="0"
-                                    Foreground="{StaticResource BrushTextSecondary}"
-                                    Click="BtnClose_Click"
-                                    ToolTip="Закрыть">
-                                <Button.Template>
-                                    <ControlTemplate TargetType="Button">
-                                        <Border x:Name="closeBorder"
-                                                Background="{TemplateBinding Background}"
-                                                CornerRadius="0,7,0,0"
-                                                SnapsToDevicePixels="True">
-                                            <TextBlock Text="✕"
-                                                       FontSize="11"
-                                                       FontWeight="Bold"
-                                                       Foreground="{TemplateBinding Foreground}"
-                                                       HorizontalAlignment="Center"
-                                                       VerticalAlignment="Center" />
-                                        </Border>
-                                        <ControlTemplate.Triggers>
-                                             <Trigger Property="IsMouseOver" Value="True">
-                                                <Setter TargetName="closeBorder" Property="Background" Value="#C42B1C" />
-                                                <Setter Property="Foreground" Value="#FFFFFF" />
-                                            </Trigger>
-                                        </ControlTemplate.Triggers>
-                                    </ControlTemplate>
-                                </Button.Template>
-                            </Button>
-                        </StackPanel>
-                    </Grid>
-                </Border>
+                    <!-- Maximize/Restore Button -->
+                    <Button Width="44"
+                            Background="Transparent"
+                            BorderThickness="0"
+                            Foreground="{StaticResource BrushTextSecondary}"
+                            Click="BtnMaximize_Click"
+                            ToolTip="Развернуть / Восстановить">
+                        <TextBlock x:Name="MaximizeIconText" Text="🗖" FontSize="11" />
+                    </Button>
+
+                    <!-- Close Button -->
+                    <Button x:Name="BtnClose"
+                            Width="46"
+                            Background="Transparent"
+                            BorderThickness="0"
+                            Foreground="{StaticResource BrushTextSecondary}"
+                            Click="BtnClose_Click"
+                            ToolTip="Закрыть">
+                        <Button.Template>
+                            <ControlTemplate TargetType="Button">
+                                <Border x:Name="closeBorder"
+                                        Background="{TemplateBinding Background}"
+                                        SnapsToDevicePixels="True">
+                                    <TextBlock Text="✕"
+                                               FontSize="11"
+                                               FontWeight="Bold"
+                                               Foreground="{TemplateBinding Foreground}"
+                                               HorizontalAlignment="Center"
+                                               VerticalAlignment="Center" />
+                                </Border>
+                                <ControlTemplate.Triggers>
+                                     <Trigger Property="IsMouseOver" Value="True">
+                                        <Setter TargetName="closeBorder" Property="Background" Value="#C42B1C" />
+                                        <Setter Property="Foreground" Value="#FFFFFF" />
+                                    </Trigger>
+                                </ControlTemplate.Triggers>
+                            </ControlTemplate>
+                        </Button.Template>
+                    </Button>
+                </StackPanel>
+            </Grid>
+        </Border>
 
                 <!-- ================= 1: TOP NAVIGATION & ADDRESS BAR & SEARCH ================= -->
                 <Border Grid.Row="1"
@@ -224,11 +218,12 @@
                                         <ColumnDefinition Width="Auto" />
                                     </Grid.ColumnDefinitions>
 
-                                    <TextBlock Grid.Column="0"
-                                               Text="📁"
-                                               FontSize="12"
-                                               VerticalAlignment="Center"
-                                               Margin="4,0,4,0" />
+                                    <Image Grid.Column="0"
+                                           Source="{Binding FolderIcon}"
+                                           Width="16" Height="16"
+                                           VerticalAlignment="Center"
+                                           Margin="4,0,6,0"
+                                           RenderOptions.BitmapScalingMode="HighQuality" />
 
                                     <!-- Breadcrumb Segments ItemsControl -->
                                     <ItemsControl Grid.Column="1"
@@ -548,11 +543,12 @@
                                                     Command="{Binding DataContext.SelectSidebarItemCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                                     CommandParameter="{Binding}"
                                                     ToolTip="{Binding Path}">
-                                                <StackPanel Orientation="Horizontal">
-                                                    <TextBlock Text="{Binding IconGlyph}"
-                                                               FontSize="14"
-                                                               VerticalAlignment="Center"
-                                                               Margin="0,0,8,0" />
+                                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                    <Image Source="{Binding Icon}"
+                                                           Width="16" Height="16"
+                                                           Margin="0,0,10,0"
+                                                           VerticalAlignment="Center"
+                                                           RenderOptions.BitmapScalingMode="HighQuality" />
                                                     <TextBlock Text="{Binding Title}"
                                                                FontSize="12"
                                                                Foreground="{StaticResource BrushTextPrimary}"
@@ -585,11 +581,12 @@
                                                         <ColumnDefinition Width="*" />
                                                     </Grid.ColumnDefinitions>
 
-                                                    <TextBlock Grid.Column="0"
-                                                               Text="{Binding IconGlyph}"
-                                                               FontSize="15"
-                                                               VerticalAlignment="Center"
-                                                               Margin="0,0,8,0" />
+                                                    <Image Grid.Column="0"
+                                                           Source="{Binding Icon}"
+                                                           Width="16" Height="16"
+                                                           Margin="0,0,10,0"
+                                                           VerticalAlignment="Center"
+                                                           RenderOptions.BitmapScalingMode="HighQuality" />
 
                                                     <StackPanel Grid.Column="1" VerticalAlignment="Center">
                                                         <TextBlock Text="{Binding Title}"
@@ -848,15 +845,16 @@
                                         <GridViewColumn.CellTemplate>
                                             <DataTemplate>
                                                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                                    <!-- Icon Glyph -->
-                                                    <TextBlock Text="{Binding IconGlyph}"
-                                                               FontSize="14"
-                                                               VerticalAlignment="Center"
-                                                               Margin="0,0,8,0" />
+                                                    <!-- Native Shell Icon -->
+                                                    <Image Source="{Binding Icon}"
+                                                           Width="16" Height="16"
+                                                           Margin="0,0,8,0"
+                                                           VerticalAlignment="Center"
+                                                           RenderOptions.BitmapScalingMode="HighQuality" />
 
-                                                    <!-- File / Folder Name -->
+                                                    <!-- File / Folder Name (FIX ORANGE TEXT: Pure Crisp White) -->
                                                     <TextBlock Text="{Binding Name}"
-                                                               Foreground="{Binding IsDirectory, Converter={StaticResource ItemTypeToBrush}}"
+                                                               Foreground="{StaticResource BrushTextPrimary}"
                                                                FontSize="12"
                                                                TextTrimming="CharacterEllipsis"
                                                                VerticalAlignment="Center" />
@@ -957,55 +955,52 @@
                     </Grid>
                 </Grid>
 
-                <!-- ================= 4: BOTTOM STATUS BAR ================= -->
-                <Border Grid.Row="4"
-                        Background="{StaticResource BrushMica}"
-                        BorderBrush="{StaticResource BrushBorder}"
-                        BorderThickness="0,1,0,0"
-                        CornerRadius="0,0,8,8"
-                        Padding="12,4">
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />     <!-- Total Item Count -->
-                            <ColumnDefinition Width="Auto" />  <!-- Selection Info -->
-                            <ColumnDefinition Width="*" />     <!-- Drive Telemetry -->
-                        </Grid.ColumnDefinitions>
+        <!-- ================= 4: BOTTOM STATUS BAR ================= -->
+        <Border Grid.Row="4"
+                Background="{StaticResource BrushMica}"
+                BorderBrush="{StaticResource BrushBorder}"
+                BorderThickness="0,1,0,0"
+                Padding="12,4">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />     <!-- Total Item Count -->
+                    <ColumnDefinition Width="Auto" />  <!-- Selection Info -->
+                    <ColumnDefinition Width="*" />     <!-- Drive Telemetry -->
+                </Grid.ColumnDefinitions>
 
-                        <!-- Left: Item Count -->
-                        <TextBlock Grid.Column="0"
-                                   Text="{Binding StatusText}"
-                                   FontSize="11"
-                                   Foreground="{StaticResource BrushTextSecondary}"
-                                   TextTrimming="CharacterEllipsis"
-                                   VerticalAlignment="Center" />
+                <!-- Left: Item Count -->
+                <TextBlock Grid.Column="0"
+                           Text="{Binding StatusText}"
+                           FontSize="11"
+                           Foreground="{StaticResource BrushTextSecondary}"
+                           TextTrimming="CharacterEllipsis"
+                           VerticalAlignment="Center" />
 
-                        <!-- Middle: Selection Info -->
-                        <TextBlock Grid.Column="1"
-                                   Text="{Binding SelectedStatusText}"
-                                   FontSize="11"
-                                   Foreground="{StaticResource BrushAccentLight}"
-                                   FontWeight="Medium"
-                                   TextTrimming="CharacterEllipsis"
-                                   VerticalAlignment="Center"
-                                   Margin="16,0" />
+                <!-- Middle: Selection Info -->
+                <TextBlock Grid.Column="1"
+                           Text="{Binding SelectedStatusText}"
+                           FontSize="11"
+                           Foreground="{StaticResource BrushAccentLight}"
+                           FontWeight="Medium"
+                           TextTrimming="CharacterEllipsis"
+                           VerticalAlignment="Center"
+                           Margin="16,0" />
 
-                        <!-- Right: Drive Storage Telemetry -->
-                        <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
-                            <TextBlock Text="{Binding DriveSpaceText}"
-                                       FontSize="11"
-                                       Foreground="{StaticResource BrushTextMuted}"
-                                       TextTrimming="CharacterEllipsis"
-                                       VerticalAlignment="Center"
-                                       Margin="0,0,12,0" />
+                <!-- Right: Drive Storage Telemetry -->
+                <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                    <TextBlock Text="{Binding DriveSpaceText}"
+                               FontSize="11"
+                               Foreground="{StaticResource BrushTextMuted}"
+                               TextTrimming="CharacterEllipsis"
+                               VerticalAlignment="Center"
+                               Margin="0,0,12,0" />
 
-                            <TextBlock Text="☷"
-                                       FontSize="12"
-                                       Foreground="{StaticResource BrushTextSecondary}"
-                                       VerticalAlignment="Center"
-                                       ToolTip="Таблица" />
-                        </StackPanel>
-                    </Grid>
-                </Border>
+                    <TextBlock Text="☷"
+                               FontSize="12"
+                               Foreground="{StaticResource BrushTextSecondary}"
+                               VerticalAlignment="Center"
+                               ToolTip="Таблица" />
+                </StackPanel>
             </Grid>
         </Border>
     </Grid>

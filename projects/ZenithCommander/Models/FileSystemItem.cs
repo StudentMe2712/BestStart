@@ -1,6 +1,8 @@
 using System;
 using System.Globalization;
 using System.IO;
+using System.Windows.Media;
+using NexusCommander.Helpers;
 
 namespace NexusCommander.Models;
 
@@ -15,6 +17,7 @@ public class FileSystemItem
     public DateTime? DateModified { get; set; }
     public string FormattedDate { get; set; } = string.Empty;
     public string Extension { get; set; } = string.Empty;
+    public ImageSource? Icon { get; set; }
     public string IconGlyph { get; set; } = "📄";
     public string ItemType { get; set; } = "Файл";
     public FileAttributes? Attributes { get; set; }
@@ -37,6 +40,7 @@ public class FileSystemItem
             DateModified = dir.LastWriteTime,
             FormattedDate = dir.LastWriteTime.ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture),
             Extension = string.Empty,
+            Icon = IconExtractor.GetFolderIcon(true),
             IconGlyph = "📁",
             ItemType = "Папка с файлами",
             Attributes = dir.Attributes,
@@ -72,6 +76,7 @@ public class FileSystemItem
             DateModified = file.LastWriteTime,
             FormattedDate = file.LastWriteTime.ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture),
             Extension = string.IsNullOrEmpty(ext) ? string.Empty : "." + ext.ToLowerInvariant(),
+            Icon = IconExtractor.GetFileIcon(file.FullName, true),
             IconGlyph = ResolveIconGlyph(ext),
             ItemType = ResolveItemType(ext),
             Attributes = file.Attributes,
