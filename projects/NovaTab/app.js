@@ -61,6 +61,7 @@
   const sideImport = document.getElementById('sideImport');
   const sideTrash = document.getElementById('sideTrash');
   const toast = document.getElementById('toast');
+  const widgetGallery = document.getElementById('widgetGallery');
 
   // Board Menu Elements
   const boardMenu = document.getElementById('boardMenu');
@@ -225,6 +226,7 @@
     currentTab.boards.forEach((board) => {
       const card = document.createElement('div');
       card.className = 'board-card';
+      card.dataset.id = board.id;
       card.dataset.boardId = board.id;
 
       if (board.customColor) {
@@ -257,10 +259,6 @@
       menuBtn.className = 'board-menu-btn';
       menuBtn.title = 'Меню доски';
       menuBtn.textContent = '···';
-      menuBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        openBoardMenu(e, board, card);
-      });
 
       headerActions.appendChild(addBtn);
       headerActions.appendChild(menuBtn);
@@ -422,11 +420,13 @@
     currentBoardMenuTarget = { board, card };
 
     if (!boardMenu) return;
+    boardMenu.dataset.targetId = board?.id;
     boardMenu.style.display = 'block';
+    boardMenu.style.position = 'fixed';
     boardMenu.style.visibility = 'hidden';
 
     // Synchronize mode buttons
-    const mode = board.customMode || 'corner';
+    const mode = board?.customMode || 'corner';
     if (bmCustomPanel) {
       const segBtns = bmCustomPanel.querySelectorAll('.st-seg-btn');
       segBtns.forEach((btn) => {
@@ -437,49 +437,21 @@
     const menuWidth = boardMenu.offsetWidth || 230;
     const menuHeight = boardMenu.offsetHeight || 260;
 
-    let left, top;
+    let clientX = e.clientX || 0;
+    let clientY = e.clientY || 0;
 
-    const isBtnTrigger = e.currentTarget && e.currentTarget.classList && e.currentTarget.classList.contains('board-menu-btn');
-    if (isBtnTrigger) {
-      const btnRect = e.currentTarget.getBoundingClientRect();
-      const clientLeft = btnRect.right - menuWidth;
-      if (clientLeft < 12) {
-        left = 12 + window.scrollX;
-      } else if (btnRect.left + menuWidth > window.innerWidth - 12) {
-        left = window.innerWidth - menuWidth - 12 + window.scrollX;
-      } else {
-        left = clientLeft + window.scrollX;
-      }
-
-      if (btnRect.bottom + 6 + menuHeight > window.innerHeight - 12) {
-        if (btnRect.top - menuHeight - 6 > 12) {
-          top = btnRect.top - menuHeight - 6 + window.scrollY;
-        } else {
-          top = Math.max(12, window.innerHeight - menuHeight - 12) + window.scrollY;
-        }
-      } else {
-        top = btnRect.bottom + 6 + window.scrollY;
-      }
-    } else {
-      let clientX = e.clientX || 0;
-      let clientY = e.clientY || 0;
-
-      if (clientX + menuWidth > window.innerWidth - 12) {
-        clientX = window.innerWidth - menuWidth - 12;
-      }
-      if (clientY + menuHeight > window.innerHeight - 12) {
-        clientY = window.innerHeight - menuHeight - 12;
-      }
-
-      clientX = Math.max(12, clientX);
-      clientY = Math.max(12, clientY);
-
-      left = clientX + window.scrollX;
-      top = clientY + window.scrollY;
+    if (clientX + menuWidth > window.innerWidth - 12) {
+      clientX = window.innerWidth - menuWidth - 12;
+    }
+    if (clientY + menuHeight > window.innerHeight - 12) {
+      clientY = window.innerHeight - menuHeight - 12;
     }
 
-    boardMenu.style.left = `${left}px`;
-    boardMenu.style.top = `${top}px`;
+    clientX = Math.max(12, clientX);
+    clientY = Math.max(12, clientY);
+
+    boardMenu.style.left = `${clientX}px`;
+    boardMenu.style.top = `${clientY}px`;
     boardMenu.style.visibility = 'visible';
   }
 
@@ -1102,13 +1074,45 @@
     });
   }
 
-  // Close Context Menu & Board Menu & Sidebar on Document Click
+  // Global listener for .board-menu-btn & context menus & sidebar
   document.addEventListener('click', (e) => {
+    const menuBtn = e.target.closest('.board-menu-btn');
+    const boardMenu = document.getElementById('boardMenu');
+
+    if (menuBtn) {
+      e.stopPropagation();
+      const rect = menuBtn.getBoundingClientRect();
+      if (!boardMenu) return;
+      boardMenu.style.display = 'block';
+      boardMenu.style.position = 'fixed';
+
+      // Сдвигаем меню СПРАВА от кнопки (right) + отступ 8px
+      boardMenu.style.left = `${rect.right + 8}px`;
+      // Выравниваем по верхнему краю кнопки
+      boardMenu.style.top = `${rect.top}px`;
+
+      // Сохраняем контекст доски
+      const card = menuBtn.closest('.board-card') || menuBtn.closest('.board');
+      const boardId = card ? (card.dataset.boardId || card.dataset.id) : null;
+      boardMenu.dataset.targetId = boardId;
+      const currentTab = getActiveTab();
+      const board = currentTab?.boards?.find(b => b.id === boardId);
+      currentBoardMenuTarget = { board, card };
+
+      if (board && bmCustomPanel) {
+        const mode = board.customMode || 'corner';
+        const segBtns = bmCustomPanel.querySelectorAll('.st-seg-btn');
+        segBtns.forEach((btn) => {
+          btn.classList.toggle('active', btn.dataset.mode === mode);
+        });
+      }
+    } else if (!e.target.closest('.board-menu')) {
+      if (boardMenu) boardMenu.style.display = 'none';
+      currentBoardMenuTarget = null;
+    }
+
     if (!e.target.closest('#contextMenu')) {
       hideContextMenu();
-    }
-    if (!e.target.closest('#boardMenu') && !e.target.closest('.board-menu-btn')) {
-      hideBoardMenu();
     }
     if (sidebar && !sidebar.contains(e.target)) {
       sidebar.classList.remove('is-open');
@@ -1119,6 +1123,7 @@
     if (e.key === 'Escape') {
       hideContextMenu();
       hideBoardMenu();
+      if (widgetGallery) widgetGallery.style.display = 'none';
       closeModal();
       closeSettingsModal();
       closeWallpaperModal();
@@ -1135,11 +1140,13 @@
   window.addEventListener('scroll', () => {
     hideContextMenu();
     hideBoardMenu();
+    if (widgetGallery) widgetGallery.style.display = 'none';
   }, { passive: true });
 
   window.addEventListener('resize', () => {
     hideContextMenu();
     hideBoardMenu();
+    if (widgetGallery) widgetGallery.style.display = 'none';
   });
 
   // --- Expandable Sidebar Controls ---
@@ -1175,14 +1182,6 @@
     });
   }
 
-  if (sideWidgets) {
-    sideWidgets.addEventListener('click', (e) => {
-      e.stopPropagation();
-      showToast('Виджеты в разработке');
-      sidebar?.classList.remove('is-open');
-    });
-  }
-
   if (sideImport) {
     sideImport.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -1196,6 +1195,89 @@
       e.stopPropagation();
       showToast('Корзина пуста');
       sidebar?.classList.remove('is-open');
+    });
+  }
+
+  // --- Widget Gallery Management ---
+  function initWidgetGallery() {
+    const sideWidgetsBtn = document.getElementById('sideWidgets');
+    const widgetGallery = document.getElementById('widgetGallery');
+    const sidebar = document.getElementById('sidebar');
+
+    if (sideWidgetsBtn && widgetGallery) {
+      sideWidgetsBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const isHidden = widgetGallery.style.display === 'none' || !widgetGallery.style.display;
+        widgetGallery.style.display = isHidden ? 'block' : 'none';
+        if (sidebar) sidebar.classList.remove('is-open');
+      });
+    }
+
+    // Закрытие виджетов при клике вне панели
+    document.addEventListener('click', (e) => {
+      if (widgetGallery && !e.target.closest('#widgetGallery') && !e.target.closest('#sideWidgets')) {
+        widgetGallery.style.display = 'none';
+      }
+    });
+
+    if (!widgetGallery) return;
+
+    // Добавить доску (#wcBoard .widget-add-btn)
+    const wcBoardBtn = document.querySelector('#wcBoard .widget-add-btn');
+    if (wcBoardBtn) {
+      wcBoardBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        widgetGallery.style.display = 'none';
+        startInlineBoardCreation();
+      });
+    }
+
+    // Добавить заметки (#wcNotes .widget-add-btn)
+    const wcNotesBtn = document.querySelector('#wcNotes .widget-add-btn');
+    if (wcNotesBtn) {
+      wcNotesBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        showToast('Виджет "Заметки" скоро будет доступен');
+      });
+    }
+
+    // Добавить календарь (#wcCalendar .widget-add-btn)
+    const wcCalendarBtn = document.querySelector('#wcCalendar .widget-add-btn');
+    if (wcCalendarBtn) {
+      wcCalendarBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        showToast('Виджет "Календарь" скоро будет доступен');
+      });
+    }
+
+    // Добавить помодоро (#wcPomodoro .widget-add-btn)
+    const wcPomodoroBtn = document.querySelector('#wcPomodoro .widget-add-btn');
+    if (wcPomodoroBtn) {
+      wcPomodoroBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        showToast('Виджет "Помодоро" скоро будет доступен');
+      });
+    }
+
+    // Переключатели внутри галереи виджетов
+    widgetGallery.addEventListener('click', (e) => {
+      const toggle = e.target.closest('.st-toggle');
+      if (toggle) {
+        e.stopPropagation();
+        toggle.classList.toggle('on');
+        const isOn = toggle.classList.contains('on');
+        if (toggle.id === 'clockToggle') {
+          showToast(isOn ? 'Часы включены' : 'Часы выключены');
+        } else if (toggle.id === 'navSearchToggle') {
+          const searchBar = document.querySelector('.search-bar');
+          if (searchBar) {
+            searchBar.style.display = isOn ? 'flex' : 'none';
+          }
+          showToast(isOn ? 'Поиск включен' : 'Поиск выключен');
+        } else if (toggle.id === 'weatherToggle') {
+          showToast(isOn ? 'Погода включена' : 'Погода выключена');
+        }
+      }
     });
   }
 
@@ -1367,6 +1449,7 @@
       renderBoards();
     });
     initBoardMenu();
+    initWidgetGallery();
     initSettingsModal();
     initWallpaperModal();
   }

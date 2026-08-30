@@ -368,7 +368,7 @@ body {
 
 /* --- Меню доски (Из дампа пользователя) --- */
 .board-menu {
-  position: absolute;
+  position: fixed;
   background: var(--ui-popover, rgba(28,29,38,0.97));
   border: 0.5px solid var(--ui-border, rgba(255,255,255,0.1));
   border-radius: 12px;
@@ -452,6 +452,56 @@ body {
   border-left: 18px solid transparent;
   border-top-right-radius: var(--radius-card);
 }
+
+/* ==========================================================================
+   Widget Gallery
+   ========================================================================== */
+
+/* Контейнер виджетов */
+.widget-gallery {
+  position: fixed;
+  right: 68px; /* Вынесено левее от сайдбара */
+  bottom: 100px;
+  z-index: 200;
+  background: var(--ui-popover, rgba(28,29,38,0.97));
+  border: 0.5px solid var(--ui-border, rgba(255,255,255,0.1));
+  border-radius: 14px;
+  padding: 14px;
+  width: 240px;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+  color: #fff;
+  animation: widgetGalleryPop 0.15s ease;
+}
+
+@keyframes widgetGalleryPop {
+  0% { opacity: 0; transform: scale(0.95); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+.panel-label {
+  font-size: 11px; font-weight: 700; color: var(--ui-text-secondary);
+  text-transform: uppercase; margin-bottom: 12px; padding: 0 4px;
+}
+
+/* Карточки виджетов */
+.widget-card {
+  display: flex; align-items: center; gap: 12px;
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 10px; padding: 8px 12px; margin-bottom: 8px;
+}
+.widget-card-icon { color: var(--ui-text-secondary); display: flex; }
+.widget-card-name { flex: 1; font-size: 13px; font-weight: 500; }
+
+/* Кнопка "Добавить" */
+.widget-add-btn {
+  background: var(--accent-tab-bg, rgba(0,36,73,0.8));
+  color: #fff; border: none; padding: 6px 12px;
+  border-radius: 6px; font-size: 12px; cursor: pointer;
+  transition: background 0.2s;
+}
+.widget-add-btn:hover { background: var(--accent-color, #002449); }
 
 /* ==========================================================================
    Sidebar / Expandable Floating Menu
