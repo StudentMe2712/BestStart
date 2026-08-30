@@ -56,6 +56,23 @@
   const settingsBtn = document.getElementById('settingsBtn');
   const toast = document.getElementById('toast');
 
+  // Settings Modal Elements
+  const settingsOverlay = document.getElementById('settingsOverlay');
+  const settingsModal = document.getElementById('settingsModal');
+  const settingsCloseBtn = document.getElementById('settingsCloseBtn');
+  const settingsNav = document.getElementById('settingsNav');
+  const settingsBody = document.getElementById('settingsBody');
+  const stSliderBoardW = document.getElementById('stSliderBoardW');
+  const stBoardWVal = document.getElementById('stBoardWVal');
+  const stSliderBlur = document.getElementById('stSliderBlur');
+  const stBlurVal = document.getElementById('stBlurVal');
+  const stSliderAlpha = document.getElementById('stSliderAlpha');
+  const stAlphaVal = document.getElementById('stAlphaVal');
+  const stSliderOverlay = document.getElementById('stSliderOverlay');
+  const stOverlayVal = document.getElementById('stOverlayVal');
+  const stUploadBgBtn = document.getElementById('stUploadBgBtn');
+  const stResetBgBtn = document.getElementById('stResetBgBtn');
+
   // --- Utility Functions ---
   function generateId(prefix = 'id') {
     return `${prefix}-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`;
@@ -728,6 +745,7 @@
     if (e.key === 'Escape') {
       hideContextMenu();
       closeModal();
+      closeSettingsModal();
     }
   });
 
@@ -746,22 +764,113 @@
     });
   }
 
-  // FAB Settings Button Click
-  if (settingsBtn) {
-    settingsBtn.addEventListener('click', () => {
-      openSettingsAction();
-    });
+  // --- Settings Modal Handling ---
+  function openSettingsModal() {
+    if (!settingsOverlay) return;
+    settingsOverlay.style.display = 'flex';
   }
 
-  function openSettingsAction() {
-    // Quick settings: export/import or reset
-    const action = confirm('Сбросить состояние к стандартным настройкам по умолчанию?');
-    if (action) {
-      appState = JSON.parse(JSON.stringify(DEFAULT_STATE));
-      saveState();
-      renderTabs();
-      renderBoards();
-      showToast('Настройки сброшены к начальным');
+  function closeSettingsModal() {
+    if (!settingsOverlay) return;
+    settingsOverlay.style.display = 'none';
+  }
+
+  function initSettingsModal() {
+    // Open Settings Modal on FAB Click
+    if (settingsBtn) {
+      settingsBtn.addEventListener('click', () => {
+        openSettingsModal();
+      });
+    }
+
+    // Close Button Click
+    if (settingsCloseBtn) {
+      settingsCloseBtn.addEventListener('click', () => {
+        closeSettingsModal();
+      });
+    }
+
+    // Close on Backdrop Click
+    if (settingsOverlay) {
+      settingsOverlay.addEventListener('click', (e) => {
+        if (e.target === settingsOverlay) {
+          closeSettingsModal();
+        }
+      });
+    }
+
+    // Toggle Buttons Handler
+    if (settingsBody) {
+      settingsBody.addEventListener('click', (e) => {
+        const toggle = e.target.closest('.st-toggle');
+        if (toggle) {
+          toggle.classList.toggle('on');
+        }
+      });
+    }
+
+    // Settings Navigation Tabs
+    if (settingsNav && settingsBody) {
+      const navItems = settingsNav.querySelectorAll('.settings-nav-item');
+      const tabPanels = settingsBody.querySelectorAll('.settings-tab-panel');
+
+      navItems.forEach((item) => {
+        item.addEventListener('click', () => {
+          const tabTarget = item.dataset.tab;
+          if (!tabTarget) return;
+
+          navItems.forEach((btn) => btn.classList.remove('active'));
+          item.classList.add('active');
+
+          tabPanels.forEach((panel) => {
+            if (panel.dataset.tabPanel === tabTarget) {
+              panel.classList.add('active');
+            } else {
+              panel.classList.remove('active');
+            }
+          });
+        });
+      });
+    }
+
+    // Sliders & Value Badges
+    if (stSliderBoardW && stBoardWVal) {
+      stSliderBoardW.addEventListener('input', () => {
+        stBoardWVal.textContent = `${stSliderBoardW.value}px`;
+      });
+    }
+
+    if (stSliderBlur && stBlurVal) {
+      stSliderBlur.addEventListener('input', () => {
+        stBlurVal.textContent = `${stSliderBlur.value}px`;
+      });
+    }
+
+    if (stSliderAlpha && stAlphaVal) {
+      stSliderAlpha.addEventListener('input', () => {
+        const pct = Math.round(parseFloat(stSliderAlpha.value) * 100);
+        stAlphaVal.textContent = `${pct}%`;
+      });
+    }
+
+    if (stSliderOverlay && stOverlayVal) {
+      stSliderOverlay.addEventListener('input', () => {
+        const pct = Math.round(parseFloat(stSliderOverlay.value) * 100);
+        stOverlayVal.textContent = `${pct}%`;
+      });
+    }
+
+    // Wallpaper action buttons
+    if (stUploadBgBtn) {
+      stUploadBgBtn.addEventListener('click', () => {
+        showToast('Функция выбора обоев готова');
+      });
+    }
+
+    if (stResetBgBtn) {
+      stResetBgBtn.addEventListener('click', () => {
+        showToast('Фон сброшен по умолчанию');
+      });
     }
   }
 
@@ -771,6 +880,7 @@
       renderTabs();
       renderBoards();
     });
+    initSettingsModal();
   }
 
   if (document.readyState === 'loading') {
