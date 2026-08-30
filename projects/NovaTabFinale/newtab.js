@@ -19,7 +19,8 @@ const DEFAULTS = {
   trash: { boards: [], bookmarks: [] },
   themeStyle: { boardColorHex: '#ffffff', boardOpacity: 55, boardBlur: 12, accentHex: '#e07a4a', isDark: false, textScale: 1, textBold: false },
   bookmarks: [],
-  activePage: 'p1'
+  activePage: 'p1',
+  navSearchEnabled: false
 };
 
 function genId() { return '_' + Math.random().toString(36).slice(2, 10); }
@@ -108,7 +109,7 @@ function _normalizeState() {
   if (S.openInNewTab === undefined) S.openInNewTab = true;
   if (S.incognito === undefined) S.incognito = false;
   if (S.clockEnabled === undefined) S.clockEnabled = false;
-  if (S.navSearchEnabled === undefined) S.navSearchEnabled = true;
+  if (S.navSearchEnabled === undefined) S.navSearchEnabled = false;
   if (S.hideExtraBookmarks === undefined) S.hideExtraBookmarks = false;
   if (!S.maxBookmarksShown) S.maxBookmarksShown = 5;
   if (S.showDescriptions === undefined) S.showDescriptions = true;
@@ -2681,7 +2682,11 @@ function nsbEngineIcon(eng, size) {
 function nsbDoSearch(query) {
   const eng = SEARCH_ENGINES.find(e => e.id === (S.navSearchEngine || 'google')) || SEARCH_ENGINES[1];
   if (eng.id === 'default') {
-    chrome.search.query({ text: query, disposition: 'NEW_TAB' });
+    if (typeof chrome !== 'undefined' && chrome.search?.query) {
+      chrome.search.query({ text: query, disposition: 'NEW_TAB' });
+    } else {
+      chrome.tabs.create({ url: 'https://www.google.com/search?q=' + encodeURIComponent(query) });
+    }
   } else {
     chrome.tabs.create({ url: eng.url + encodeURIComponent(query) });
   }
@@ -4809,11 +4814,15 @@ function renderGeneralTab(body) {
   popupRight.style.cssText = 'display:flex;align-items:center;gap:8px;';
   const popupKbd = document.createElement('kbd');
   popupKbd.className = 'st-kbd';
-  popupKbd.textContent = '…';
-  chrome.commands.getAll(cmds => {
-    const cmd = cmds.find(c => c.name === '_execute_action');
-    popupKbd.textContent = cmd?.shortcut || T('st.notSet');
-  });
+  popupKbd.textContent = T('st.notSet');
+  if (typeof chrome !== 'undefined' && chrome.commands?.getAll) {
+    try {
+      chrome.commands.getAll(cmds => {
+        const cmd = (cmds || []).find(c => c.name === '_execute_action');
+        popupKbd.textContent = cmd?.shortcut || T('st.notSet');
+      });
+    } catch (_) {}
+  }
   const changeBtn = document.createElement('button');
   changeBtn.className = 'st-action-btn';
   changeBtn.style.cssText = 'width:auto;padding:4px 10px;margin:0;font-size:11px;';
