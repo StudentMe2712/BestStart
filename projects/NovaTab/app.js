@@ -1,12 +1,13 @@
 /**
- * NovaTab — Visual Bookmark Manager Core Application
- * Handles bookmark indexing, search, folder tree navigation, CRUD actions, and reactive sync.
+ * NovaTab — Visual Bookmark Manager: Glassmorphism Edition Core
+ * Full-featured visual new tab extension with custom wallpaper engine,
+ * folder-based category glass cards, top board pills, and instant search.
  */
 
 (() => {
   'use strict';
 
-  // --- 1. STATE MANAGEMENT ---
+  // --- 1. APPLICATION STATE ---
   const state = {
     isExtension: typeof chrome !== 'undefined' && !!chrome.bookmarks,
     rawTree: [],
@@ -14,16 +15,13 @@
     allFolders: [],
     folderMap: new Map(),
     bookmarksByFolder: new Map(),
-    activeView: 'all', // 'all', 'recent', or folder ID
-    activeFolderName: 'Все закладки',
-    activeFolderPath: ['Главная', 'Все закладки'],
-    searchQuery: '',
+    activeBoardId: 'all', // 'all' or folder ID
     viewMode: 'grid', // 'grid' | 'list'
-    sortBy: 'dateAdded-desc',
+    searchQuery: '',
     editingBookmarkId: null
   };
 
-  // --- 2. MOCK DATA FOR LOCAL / STANDALONE TESTING ---
+  // --- 2. RICH MOCK DATA FOR LOCAL / STANDALONE PREVIEW ---
   const MOCK_BOOKMARK_TREE = [
     {
       id: '0',
@@ -34,112 +32,76 @@
           title: 'Панель закладок',
           children: [
             {
-              id: '10',
-              title: 'GitHub: Let’s build from here',
-              url: 'https://github.com',
-              dateAdded: Date.now() - 1000 * 60 * 60 * 2
-            },
-            {
-              id: '11',
-              title: 'Hacker News — Tech & Startup Headlines',
-              url: 'https://news.ycombinator.com',
-              dateAdded: Date.now() - 1000 * 60 * 60 * 18
-            },
-            {
-              id: '12',
-              title: 'Figma: Collaborative Design Tool',
-              url: 'https://figma.com',
-              dateAdded: Date.now() - 1000 * 60 * 60 * 48
-            },
-            {
-              id: '2',
-              title: 'Разработка & Архитектура',
+              id: 'cat-streaming',
+              title: '📺 Стриминг & Видео',
               children: [
-                {
-                  id: '20',
-                  title: 'MDN Web Docs — JavaScript, CSS, HTML',
-                  url: 'https://developer.mozilla.org',
-                  dateAdded: Date.now() - 1000 * 60 * 60 * 24 * 3
-                },
-                {
-                  id: '21',
-                  title: 'Tailwind CSS — Rapid UI Styling Documentation',
-                  url: 'https://tailwindcss.com',
-                  dateAdded: Date.now() - 1000 * 60 * 60 * 24 * 5
-                },
-                {
-                  id: '22',
-                  title: 'Chrome Extensions Manifest V3 Guide',
-                  url: 'https://developer.chrome.com/docs/extensions/mv3/',
-                  dateAdded: Date.now() - 1000 * 60 * 60 * 24 * 7
-                },
-                {
-                  id: '23',
-                  title: 'Stack Overflow — Where Developers Learn & Share',
-                  url: 'https://stackoverflow.com',
-                  dateAdded: Date.now() - 1000 * 60 * 60 * 24 * 12
-                }
+                { id: 'str-1', title: 'YouTube — Видеохостинг и стримы', url: 'https://youtube.com', dateAdded: Date.now() - 1000 * 60 * 60 * 2 },
+                { id: 'str-2', title: 'Twitch — Live Game Streaming', url: 'https://twitch.tv', dateAdded: Date.now() - 1000 * 60 * 60 * 8 },
+                { id: 'str-3', title: 'Netflix — Кино и сериалы онлайн', url: 'https://netflix.com', dateAdded: Date.now() - 1000 * 60 * 60 * 24 },
+                { id: 'str-4', title: 'Spotify Web Player — Музыка', url: 'https://open.spotify.com', dateAdded: Date.now() - 1000 * 60 * 60 * 48 },
+                { id: 'str-5', title: 'Кинопоиск — Фильмы и премьеры', url: 'https://kinopoisk.ru', dateAdded: Date.now() - 1000 * 60 * 60 * 72 }
               ]
             },
             {
-              id: '3',
-              title: 'Искусственный интеллект',
+              id: 'cat-gaming',
+              title: '🎮 Гейминг & Сообщества',
               children: [
-                {
-                  id: '30',
-                  title: 'Anthropic — Claude AI Research & Assistant',
-                  url: 'https://anthropic.com',
-                  dateAdded: Date.now() - 1000 * 60 * 60 * 24 * 2
-                },
-                {
-                  id: '31',
-                  title: 'Hugging Face — The AI community building the future',
-                  url: 'https://huggingface.co',
-                  dateAdded: Date.now() - 1000 * 60 * 60 * 24 * 8
-                },
-                {
-                  id: '32',
-                  title: 'OpenAI Platform & Documentation',
-                  url: 'https://platform.openai.com',
-                  dateAdded: Date.now() - 1000 * 60 * 60 * 24 * 14
-                }
+                { id: 'gam-1', title: 'Steam Community — Магазин и хаб', url: 'https://steamcommunity.com', dateAdded: Date.now() - 1000 * 60 * 60 * 12 },
+                { id: 'gam-2', title: 'Discord Web — Чаты и сообщества', url: 'https://discord.com/app', dateAdded: Date.now() - 1000 * 60 * 60 * 20 },
+                { id: 'gam-3', title: 'Reddit /r/gaming — Игровые обсуждения', url: 'https://reddit.com/r/gaming', dateAdded: Date.now() - 1000 * 60 * 60 * 36 },
+                { id: 'gam-4', title: 'IGN — Новости игр и рецензии', url: 'https://ign.com', dateAdded: Date.now() - 1000 * 60 * 60 * 80 }
               ]
             },
             {
-              id: '4',
-              title: 'Дизайн и Вдохновение',
+              id: 'cat-dev',
+              title: '💻 Разработка & Код',
               children: [
-                {
-                  id: '40',
-                  title: 'Dribbble — Discover the World’s Top Designers',
-                  url: 'https://dribbble.com',
-                  dateAdded: Date.now() - 1000 * 60 * 60 * 24 * 10
-                },
-                {
-                  id: '41',
-                  title: 'Lumi List — Visual Bookmarking & Link Inspo',
-                  url: 'https://lumilist.com',
-                  dateAdded: Date.now() - 1000 * 60 * 60 * 24 * 15
-                }
+                { id: 'dev-1', title: 'GitHub — Where the world builds software', url: 'https://github.com', dateAdded: Date.now() - 1000 * 60 * 60 * 1 },
+                { id: 'dev-2', title: 'Stack Overflow — Q&A for Developers', url: 'https://stackoverflow.com', dateAdded: Date.now() - 1000 * 60 * 60 * 15 },
+                { id: 'dev-3', title: 'MDN Web Docs — JavaScript, CSS & HTML', url: 'https://developer.mozilla.org', dateAdded: Date.now() - 1000 * 60 * 60 * 50 },
+                { id: 'dev-4', title: 'Tailwind CSS Documentation', url: 'https://tailwindcss.com', dateAdded: Date.now() - 1000 * 60 * 60 * 90 },
+                { id: 'dev-5', title: 'npm — JavaScript Package Registry', url: 'https://npmjs.com', dateAdded: Date.now() - 1000 * 60 * 60 * 110 }
               ]
-            }
-          ]
-        },
-        {
-          id: '5',
-          title: 'Другие закладки',
-          children: [
-            {
-              id: '50',
-              title: 'YouTube — Video Streaming Platform',
-              url: 'https://youtube.com',
-              dateAdded: Date.now() - 1000 * 60 * 60 * 24 * 20
             },
             {
-              id: '51',
-              title: 'Reddit: Dive into anything',
-              url: 'https://reddit.com',
-              dateAdded: Date.now() - 1000 * 60 * 60 * 24 * 25
+              id: 'cat-ai',
+              title: '🤖 Искусственный Интеллект',
+              children: [
+                { id: 'ai-1', title: 'Claude by Anthropic — AI Research', url: 'https://claude.ai', dateAdded: Date.now() - 1000 * 60 * 60 * 5 },
+                { id: 'ai-2', title: 'ChatGPT by OpenAI — Assistant', url: 'https://chatgpt.com', dateAdded: Date.now() - 1000 * 60 * 60 * 18 },
+                { id: 'ai-3', title: 'Hugging Face — Open-source ML Community', url: 'https://huggingface.co', dateAdded: Date.now() - 1000 * 60 * 60 * 60 },
+                { id: 'ai-4', title: 'Perplexity AI — Answer Engine', url: 'https://perplexity.ai', dateAdded: Date.now() - 1000 * 60 * 60 * 120 }
+              ]
+            },
+            {
+              id: 'cat-news',
+              title: '📰 Новости технологий',
+              children: [
+                { id: 'news-1', title: 'Hacker News — Tech & Startups', url: 'https://news.ycombinator.com', dateAdded: Date.now() - 1000 * 60 * 60 * 6 },
+                { id: 'news-2', title: 'The Verge — Technology, Science & Art', url: 'https://theverge.com', dateAdded: Date.now() - 1000 * 60 * 60 * 30 },
+                { id: 'news-3', title: 'Habr — Русскоязычное IT сообщество', url: 'https://habr.com', dateAdded: Date.now() - 1000 * 60 * 60 * 70 },
+                { id: 'news-4', title: 'TechCrunch — Startup and Tech News', url: 'https://techcrunch.com', dateAdded: Date.now() - 1000 * 60 * 60 * 140 }
+              ]
+            },
+            {
+              id: 'cat-design',
+              title: '🎨 Дизайн & Ресурсы',
+              children: [
+                { id: 'des-1', title: 'Figma: The Collaborative Interface Tool', url: 'https://figma.com', dateAdded: Date.now() - 1000 * 60 * 60 * 10 },
+                { id: 'des-2', title: 'Dribbble — Top Designer Showcase', url: 'https://dribbble.com', dateAdded: Date.now() - 1000 * 60 * 60 * 45 },
+                { id: 'des-3', title: 'Mobbin — UI & UX Design Patterns', url: 'https://mobbin.com', dateAdded: Date.now() - 1000 * 60 * 60 * 100 },
+                { id: 'des-4', title: 'Google Fonts — Free Web Typography', url: 'https://fonts.google.com', dateAdded: Date.now() - 1000 * 60 * 60 * 160 }
+              ]
+            },
+            {
+              id: 'cat-daily',
+              title: '⚡ Повседневные сервисы',
+              children: [
+                { id: 'day-1', title: 'Google Drive — Cloud Workspace', url: 'https://drive.google.com', dateAdded: Date.now() - 1000 * 60 * 60 * 14 },
+                { id: 'day-2', title: 'Notion — All-in-one Workspace', url: 'https://notion.so', dateAdded: Date.now() - 1000 * 60 * 60 * 32 },
+                { id: 'day-3', title: 'Telegram Web — Messenger', url: 'https://web.telegram.org', dateAdded: Date.now() - 1000 * 60 * 60 * 65 },
+                { id: 'day-4', title: 'Gmail: Private and Secure Email', url: 'https://mail.google.com', dateAdded: Date.now() - 1000 * 60 * 60 * 115 }
+              ]
             }
           ]
         }
@@ -147,35 +109,43 @@
     }
   ];
 
-  // --- 3. DOM ELEMENTS ---
+  // --- 3. DOM ELEMENTS CACHE ---
   const elements = {
-    // Navigation
-    navAll: document.getElementById('nav-all'),
-    navRecent: document.getElementById('nav-recent'),
-    folderTreeContainer: document.getElementById('folder-tree-container'),
-    btnRefreshTree: document.getElementById('btn-refresh-tree'),
-    badgeAllCount: document.getElementById('badge-all-count'),
-    badgeRecentCount: document.getElementById('badge-recent-count'),
-    statTotalBookmarks: document.getElementById('stat-total-bookmarks'),
-    statTotalFolders: document.getElementById('stat-total-folders'),
+    // Top Nav Boards
+    boardsPillsWrapper: document.getElementById('boards-pills-wrapper'),
+    btnAddBoard: document.getElementById('btn-add-board'),
 
-    // Main Header
-    headerTitle: document.getElementById('header-view-title'),
-    headerBreadcrumb: document.getElementById('header-breadcrumb-path'),
-    searchInput: document.getElementById('search-input'),
-    sortSelect: document.getElementById('sort-select'),
-    btnViewGrid: document.getElementById('btn-view-grid'),
-    btnViewList: document.getElementById('btn-view-list'),
-    btnAddBookmark: document.getElementById('btn-add-bookmark'),
-
-    // Content Viewport
-    bookmarksContainer: document.getElementById('bookmarks-container'),
+    // Main Viewport & Cards
+    mainViewport: document.getElementById('main-viewport'),
+    cardsContainer: document.getElementById('cards-container'),
     emptyState: document.getElementById('empty-state'),
     emptyStateTitle: document.getElementById('empty-state-title'),
     emptyStateDesc: document.getElementById('empty-state-desc'),
     btnEmptyAdd: document.getElementById('btn-empty-add'),
 
-    // Modal
+    // Floating Toolbar
+    toolbarSearchBtn: document.getElementById('toolbar-search-btn'),
+    toolbarAddBtn: document.getElementById('toolbar-add-btn'),
+    toolbarFolderBtn: document.getElementById('toolbar-folder-btn'),
+    toolbarViewBtn: document.getElementById('toolbar-view-btn'),
+    viewIconGrid: document.getElementById('view-icon-grid'),
+    viewIconList: document.getElementById('view-icon-list'),
+    tooltipViewMode: document.getElementById('tooltip-view-mode'),
+    toolbarRandomBtn: document.getElementById('toolbar-random-btn'),
+    toolbarSettingsBtn: document.getElementById('toolbar-settings-btn'),
+
+    // Floating Background Button & Input
+    bgChangeBtn: document.getElementById('bg-change-btn'),
+    bgFileInput: document.getElementById('bg-file-input'),
+
+    // Search Modal
+    searchModal: document.getElementById('search-modal'),
+    searchModalInput: document.getElementById('search-modal-input'),
+    searchResultsList: document.getElementById('search-results-list'),
+    searchModalClose: document.getElementById('search-modal-close'),
+    searchMatchCount: document.getElementById('search-match-count'),
+
+    // Add / Edit Bookmark Modal
     bookmarkModal: document.getElementById('bookmark-modal'),
     modalTitle: document.getElementById('modal-title'),
     modalBtnClose: document.getElementById('modal-btn-close'),
@@ -186,7 +156,24 @@
     modalBookmarkUrl: document.getElementById('modal-bookmark-url'),
     modalBookmarkFolder: document.getElementById('modal-bookmark-folder'),
 
-    // Toast
+    // Add Folder Modal
+    folderModal: document.getElementById('folder-modal'),
+    folderForm: document.getElementById('folder-form'),
+    folderTitleInput: document.getElementById('folder-title-input'),
+    folderParentSelect: document.getElementById('folder-parent-select'),
+    folderModalClose: document.getElementById('folder-modal-close'),
+    folderBtnCancel: document.getElementById('folder-btn-cancel'),
+
+    // Settings Modal
+    settingsModal: document.getElementById('settings-modal'),
+    settingsModalClose: document.getElementById('settings-modal-close'),
+    settingsBtnDone: document.getElementById('settings-btn-done'),
+    settingsUploadBgBtn: document.getElementById('settings-upload-bg-btn'),
+    settingsResetBgBtn: document.getElementById('settings-reset-bg-btn'),
+    settingsStatBookmarks: document.getElementById('settings-stat-bookmarks'),
+    settingsStatFolders: document.getElementById('settings-stat-folders'),
+
+    // Toast Container
     toastContainer: document.getElementById('toast-container')
   };
 
@@ -207,43 +194,7 @@
       hash = str.charCodeAt(i) + ((hash << 5) - hash);
     }
     const hue = Math.abs(hash % 360);
-    return `hsl(${hue}, 70%, 45%)`;
-  }
-
-  function formatRelativeDate(timestamp) {
-    if (!timestamp) return '';
-    const now = Date.now();
-    const diffMs = now - timestamp;
-    const diffMinutes = Math.floor(diffMs / (1000 * 60));
-    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-
-    if (diffMinutes < 1) return 'Только что';
-    if (diffMinutes < 60) return `${diffMinutes} мин назад`;
-    if (diffHours < 24) return `${diffHours} ч назад`;
-    if (diffDays === 1) return 'Вчера';
-    if (diffDays < 7) return `${diffDays} дн назад`;
-    if (diffDays < 30) return `${Math.floor(diffDays / 7)} нед назад`;
-
-    const d = new Date(timestamp);
-    return d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short', year: 'numeric' });
-  }
-
-  function showToast(message, type = 'success') {
-    const toast = document.createElement('div');
-    toast.className = `toast ${type === 'success' ? 'toast-success' : 'toast-error'}`;
-    toast.innerHTML = `
-      <span>${type === 'success' ? '✓' : '⚠️'}</span>
-      <span>${escapeHtml(message)}</span>
-    `;
-    elements.toastContainer.appendChild(toast);
-
-    setTimeout(() => {
-      toast.style.opacity = '0';
-      toast.style.transform = 'translateY(10px)';
-      toast.style.transition = 'all 0.2s ease';
-      setTimeout(() => toast.remove(), 250);
-    }, 3200);
+    return `hsl(${hue}, 65%, 50%)`;
   }
 
   function escapeHtml(str) {
@@ -258,19 +209,149 @@
 
   function getFaviconUrl(pageUrl) {
     if (state.isExtension && chrome.runtime?.id) {
-      return `chrome-extension://${chrome.runtime.id}/_favicon/?pageUrl=${encodeURIComponent(pageUrl)}&size=32`;
+      return `chrome-extension://${chrome.runtime.id}/_favicon/?pageUrl=${encodeURIComponent(pageUrl)}&size=16`;
     }
     const host = extractHostname(pageUrl);
-    return `https://www.google.com/s2/favicons?domain=${encodeURIComponent(host)}&sz=64`;
+    return `https://www.google.com/s2/favicons?domain=${encodeURIComponent(host)}&sz=32`;
   }
 
-  // --- 5. BOOKMARKS TREE PARSING ---
+  function showToast(message, type = 'success') {
+    const toast = document.createElement('div');
+    toast.className = `toast ${type === 'success' ? 'toast-success' : 'toast-error'}`;
+    toast.innerHTML = `
+      <span class="text-base">${type === 'success' ? '✓' : '⚠️'}</span>
+      <span>${escapeHtml(message)}</span>
+    `;
+    elements.toastContainer.appendChild(toast);
+
+    setTimeout(() => {
+      toast.style.opacity = '0';
+      toast.style.transform = 'translateY(10px)';
+      toast.style.transition = 'all 0.2s ease';
+      setTimeout(() => toast.remove(), 250);
+    }, 3200);
+  }
+
+  function openUrl(url) {
+    if (!url) return;
+    if (state.isExtension && chrome.tabs?.create) {
+      chrome.tabs.create({ url });
+    } else {
+      window.open(url, '_blank', 'noopener,noreferrer');
+    }
+  }
+
+  // --- 5. CUSTOM BACKGROUND COMPRESSION & STORAGE ENGINE ---
+
+  function applyBackground(dataUrl) {
+    if (dataUrl) {
+      document.body.style.backgroundImage = `url("${dataUrl}")`;
+    } else {
+      document.body.style.backgroundImage = '';
+    }
+  }
+
+  async function loadSavedBackground() {
+    try {
+      if (state.isExtension && chrome.storage?.local) {
+        const stored = await chrome.storage.local.get(['customBackground', 'viewMode']);
+        if (stored.customBackground) {
+          applyBackground(stored.customBackground);
+        }
+        if (stored.viewMode) {
+          state.viewMode = stored.viewMode;
+        }
+      } else {
+        const savedBg = localStorage.getItem('novatab_customBackground');
+        if (savedBg) applyBackground(savedBg);
+        const savedView = localStorage.getItem('novatab_viewMode');
+        if (savedView) state.viewMode = savedView;
+      }
+    } catch (e) {
+      console.warn('[NovaTab] Failed loading background from storage:', e);
+    }
+    updateViewModeUI();
+  }
+
+  function handleBgFileSelect(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        // High quality scale down to max 1920x1080 maintaining aspect ratio
+        let width = img.width;
+        let height = img.height;
+        const maxW = 1920;
+        const maxH = 1080;
+
+        if (width > maxW || height > maxH) {
+          const ratio = Math.min(maxW / width, maxH / height);
+          width = Math.round(width * ratio);
+          height = Math.round(height * ratio);
+        }
+
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+
+        let dataUrl;
+        try {
+          dataUrl = canvas.toDataURL('image/webp', 0.8);
+        } catch (err) {
+          dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+        }
+
+        // Store compressed background
+        if (state.isExtension && chrome.storage?.local) {
+          chrome.storage.local.set({ customBackground: dataUrl }, () => {
+            applyBackground(dataUrl);
+            showToast('Пользовательский фон успешно сохранен!');
+          });
+        } else {
+          try {
+            localStorage.setItem('novatab_customBackground', dataUrl);
+            applyBackground(dataUrl);
+            showToast('Пользовательский фон успешно сохранен!');
+          } catch (storageErr) {
+            console.warn('[NovaTab] LocalStorage quota exceeded:', storageErr);
+            applyBackground(dataUrl);
+            showToast('Фон применен на текущую сессию');
+          }
+        }
+      };
+      img.src = event.target.result;
+    };
+    reader.readAsDataURL(file);
+    // Reset file input value so user can re-select same file if needed
+    e.target.value = '';
+  }
+
+  function resetBackground() {
+    if (state.isExtension && chrome.storage?.local) {
+      chrome.storage.local.remove('customBackground', () => {
+        applyBackground(null);
+        showToast('Фон сброшен по умолчанию');
+      });
+    } else {
+      localStorage.removeItem('novatab_customBackground');
+      applyBackground(null);
+      showToast('Фон сброшен по умолчанию');
+    }
+  }
+
+  // --- 6. BOOKMARK PARSING & HIERARCHY ---
+
   function parseBookmarkNodes(nodes, parentPath = [], parentId = null) {
     for (const node of nodes) {
       if (node.url) {
         // Bookmark item
         const hostname = extractHostname(node.url);
-        const folderName = parentPath[parentPath.length - 1] || 'Панель закладок';
+        const folderName = parentPath[parentPath.length - 1] || 'Избранное';
         const bookmark = {
           id: String(node.id),
           parentId: String(parentId || node.parentId || '1'),
@@ -288,14 +369,14 @@
         }
         state.bookmarksByFolder.get(bookmark.parentId).push(bookmark);
       } else if (node.children || (!node.url && node.title !== undefined)) {
-        // Folder item (skip root '0' container wrapper if title is empty or 'root')
+        // Folder node
         const isRootWrapper = node.id === '0' || node.title === 'Root' || node.title === '';
         const currentPath = isRootWrapper ? parentPath : [...parentPath, node.title];
 
         if (!isRootWrapper) {
           const folderObj = {
             id: String(node.id),
-            title: node.title,
+            title: node.title || 'Папка',
             parentId: String(parentId || node.parentId || '0'),
             path: currentPath,
             depth: currentPath.length - 1,
@@ -316,19 +397,6 @@
     }
   }
 
-  // Helper to count bookmarks recursively inside a folder and its subfolders
-  function getFolderRecursiveCount(folderId) {
-    let count = (state.bookmarksByFolder.get(folderId) || []).length;
-    const folder = state.folderMap.get(folderId);
-    if (folder && folder.childrenFolderIds) {
-      for (const childId of folder.childrenFolderIds) {
-        count += getFolderRecursiveCount(childId);
-      }
-    }
-    return count;
-  }
-
-  // --- 6. DATA LOADING & SYNC ---
   async function loadBookmarks() {
     state.allBookmarks = [];
     state.allFolders = [];
@@ -341,353 +409,385 @@
         state.rawTree = tree;
         parseBookmarkNodes(tree);
       } else {
-        console.warn('[NovaTab] Standalone mode: Using mock bookmark tree.');
+        console.info('[NovaTab] Standalone mode: Rendering mock bookmark tree.');
         state.rawTree = MOCK_BOOKMARK_TREE;
         parseBookmarkNodes(MOCK_BOOKMARK_TREE);
       }
     } catch (err) {
-      console.error('[NovaTab] Failed loading bookmarks:', err);
-      showToast('Ошибка загрузки закладок', 'error');
+      console.error('[NovaTab] Failed loading bookmarks tree:', err);
+      showToast('Ошибка чтения закладок', 'error');
     }
 
-    updateSidebarCounters();
-    renderFolderTree();
-    populateFolderSelectDropdown();
-    renderCurrentView();
+    renderBoardsPills();
+    populateFolderSelectDropdowns();
+    renderCardsView();
+    updateStatsDisplay();
   }
 
-  // --- 7. RENDERING COMPONENTS ---
+  // --- 7. RENDERING BOARDS (TOP NAV PILLS) ---
 
-  function updateSidebarCounters() {
-    const totalBookmarks = state.allBookmarks.length;
-    const totalFolders = state.allFolders.length;
+  function renderBoardsPills() {
+    elements.boardsPillsWrapper.innerHTML = '';
 
-    elements.badgeAllCount.textContent = totalBookmarks;
-    elements.badgeRecentCount.textContent = Math.min(totalBookmarks, 40);
-    elements.statTotalBookmarks.textContent = totalBookmarks;
-    elements.statTotalFolders.textContent = totalFolders;
+    // 1. "✦ Все доски" Master Pill
+    const allPill = document.createElement('button');
+    allPill.className = `glass-pill ${state.activeBoardId === 'all' ? 'glass-pill-active' : ''} px-3.5 py-1.5 text-xs font-semibold text-white flex items-center gap-1.5 shrink-0`;
+    allPill.setAttribute('data-board', 'all');
+    allPill.innerHTML = `<span>✦</span><span>Все доски</span>`;
+    allPill.addEventListener('click', () => selectBoard('all'));
+    elements.boardsPillsWrapper.appendChild(allPill);
+
+    // 2. Derive top folders / boards
+    // If folders exist in bookmarks bar or mock tree, render them
+    const displayFolders = state.allFolders.filter(f => {
+      // Exclude root containers like 'Bookmarks Bar' or 'Other Bookmarks' if they contain subfolders
+      return f.depth <= 2;
+    });
+
+    displayFolders.forEach(folder => {
+      const bCount = (state.bookmarksByFolder.get(folder.id) || []).length;
+      const isActive = state.activeBoardId === folder.id;
+
+      const pill = document.createElement('button');
+      pill.className = `glass-pill ${isActive ? 'glass-pill-active' : ''} px-3 py-1.5 text-xs font-medium text-white/90 hover:text-white flex items-center gap-1.5 shrink-0`;
+      pill.setAttribute('data-board', folder.id);
+
+      // Clean title for icon
+      pill.innerHTML = `
+        <span class="truncate max-w-[140px]" title="${escapeHtml(folder.title)}">${escapeHtml(folder.title)}</span>
+        <span class="text-[10px] opacity-60 font-mono">${bCount}</span>
+      `;
+
+      pill.addEventListener('click', () => selectBoard(folder.id));
+      elements.boardsPillsWrapper.appendChild(pill);
+    });
   }
 
-  function renderFolderTree() {
-    elements.folderTreeContainer.innerHTML = '';
+  function selectBoard(boardId) {
+    state.activeBoardId = boardId;
+    renderBoardsPills();
+    renderCardsView();
+  }
 
-    if (state.allFolders.length === 0) {
-      elements.folderTreeContainer.innerHTML = `
-        <div class="px-3 py-2 text-xs text-gray-500">Нет папок</div>
-      `;
-      return;
-    }
+  // --- 8. RENDERING CATEGORY GLASS CARDS ---
 
-    state.allFolders.forEach(folder => {
-      const count = getFolderRecursiveCount(folder.id);
-      const isActive = state.activeView === folder.id;
-      const indentPx = Math.max(0, folder.depth * 14);
+  function renderCardsView() {
+    elements.cardsContainer.innerHTML = '';
 
-      const item = document.createElement('div');
-      item.className = `nav-item ${isActive ? 'active' : ''}`;
-      item.style.paddingLeft = `${12 + indentPx}px`;
-      item.setAttribute('data-folder-id', folder.id);
+    // Determine which folders to render cards for
+    let targetFolders = [];
 
-      item.innerHTML = `
-        <div class="nav-item-left">
-          <span class="nav-icon text-sm">${folder.depth > 0 ? '↳ 📁' : '📁'}</span>
-          <span class="truncate" title="${escapeHtml(folder.title)}">${escapeHtml(folder.title)}</span>
-        </div>
-        <span class="nav-badge">${count}</span>
-      `;
-
-      item.addEventListener('click', () => {
-        selectView(folder.id, folder.title, folder.path);
+    if (state.activeBoardId === 'all') {
+      // Find all folders that have bookmarks or subfolders
+      targetFolders = state.allFolders.filter(f => {
+        const directBookmarks = state.bookmarksByFolder.get(f.id) || [];
+        return directBookmarks.length > 0 || (f.depth === 1);
       });
 
-      elements.folderTreeContainer.appendChild(item);
-    });
-  }
-
-  function populateFolderSelectDropdown() {
-    elements.modalBookmarkFolder.innerHTML = '';
-
-    if (state.allFolders.length === 0) {
-      const opt = document.createElement('option');
-      opt.value = '1';
-      opt.textContent = 'Панель закладок';
-      elements.modalBookmarkFolder.appendChild(opt);
-      return;
-    }
-
-    state.allFolders.forEach(folder => {
-      const opt = document.createElement('option');
-      opt.value = folder.id;
-      const indent = '— '.repeat(folder.depth);
-      opt.textContent = `${indent}${folder.title}`;
-      elements.modalBookmarkFolder.appendChild(opt);
-    });
-  }
-
-  function selectView(viewKey, title, pathArray = []) {
-    state.activeView = viewKey;
-    state.searchQuery = '';
-    elements.searchInput.value = '';
-
-    // Update active class on nav elements
-    elements.navAll.classList.toggle('active', viewKey === 'all');
-    elements.navRecent.classList.toggle('active', viewKey === 'recent');
-
-    document.querySelectorAll('#folder-tree-container .nav-item').forEach(el => {
-      const folderId = el.getAttribute('data-folder-id');
-      el.classList.toggle('active', folderId === viewKey);
-    });
-
-    if (viewKey === 'all') {
-      state.activeFolderName = 'Все закладки';
-      state.activeFolderPath = ['Главная', 'Все сохраненные страницы'];
-    } else if (viewKey === 'recent') {
-      state.activeFolderName = 'Недавние закладки';
-      state.activeFolderPath = ['Главная', 'Последние добавленные'];
+      // Also check if there are loose bookmarks directly on root parent (id: '1')
+      const rootBookmarks = state.bookmarksByFolder.get('1') || [];
+      if (rootBookmarks.length > 0 && !targetFolders.some(f => f.id === '1')) {
+        targetFolders.unshift({
+          id: '1',
+          title: '⭐ Быстрый доступ',
+          path: ['Панель закладок'],
+          depth: 0,
+          childrenFolderIds: []
+        });
+      }
     } else {
-      state.activeFolderName = title || 'Папка';
-      state.activeFolderPath = ['Главная', ...(pathArray || [state.activeFolderName])];
-    }
-
-    renderCurrentView();
-  }
-
-  // Filter and Sort bookmarks
-  function getFilteredBookmarks() {
-    let list = [];
-
-    if (state.activeView === 'all') {
-      list = [...state.allBookmarks];
-    } else if (state.activeView === 'recent') {
-      list = [...state.allBookmarks].sort((a, b) => (b.dateAdded || 0) - (a.dateAdded || 0)).slice(0, 40);
-    } else {
-      // Specific folder view (includes subfolders)
-      const targetFolderIds = new Set();
-      function collectIds(fid) {
-        targetFolderIds.add(fid);
-        const f = state.folderMap.get(fid);
-        if (f && f.childrenFolderIds) {
-          f.childrenFolderIds.forEach(collectIds);
+      const selected = state.folderMap.get(state.activeBoardId);
+      if (selected) {
+        targetFolders = [selected];
+        // If it has children folders, include them too
+        if (selected.childrenFolderIds && selected.childrenFolderIds.length > 0) {
+          selected.childrenFolderIds.forEach(cid => {
+            const childF = state.folderMap.get(cid);
+            if (childF) targetFolders.push(childF);
+          });
         }
       }
-      collectIds(state.activeView);
-
-      list = state.allBookmarks.filter(b => targetFolderIds.has(b.parentId));
     }
 
-    // Apply Search Filter if any
-    const query = state.searchQuery.trim().toLowerCase();
-    if (query) {
-      list = list.filter(b => {
-        const titleMatch = b.title.toLowerCase().includes(query);
-        const urlMatch = b.url.toLowerCase().includes(query);
-        const hostMatch = b.hostname.toLowerCase().includes(query);
-        const folderMatch = b.folderName.toLowerCase().includes(query);
-        return titleMatch || urlMatch || hostMatch || folderMatch;
-      });
-    }
-
-    // Apply Sort (if not in recent view with no active search)
-    const [sortField, sortOrder] = state.sortBy.split('-');
-    list.sort((a, b) => {
-      let valA = a[sortField] || '';
-      let valB = b[sortField] || '';
-
-      if (sortField === 'title' || sortField === 'domain' || sortField === 'hostname') {
-        valA = String(valA).toLowerCase();
-        valB = String(valB).toLowerCase();
-        return sortOrder === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
-      }
-
-      if (sortField === 'dateAdded') {
-        return sortOrder === 'asc' ? (valA - valB) : (valB - valA);
-      }
-
-      return 0;
-    });
-
-    return list;
-  }
-
-  function renderCurrentView() {
-    // Update Header Text
-    elements.headerTitle.innerHTML = `<span>${escapeHtml(state.activeFolderName)}</span>`;
-    elements.headerBreadcrumb.innerHTML = `<span>${state.activeFolderPath.map(escapeHtml).join(' &rsaquo; ')}</span>`;
-
-    const bookmarks = getFilteredBookmarks();
-    elements.bookmarksContainer.innerHTML = '';
-
-    // Handle view mode class
-    if (state.viewMode === 'list') {
-      elements.bookmarksContainer.classList.add('list-view');
-      elements.btnViewList.classList.add('active');
-      elements.btnViewGrid.classList.remove('active');
-    } else {
-      elements.bookmarksContainer.classList.remove('list-view');
-      elements.btnViewGrid.classList.add('active');
-      elements.btnViewList.classList.remove('active');
-    }
-
-    if (bookmarks.length === 0) {
-      elements.bookmarksContainer.classList.add('hidden');
+    if (targetFolders.length === 0 && state.allBookmarks.length === 0) {
+      elements.cardsContainer.classList.add('hidden');
       elements.emptyState.classList.remove('hidden');
-
-      if (state.searchQuery) {
-        elements.emptyStateTitle.textContent = 'Ничего не найдено';
-        elements.emptyStateDesc.textContent = `По запросу «${escapeHtml(state.searchQuery)}» совпадений не обнаружено. Попробуйте изменить ключевые слова.`;
-        elements.btnEmptyAdd.classList.add('hidden');
-      } else {
-        elements.emptyStateTitle.textContent = 'Здесь пока пусто';
-        elements.emptyStateDesc.textContent = 'В этой категории еще нет сохраненных закладок. Нажмите кнопку ниже, чтобы добавить первую!';
-        elements.btnEmptyAdd.classList.remove('hidden');
-      }
       return;
     }
 
-    elements.bookmarksContainer.classList.remove('hidden');
+    elements.cardsContainer.classList.remove('hidden');
     elements.emptyState.classList.add('hidden');
 
-    // Render Cards
     const fragment = document.createDocumentFragment();
-    bookmarks.forEach(bm => {
-      const card = createBookmarkCardElement(bm);
-      fragment.appendChild(card);
+
+    targetFolders.forEach(folder => {
+      const bookmarks = state.bookmarksByFolder.get(folder.id) || [];
+      const cardEl = createCategoryCard(folder, bookmarks);
+      fragment.appendChild(cardEl);
     });
 
-    elements.bookmarksContainer.appendChild(fragment);
+    elements.cardsContainer.appendChild(fragment);
   }
 
-  function createBookmarkCardElement(bookmark) {
+  function createCategoryCard(folder, bookmarks) {
     const card = document.createElement('div');
-    card.className = 'bookmark-card';
-    card.setAttribute('data-id', bookmark.id);
+    card.className = 'glass-card flex flex-col';
+    card.setAttribute('data-folder-id', folder.id);
+
+    // Card Header
+    const header = document.createElement('div');
+    header.className = 'card-header-bar';
+    header.innerHTML = `
+      <div class="card-title-group">
+        <span class="card-title-text" title="${escapeHtml(folder.title)}">${escapeHtml(folder.title)}</span>
+        <span class="card-badge">${bookmarks.length}</span>
+      </div>
+      <div class="card-header-actions">
+        <button class="card-icon-btn btn-quick-add" title="Добавить закладку в «${escapeHtml(folder.title)}»">
+          <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+            <line x1="12" y1="5" x2="12" y2="19"></line>
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+          </svg>
+        </button>
+      </div>
+    `;
+
+    header.querySelector('.btn-quick-add').addEventListener('click', (e) => {
+      e.stopPropagation();
+      openAddModal(folder.id);
+    });
+
+    card.appendChild(header);
+
+    // Bookmark Items Container
+    const itemsList = document.createElement('div');
+    itemsList.className = 'flex flex-col flex-1';
+
+    if (bookmarks.length === 0) {
+      itemsList.innerHTML = `
+        <div class="py-6 text-center text-xs text-white/40 italic">
+          Нет закладок в этой категории
+        </div>
+      `;
+    } else {
+      bookmarks.forEach(bm => {
+        const itemEl = createBookmarkRow(bm);
+        itemsList.appendChild(itemEl);
+      });
+    }
+
+    card.appendChild(itemsList);
+    return card;
+  }
+
+  function createBookmarkRow(bookmark) {
+    const row = document.createElement('div');
+    row.className = 'bookmark-item';
+    row.setAttribute('data-bookmark-id', bookmark.id);
 
     const faviconSrc = getFaviconUrl(bookmark.url);
     const hostColor = hashStringColor(bookmark.hostname || 'site');
     const firstLetter = (bookmark.title || bookmark.hostname || 'N').charAt(0).toUpperCase();
 
-    card.innerHTML = `
-      <div class="card-top">
-        <div class="favicon-wrapper">
+    row.innerHTML = `
+      <div class="bookmark-left">
+        <div class="bookmark-favicon">
           <img 
             class="favicon-img" 
             src="${escapeHtml(faviconSrc)}" 
             alt="${escapeHtml(bookmark.hostname)}"
             loading="lazy"
           >
-          <div class="favicon-fallback hidden" style="background: ${hostColor}">
+          <div class="bookmark-favicon-fallback hidden" style="background: ${hostColor}">
             ${escapeHtml(firstLetter)}
           </div>
         </div>
-        <span class="domain-badge" title="${escapeHtml(bookmark.hostname)}">
-          ${escapeHtml(bookmark.hostname)}
-        </span>
-      </div>
-
-      <div class="card-body">
-        <h3 class="bookmark-title" title="${escapeHtml(bookmark.title)}">
-          ${escapeHtml(bookmark.title)}
-        </h3>
-        <span class="bookmark-url" title="${escapeHtml(bookmark.url)}">
-          ${escapeHtml(bookmark.url)}
-        </span>
-      </div>
-
-      <div class="card-bottom">
-        <span class="bookmark-date">${formatRelativeDate(bookmark.dateAdded)}</span>
-        <div class="card-actions">
-          <button class="card-action-btn action-open" title="Открыть в новой вкладке">
-            <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
-              <polyline points="15 3 21 3 21 9"></polyline>
-              <line x1="10" y1="14" x2="21" y2="3"></line>
-            </svg>
-          </button>
-          <button class="card-action-btn action-copy" title="Скопировать ссылку">
-            <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-            </svg>
-          </button>
-          <button class="card-action-btn action-edit" title="Редактировать">
-            <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-            </svg>
-          </button>
-          <button class="card-action-btn delete-btn action-delete" title="Удалить">
-            <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-              <polyline points="3 6 5 6 21 6"></polyline>
-              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-            </svg>
-          </button>
+        <div class="bookmark-info">
+          <span class="bookmark-name" title="${escapeHtml(bookmark.title)}">${escapeHtml(bookmark.title)}</span>
+          <span class="bookmark-domain" title="${escapeHtml(bookmark.hostname)}">${escapeHtml(bookmark.hostname)}</span>
         </div>
+      </div>
+
+      <div class="bookmark-actions-dock">
+        <button class="item-action-btn action-open" title="Открыть в новой вкладке">
+          <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+            <polyline points="15 3 21 3 21 9"></polyline>
+            <line x1="10" y1="14" x2="21" y2="3"></line>
+          </svg>
+        </button>
+        <button class="item-action-btn action-copy" title="Скопировать ссылку">
+          <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+          </svg>
+        </button>
+        <button class="item-action-btn action-edit" title="Редактировать">
+          <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+          </svg>
+        </button>
+        <button class="item-action-btn btn-delete action-delete" title="Удалить">
+          <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+            <polyline points="3 6 5 6 21 6"></polyline>
+            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+          </svg>
+        </button>
       </div>
     `;
 
     // Favicon Fallback Event
-    const imgEl = card.querySelector('.favicon-img');
-    const fallbackEl = card.querySelector('.favicon-fallback');
+    const imgEl = row.querySelector('.favicon-img');
+    const fallbackEl = row.querySelector('.bookmark-favicon-fallback');
     imgEl.addEventListener('error', () => {
       imgEl.classList.add('hidden');
       fallbackEl.classList.remove('hidden');
     });
 
-    // Card Primary Click (Open link)
-    card.addEventListener('click', (e) => {
-      if (e.target.closest('.card-actions')) return;
+    // Primary click -> open URL
+    row.addEventListener('click', (e) => {
+      if (e.target.closest('.bookmark-actions-dock')) return;
       openUrl(bookmark.url);
     });
 
     // Action handlers
-    card.querySelector('.action-open').addEventListener('click', (e) => {
+    row.querySelector('.action-open').addEventListener('click', (e) => {
       e.stopPropagation();
       openUrl(bookmark.url);
     });
 
-    card.querySelector('.action-copy').addEventListener('click', async (e) => {
+    row.querySelector('.action-copy').addEventListener('click', async (e) => {
       e.stopPropagation();
       try {
         await navigator.clipboard.writeText(bookmark.url);
         showToast('Ссылка скопирована в буфер обмена');
       } catch {
-        showToast('Не удалось скопировать ссылку', 'error');
+        showToast('Не удалось скопировать', 'error');
       }
     });
 
-    card.querySelector('.action-edit').addEventListener('click', (e) => {
+    row.querySelector('.action-edit').addEventListener('click', (e) => {
       e.stopPropagation();
       openEditModal(bookmark);
     });
 
-    card.querySelector('.action-delete').addEventListener('click', (e) => {
+    row.querySelector('.action-delete').addEventListener('click', (e) => {
       e.stopPropagation();
       deleteBookmark(bookmark);
     });
 
-    return card;
+    return row;
   }
 
-  function openUrl(url) {
-    if (state.isExtension && chrome.tabs?.create) {
-      chrome.tabs.create({ url });
+  // --- 9. SEARCH MODAL ENGINE ---
+
+  function openSearchModal() {
+    elements.searchModal.classList.add('open');
+    elements.searchModalInput.value = '';
+    elements.searchModalInput.focus();
+    renderSearchResults('');
+  }
+
+  function closeSearchModal() {
+    elements.searchModal.classList.remove('open');
+  }
+
+  function renderSearchResults(query) {
+    const q = query.trim().toLowerCase();
+    elements.searchResultsList.innerHTML = '';
+
+    let matches = [];
+    if (!q) {
+      // Show recent 15 bookmarks when query is empty
+      matches = [...state.allBookmarks].sort((a, b) => (b.dateAdded || 0) - (a.dateAdded || 0)).slice(0, 15);
     } else {
-      window.open(url, '_blank', 'noopener,noreferrer');
+      matches = state.allBookmarks.filter(b => {
+        return (
+          b.title.toLowerCase().includes(q) ||
+          b.url.toLowerCase().includes(q) ||
+          b.hostname.toLowerCase().includes(q) ||
+          b.folderName.toLowerCase().includes(q)
+        );
+      });
     }
+
+    elements.searchMatchCount.textContent = `${matches.length} ${q ? 'совпадений' : 'недавних закладок'}`;
+
+    if (matches.length === 0) {
+      elements.searchResultsList.innerHTML = `
+        <div class="py-8 text-center text-xs text-white/50">
+          По запросу «${escapeHtml(query)}» ничего не найдено
+        </div>
+      `;
+      return;
+    }
+
+    matches.forEach((bm, idx) => {
+      const item = document.createElement('div');
+      item.className = 'search-result-item';
+      item.setAttribute('data-url', bm.url);
+
+      const faviconSrc = getFaviconUrl(bm.url);
+
+      item.innerHTML = `
+        <div class="w-6 h-6 rounded-md bg-white/10 flex items-center justify-center overflow-hidden shrink-0 border border-white/10">
+          <img src="${escapeHtml(faviconSrc)}" class="w-4 h-4 object-contain" alt="">
+        </div>
+        <div class="flex flex-col min-w-0 flex-1">
+          <span class="text-xs font-semibold text-white truncate">${escapeHtml(bm.title)}</span>
+          <span class="text-[11px] text-white/50 truncate">${escapeHtml(bm.url)}</span>
+        </div>
+        <span class="text-[10px] px-2 py-0.5 rounded-full bg-white/10 text-purple-300 shrink-0 font-medium">${escapeHtml(bm.folderName)}</span>
+      `;
+
+      item.addEventListener('click', () => {
+        openUrl(bm.url);
+        closeSearchModal();
+      });
+
+      elements.searchResultsList.appendChild(item);
+    });
   }
 
-  // --- 8. MODAL & CRUD ACTIONS ---
+  // --- 10. CRUD MODALS & ACTIONS ---
 
-  function openAddModal() {
+  function populateFolderSelectDropdowns() {
+    elements.modalBookmarkFolder.innerHTML = '';
+    elements.folderParentSelect.innerHTML = '';
+
+    if (state.allFolders.length === 0) {
+      const opt = document.createElement('option');
+      opt.value = '1';
+      opt.textContent = 'Панель закладок';
+      elements.modalBookmarkFolder.appendChild(opt);
+      elements.folderParentSelect.appendChild(opt.cloneNode(true));
+      return;
+    }
+
+    state.allFolders.forEach(folder => {
+      const opt1 = document.createElement('option');
+      opt1.value = folder.id;
+      const indent = '— '.repeat(folder.depth);
+      opt1.textContent = `${indent}${folder.title}`;
+      elements.modalBookmarkFolder.appendChild(opt1);
+
+      const opt2 = opt1.cloneNode(true);
+      elements.folderParentSelect.appendChild(opt2);
+    });
+  }
+
+  function openAddModal(targetFolderId = null) {
     state.editingBookmarkId = null;
     elements.modalTitle.textContent = 'Добавить закладку';
     elements.modalBookmarkId.value = '';
     elements.modalBookmarkTitle.value = '';
     elements.modalBookmarkUrl.value = '';
 
-    // Set default selected folder
-    if (state.activeView !== 'all' && state.activeView !== 'recent' && state.folderMap.has(state.activeView)) {
-      elements.modalBookmarkFolder.value = state.activeView;
+    if (targetFolderId && state.folderMap.has(targetFolderId)) {
+      elements.modalBookmarkFolder.value = targetFolderId;
+    } else if (state.activeBoardId !== 'all' && state.folderMap.has(state.activeBoardId)) {
+      elements.modalBookmarkFolder.value = state.activeBoardId;
     } else if (state.allFolders.length > 0) {
       elements.modalBookmarkFolder.value = state.allFolders[0].id;
     }
@@ -708,17 +808,17 @@
     elements.modalBookmarkTitle.focus();
   }
 
-  function closeModal() {
+  function closeBookmarkModal() {
     elements.bookmarkModal.classList.remove('open');
     elements.bookmarkForm.reset();
     state.editingBookmarkId = null;
   }
 
-  async function handleFormSubmit(e) {
+  async function handleBookmarkFormSubmit(e) {
     e.preventDefault();
     const title = elements.modalBookmarkTitle.value.trim();
     let url = elements.modalBookmarkUrl.value.trim();
-    const parentId = elements.modalBookmarkFolder.value;
+    const parentId = elements.modalBookmarkFolder.value || '1';
 
     if (!url) return;
     if (!/^https?:\/\//i.test(url)) {
@@ -727,38 +827,34 @@
 
     try {
       if (state.editingBookmarkId) {
-        // Edit existing bookmark
         if (state.isExtension) {
           await chrome.bookmarks.update(state.editingBookmarkId, { title, url });
-          // If parent folder changed, move it
           const existing = state.allBookmarks.find(b => b.id === state.editingBookmarkId);
           if (existing && existing.parentId !== parentId) {
             await chrome.bookmarks.move(state.editingBookmarkId, { parentId });
           }
         } else {
-          // Mock mode edit
           const bm = state.allBookmarks.find(b => b.id === state.editingBookmarkId);
           if (bm) {
             bm.title = title;
             bm.url = url;
             bm.parentId = parentId;
             bm.hostname = extractHostname(url);
+            bm.folderName = state.folderMap.get(parentId)?.title || 'Папка';
           }
         }
         showToast('Закладка успешно обновлена');
       } else {
-        // Add new bookmark
         if (state.isExtension) {
           await chrome.bookmarks.create({
-            parentId: parentId || '1',
+            parentId,
             title: title || extractHostname(url),
             url
           });
         } else {
-          // Mock mode add
           const newBm = {
-            id: String(Date.now()),
-            parentId: parentId || '1',
+            id: 'mock-' + Date.now(),
+            parentId,
             title: title || extractHostname(url),
             url,
             dateAdded: Date.now(),
@@ -766,14 +862,18 @@
             folderName: state.folderMap.get(parentId)?.title || 'Папка'
           };
           state.allBookmarks.unshift(newBm);
+          if (!state.bookmarksByFolder.has(parentId)) {
+            state.bookmarksByFolder.set(parentId, []);
+          }
+          state.bookmarksByFolder.get(parentId).unshift(newBm);
         }
         showToast('Закладка добавлена');
       }
 
-      closeModal();
+      closeBookmarkModal();
       await loadBookmarks();
     } catch (err) {
-      console.error('[NovaTab] CRUD error:', err);
+      console.error('[NovaTab] Bookmark save error:', err);
       showToast('Ошибка при сохранении закладки', 'error');
     }
   }
@@ -787,110 +887,203 @@
         await chrome.bookmarks.remove(bookmark.id);
       } else {
         state.allBookmarks = state.allBookmarks.filter(b => b.id !== bookmark.id);
+        const folderList = state.bookmarksByFolder.get(bookmark.parentId);
+        if (folderList) {
+          state.bookmarksByFolder.set(bookmark.parentId, folderList.filter(b => b.id !== bookmark.id));
+        }
       }
       showToast('Закладка удалена');
       await loadBookmarks();
     } catch (err) {
       console.error('[NovaTab] Delete error:', err);
-      showToast('Ошибка при удалении закладки', 'error');
+      showToast('Ошибка удаления', 'error');
     }
   }
 
-  // --- 9. EVENT LISTENERS & PERSISTENCE ---
+  // --- 11. FOLDER CREATION MODAL ---
 
-  async function initPreferences() {
+  function openFolderModal() {
+    elements.folderTitleInput.value = '';
+    elements.folderModal.classList.add('open');
+    elements.folderTitleInput.focus();
+  }
+
+  function closeFolderModal() {
+    elements.folderModal.classList.remove('open');
+  }
+
+  async function handleFolderFormSubmit(e) {
+    e.preventDefault();
+    const title = elements.folderTitleInput.value.trim();
+    const parentId = elements.folderParentSelect.value || '1';
+
+    if (!title) return;
+
+    try {
+      if (state.isExtension) {
+        await chrome.bookmarks.create({
+          parentId,
+          title
+        });
+      } else {
+        const newFolderId = 'mock-folder-' + Date.now();
+        const folderObj = {
+          id: newFolderId,
+          title,
+          parentId,
+          path: [title],
+          depth: 1,
+          childrenFolderIds: []
+        };
+        state.allFolders.push(folderObj);
+        state.folderMap.set(newFolderId, folderObj);
+        state.bookmarksByFolder.set(newFolderId, []);
+      }
+      showToast(`Папка «${title}» создана!`);
+      closeFolderModal();
+      await loadBookmarks();
+    } catch (err) {
+      console.error('[NovaTab] Create folder error:', err);
+      showToast('Ошибка создания папки', 'error');
+    }
+  }
+
+  // --- 12. SETTINGS & VIEW TOGGLE ---
+
+  function openSettingsModal() {
+    updateStatsDisplay();
+    elements.settingsModal.classList.add('open');
+  }
+
+  function closeSettingsModal() {
+    elements.settingsModal.classList.remove('open');
+  }
+
+  function updateStatsDisplay() {
+    elements.settingsStatBookmarks.textContent = state.allBookmarks.length;
+    elements.settingsStatFolders.textContent = state.allFolders.length;
+  }
+
+  function toggleViewMode() {
+    state.viewMode = state.viewMode === 'grid' ? 'list' : 'grid';
     if (state.isExtension && chrome.storage?.local) {
-      const stored = await chrome.storage.local.get(['viewMode', 'sortBy']);
-      if (stored.viewMode) state.viewMode = stored.viewMode;
-      if (stored.sortBy) state.sortBy = stored.sortBy;
+      chrome.storage.local.set({ viewMode: state.viewMode });
     } else {
-      const localView = localStorage.getItem('novatab_viewMode');
-      const localSort = localStorage.getItem('novatab_sortBy');
-      if (localView) state.viewMode = localView;
-      if (localSort) state.sortBy = localSort;
+      localStorage.setItem('novatab_viewMode', state.viewMode);
     }
-
-    elements.sortSelect.value = state.sortBy;
+    updateViewModeUI();
   }
+
+  function updateViewModeUI() {
+    if (state.viewMode === 'list') {
+      elements.cardsContainer.classList.add('list-layout');
+      elements.viewIconGrid.classList.add('hidden');
+      elements.viewIconList.classList.remove('hidden');
+      elements.tooltipViewMode.textContent = 'Вид: Список (переключить на сетку)';
+    } else {
+      elements.cardsContainer.classList.remove('list-layout');
+      elements.viewIconGrid.classList.remove('hidden');
+      elements.viewIconList.classList.add('hidden');
+      elements.tooltipViewMode.textContent = 'Вид: Сетка (переключить на список)';
+    }
+  }
+
+  function jumpToRandomBookmark() {
+    if (state.allBookmarks.length === 0) {
+      showToast('Нет доступных закладок для перехода', 'error');
+      return;
+    }
+    const randomIndex = Math.floor(Math.random() * state.allBookmarks.length);
+    const chosen = state.allBookmarks[randomIndex];
+    showToast(`Открываем: ${chosen.title}`);
+    setTimeout(() => openUrl(chosen.url), 200);
+  }
+
+  // --- 13. EVENT LISTENERS INITIALIZATION ---
 
   function setupEventListeners() {
-    // Sidebar view selectors
-    elements.navAll.addEventListener('click', () => selectView('all'));
-    elements.navRecent.addEventListener('click', () => selectView('recent'));
-    elements.btnRefreshTree.addEventListener('click', () => loadBookmarks());
-
-    // Search bar
-    elements.searchInput.addEventListener('input', (e) => {
-      state.searchQuery = e.target.value;
-      renderCurrentView();
+    // Background Wallpaper Button
+    elements.bgChangeBtn.addEventListener('click', () => {
+      elements.bgFileInput.click();
     });
 
-    // Keyboard shortcut for search
+    // Right click on floating bg button -> Reset wallpaper
+    elements.bgChangeBtn.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      resetBackground();
+    });
+
+    elements.bgFileInput.addEventListener('change', handleBgFileSelect);
+
+    // Floating Toolbar actions
+    elements.toolbarSearchBtn.addEventListener('click', openSearchModal);
+    elements.toolbarAddBtn.addEventListener('click', () => openAddModal());
+    elements.toolbarFolderBtn.addEventListener('click', openFolderModal);
+    elements.btnAddBoard.addEventListener('click', openFolderModal);
+    elements.toolbarViewBtn.addEventListener('click', toggleViewMode);
+    elements.toolbarRandomBtn.addEventListener('click', jumpToRandomBookmark);
+    elements.toolbarSettingsBtn.addEventListener('click', openSettingsModal);
+
+    // Empty state add button
+    elements.btnEmptyAdd.addEventListener('click', () => openAddModal());
+
+    // Search Modal events
+    elements.searchModalClose.addEventListener('click', closeSearchModal);
+    elements.searchModal.addEventListener('click', (e) => {
+      if (e.target === elements.searchModal) closeSearchModal();
+    });
+    elements.searchModalInput.addEventListener('input', (e) => {
+      renderSearchResults(e.target.value);
+    });
+
+    // Global Keydown shortcuts
     window.addEventListener('keydown', (e) => {
-      // Press '/' to search
-      if (e.key === '/' && document.activeElement !== elements.searchInput && !elements.bookmarkModal.classList.contains('open')) {
+      // Press '/' to open fast search modal
+      if (
+        e.key === '/' && 
+        !elements.searchModal.classList.contains('open') && 
+        !elements.bookmarkModal.classList.contains('open') && 
+        !elements.folderModal.classList.contains('open') &&
+        !elements.settingsModal.classList.contains('open')
+      ) {
         e.preventDefault();
-        elements.searchInput.focus();
-        elements.searchInput.select();
+        openSearchModal();
       }
-      // Press 'Escape' to clear search or close modal
+      // Press 'Escape' to close all modals
       if (e.key === 'Escape') {
-        if (elements.bookmarkModal.classList.contains('open')) {
-          closeModal();
-        } else if (document.activeElement === elements.searchInput) {
-          elements.searchInput.value = '';
-          state.searchQuery = '';
-          elements.searchInput.blur();
-          renderCurrentView();
-        }
+        closeSearchModal();
+        closeBookmarkModal();
+        closeFolderModal();
+        closeSettingsModal();
       }
     });
 
-    // Sort selector
-    elements.sortSelect.addEventListener('change', (e) => {
-      state.sortBy = e.target.value;
-      if (state.isExtension && chrome.storage?.local) {
-        chrome.storage.local.set({ sortBy: state.sortBy });
-      } else {
-        localStorage.setItem('novatab_sortBy', state.sortBy);
-      }
-      renderCurrentView();
-    });
-
-    // View mode buttons
-    elements.btnViewGrid.addEventListener('click', () => {
-      state.viewMode = 'grid';
-      if (state.isExtension && chrome.storage?.local) {
-        chrome.storage.local.set({ viewMode: 'grid' });
-      } else {
-        localStorage.setItem('novatab_viewMode', 'grid');
-      }
-      renderCurrentView();
-    });
-
-    elements.btnViewList.addEventListener('click', () => {
-      state.viewMode = 'list';
-      if (state.isExtension && chrome.storage?.local) {
-        chrome.storage.local.set({ viewMode: 'list' });
-      } else {
-        localStorage.setItem('novatab_viewMode', 'list');
-      }
-      renderCurrentView();
-    });
-
-    // Add buttons
-    elements.btnAddBookmark.addEventListener('click', openAddModal);
-    elements.btnEmptyAdd.addEventListener('click', openAddModal);
-
-    // Modal close handlers
-    elements.modalBtnClose.addEventListener('click', closeModal);
-    elements.modalBtnCancel.addEventListener('click', closeModal);
+    // Bookmark Modal events
+    elements.modalBtnClose.addEventListener('click', closeBookmarkModal);
+    elements.modalBtnCancel.addEventListener('click', closeBookmarkModal);
     elements.bookmarkModal.addEventListener('click', (e) => {
-      if (e.target === elements.bookmarkModal) closeModal();
+      if (e.target === elements.bookmarkModal) closeBookmarkModal();
     });
+    elements.bookmarkForm.addEventListener('submit', handleBookmarkFormSubmit);
 
-    // Form submit
-    elements.bookmarkForm.addEventListener('submit', handleFormSubmit);
+    // Folder Modal events
+    elements.folderModalClose.addEventListener('click', closeFolderModal);
+    elements.folderBtnCancel.addEventListener('click', closeFolderModal);
+    elements.folderModal.addEventListener('click', (e) => {
+      if (e.target === elements.folderModal) closeFolderModal();
+    });
+    elements.folderForm.addEventListener('submit', handleFolderFormSubmit);
+
+    // Settings Modal events
+    elements.settingsModalClose.addEventListener('click', closeSettingsModal);
+    elements.settingsBtnDone.addEventListener('click', closeSettingsModal);
+    elements.settingsModal.addEventListener('click', (e) => {
+      if (e.target === elements.settingsModal) closeSettingsModal();
+    });
+    elements.settingsUploadBgBtn.addEventListener('click', () => {
+      elements.bgFileInput.click();
+    });
+    elements.settingsResetBgBtn.addEventListener('click', resetBackground);
 
     // Chrome Live Bookmarks Reactive Sync
     if (state.isExtension) {
@@ -901,11 +1094,11 @@
     }
   }
 
-  // --- 10. INITIALIZATION ---
+  // --- 14. BOOTSTRAP INITIALIZATION ---
   async function init() {
-    console.log(`[NovaTab] Initializing app (Extension mode: ${state.isExtension})`);
-    await initPreferences();
+    console.log(`[NovaTab] Initializing Glassmorphism Engine (Extension mode: ${state.isExtension})`);
     setupEventListeners();
+    await loadSavedBackground();
     await loadBookmarks();
   }
 
