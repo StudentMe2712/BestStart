@@ -193,9 +193,9 @@
           <div class="settings-tab-content active" id="tab-general">
             <div class="st-section">
               <div class="st-section-title">ПОВЕДЕНИЕ</div>
-              <div class="st-row"><span class="st-row-label">Открывать ссылки в новой вкладке</span><button class="st-toggle on"><span class="st-toggle-knob"></span></button></div>
-              <div class="st-row"><span class="st-row-label">Скрывать лишние закладки</span><button class="st-toggle"><span class="st-toggle-knob"></span></button></div>
-              <div class="st-row"><span class="st-row-label">Показывать описания</span><button class="st-toggle on"><span class="st-toggle-knob"></span></button></div>
+              <div class="st-row"><span class="st-row-label">Открывать ссылки в новой вкладке</span><button class="st-toggle on" id="openNewTabToggle"><span class="st-toggle-knob"></span></button></div>
+              <div class="st-row"><span class="st-row-label">Скрывать лишние закладки</span><button class="st-toggle" id="hideExcessBookmarksToggle"><span class="st-toggle-knob"></span></button></div>
+              <div class="st-row"><span class="st-row-label">Показывать описания</span><button class="st-toggle on" id="descToggle"><span class="st-toggle-knob"></span></button></div>
             </div>
             <div class="st-section">
               <div class="st-section-title">РАСПОЛОЖЕНИЕ</div>
@@ -207,7 +207,7 @@
             </div>
             <div class="st-section">
               <div class="st-section-title">БОКОВАЯ ПАНЕЛЬ</div>
-              <div class="st-row"><span class="st-row-label">Всегда показывать все кнопки</span><button class="st-toggle"><span class="st-toggle-knob"></span></button></div>
+              <div class="st-row"><span class="st-row-label">Всегда показывать все кнопки</span><button class="st-toggle" id="sidebarAlwaysOpenToggle"><span class="st-toggle-knob"></span></button></div>
             </div>
             <div class="st-section">
               <div class="st-section-title">БЫСТРОЕ СОХРАНЕНИЕ</div>
@@ -367,7 +367,7 @@
     <div class="widget-card" id="wcNavSearch">
       <div class="widget-card-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg></div>
       <span class="widget-card-name" data-i18n="widget.search">Поиск</span>
-      <button class="st-toggle on" id="navSearchToggle"><span class="st-toggle-knob"></span></button>
+      <button class="st-toggle" id="navSearchToggle"><span class="st-toggle-knob"></span></button>
     </div>
 
     <div class="widget-card widget-card--weather" id="wcWeather">

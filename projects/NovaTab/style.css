@@ -180,7 +180,7 @@ body {
    ========================================================================== */
 
 .search-bar {
-  display: flex;
+  display: none;
   align-items: center;
   gap: 10px;
   padding: 8px 16px;
@@ -194,6 +194,13 @@ body {
   color: var(--text-main);
   transition: box-shadow 0.2s, background 0.2s;
 }
+
+body.setting-show-search .search-bar {
+  display: flex;
+}
+
+body.setting-hide-descriptions .link-desc { display: none; }
+body.setting-sidebar-always-open .sidebar-expanded { opacity: 1; pointer-events: all; transform: translateY(0); }
 
 .search-bar:focus-within {
   background: rgba(255, 255, 255, 0.65);
@@ -424,18 +431,21 @@ body {
 
 .board-placeholder {
   border: 1px dashed rgba(255, 255, 255, 0.2);
-  border-radius: 16px;
+  border-radius: 14px;
   display: flex;
   align-items: center;
   justify-content: center;
   min-height: 120px;
+  opacity: 0;
+  transition: opacity 0.2s, background 0.2s;
   cursor: pointer;
-  opacity: 0; /* Полностью скрыт по умолчанию */
-  transition: opacity 0.2s ease, background 0.2s ease;
+  width: var(--board-w, 260px);
+  box-sizing: border-box;
 }
 
+/* Появление плюса при наведении на пустую ячейку сетки */
 .board-placeholder:hover {
-  opacity: 1; /* Появляется только при наведении */
+  opacity: 1;
   background: rgba(255, 255, 255, 0.05);
 }
 
@@ -443,6 +453,15 @@ body {
   color: rgba(255, 255, 255, 0.5);
   font-size: 24px;
   font-weight: 300;
+}
+
+/* Подсветка пустого слота во время Drag-and-Drop */
+.boards-grid.is-dragging .board-placeholder {
+  opacity: 0.5;
+}
+.boards-grid.is-dragging .board-placeholder:hover {
+  opacity: 1;
+  background: rgba(255, 255, 255, 0.1);
 }
 
 /* ==========================================================================
@@ -1509,3 +1528,4 @@ dialog h3 {
     padding: 8px 12px;
   }
 }
+
