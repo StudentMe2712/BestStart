@@ -295,72 +295,168 @@
   </div>
 
   <!-- OVERLAY 5: SETTINGS OVERLAY -->
-  <div id="settings-overlay" class="overlay">
-    <div class="overlay-card overlay-card-wide">
-      <div class="overlay-header">
-        <div class="overlay-title-group">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+  <div class="settings-overlay overlay hidden" id="settingsOverlay">
+    <div class="settings-modal" id="settingsModal">
+      <div class="settings-header">
+        <div class="settings-title-group">
+          <svg class="icon-md" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <circle cx="12" cy="12" r="3"></circle>
             <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0-.33-1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
           </svg>
-          <span class="overlay-title">Настройки NovaTab & Glassmorphism</span>
+          <span class="settings-modal-title">Настройки</span>
         </div>
-        <button id="settingsOverlayClose" class="overlay-close-btn" aria-label="Закрыть">&times;</button>
+        <button class="settings-close-btn" id="settingsCloseBtn" aria-label="Закрыть">&times;</button>
       </div>
+      
+      <div class="settings-main">
+        <!-- Left Nav Tabs -->
+        <nav class="settings-nav" id="settingsNav">
+          <button class="settings-nav-item active" data-tab="general">
+            <span class="nav-item-icon">⚙️</span>
+            <span>Общие</span>
+          </button>
+          <button class="settings-nav-item" data-tab="appearance">
+            <span class="nav-item-icon">🎨</span>
+            <span>Внешний вид & Стекло</span>
+          </button>
+          <button class="settings-nav-item" data-tab="wallpapers">
+            <span class="nav-item-icon">🖼️</span>
+            <span>Обои & Фон</span>
+          </button>
+          <button class="settings-nav-item" data-tab="hotkeys">
+            <span class="nav-item-icon">⌨️</span>
+            <span>Горячие клавиши</span>
+          </button>
+          <button class="settings-nav-item" data-tab="about">
+            <span class="nav-item-icon">ℹ️</span>
+            <span>О программе</span>
+          </button>
+        </nav>
 
-      <div class="overlay-body">
-        <!-- Glassmorphism Customization Engine -->
-        <div class="settings-section">
-          <h4 class="settings-section-title">Кастомизация Стеклянного Интерфейса</h4>
+        <!-- Right Tab Content Body -->
+        <div class="settings-body" id="settingsBody">
           
-          <div class="settings-row">
-            <label for="blurSlider" class="settings-label">Размытие стекла (Blur)</label>
-            <span id="blurValue" class="settings-value-badge">16px</span>
-          </div>
-          <input type="range" id="blurSlider" min="8" max="30" step="1" value="16" class="glass-slider">
-
-          <div class="settings-row" style="margin-top: 8px;">
-            <label for="alphaSlider" class="settings-label">Прозрачность карточек (Alpha)</label>
-            <span id="alphaValue" class="settings-value-badge">0.15</span>
-          </div>
-          <input type="range" id="alphaSlider" min="0.05" max="0.50" step="0.01" value="0.15" class="glass-slider">
-
-          <div class="settings-row" style="margin-top: 8px;">
-            <label for="dimmingSlider" class="settings-label">Затемнение фона (Overlay Dimming)</label>
-            <span id="dimmingValue" class="settings-value-badge">25%</span>
-          </div>
-          <input type="range" id="dimmingSlider" min="0" max="0.85" step="0.05" value="0.25" class="glass-slider">
-        </div>
-
-        <!-- Stats Section -->
-        <div class="settings-section">
-          <h4 class="settings-section-title">Статистика</h4>
-          <div class="settings-stats-grid">
-            <div class="stat-card">
-              <div id="statBookmarks" class="stat-value">0</div>
-              <div class="stat-label">Закладок всего</div>
+          <!-- Tab: General -->
+          <div class="settings-tab-panel active" data-tab-panel="general">
+            <h3 class="st-section-title">Основные параметры</h3>
+            
+            <div class="st-row">
+              <div class="st-label-group">
+                <span class="st-title">Показывать цитаты дня</span>
+                <span class="st-desc">Отображать вдохновляющие фразы над закладками</span>
+              </div>
+              <button class="st-toggle on" id="toggleShowQuote" data-setting="showQuote" aria-label="Показывать цитату">
+                <span class="st-toggle-knob"></span>
+              </button>
             </div>
-            <div class="stat-card">
-              <div id="statFolders" class="stat-value">0</div>
-              <div class="stat-label">Категорий / Папок</div>
+
+            <div class="st-row">
+              <div class="st-label-group">
+                <span class="st-title">Показывать виджет времени и погоды</span>
+                <span class="st-desc">Информационный блок в правом верхнем углу</span>
+              </div>
+              <button class="st-toggle on" id="toggleShowWidgets" data-setting="showWidgets" aria-label="Показывать виджеты">
+                <span class="st-toggle-knob"></span>
+              </button>
+            </div>
+
+            <div class="st-row">
+              <div class="st-label-group">
+                <span class="st-title">Открывать ссылки в новой вкладке</span>
+                <span class="st-desc">При клике на закладку создавать новую вкладку</span>
+              </div>
+              <button class="st-toggle on" id="toggleOpenNewTab" data-setting="openNewTab" aria-label="Открывать в новой вкладке">
+                <span class="st-toggle-knob"></span>
+              </button>
+            </div>
+
+            <div class="st-row">
+              <div class="st-label-group">
+                <span class="st-title">Ширина колонок карточек</span>
+                <span class="st-desc">Размер вертикальных колонок категорий</span>
+              </div>
+              <div class="st-control-wrap">
+                <input type="range" id="stSliderBoardW" class="st-slider" min="200" max="360" step="10" value="250">
+                <span id="stBoardWVal" class="st-val-badge">250px</span>
+              </div>
             </div>
           </div>
-        </div>
 
-        <!-- Hotkeys info -->
-        <div class="settings-section">
-          <h4 class="settings-section-title">Горячие клавиши</h4>
-          <div class="hotkeys-list">
-            <div class="hotkey-row"><span>Быстрый поиск закладок / Google:</span><kbd>/</kbd></div>
-            <div class="hotkey-row"><span>Быстрое сохранение вкладки:</span><kbd>Ctrl+Shift+Y</kbd></div>
-            <div class="hotkey-row"><span>Закрыть активное окно / поиск:</span><kbd>Escape</kbd></div>
+          <!-- Tab: Appearance (Glassmorphism) -->
+          <div class="settings-tab-panel" data-tab-panel="appearance">
+            <h3 class="st-section-title">Настройки Glassmorphism стекла</h3>
+
+            <div class="st-row">
+              <div class="st-label-group">
+                <span class="st-title">Размытие стекла (Backdrop Blur)</span>
+                <span class="st-desc">Степень матового эффекта для всех панелей</span>
+              </div>
+              <div class="st-control-wrap">
+                <input type="range" id="stSliderBlur" class="st-slider" min="4" max="32" step="2" value="16">
+                <span id="stBlurVal" class="st-val-badge">16px</span>
+              </div>
+            </div>
+
+            <div class="st-row">
+              <div class="st-label-group">
+                <span class="st-title">Прозрачность стеклянных панелей</span>
+                <span class="st-desc">Плотность белого/темного слоя карточек</span>
+              </div>
+              <div class="st-control-wrap">
+                <input type="range" id="stSliderAlpha" class="st-slider" min="0.05" max="0.50" step="0.02" value="0.15">
+                <span id="stAlphaVal" class="st-val-badge">15%</span>
+              </div>
+            </div>
+
+            <div class="st-row">
+              <div class="st-label-group">
+                <span class="st-title">Затемнение фонового слоя</span>
+                <span class="st-desc">Регулировка затемняющего оверлея над обоями</span>
+              </div>
+              <div class="st-control-wrap">
+                <input type="range" id="stSliderOverlay" class="st-slider" min="0" max="0.85" step="0.05" value="0.25">
+                <span id="stOverlayVal" class="st-val-badge">25%</span>
+              </div>
+            </div>
           </div>
-        </div>
-      </div>
 
-      <div class="overlay-footer modal-footer-between">
-        <span style="font-size: 12px; color: var(--text-muted);">NovaTab v2.0 • Markmez 1:1 Engine</span>
-        <button id="settingsBtnDone" class="btn btn-primary">Готово</button>
+          <!-- Tab: Wallpapers -->
+          <div class="settings-tab-panel" data-tab-panel="wallpapers">
+            <h3 class="st-section-title">Lively Wallpapers & Фон</h3>
+            <p class="st-desc-block">Загружайте любые живые видео-обои (.mp4, .webm) или HD-изображения. Видео сохраняется локально в защищенной базе IndexedDB.</p>
+            
+            <div class="st-actions-row">
+              <button class="btn btn-primary" id="stUploadBgBtn">
+                <span>🖼️ Выбрать файл (Видео / Фото)</span>
+              </button>
+              <button class="btn btn-secondary" id="stResetBgBtn">
+                <span>Сбросить фон по умолчанию</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Tab: Hotkeys -->
+          <div class="settings-tab-panel" data-tab-panel="hotkeys">
+            <h3 class="st-section-title">Горячие клавиши</h3>
+            <div class="hotkeys-table">
+              <div class="hk-row"><span>Быстрый поиск закладок</span><kbd>/</kbd></div>
+              <div class="hk-row"><span>Сохранить текущую вкладку</span><kbd>Ctrl+Shift+Y</kbd></div>
+              <div class="hk-row"><span>Закрыть любое окно</span><kbd>Escape</kbd></div>
+            </div>
+          </div>
+
+          <!-- Tab: About -->
+          <div class="settings-tab-panel" data-tab-panel="about">
+            <h3 class="st-section-title">NovaTab</h3>
+            <p class="st-desc-block">Визуальный менеджер закладок и эстетичный дашборд Новой вкладки для Chromium.</p>
+            <div class="about-meta">
+              <div><strong>Версия:</strong> 2.0.0 (Master Glassmorphism)</div>
+              <div><strong>Стандарты:</strong> 100% Manifest V3 CSP Compliant</div>
+              <div><strong>Хранилище:</strong> Chrome Bookmarks + IndexedDB WallpaperDB</div>
+            </div>
+          </div>
+
+        </div>
       </div>
     </div>
   </div>

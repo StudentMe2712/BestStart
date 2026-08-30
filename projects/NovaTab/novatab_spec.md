@@ -78,6 +78,14 @@ NovaTab employs a multi-tiered glassmorphism visual hierarchy powered by standar
   --text-muted: rgba(255, 255, 255, 0.5);
   --text-dim: rgba(255, 255, 255, 0.35);
 
+  --ui-modal: rgba(24, 26, 36, 0.88);
+  --ui-border: rgba(255, 255, 255, 0.1);
+  --ui-fill: rgba(255, 255, 255, 0.06);
+  --ui-fill-hover: rgba(255, 255, 255, 0.12);
+  --ui-text: rgba(255, 255, 255, 0.92);
+  --ui-text-secondary: rgba(255, 255, 255, 0.65);
+  --board-w: 250px;
+
   --radius-board: 20px;
   --radius-pill: 100px;
   --radius-sm: 8px;
@@ -140,7 +148,7 @@ Fixed capsule dock on right center (`position: fixed; right: 24px; top: 50%; tra
 2. `#wp-overlay`: Video & image wallpaper upload, presets, opacity slider, reset button.
 3. `#widgets-overlay`: Widget status and toggles.
 4. `#trash-overlay`: Category cleanup, empty categories auto-clean, and clear actions.
-5. `#settings-overlay`: Live glass customization sliders (`--board-blur`, `--board-alpha`, `--overlay-opacity`), statistics (`#statBookmarks`, `#statFolders`), and hotkeys guide.
+5. `#settingsOverlay`: Comprehensive 5-tab Glassmorphism Settings Modal (`.settings-modal` with tabs: General, Appearance & Glass, Wallpapers & Background, Hotkeys, and About NovaTab). Features live sliding switches (`.st-toggle`), custom sliders (`#stSliderBoardW`, `#stSliderBlur`, `#stSliderAlpha`, `#stSliderOverlay`), direct wallpaper management, and responsive persistence.
 6. `#bookmark-overlay`: Add/Edit Bookmark modal with category picker.
 7. `#folder-overlay`: Add Category/Board modal with parent folder picker.
 
@@ -166,7 +174,7 @@ Fixed capsule dock on right center (`position: fixed; right: 24px; top: 50%; tra
   3. Stored in IndexedDB and cached in storage.
   4. Applied to `#photo-bg.style.backgroundImage`.
 - **Customizable Glassmorphism & Dimming:**
-  - Live adjustment for `--board-blur` (8px to 30px), `--board-alpha` (0.05 to 0.50), and `--overlay-opacity` (0.0 to 0.85).
+  - Live adjustment for `--board-w` (200px to 360px), `--board-blur` (4px to 32px), `--board-alpha` (0.05 to 0.50), and `--overlay-opacity` (0.0 to 0.85).
   - Automatically persisted in `chrome.storage.local` and `localStorage`.
 
 ---
@@ -174,7 +182,7 @@ Fixed capsule dock on right center (`position: fixed; right: 24px; top: 50%; tra
 ## 5. Implementation Verification & Status
 
 - [x] **100% Manifest V3 CSP Compliance:** Zero remote scripts, zero inline scripts/handlers, zero `eval()`.
-- [x] **Markmez 1:1 CSS Engine (`style.css`):** `:root` design tokens, reusable `.board, .glass-panel`, `#video-bg`, `#photo-bg`, `#bg-overlay`, `.topbar`, `.pages-nav`, `.top-widgets`, `.boards-area`, `.boards-columns`, `.board-column`, `.board`, `.bookmark-row`, `#sidebar`, and `.overlay`.
-- [x] **Exact DOM Skeleton (`index.html`):** Fully structured with all required IDs and overlays.
-- [x] **Core Engine & Selectors (`app.js`):** Unified overlay manager, Russian live clock & quotes, IndexedDB wallpaper engine, concurrency mutex for bookmark loading, full category and bookmark CRUD, live search with keyboard navigation, drag & drop tabs.
-- [x] **Syntax Verification:** Passed `node -c projects/NovaTab/app.js` with 0 errors.
+- [x] **Markmez 1:1 CSS Engine (`style.css`):** `:root` design tokens (`--ui-modal`, `--ui-border`, `--ui-fill`, `--ui-text`, `--board-w`), reusable `.board, .glass-panel`, `#video-bg`, `#photo-bg`, `#bg-overlay`, `.topbar`, `.pages-nav`, `.top-widgets`, `.boards-area`, `.boards-columns`, `.board-column`, `.board`, `.bookmark-row`, `#sidebar`, and `.settings-overlay`.
+- [x] **Exact Settings UI Integration (`index.html`):** Fully structured with `<div class="settings-overlay overlay hidden" id="settingsOverlay">` and clean `.settings-modal` containing all 5 navigation tabs (`general`, `appearance`, `wallpapers`, `hotkeys`, `about`), toggles (`showQuote`, `showWidgets`, `openNewTab`), and custom range sliders.
+- [x] **Core Engine & Selectors (`app.js`):** Reactive tab switching, toggle synchronization, real-time CSS variable updates for board width and backdrop blur, IndexedDB wallpaper engine, concurrency mutex for bookmark loading, full category and bookmark CRUD, live search with keyboard navigation.
+- [x] **Syntax Verification:** Passed `node -c projects/NovaTab/app.js` with 0 errors (exit code 0).

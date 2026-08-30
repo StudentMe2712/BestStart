@@ -25,10 +25,14 @@
     editingBookmarkId: null,
     draggedFolderId: null,
     activeOverlayId: null,
-    // Customization tokens
+    // Customization & Settings tokens
     boardBlur: 16,
     boardAlpha: 0.15,
-    overlayOpacity: 0.25
+    overlayOpacity: 0.25,
+    boardWidth: 250,
+    showQuote: true,
+    showWidgets: true,
+    openNewTab: true
   };
 
   // --- 2. DYNAMIC QUOTES MODULE DATA ---
@@ -217,18 +221,31 @@
     btnCleanEmptyCategories: document.getElementById('btnCleanEmptyCategories'),
     trashCategoryList: document.getElementById('trashCategoryList'),
 
-    // Settings Overlay
-    settingsOverlay: document.getElementById('settings-overlay'),
-    settingsOverlayClose: document.getElementById('settingsOverlayClose'),
-    settingsBtnDone: document.getElementById('settingsBtnDone'),
-    blurSlider: document.getElementById('blurSlider'),
-    blurValue: document.getElementById('blurValue'),
-    alphaSlider: document.getElementById('alphaSlider'),
-    alphaValue: document.getElementById('alphaValue'),
-    dimmingSlider: document.getElementById('dimmingSlider'),
-    dimmingValue: document.getElementById('dimmingValue'),
-    statBookmarks: document.getElementById('statBookmarks'),
-    statFolders: document.getElementById('statFolders'),
+    // Settings Overlay & Modal
+    settingsOverlay: document.getElementById('settingsOverlay'),
+    settingsModal: document.getElementById('settingsModal'),
+    settingsCloseBtn: document.getElementById('settingsCloseBtn'),
+    settingsNav: document.getElementById('settingsNav'),
+    settingsBody: document.getElementById('settingsBody'),
+
+    // Settings Toggles
+    toggleShowQuote: document.getElementById('toggleShowQuote'),
+    toggleShowWidgets: document.getElementById('toggleShowWidgets'),
+    toggleOpenNewTab: document.getElementById('toggleOpenNewTab'),
+
+    // Settings Sliders & Value Badges
+    stSliderBoardW: document.getElementById('stSliderBoardW'),
+    stBoardWVal: document.getElementById('stBoardWVal'),
+    stSliderBlur: document.getElementById('stSliderBlur'),
+    stBlurVal: document.getElementById('stBlurVal'),
+    stSliderAlpha: document.getElementById('stSliderAlpha'),
+    stAlphaVal: document.getElementById('stAlphaVal'),
+    stSliderOverlay: document.getElementById('stSliderOverlay'),
+    stOverlayVal: document.getElementById('stOverlayVal'),
+
+    // Settings Wallpaper Actions
+    stUploadBgBtn: document.getElementById('stUploadBgBtn'),
+    stResetBgBtn: document.getElementById('stResetBgBtn'),
 
     // Bookmark Modal Overlay
     bookmarkOverlay: document.getElementById('bookmark-overlay'),
@@ -412,10 +429,14 @@
 
   function openUrl(url) {
     if (!url) return;
-    if (state.isExtension && chrome.tabs?.create) {
-      chrome.tabs.create({ url });
+    if (state.openNewTab) {
+      if (state.isExtension && chrome.tabs?.create) {
+        chrome.tabs.create({ url });
+      } else {
+        window.open(url, '_blank', 'noopener,noreferrer');
+      }
     } else {
-      window.open(url, '_blank', 'noopener,noreferrer');
+      window.location.href = url;
     }
   }
 
@@ -492,6 +513,13 @@
     }
   }
 
+  function setBoardWidth(w) {
+    state.boardWidth = w !== undefined ? parseInt(w, 10) : state.boardWidth;
+    document.documentElement.style.setProperty('--board-w', `${state.boardWidth}px`);
+    if (elements.stSliderBoardW) elements.stSliderBoardW.value = state.boardWidth.toString();
+    if (elements.stBoardWVal) elements.stBoardWVal.textContent = `${state.boardWidth}px`;
+  }
+
   function setGlassStyles(blur, alpha, dimming) {
     state.boardBlur = blur !== undefined ? parseInt(blur, 10) : state.boardBlur;
     state.boardAlpha = alpha !== undefined ? parseFloat(alpha) : state.boardAlpha;
@@ -501,29 +529,55 @@
     document.documentElement.style.setProperty('--board-alpha', state.boardAlpha.toString());
     document.documentElement.style.setProperty('--overlay-opacity', state.overlayOpacity.toString());
 
-    if (elements.blurSlider) elements.blurSlider.value = state.boardBlur.toString();
-    if (elements.blurValue) elements.blurValue.textContent = `${state.boardBlur}px`;
+    if (elements.stSliderBlur) elements.stSliderBlur.value = state.boardBlur.toString();
+    if (elements.stBlurVal) elements.stBlurVal.textContent = `${state.boardBlur}px`;
 
-    if (elements.alphaSlider) elements.alphaSlider.value = state.boardAlpha.toString();
-    if (elements.alphaValue) elements.alphaValue.textContent = state.boardAlpha.toFixed(2);
+    if (elements.stSliderAlpha) elements.stSliderAlpha.value = state.boardAlpha.toString();
+    if (elements.stAlphaVal) elements.stAlphaVal.textContent = `${Math.round(state.boardAlpha * 100)}%`;
 
-    if (elements.dimmingSlider) elements.dimmingSlider.value = state.overlayOpacity.toString();
-    if (elements.dimmingValue) elements.dimmingValue.textContent = `${Math.round(state.overlayOpacity * 100)}%`;
+    if (elements.stSliderOverlay) elements.stSliderOverlay.value = state.overlayOpacity.toString();
+    if (elements.stOverlayVal) elements.stOverlayVal.textContent = `${Math.round(state.overlayOpacity * 100)}%`;
 
     if (elements.overlayOpacitySliderWp) elements.overlayOpacitySliderWp.value = state.overlayOpacity.toString();
     if (elements.overlayOpacityValWp) elements.overlayOpacityValWp.textContent = `${Math.round(state.overlayOpacity * 100)}%`;
   }
 
-  function persistGlassSettings() {
+  function applySettingEffect(setting, stateVal) {
+    if (setting === 'showQuote') {
+      if (elements.quoteBox) {
+        if (stateVal) {
+          elements.quoteBox.classList.remove('hidden');
+        } else {
+          elements.quoteBox.classList.add('hidden');
+        }
+      }
+    } else if (setting === 'showWidgets') {
+      if (elements.topWidgets) {
+        if (stateVal) {
+          elements.topWidgets.classList.remove('hidden');
+        } else {
+          elements.topWidgets.classList.add('hidden');
+        }
+      }
+    } else if (setting === 'openNewTab') {
+      state.openNewTab = Boolean(stateVal);
+    }
+  }
+
+  function persistPreferences() {
     const data = {
       boardBlur: state.boardBlur,
       boardAlpha: state.boardAlpha,
-      overlayOpacity: state.overlayOpacity
+      overlayOpacity: state.overlayOpacity,
+      boardWidth: state.boardWidth,
+      showQuote: state.showQuote,
+      showWidgets: state.showWidgets,
+      openNewTab: state.openNewTab
     };
     if (state.isExtension && chrome.storage?.local) {
       chrome.storage.local.set(data);
     } else {
-      localStorage.setItem('novatab_glass_settings', JSON.stringify(data));
+      localStorage.setItem('novatab_preferences', JSON.stringify(data));
     }
   }
 
@@ -554,31 +608,66 @@
         }
       }
 
-      // 2. Load Glass Settings
+      // 2. Load Preferences & Glass Settings
       let blur = 16;
       let alpha = 0.15;
       let dimming = 0.25;
+      let boardW = 250;
+      let showQuote = true;
+      let showWidgets = true;
+      let openNewTab = true;
 
       if (state.isExtension && chrome.storage?.local) {
-        const stored = await chrome.storage.local.get(['boardBlur', 'boardAlpha', 'overlayOpacity']);
+        const stored = await chrome.storage.local.get([
+          'boardBlur',
+          'boardAlpha',
+          'overlayOpacity',
+          'boardWidth',
+          'showQuote',
+          'showWidgets',
+          'openNewTab'
+        ]);
         if (stored.boardBlur !== undefined) blur = stored.boardBlur;
         if (stored.boardAlpha !== undefined) alpha = stored.boardAlpha;
         if (stored.overlayOpacity !== undefined) dimming = stored.overlayOpacity;
+        if (stored.boardWidth !== undefined) boardW = stored.boardWidth;
+        if (stored.showQuote !== undefined) showQuote = stored.showQuote;
+        if (stored.showWidgets !== undefined) showWidgets = stored.showWidgets;
+        if (stored.openNewTab !== undefined) openNewTab = stored.openNewTab;
       } else {
-        const raw = localStorage.getItem('novatab_glass_settings');
+        const raw = localStorage.getItem('novatab_preferences');
         if (raw) {
           try {
             const parsed = JSON.parse(raw);
             if (parsed.boardBlur !== undefined) blur = parsed.boardBlur;
             if (parsed.boardAlpha !== undefined) alpha = parsed.boardAlpha;
             if (parsed.overlayOpacity !== undefined) dimming = parsed.overlayOpacity;
+            if (parsed.boardWidth !== undefined) boardW = parsed.boardWidth;
+            if (parsed.showQuote !== undefined) showQuote = parsed.showQuote;
+            if (parsed.showWidgets !== undefined) showWidgets = parsed.showWidgets;
+            if (parsed.openNewTab !== undefined) openNewTab = parsed.openNewTab;
           } catch {}
         }
       }
 
+      state.showQuote = showQuote;
+      state.showWidgets = showWidgets;
+      state.openNewTab = openNewTab;
+
+      // Update toggles visual state
+      if (elements.toggleShowQuote) elements.toggleShowQuote.classList.toggle('on', showQuote);
+      if (elements.toggleShowWidgets) elements.toggleShowWidgets.classList.toggle('on', showWidgets);
+      if (elements.toggleOpenNewTab) elements.toggleOpenNewTab.classList.toggle('on', openNewTab);
+
+      // Apply initial toggle effects
+      applySettingEffect('showQuote', showQuote);
+      applySettingEffect('showWidgets', showWidgets);
+
+      // Apply CSS styles and update sliders
       setGlassStyles(blur, alpha, dimming);
+      setBoardWidth(boardW);
     } catch (e) {
-      console.warn('[NovaTab] Failed loading background or glass settings:', e);
+      console.warn('[NovaTab] Failed loading background or preferences:', e);
     }
   }
 
@@ -687,6 +776,8 @@
   function openOverlay(overlayEl, sourceBtn = null) {
     closeAllOverlays();
     if (!overlayEl) return;
+    overlayEl.classList.remove('hidden');
+    void overlayEl.offsetWidth;
     overlayEl.classList.add('open', 'active');
     state.activeOverlayId = overlayEl.id;
 
@@ -699,6 +790,7 @@
         'wp-overlay': elements.mpWallpaper,
         'widgets-overlay': elements.sideWidgets,
         'trash-overlay': elements.sideTrash,
+        'settingsOverlay': elements.settingsSideBtn,
         'settings-overlay': elements.settingsSideBtn
       };
       if (idMap[overlayEl.id]) {
@@ -712,14 +804,15 @@
       renderSearchResults('');
     } else if (overlayEl === elements.trashOverlay) {
       renderTrashCategories();
-    } else if (overlayEl === elements.settingsOverlay) {
-      updateStatsDisplay();
     }
   }
 
   function closeOverlay(overlayEl) {
     if (!overlayEl) return;
     overlayEl.classList.remove('open', 'active');
+    if (overlayEl.id === 'settingsOverlay') {
+      overlayEl.classList.add('hidden');
+    }
     state.activeOverlayId = null;
 
     // Remove active state from sidebar buttons
@@ -729,7 +822,12 @@
   }
 
   function closeAllOverlays() {
-    document.querySelectorAll('.overlay').forEach(ov => ov.classList.remove('open', 'active'));
+    document.querySelectorAll('.overlay').forEach(ov => {
+      ov.classList.remove('open', 'active');
+      if (ov.id === 'settingsOverlay') {
+        ov.classList.add('hidden');
+      }
+    });
     state.activeOverlayId = null;
     if (elements.sidebar) {
       elements.sidebar.querySelectorAll('.side-btn').forEach(btn => btn.classList.remove('active'));
@@ -1760,9 +1858,96 @@
     }
     if (elements.settingsSideBtn) {
       elements.settingsSideBtn.addEventListener('click', () => {
-        if (state.activeOverlayId === 'settings-overlay') closeAllOverlays();
-        else openOverlay(elements.settingsOverlay, elements.settingsSideBtn);
+        if (state.activeOverlayId === 'settingsOverlay' || state.activeOverlayId === 'settings-overlay') {
+          closeAllOverlays();
+        } else {
+          openOverlay(elements.settingsOverlay, elements.settingsSideBtn);
+        }
       });
+    }
+
+    // Settings Modal: Nav Tab Switching
+    if (elements.settingsNav) {
+      const navItems = elements.settingsNav.querySelectorAll('.settings-nav-item');
+      navItems.forEach(item => {
+        item.addEventListener('click', () => {
+          const tabKey = item.dataset.tab;
+          navItems.forEach(ni => ni.classList.remove('active'));
+          item.classList.add('active');
+
+          if (elements.settingsBody) {
+            const panels = elements.settingsBody.querySelectorAll('.settings-tab-panel');
+            panels.forEach(p => {
+              if (p.dataset.tabPanel === tabKey) {
+                p.classList.add('active');
+              } else {
+                p.classList.remove('active');
+              }
+            });
+          }
+        });
+      });
+    }
+
+    // Settings Modal: Toggles
+    if (elements.settingsBody) {
+      elements.settingsBody.querySelectorAll('.st-toggle').forEach(toggle => {
+        toggle.addEventListener('click', () => {
+          toggle.classList.toggle('on');
+          const setting = toggle.dataset.setting;
+          const stateVal = toggle.classList.contains('on');
+
+          if (setting) {
+            state[setting] = stateVal;
+            applySettingEffect(setting, stateVal);
+            persistPreferences();
+          }
+        });
+      });
+    }
+
+    // Settings Modal: Sliders
+    if (elements.stSliderBoardW) {
+      elements.stSliderBoardW.addEventListener('input', (e) => {
+        setBoardWidth(e.target.value);
+        persistPreferences();
+      });
+    }
+
+    if (elements.stSliderBlur) {
+      elements.stSliderBlur.addEventListener('input', (e) => {
+        setGlassStyles(e.target.value, undefined, undefined);
+        persistPreferences();
+      });
+    }
+
+    if (elements.stSliderAlpha) {
+      elements.stSliderAlpha.addEventListener('input', (e) => {
+        setGlassStyles(undefined, e.target.value, undefined);
+        persistPreferences();
+      });
+    }
+
+    if (elements.stSliderOverlay) {
+      elements.stSliderOverlay.addEventListener('input', (e) => {
+        setGlassStyles(undefined, undefined, e.target.value);
+        persistPreferences();
+      });
+    }
+
+    if (elements.overlayOpacitySliderWp) {
+      elements.overlayOpacitySliderWp.addEventListener('input', (e) => {
+        setGlassStyles(undefined, undefined, e.target.value);
+        persistPreferences();
+      });
+    }
+
+    // Settings Modal: Wallpapers buttons
+    if (elements.stUploadBgBtn) {
+      elements.stUploadBgBtn.addEventListener('click', () => elements.bgFileInput.click());
+    }
+    if (elements.stResetBgBtn) {
+      elements.stResetBgBtn.addEventListener('click', resetBackground);
     }
 
     // Overlay backdrop clicks & close buttons
@@ -1781,8 +1966,7 @@
     if (elements.widgetsBtnDone) elements.widgetsBtnDone.addEventListener('click', closeAllOverlays);
     if (elements.trashOverlayClose) elements.trashOverlayClose.addEventListener('click', closeAllOverlays);
     if (elements.trashBtnDone) elements.trashBtnDone.addEventListener('click', closeAllOverlays);
-    if (elements.settingsOverlayClose) elements.settingsOverlayClose.addEventListener('click', closeAllOverlays);
-    if (elements.settingsBtnDone) elements.settingsBtnDone.addEventListener('click', closeAllOverlays);
+    if (elements.settingsCloseBtn) elements.settingsCloseBtn.addEventListener('click', closeAllOverlays);
     if (elements.modalBookmarkClose) elements.modalBookmarkClose.addEventListener('click', closeAllOverlays);
     if (elements.modalBookmarkCancel) elements.modalBookmarkCancel.addEventListener('click', closeAllOverlays);
     if (elements.folderModalClose) elements.folderModalClose.addEventListener('click', closeAllOverlays);
@@ -1845,32 +2029,6 @@
     }
     if (elements.bgFileInput) {
       elements.bgFileInput.addEventListener('change', handleBgFileSelect);
-    }
-
-    // Glassmorphism sliders
-    if (elements.blurSlider) {
-      elements.blurSlider.addEventListener('input', (e) => {
-        setGlassStyles(e.target.value, undefined, undefined);
-        persistGlassSettings();
-      });
-    }
-    if (elements.alphaSlider) {
-      elements.alphaSlider.addEventListener('input', (e) => {
-        setGlassStyles(undefined, e.target.value, undefined);
-        persistGlassSettings();
-      });
-    }
-    if (elements.dimmingSlider) {
-      elements.dimmingSlider.addEventListener('input', (e) => {
-        setGlassStyles(undefined, undefined, e.target.value);
-        persistGlassSettings();
-      });
-    }
-    if (elements.overlayOpacitySliderWp) {
-      elements.overlayOpacitySliderWp.addEventListener('input', (e) => {
-        setGlassStyles(undefined, undefined, e.target.value);
-        persistGlassSettings();
-      });
     }
 
     // Trash clean empty
