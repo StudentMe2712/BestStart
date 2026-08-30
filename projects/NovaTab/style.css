@@ -880,6 +880,82 @@ dialog h3 {
 }
 
 /* ==========================================================================
+   Wallpaper Modal & Unified Modal Base
+   ========================================================================== */
+
+/* Базовые классы для всех окон (Настройки, Обои и т.д.) */
+.modal-overlay {
+  position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+  background: rgba(0, 0, 0, 0.4); backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  display: flex; align-items: center; justify-content: center; z-index: 1000;
+  animation: modalOverlayFadeIn 0.2s ease;
+}
+
+@keyframes modalOverlayFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.modal-base {
+  background: var(--ui-modal); border: 1px solid var(--ui-border);
+  border-radius: 18px; box-shadow: 0 24px 64px rgba(0,0,0,0.55);
+  color: var(--ui-text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  display: flex; flex-direction: column; overflow: hidden;
+  animation: modalPopIn 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes modalPopIn {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.modal-header { display: flex; justify-content: space-between; align-items: center; padding: 16px 24px; border-bottom: 1px solid var(--ui-border); }
+.modal-title { font-size: 16px; font-weight: 600; color: #ffffff; }
+.modal-close-btn { background: none; border: none; color: var(--ui-text-secondary); font-size: 24px; line-height: 1; cursor: pointer; border-radius: 8px; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; transition: all 0.15s ease; }
+.modal-close-btn:hover { background: var(--ui-fill-hover); color: #ffffff; }
+
+/* Специфичные стили для окна Обоев */
+.wp-modal { width: 540px; max-width: 92vw; max-height: 85vh; }
+.wp-body { padding: 24px; overflow-y: auto; }
+
+/* Зона загрузки */
+.wp-upload-zone {
+  border: 1px dashed rgba(255, 255, 255, 0.2); border-radius: 12px;
+  padding: 32px 24px; text-align: center; cursor: pointer;
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  background: rgba(255, 255, 255, 0.02); transition: background 0.2s, border-color 0.2s;
+  margin-bottom: 32px;
+}
+.wp-upload-zone:hover { background: rgba(255, 255, 255, 0.05); border-color: rgba(255, 255, 255, 0.35); }
+.wp-upload-zone svg { color: var(--ui-text-secondary); margin-bottom: 4px; }
+.wp-upload-title { font-size: 14px; font-weight: 500; color: var(--ui-text); }
+.wp-upload-sub { font-size: 12px; color: var(--ui-text-secondary); text-transform: uppercase; letter-spacing: 0.5px; }
+
+/* Сетка пресетов */
+.wp-section { margin-bottom: 24px; }
+.wp-section:last-child { margin-bottom: 0; }
+.wp-section-title { font-size: 11px; font-weight: 700; color: var(--ui-text-secondary); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 16px; }
+.wp-presets-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 28px; }
+.wp-preset-item {
+  aspect-ratio: 16 / 10; border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.1); cursor: pointer;
+  background-size: cover; background-position: center; transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+  outline: none;
+}
+.wp-preset-item:hover { transform: scale(1.05); box-shadow: 0 4px 12px rgba(0,0,0,0.35); border-color: rgba(255, 255, 255, 0.4); z-index: 2; }
+
+/* Кнопка поиска */
+.wp-search-btn {
+  width: 100%; display: flex; align-items: center; gap: 12px;
+  background: rgba(0, 0, 0, 0.2); border: 1px solid var(--ui-border);
+  padding: 12px 16px; border-radius: 12px; color: var(--ui-text-secondary);
+  cursor: pointer; font-size: 13.5px; font-weight: 500; transition: background 0.2s, color 0.2s, border-color 0.2s;
+  outline: none;
+}
+.wp-search-btn:hover { background: rgba(0, 0, 0, 0.35); color: var(--ui-text); border-color: rgba(255, 255, 255, 0.2); }
+.wp-external-icon { margin-left: auto; color: var(--ui-text-secondary); }
+
+/* ==========================================================================
    Toast Notification
    ========================================================================== */
 

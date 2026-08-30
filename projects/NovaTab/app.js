@@ -67,6 +67,14 @@
   const settingsNav = document.getElementById('settingsNav');
   const settingsBody = document.getElementById('settingsBody');
 
+  // Wallpaper Modal Elements
+  const wpOverlay = document.getElementById('wpOverlay');
+  const wpCloseBtn = document.getElementById('wpCloseBtn');
+  const wpUploadZone = document.getElementById('wpUploadZone');
+  const wpFileInput = document.getElementById('wpFileInput');
+  const wpSearchOnlineBtn = document.getElementById('wpSearchOnlineBtn');
+  const mpWallpaper = document.getElementById('mpWallpaper');
+
   // --- Utility Functions ---
   function generateId(prefix = 'id') {
     return `${prefix}-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`;
@@ -743,6 +751,7 @@
       hideContextMenu();
       closeModal();
       closeSettingsModal();
+      closeWallpaperModal();
       if (sidebar) sidebar.classList.remove('is-open');
     } else if (e.key === '/' && document.activeElement !== searchInput && !['INPUT', 'TEXTAREA'].includes(document.activeElement?.tagName)) {
       if (searchInput) {
@@ -788,13 +797,19 @@
     });
   }
 
-  if (wallpaperSideBtn && settingsOverlay) {
+  if (wallpaperSideBtn && wpOverlay) {
     wallpaperSideBtn.addEventListener('click', (e) => {
       e.stopPropagation();
-      settingsOverlay.style.display = 'flex';
+      openWallpaperModal();
       if (sidebar) sidebar.classList.remove('is-open');
-      const wpTabBtn = document.querySelector('.settings-nav-item[data-tab="tab-appearance"]');
-      if (wpTabBtn) wpTabBtn.click();
+    });
+  }
+
+  if (mpWallpaper && wpOverlay) {
+    mpWallpaper.addEventListener('click', (e) => {
+      e.stopPropagation();
+      openWallpaperModal();
+      if (sidebar) sidebar.classList.remove('is-open');
     });
   }
 
@@ -892,6 +907,81 @@
     }
   }
 
+  // --- Wallpaper Modal Handling ---
+  function openWallpaperModal() {
+    if (!wpOverlay) return;
+    wpOverlay.style.display = 'flex';
+  }
+
+  function closeWallpaperModal() {
+    if (!wpOverlay) return;
+    wpOverlay.style.display = 'none';
+  }
+
+  function initWallpaperModal() {
+    // Close Button Click
+    if (wpCloseBtn) {
+      wpCloseBtn.addEventListener('click', () => {
+        closeWallpaperModal();
+      });
+    }
+
+    // Close on Backdrop Click
+    if (wpOverlay) {
+      wpOverlay.addEventListener('click', (e) => {
+        if (e.target === wpOverlay) {
+          closeWallpaperModal();
+        }
+      });
+    }
+
+    // Upload Zone Click -> Trigger File Input
+    if (wpUploadZone && wpFileInput) {
+      wpUploadZone.addEventListener('click', () => {
+        wpFileInput.click();
+      });
+    }
+
+    // Handle File Input Change
+    if (wpFileInput) {
+      wpFileInput.addEventListener('change', (e) => {
+        const file = e.target.files && e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          const bgLayer = document.getElementById('bg-layer');
+          if (bgLayer) {
+            bgLayer.style.background = `url(${event.target.result}) center/cover no-repeat`;
+          }
+          showToast('Обои обновлены');
+        };
+        reader.readAsDataURL(file);
+        wpFileInput.value = '';
+      });
+    }
+
+    // Preset Items Click
+    const presetItems = document.querySelectorAll('.wp-preset-item');
+    presetItems.forEach((item) => {
+      item.addEventListener('click', () => {
+        const bg = item.dataset.bg || item.style.background;
+        const bgLayer = document.getElementById('bg-layer');
+        if (bgLayer && bg) {
+          bgLayer.style.background = bg;
+        }
+        showToast('Пресет применен');
+      });
+    });
+
+    // Search Online Button Click
+    if (wpSearchOnlineBtn) {
+      wpSearchOnlineBtn.addEventListener('click', () => {
+        window.open('https://unsplash.com/s/photos/wallpaper', '_blank');
+      });
+    }
+  }
+
   // --- Initializer ---
   function init() {
     loadState(() => {
@@ -899,6 +989,7 @@
       renderBoards();
     });
     initSettingsModal();
+    initWallpaperModal();
   }
 
   if (document.readyState === 'loading') {
