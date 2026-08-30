@@ -363,6 +363,97 @@ body {
 }
 
 /* ==========================================================================
+   Board Context Menu & Customization
+   ========================================================================== */
+
+/* --- Меню доски (Из дампа пользователя) --- */
+.board-menu {
+  position: absolute;
+  background: var(--ui-popover, rgba(28,29,38,0.97));
+  border: 0.5px solid var(--ui-border, rgba(255,255,255,0.1));
+  border-radius: 12px;
+  padding: 6px;
+  min-width: 220px;
+  z-index: 200;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+  transform-origin: top left;
+  animation: board-menu-pop 0.12s ease;
+  color: var(--ui-text, rgba(255,255,255,0.92));
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 13px;
+  user-select: none;
+}
+@keyframes board-menu-pop {
+  0% { opacity: 0; transform: scale(0.95); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+.board-menu-item {
+  display: flex; align-items: center; padding: 8px 10px;
+  border-radius: 6px; cursor: pointer; transition: background 0.15s;
+  gap: 12px;
+}
+.board-menu-item:hover { background: var(--ui-fill-hover, rgba(255,255,255,0.10)); }
+.board-menu-icon { display: flex; align-items: center; color: var(--ui-text-secondary); }
+.board-menu-icon svg { width: 16px; height: 16px; }
+.board-menu-label { flex: 1; font-weight: 500; }
+.board-menu-chevron { display: flex; align-items: center; color: var(--ui-text-secondary); }
+
+.board-menu-sep { height: 1px; background: var(--ui-border, rgba(255,255,255,0.1)); margin: 4px 0; }
+
+.board-menu-item.danger { color: var(--ui-danger-strong, #ff6b6b); }
+.board-menu-item.danger .board-menu-icon { color: var(--ui-danger-strong, #ff6b6b); }
+.board-menu-item.danger:hover { background: var(--ui-danger-bg-hover, rgba(220,60,60,0.22)); }
+
+/* Панель кастомизации (внутри меню) */
+.board-menu-custom-panel { background: rgba(255,255,255,0.03); border-radius: 8px; padding: 8px; margin: 4px 0; }
+.bm-color-palette { display: flex; gap: 8px; margin-top: 12px; justify-content: space-between; align-items: center; }
+.bm-color-swatch { width: 20px; height: 20px; border-radius: 50%; cursor: pointer; border: 1px solid rgba(255,255,255,0.1); transition: transform 0.15s; }
+.bm-color-swatch:hover { transform: scale(1.18); }
+.bm-color-picker-btn { background: transparent; border: 1px dashed rgba(255,255,255,0.4); display: flex; align-items: center; justify-content: center; color: rgba(255,255,255,0.6); font-size: 13px; line-height: 1; }
+
+/* Кнопки в заголовке доски */
+.board-header-actions { display: flex; align-items: center; gap: 2px; }
+.board-menu-btn {
+  background: transparent; border: none; font-size: 16px; cursor: pointer; opacity: 0.6;
+  transition: opacity 0.2s, background 0.2s, transform 0.15s; width: 24px; height: 24px; border-radius: 6px;
+  display: flex; align-items: center; justify-content: center; color: #333; line-height: 1; letter-spacing: 1px;
+}
+.board-menu-btn:hover { opacity: 1; background: rgba(255, 255, 255, 0.4); transform: scale(1.1); }
+
+/* --- Инлайн-ввод заголовка доски --- */
+.board-title-input {
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.35);
+  color: var(--text-main, #111);
+  font-size: 14px;
+  font-weight: 600;
+  outline: none;
+  width: 100%;
+  padding: 2px 0;
+  font-family: inherit;
+}
+.board-title-input::placeholder { color: rgba(0, 0, 0, 0.4); }
+
+/* Кастомизация доски (Уголок / Обводка) */
+.board-card[data-custom-mode="border"] {
+  border-color: var(--card-accent, rgba(255, 255, 255, 0.3));
+}
+.board-card[data-custom-mode="corner"] {
+  position: relative;
+}
+.board-card[data-custom-mode="corner"]::after {
+  content: ''; position: absolute; top: 0; right: 0;
+  width: 0; height: 0;
+  border-top: 18px solid var(--card-accent, transparent);
+  border-left: 18px solid transparent;
+  border-top-right-radius: var(--radius-card);
+}
+
+/* ==========================================================================
    Sidebar / Expandable Floating Menu
    ========================================================================== */
 

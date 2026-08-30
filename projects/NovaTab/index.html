@@ -314,6 +314,61 @@
   <!-- Вспомогательный тост / уведомление для действий -->
   <div id="toast" class="toast"></div>
 
+  <!-- Глобальное контекстное меню доски (Три точки) -->
+  <div class="board-menu" id="boardMenu" style="display: none;">
+    <!-- Переименовать -->
+    <div class="board-menu-item" id="bmRename">
+      <span class="board-menu-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 7 4 4 20 4 20 7"></polyline><line x1="9" y1="20" x2="15" y2="20"></line><line x1="12" y1="4" x2="12" y2="20"></line></svg>
+      </span>
+      <span class="board-menu-label">Переименовать</span>
+    </div>
+    
+    <!-- Открыть все ссылки -->
+    <div class="board-menu-item" id="bmOpenAll">
+      <span class="board-menu-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg>
+      </span>
+      <span class="board-menu-label">Открыть все ссылки</span>
+    </div>
+
+    <!-- Кастомизация -->
+    <div class="board-menu-item" id="bmCustomize">
+      <span class="board-menu-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"></line><line x1="4" y1="10" x2="4" y2="3"></line><line x1="12" y1="21" x2="12" y2="12"></line><line x1="12" y1="8" x2="12" y2="3"></line><line x1="20" y1="21" x2="20" y2="16"></line><line x1="20" y1="12" x2="20" y2="3"></line><line x1="1" y1="14" x2="7" y2="14"></line><line x1="9" y1="8" x2="15" y2="8"></line><line x1="17" y1="16" x2="23" y2="16"></line></svg>
+      </span>
+      <span class="board-menu-label">Кастомизация</span>
+      <span class="board-menu-chevron"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><polyline points="18 15 12 9 6 15"></polyline></svg></span>
+    </div>
+    
+    <!-- Панель кастомизации -->
+    <div class="board-menu-custom-panel" id="bmCustomPanel">
+      <div class="st-segment">
+        <button class="st-seg-btn active" data-mode="corner">Уголок</button>
+        <button class="st-seg-btn" data-mode="border">Обводка</button>
+      </div>
+      <div class="bm-color-palette">
+        <div class="bm-color-swatch" data-color="#a388ee" style="background: #a388ee;"></div>
+        <div class="bm-color-swatch" data-color="#34d399" style="background: #34d399;"></div>
+        <div class="bm-color-swatch" data-color="#fbbf24" style="background: #fbbf24;"></div>
+        <div class="bm-color-swatch" data-color="#f472b6" style="background: #f472b6;"></div>
+        <div class="bm-color-swatch" data-color="#60a5fa" style="background: #60a5fa;"></div>
+        <div class="bm-color-swatch" data-color="#a3e635" style="background: #a3e635;"></div>
+        <div class="bm-color-swatch bm-color-picker-btn" id="bmCustomColorBtn">+<input type="color" id="bmColorInput" style="display: none;"></div>
+      </div>
+    </div>
+
+    <div class="board-menu-sep"></div>
+
+    <!-- Удалить -->
+    <div class="board-menu-item danger" id="bmDelete">
+      <span class="board-menu-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path><path d="M10 11v6M14 11v6"></path></svg>
+      </span>
+      <span class="board-menu-label">Удалить доску</span>
+    </div>
+  </div>
+
   <script src="app.js"></script>
 </body>
 </html>

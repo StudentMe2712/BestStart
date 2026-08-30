@@ -62,6 +62,17 @@
   const sideTrash = document.getElementById('sideTrash');
   const toast = document.getElementById('toast');
 
+  // Board Menu Elements
+  const boardMenu = document.getElementById('boardMenu');
+  const bmRename = document.getElementById('bmRename');
+  const bmOpenAll = document.getElementById('bmOpenAll');
+  const bmCustomize = document.getElementById('bmCustomize');
+  const bmCustomPanel = document.getElementById('bmCustomPanel');
+  const bmCustomColorBtn = document.getElementById('bmCustomColorBtn');
+  const bmColorInput = document.getElementById('bmColorInput');
+  const bmDelete = document.getElementById('bmDelete');
+  let currentBoardMenuTarget = null; // { board, card }
+
   // Settings Modal Elements
   const settingsOverlay = document.getElementById('settingsOverlay');
   const settingsModal = document.getElementById('settingsModal');
@@ -216,6 +227,11 @@
       card.className = 'board-card';
       card.dataset.boardId = board.id;
 
+      if (board.customColor) {
+        card.style.setProperty('--card-accent', board.customColor);
+        card.dataset.customMode = board.customMode || 'corner';
+      }
+
       // Board Header
       const header = document.createElement('div');
       header.className = 'board-header';
@@ -224,6 +240,9 @@
       title.className = 'board-title';
       title.textContent = board.title;
       title.title = board.title;
+
+      const headerActions = document.createElement('div');
+      headerActions.className = 'board-header-actions';
 
       const addBtn = document.createElement('button');
       addBtn.className = 'add-link-btn';
@@ -234,8 +253,20 @@
         openAddLinkModal(board.id);
       });
 
+      const menuBtn = document.createElement('button');
+      menuBtn.className = 'board-menu-btn';
+      menuBtn.title = 'Меню доски';
+      menuBtn.textContent = '···';
+      menuBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        openBoardMenu(e, board, card);
+      });
+
+      headerActions.appendChild(addBtn);
+      headerActions.appendChild(menuBtn);
+
       header.appendChild(title);
-      header.appendChild(addBtn);
+      header.appendChild(headerActions);
       card.appendChild(header);
 
       // Links List
@@ -293,18 +324,357 @@
 
       card.appendChild(linksList);
 
-      // Board context menu (rename / delete board)
+      // Board context menu (rename / delete / customize board)
       card.addEventListener('contextmenu', (e) => {
         if (e.target.closest('.link-item')) return;
         e.preventDefault();
         e.stopPropagation();
-        showBoardContextMenu(e, board);
+        openBoardMenu(e, board, card);
       });
 
       boardsGrid.insertBefore(card, addBoardPlaceholder);
     });
 
     applySearchFilter();
+  }
+
+  // --- Inline Board Creation ---
+
+  function startInlineBoardCreation() {
+    // If an inline creation card is already open, focus it
+    const existingInline = boardsGrid.querySelector('.board-card.inline-creating');
+    if (existingInline) {
+      const existingInput = existingInline.querySelector('.board-title-input');
+      existingInput?.focus();
+      return;
+    }
+
+    const tempCard = document.createElement('div');
+    tempCard.className = 'board-card inline-creating';
+
+    const header = document.createElement('div');
+    header.className = 'board-header';
+
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'board-title-input';
+    input.placeholder = 'Новая доска';
+    input.maxLength = 50;
+
+    header.appendChild(input);
+    tempCard.appendChild(header);
+
+    boardsGrid.insertBefore(tempCard, addBoardPlaceholder);
+
+    let isCommitted = false;
+
+    function commit() {
+      if (isCommitted) return;
+      isCommitted = true;
+
+      const title = input.value.trim();
+      if (title) {
+        const currentTab = getActiveTab();
+        if (currentTab) {
+          if (!currentTab.boards) currentTab.boards = [];
+          const newBoard = {
+            id: generateId('board'),
+            title: title,
+            links: []
+          };
+          currentTab.boards.push(newBoard);
+          saveState();
+          renderBoards();
+          showToast(`Доска "${title}" создана`);
+        } else {
+          tempCard.remove();
+        }
+      } else {
+        tempCard.remove();
+      }
+    }
+
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        commit();
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        isCommitted = true;
+        tempCard.remove();
+      }
+    });
+
+    input.addEventListener('blur', () => {
+      commit();
+    });
+
+    setTimeout(() => {
+      input.focus();
+      input.select();
+    }, 50);
+  }
+
+  // --- Board Context Menu Handlers ---
+
+  function openBoardMenu(e, board, card) {
+    hideContextMenu();
+    currentBoardMenuTarget = { board, card };
+
+    if (!boardMenu) return;
+    boardMenu.style.display = 'block';
+    boardMenu.style.visibility = 'hidden';
+
+    // Synchronize mode buttons
+    const mode = board.customMode || 'corner';
+    if (bmCustomPanel) {
+      const segBtns = bmCustomPanel.querySelectorAll('.st-seg-btn');
+      segBtns.forEach((btn) => {
+        btn.classList.toggle('active', btn.dataset.mode === mode);
+      });
+    }
+
+    const menuWidth = boardMenu.offsetWidth || 230;
+    const menuHeight = boardMenu.offsetHeight || 260;
+
+    let left, top;
+
+    const isBtnTrigger = e.currentTarget && e.currentTarget.classList && e.currentTarget.classList.contains('board-menu-btn');
+    if (isBtnTrigger) {
+      const btnRect = e.currentTarget.getBoundingClientRect();
+      const clientLeft = btnRect.right - menuWidth;
+      if (clientLeft < 12) {
+        left = 12 + window.scrollX;
+      } else if (btnRect.left + menuWidth > window.innerWidth - 12) {
+        left = window.innerWidth - menuWidth - 12 + window.scrollX;
+      } else {
+        left = clientLeft + window.scrollX;
+      }
+
+      if (btnRect.bottom + 6 + menuHeight > window.innerHeight - 12) {
+        if (btnRect.top - menuHeight - 6 > 12) {
+          top = btnRect.top - menuHeight - 6 + window.scrollY;
+        } else {
+          top = Math.max(12, window.innerHeight - menuHeight - 12) + window.scrollY;
+        }
+      } else {
+        top = btnRect.bottom + 6 + window.scrollY;
+      }
+    } else {
+      let clientX = e.clientX || 0;
+      let clientY = e.clientY || 0;
+
+      if (clientX + menuWidth > window.innerWidth - 12) {
+        clientX = window.innerWidth - menuWidth - 12;
+      }
+      if (clientY + menuHeight > window.innerHeight - 12) {
+        clientY = window.innerHeight - menuHeight - 12;
+      }
+
+      clientX = Math.max(12, clientX);
+      clientY = Math.max(12, clientY);
+
+      left = clientX + window.scrollX;
+      top = clientY + window.scrollY;
+    }
+
+    boardMenu.style.left = `${left}px`;
+    boardMenu.style.top = `${top}px`;
+    boardMenu.style.visibility = 'visible';
+  }
+
+  function hideBoardMenu() {
+    if (boardMenu) {
+      boardMenu.style.display = 'none';
+    }
+    currentBoardMenuTarget = null;
+  }
+
+  function startInlineBoardRename(board, card) {
+    hideBoardMenu();
+    if (!card) {
+      card = boardsGrid?.querySelector(`.board-card[data-board-id="${board.id}"]`);
+    }
+    if (!card) return;
+
+    const header = card.querySelector('.board-header');
+    const titleEl = card.querySelector('.board-title');
+    if (!header || !titleEl) return;
+
+    const currentTitle = board.title;
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'board-title-input';
+    input.value = currentTitle;
+    input.placeholder = 'Название доски';
+    input.maxLength = 50;
+
+    header.replaceChild(input, titleEl);
+
+    let isCommitted = false;
+
+    function commit() {
+      if (isCommitted) return;
+      isCommitted = true;
+
+      const newTitle = input.value.trim();
+      if (newTitle && newTitle !== currentTitle) {
+        board.title = newTitle;
+        saveState();
+        renderBoards();
+        showToast('Доска переименована');
+      } else {
+        renderBoards();
+      }
+    }
+
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        commit();
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        isCommitted = true;
+        renderBoards();
+      }
+    });
+
+    input.addEventListener('blur', () => {
+      commit();
+    });
+
+    setTimeout(() => {
+      input.focus();
+      input.select();
+    }, 50);
+  }
+
+  function handleOpenAllLinks(board) {
+    hideBoardMenu();
+    if (!board || !board.links || board.links.length === 0) {
+      showToast('Нет ссылок для открытия');
+      return;
+    }
+    board.links.forEach((link) => {
+      if (link.url) {
+        window.open(normalizeUrl(link.url), '_blank');
+      }
+    });
+  }
+
+  function initBoardMenu() {
+    if (!boardMenu) return;
+
+    // Rename
+    if (bmRename) {
+      bmRename.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (currentBoardMenuTarget) {
+          const { board, card } = currentBoardMenuTarget;
+          startInlineBoardRename(board, card);
+        }
+      });
+    }
+
+    // Open All
+    if (bmOpenAll) {
+      bmOpenAll.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (currentBoardMenuTarget) {
+          handleOpenAllLinks(currentBoardMenuTarget.board);
+        }
+      });
+    }
+
+    // Customize toggle
+    if (bmCustomize && bmCustomPanel) {
+      bmCustomize.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const isHidden = window.getComputedStyle(bmCustomPanel).display === 'none';
+        bmCustomPanel.style.display = isHidden ? 'block' : 'none';
+      });
+    }
+
+    // Segment mode switch
+    if (bmCustomPanel) {
+      const segBtns = bmCustomPanel.querySelectorAll('.st-seg-btn');
+      segBtns.forEach((btn) => {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          segBtns.forEach((b) => b.classList.remove('active'));
+          btn.classList.add('active');
+
+          const mode = btn.dataset.mode || 'corner';
+          if (currentBoardMenuTarget) {
+            const { board, card } = currentBoardMenuTarget;
+            board.customMode = mode;
+            if (board.customColor && card) {
+              card.dataset.customMode = mode;
+            }
+            saveState();
+          }
+        });
+      });
+    }
+
+    // Swatches
+    const swatches = boardMenu.querySelectorAll('.bm-color-swatch[data-color]');
+    swatches.forEach((swatch) => {
+      swatch.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const color = swatch.dataset.color;
+        if (currentBoardMenuTarget && color) {
+          const { board, card } = currentBoardMenuTarget;
+          board.customColor = color;
+          board.customMode = board.customMode || 'corner';
+          if (card) {
+            card.style.setProperty('--card-accent', board.customColor);
+            card.dataset.customMode = board.customMode;
+          }
+          saveState();
+        }
+      });
+    });
+
+    // Custom Color Picker Button
+    if (bmCustomColorBtn && bmColorInput) {
+      bmCustomColorBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        bmColorInput.click();
+      });
+
+      bmColorInput.addEventListener('input', (e) => {
+        const color = e.target.value;
+        if (currentBoardMenuTarget && color) {
+          const { board, card } = currentBoardMenuTarget;
+          board.customColor = color;
+          board.customMode = board.customMode || 'corner';
+          if (card) {
+            card.style.setProperty('--card-accent', board.customColor);
+            card.dataset.customMode = board.customMode;
+          }
+          saveState();
+        }
+      });
+    }
+
+    // Delete
+    if (bmDelete) {
+      bmDelete.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (currentBoardMenuTarget) {
+          const { board } = currentBoardMenuTarget;
+          hideBoardMenu();
+          const currentTab = getActiveTab();
+          if (currentTab && currentTab.boards) {
+            currentTab.boards = currentTab.boards.filter((b) => b.id !== board.id);
+            saveState();
+            renderBoards();
+            showToast('Доска удалена');
+          }
+        }
+      });
+    }
   }
 
   // --- Context Menu Management ---
@@ -414,13 +784,8 @@
   }
 
   function showBoardContextMenu(e, board) {
-    // We can allow quick rename/delete for board
-    openContextMenu(e, {
-      type: 'board',
-      tabId: appState.activeTabId,
-      boardId: board.id,
-      title: board.title
-    });
+    const card = boardsGrid?.querySelector(`.board-card[data-board-id="${board.id}"]`);
+    openBoardMenu(e, board, card);
   }
 
   function handleBoardAction(action, target) {
@@ -726,7 +1091,7 @@
   // Add Board Placeholder Click
   if (addBoardPlaceholder) {
     addBoardPlaceholder.addEventListener('click', () => {
-      openAddBoardModal();
+      startInlineBoardCreation();
     });
   }
 
@@ -737,10 +1102,13 @@
     });
   }
 
-  // Close Context Menu & Sidebar on Document Click
+  // Close Context Menu & Board Menu & Sidebar on Document Click
   document.addEventListener('click', (e) => {
     if (!e.target.closest('#contextMenu')) {
       hideContextMenu();
+    }
+    if (!e.target.closest('#boardMenu') && !e.target.closest('.board-menu-btn')) {
+      hideBoardMenu();
     }
     if (sidebar && !sidebar.contains(e.target)) {
       sidebar.classList.remove('is-open');
@@ -750,6 +1118,7 @@
   window.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
       hideContextMenu();
+      hideBoardMenu();
       closeModal();
       closeSettingsModal();
       closeWallpaperModal();
@@ -765,10 +1134,12 @@
 
   window.addEventListener('scroll', () => {
     hideContextMenu();
+    hideBoardMenu();
   }, { passive: true });
 
   window.addEventListener('resize', () => {
     hideContextMenu();
+    hideBoardMenu();
   });
 
   // --- Expandable Sidebar Controls ---
@@ -995,6 +1366,7 @@
       renderTabs();
       renderBoards();
     });
+    initBoardMenu();
     initSettingsModal();
     initWallpaperModal();
   }
