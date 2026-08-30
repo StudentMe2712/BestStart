@@ -1507,6 +1507,18 @@
   }
 
   // --- Settings Modal & State Persistence ---
+  function saveSetting(key, value) {
+    if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+      chrome.storage.local.set({ [key]: value });
+    } else {
+      try {
+        localStorage.setItem(key, value);
+      } catch (e) {
+        console.error('Error saving setting to localStorage', e);
+      }
+    }
+  }
+
   function saveSettingsState() {
     if (!settingsBody) return;
     const toggles = Array.from(settingsBody.querySelectorAll('.st-toggle')).map(t => t.classList.contains('on'));
@@ -1647,6 +1659,31 @@
           btns.forEach(b => b.classList.remove('active'));
           btn.classList.add('active');
           saveSettingsState();
+        });
+      });
+    });
+
+    document.querySelectorAll('.st-btn-group').forEach((group, index) => {
+      const btns = group.querySelectorAll('.st-group-btn');
+      const label = group.closest('.st-row')?.querySelector('.st-row-label');
+      const settingKey = label ? `format_${label.textContent.trim()}` : `format_group_${index}`;
+
+      // Restore state
+      if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+        chrome.storage.local.get([settingKey], (res) => {
+          if (res && res[settingKey]) {
+            btns.forEach(b => {
+              b.classList.toggle('active', b.textContent.trim() === res[settingKey]);
+            });
+          }
+        });
+      }
+
+      btns.forEach((btn) => {
+        btn.addEventListener('click', function() {
+          btns.forEach(b => b.classList.remove('active'));
+          this.classList.add('active');
+          saveSetting(settingKey, this.textContent.trim());
         });
       });
     });
