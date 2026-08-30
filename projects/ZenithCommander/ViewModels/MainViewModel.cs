@@ -26,8 +26,8 @@ public class MainViewModel : ViewModelBase
     private bool _isEditingPath;
     private string _searchQuery = string.Empty;
     private bool _isLoading;
-    private string _statusText = "Ready";
-    private string _selectedStatusText = "No items selected";
+    private string _statusText = "Готово";
+    private string _selectedStatusText = "Элементы не выбраны";
     private string _driveSpaceText = string.Empty;
     private string? _errorMessage;
     private FileSystemItem? _selectedItem;
@@ -292,7 +292,7 @@ public class MainViewModel : ViewModelBase
         }
         catch (Exception ex)
         {
-            ErrorMessage = $"Cannot navigate up: {ex.Message}";
+            ErrorMessage = $"Не удалось перейти на уровень вверх: {ex.Message}";
         }
     }
 
@@ -319,7 +319,7 @@ public class MainViewModel : ViewModelBase
             string normalizedPath = Path.GetFullPath(targetPath);
             if (!Directory.Exists(normalizedPath))
             {
-                ErrorMessage = $"Directory does not exist: {targetPath}";
+                ErrorMessage = $"Папка не найдена: {targetPath}";
                 return;
             }
 
@@ -380,7 +380,7 @@ public class MainViewModel : ViewModelBase
                         {
                             double freeGb = drive.AvailableFreeSpace / (1024.0 * 1024 * 1024);
                             double totalGb = drive.TotalSize / (1024.0 * 1024 * 1024);
-                            driveCapacity = string.Format(CultureInfo.InvariantCulture, "{0} {1:F1} GB free of {2:F1} GB",
+                            driveCapacity = string.Format(CultureInfo.InvariantCulture, "{0} {1:F1} ГБ свободно из {2:F1} ГБ",
                                 root.TrimEnd('\\'), freeGb, totalGb);
                         }
                     }
@@ -425,13 +425,13 @@ public class MainViewModel : ViewModelBase
         }
         catch (UnauthorizedAccessException uex)
         {
-            ErrorMessage = $"Access Denied: {uex.Message}";
-            StatusText = "Access Denied";
+            ErrorMessage = $"Отказано в доступе к папке: {uex.Message}";
+            StatusText = "Отказано в доступе";
         }
         catch (Exception ex)
         {
-            ErrorMessage = $"Error loading directory: {ex.Message}";
-            StatusText = "Error";
+            ErrorMessage = $"Ошибка ввода-вывода: {ex.Message}";
+            StatusText = "Ошибка ввода-вывода";
         }
         finally
         {
@@ -452,7 +452,7 @@ public class MainViewModel : ViewModelBase
 
             int folderCount = _allItems.Count(i => i.IsDirectory);
             int fileCount = _allItems.Count(i => !i.IsDirectory);
-            StatusText = $"{_allItems.Count} items ({folderCount} folders, {fileCount} files)";
+            StatusText = $"{_allItems.Count} элементов (папок: {folderCount}, файлов: {fileCount})";
         }
         else
         {
@@ -468,7 +468,7 @@ public class MainViewModel : ViewModelBase
                 Items.Add(item);
             }
 
-            StatusText = $"Filtered: showing {matches.Count} of {_allItems.Count} items";
+            StatusText = $"Найдено: {matches.Count} из {_allItems.Count}";
         }
     }
 
@@ -550,13 +550,13 @@ public class MainViewModel : ViewModelBase
         QuickAccessItems.Clear();
 
         // Pinned standard folders
-        AddQuickAccessFolder("Desktop", "🖥️", Environment.GetFolderPath(Environment.SpecialFolder.Desktop));
-        AddQuickAccessFolder("Downloads", "📥", Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads"));
-        AddQuickAccessFolder("Documents", "📄", Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments));
-        AddQuickAccessFolder("Pictures", "🖼️", Environment.GetFolderPath(Environment.SpecialFolder.MyPictures));
-        AddQuickAccessFolder("Music", "🎵", Environment.GetFolderPath(Environment.SpecialFolder.MyMusic));
-        AddQuickAccessFolder("Videos", "🎬", Environment.GetFolderPath(Environment.SpecialFolder.MyVideos));
-        AddQuickAccessFolder("Home", "🏠", Environment.GetFolderPath(Environment.SpecialFolder.UserProfile));
+        AddQuickAccessFolder("Рабочий стол", "🖥️", Environment.GetFolderPath(Environment.SpecialFolder.Desktop));
+        AddQuickAccessFolder("Загрузки", "📥", Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads"));
+        AddQuickAccessFolder("Документы", "📄", Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments));
+        AddQuickAccessFolder("Изображения", "🖼️", Environment.GetFolderPath(Environment.SpecialFolder.MyPictures));
+        AddQuickAccessFolder("Музыка", "🎵", Environment.GetFolderPath(Environment.SpecialFolder.MyMusic));
+        AddQuickAccessFolder("Видео", "🎬", Environment.GetFolderPath(Environment.SpecialFolder.MyVideos));
+        AddQuickAccessFolder("Главная", "🏠", Environment.GetFolderPath(Environment.SpecialFolder.UserProfile));
 
         RefreshDrives();
     }
@@ -571,7 +571,7 @@ public class MainViewModel : ViewModelBase
                 IconGlyph = icon,
                 Path = path,
                 IsDrive = false,
-                Section = "Quick Access"
+                Section = "Быстрый доступ"
             });
         }
     }
@@ -585,7 +585,7 @@ public class MainViewModel : ViewModelBase
             {
                 if (drive.IsReady)
                 {
-                    string label = string.IsNullOrWhiteSpace(drive.VolumeLabel) ? "Local Disk" : drive.VolumeLabel;
+                    string label = string.IsNullOrWhiteSpace(drive.VolumeLabel) ? "Локальный диск" : drive.VolumeLabel;
                     string driveLetter = drive.Name.TrimEnd('\\');
                     double freeGb = drive.AvailableFreeSpace / (1024.0 * 1024 * 1024);
                     double totalGb = drive.TotalSize / (1024.0 * 1024 * 1024);
@@ -597,23 +597,23 @@ public class MainViewModel : ViewModelBase
                         IconGlyph = "💾",
                         Path = drive.RootDirectory.FullName,
                         IsDrive = true,
-                        Section = "Drives",
+                        Section = "Диски",
                         FreeSpaceBytes = drive.AvailableFreeSpace,
                         TotalSizeBytes = drive.TotalSize,
                         UsagePercent = usagePercent,
-                        Subtitle = string.Format(CultureInfo.InvariantCulture, "{0:F1} GB free / {1:F1} GB", freeGb, totalGb)
+                        Subtitle = string.Format(CultureInfo.InvariantCulture, "{0:F1} ГБ свободно из {1:F1} ГБ", freeGb, totalGb)
                     });
                 }
                 else
                 {
                     DriveItems.Add(new SidebarItem
                     {
-                        Title = $"Drive ({drive.Name.TrimEnd('\\')})",
+                        Title = $"Диск ({drive.Name.TrimEnd('\\')})",
                         IconGlyph = "💾",
                         Path = drive.Name,
                         IsDrive = true,
-                        Section = "Drives",
-                        Subtitle = "Device Not Ready"
+                        Section = "Диски",
+                        Subtitle = "Устройство не готово"
                     });
                 }
             }
@@ -659,16 +659,16 @@ public class MainViewModel : ViewModelBase
             {
                 if (SelectedItem.IsDirectory)
                 {
-                    SelectedStatusText = $"1 folder selected (\"{SelectedItem.Name}\")";
+                    SelectedStatusText = $"1 папка выбрана (\"{SelectedItem.Name}\")";
                 }
                 else
                 {
-                    SelectedStatusText = $"1 file selected ({SelectedItem.FormattedSize})";
+                    SelectedStatusText = $"1 файл выбран ({SelectedItem.FormattedSize})";
                 }
             }
             else
             {
-                SelectedStatusText = "No items selected";
+                SelectedStatusText = "Элементы не выбраны";
             }
         }
         else if (SelectedItems.Count == 1)
@@ -676,11 +676,11 @@ public class MainViewModel : ViewModelBase
             var single = SelectedItems[0];
             if (single.IsDirectory)
             {
-                SelectedStatusText = $"1 folder selected (\"{single.Name}\")";
+                SelectedStatusText = $"1 папка выбрана (\"{single.Name}\")";
             }
             else
             {
-                SelectedStatusText = $"1 file selected ({single.FormattedSize})";
+                SelectedStatusText = $"1 файл выбран ({single.FormattedSize})";
             }
         }
         else
@@ -690,7 +690,7 @@ public class MainViewModel : ViewModelBase
             int fileCount = SelectedItems.Count(i => !i.IsDirectory);
 
             string sizeStr = totalBytes > 0 ? $" ({FileSystemItem.FormatFileSize(totalBytes)})" : "";
-            SelectedStatusText = $"{SelectedItems.Count} items selected ({fileCount} files, {dirCount} folders){sizeStr}";
+            SelectedStatusText = $"Выбрано элементов: {SelectedItems.Count} ({fileCount} файлов, {dirCount} папок{sizeStr})";
         }
     }
 
@@ -720,7 +720,7 @@ public class MainViewModel : ViewModelBase
         }
         catch (Exception ex)
         {
-            ErrorMessage = $"Failed to open file: {ex.Message}";
+            ErrorMessage = $"Не удалось открыть файл: {ex.Message}";
         }
     }
 
@@ -728,7 +728,7 @@ public class MainViewModel : ViewModelBase
     {
         if (!Directory.Exists(CurrentPath)) return;
 
-        var dialog = new InputDialog("New Folder", "Enter folder name:", "New folder")
+        var dialog = new InputDialog("Создание новой папки", "Введите имя новой папки:", "Новая папка")
         {
             Owner = Application.Current.MainWindow
         };
@@ -743,7 +743,7 @@ public class MainViewModel : ViewModelBase
             {
                 if (Directory.Exists(newPath))
                 {
-                    MessageBox.Show($"A folder named '{folderName}' already exists.", "Nexus Commander", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    MessageBox.Show($"Папка с именем '{folderName}' уже существует.", "Nexus Commander", MessageBoxButton.OK, MessageBoxImage.Warning);
                     return;
                 }
 
@@ -752,7 +752,7 @@ public class MainViewModel : ViewModelBase
             }
             catch (Exception ex)
             {
-                ErrorMessage = $"Failed to create folder: {ex.Message}";
+                ErrorMessage = $"Не удалось создать папку: {ex.Message}";
             }
         }
     }
@@ -773,7 +773,7 @@ public class MainViewModel : ViewModelBase
         }
         catch { }
 
-        StatusText = $"Copied {targets.Count} item(s) to clipboard";
+        StatusText = $"Скопировано в буфер обмена: {targets.Count} элемент(ов)";
     }
 
     public void ExecuteCut()
@@ -792,7 +792,7 @@ public class MainViewModel : ViewModelBase
         }
         catch { }
 
-        StatusText = $"Cut {targets.Count} item(s) to clipboard";
+        StatusText = $"Вырезано в буфер обмена: {targets.Count} элемент(ов)";
     }
 
     public void ExecutePaste()
@@ -858,7 +858,7 @@ public class MainViewModel : ViewModelBase
             }
             catch (Exception ex)
             {
-                ErrorMessage = $"Paste failed for '{Path.GetFileName(src)}': {ex.Message}";
+                ErrorMessage = $"Ошибка вставки для '{Path.GetFileName(src)}': {ex.Message}";
             }
         }
 
@@ -869,7 +869,7 @@ public class MainViewModel : ViewModelBase
         }
 
         _ = RefreshAsync();
-        StatusText = $"Pasted {successCount} item(s) into {CurrentPath}";
+        StatusText = $"Вставлено элементов: {successCount} в {CurrentPath}";
     }
 
     public void ExecuteDelete()
@@ -878,12 +878,12 @@ public class MainViewModel : ViewModelBase
         if (targets.Count == 0) return;
 
         string promptMsg = targets.Count == 1
-            ? $"Are you sure you want to permanently delete '{targets[0].Name}'?"
-            : $"Are you sure you want to permanently delete {targets.Count} items?";
+            ? $"Вы уверены, что хотите удалить \"{targets[0].Name}\"?"
+            : $"Вы уверены, что хотите удалить {targets.Count} элементов?";
 
         var result = MessageBox.Show(
             promptMsg,
-            "Nexus Commander — Confirm Delete",
+            "Подтверждение удаления",
             MessageBoxButton.YesNo,
             MessageBoxImage.Warning);
 
@@ -906,12 +906,12 @@ public class MainViewModel : ViewModelBase
             }
             catch (Exception ex)
             {
-                ErrorMessage = $"Delete error on '{item.Name}': {ex.Message}";
+                ErrorMessage = $"Ошибка удаления '{item.Name}': {ex.Message}";
             }
         }
 
         _ = RefreshAsync();
-        StatusText = $"Deleted {deleted} item(s)";
+        StatusText = $"Удалено элементов: {deleted}";
     }
 
     public void ExecuteRename()
@@ -919,7 +919,7 @@ public class MainViewModel : ViewModelBase
         var item = SelectedItem;
         if (item == null) return;
 
-        var dialog = new InputDialog("Rename", $"Enter new name for '{item.Name}':", item.Name)
+        var dialog = new InputDialog("Переименование", $"Введите новое имя для '{item.Name}':", item.Name)
         {
             Owner = Application.Current.MainWindow
         };
@@ -943,11 +943,11 @@ public class MainViewModel : ViewModelBase
                     File.Move(item.FullPath, newPath);
                 }
                 _ = RefreshAsync();
-                StatusText = $"Renamed '{item.Name}' to '{newName}'";
+                StatusText = $"'{item.Name}' переименован в '{newName}'";
             }
             catch (Exception ex)
             {
-                ErrorMessage = $"Rename failed: {ex.Message}";
+                ErrorMessage = $"Ошибка переименования: {ex.Message}";
             }
         }
     }
@@ -958,11 +958,11 @@ public class MainViewModel : ViewModelBase
         try
         {
             Clipboard.SetText(path);
-            StatusText = $"Path copied: {path}";
+            StatusText = $"Путь скопирован: {path}";
         }
         catch (Exception ex)
         {
-            ErrorMessage = $"Failed to copy path: {ex.Message}";
+            ErrorMessage = $"Не удалось скопировать путь: {ex.Message}";
         }
     }
 
@@ -1011,7 +1011,7 @@ public class MainViewModel : ViewModelBase
             }
             catch (Exception ex)
             {
-                ErrorMessage = $"Failed to launch terminal: {ex.Message}";
+                ErrorMessage = $"Не удалось запустить терминал: {ex.Message}";
             }
         }
     }
@@ -1032,7 +1032,7 @@ public class MainViewModel : ViewModelBase
     private static void CopyDirectoryRecursive(string sourceDir, string destDir)
     {
         var dir = new DirectoryInfo(sourceDir);
-        if (!dir.Exists) throw new DirectoryNotFoundException($"Source directory not found: {sourceDir}");
+        if (!dir.Exists) throw new DirectoryNotFoundException($"Папка не найдена: {sourceDir}");
 
         Directory.CreateDirectory(destDir);
 

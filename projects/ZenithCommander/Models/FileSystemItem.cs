@@ -16,7 +16,7 @@ public class FileSystemItem
     public string FormattedDate { get; set; } = string.Empty;
     public string Extension { get; set; } = string.Empty;
     public string IconGlyph { get; set; } = "📄";
-    public string ItemType { get; set; } = "File";
+    public string ItemType { get; set; } = "Файл";
     public FileAttributes? Attributes { get; set; }
     public bool IsHidden { get; set; }
     public bool IsSystem { get; set; }
@@ -38,7 +38,7 @@ public class FileSystemItem
             FormattedDate = dir.LastWriteTime.ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture),
             Extension = string.Empty,
             IconGlyph = "📁",
-            ItemType = "File folder",
+            ItemType = "Папка с файлами",
             Attributes = dir.Attributes,
             IsHidden = isHidden,
             IsSystem = isSystem
@@ -83,15 +83,15 @@ public class FileSystemItem
     public static string FormatFileSize(long bytes)
     {
         if (bytes < 1024)
-            return string.Format(CultureInfo.InvariantCulture, "{0} B", bytes);
+            return string.Format(CultureInfo.InvariantCulture, "{0} Б", bytes);
         if (bytes < 1024L * 1024)
-            return string.Format(CultureInfo.InvariantCulture, "{0:F1} KB", bytes / 1024.0);
+            return string.Format(CultureInfo.InvariantCulture, "{0:F1} КБ", bytes / 1024.0);
         if (bytes < 1024L * 1024 * 1024)
-            return string.Format(CultureInfo.InvariantCulture, "{0:F1} MB", bytes / (1024.0 * 1024));
+            return string.Format(CultureInfo.InvariantCulture, "{0:F1} МБ", bytes / (1024.0 * 1024));
         if (bytes < 1024L * 1024 * 1024 * 1024)
-            return string.Format(CultureInfo.InvariantCulture, "{0:F2} GB", bytes / (1024.0 * 1024 * 1024));
+            return string.Format(CultureInfo.InvariantCulture, "{0:F2} ГБ", bytes / (1024.0 * 1024 * 1024));
 
-        return string.Format(CultureInfo.InvariantCulture, "{0:F2} TB", bytes / (1024.0 * 1024 * 1024 * 1024));
+        return string.Format(CultureInfo.InvariantCulture, "{0:F2} ТБ", bytes / (1024.0 * 1024 * 1024 * 1024));
     }
 
     public static string ResolveIconGlyph(string extUpper)
@@ -117,54 +117,35 @@ public class FileSystemItem
     {
         return extUpper switch
         {
-            "EXE" => "Application",
-            "MSI" => "Windows Installer Package",
-            "BAT" or "CMD" => "Windows Command Script",
-            "PS1" => "PowerShell Script",
-            "DLL" => "Application Extension (DLL)",
-            "SYS" => "System File",
-            "INI" or "CFG" or "CONF" or "CONFIG" => "Configuration File",
-            "ZIP" => "ZIP Archive",
-            "RAR" => "WinRAR Archive",
-            "7Z" => "7-Zip Archive",
-            "TAR" or "GZ" or "TGZ" => "Compressed Archive",
-            "ISO" => "Disc Image File",
-            "PNG" => "PNG Image",
-            "JPG" or "JPEG" => "JPEG Image",
-            "GIF" => "GIF Image",
-            "SVG" => "SVG Vector Image",
-            "ICO" => "Icon File",
-            "WEBP" => "WEBP Image",
-            "MP3" => "MP3 Audio",
-            "WAV" => "WAV Audio",
-            "FLAC" => "FLAC Audio",
-            "MP4" => "MP4 Video",
-            "MKV" => "MKV Video",
-            "AVI" => "AVI Video",
-            "TXT" => "Text Document",
-            "MD" => "Markdown Document",
-            "LOG" => "Log File",
-            "PDF" => "PDF Document",
-            "DOC" or "DOCX" => "Microsoft Word Document",
-            "XLS" or "XLSX" => "Microsoft Excel Worksheet",
-            "CSV" => "CSV Comma Delimited File",
-            "PPT" or "PPTX" => "Microsoft PowerPoint Presentation",
-            "CS" => "C# Source File",
-            "JS" => "JavaScript File",
-            "TS" => "TypeScript File",
-            "JSON" => "JSON File",
-            "XML" => "XML Document",
-            "HTML" or "HTM" => "HTML Document",
-            "CSS" => "Cascading Style Sheet",
-            "PY" => "Python File",
-            "CPP" or "CXX" => "C++ Source File",
-            "C" => "C Source File",
-            "H" or "HPP" => "C/C++ Header File",
-            "SQL" => "SQL Query / Database Script",
-            "XAML" => "XAML UI File",
-            "CSPROJ" or "SLN" => "Visual Studio Project / Solution",
-            "" => "File",
-            _ => $"{extUpper} File"
+            "EXE" => "Приложение",
+            "DLL" => "Библиотека приложений",
+            "MSI" => "Пакет установки Windows",
+            "BAT" or "CMD" => "Командный сценарий Windows",
+            "PS1" => "Скрипт PowerShell",
+            "SYS" => "Системный файл",
+            "CS" => "Исходный код C#",
+            "XAML" => "Разметка XAML",
+            "CPP" or "CXX" or "C" or "H" or "HPP" => "Исходный код C/C++",
+            "PY" => "Скрипт Python",
+            "JS" or "TS" => "Файл JavaScript/TypeScript",
+            "HTML" or "HTM" or "CSS" or "SCSS" => "Веб-документ HTML/CSS",
+            "JSON" => "Документ JSON",
+            "XML" => "Документ XML",
+            "MD" => "Документ Markdown",
+            "TXT" or "LOG" or "INI" or "CFG" or "CONF" or "CONFIG" or "NFO" => "Текстовый документ",
+            "PNG" or "JPG" or "JPEG" or "GIF" or "BMP" or "WEBP" or "SVG" or "ICO" or "TIFF" or "PSD" => $"Изображение {extUpper}",
+            "MP3" or "WAV" or "FLAC" or "AAC" or "OGG" or "M4A" or "WMA" => $"Аудиофайл {extUpper}",
+            "MP4" or "MKV" or "AVI" or "MOV" or "WMV" or "FLV" or "WEBM" or "M4V" => $"Видеофайл {extUpper}",
+            "ZIP" or "RAR" or "7Z" or "TAR" or "GZ" or "TGZ" or "BZ2" or "XZ" or "CAB" => $"Архив {extUpper}",
+            "ISO" => "Образ диска ISO",
+            "PDF" => "Документ PDF",
+            "DOC" or "DOCX" or "ODT" or "RTF" => "Документ Microsoft Word",
+            "XLS" or "XLSX" or "CSV" or "TSV" => "Таблица Microsoft Excel",
+            "PPT" or "PPTX" => "Презентация Microsoft PowerPoint",
+            "SQL" => "Скрипт базы данных SQL",
+            "CSPROJ" or "SLN" => "Проект Visual Studio",
+            "" => "Файл",
+            _ => $"Файл {extUpper}"
         };
     }
 }

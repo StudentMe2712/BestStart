@@ -39,7 +39,7 @@
                         MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
                     <Grid>
                         <TextBlock x:Name="TitleTextBlock"
-                                   Text="Input"
+                                   Text="Ввод"
                                    FontSize="12"
                                    FontWeight="SemiBold"
                                    Foreground="{StaticResource BrushTextPrimary}"
@@ -52,7 +52,7 @@
                                 BorderThickness="0"
                                 Foreground="{StaticResource BrushTextSecondary}"
                                 Click="BtnClose_Click"
-                                ToolTip="Cancel">
+                                ToolTip="Отмена">
                             <TextBlock Text="✕" FontSize="11" FontWeight="Bold" />
                         </Button>
                     </Grid>
@@ -61,7 +61,7 @@
                 <!-- Content Area -->
                 <StackPanel Grid.Row="1" Margin="16,14,16,6" VerticalAlignment="Center">
                     <TextBlock x:Name="PromptTextBlock"
-                               Text="Enter value:"
+                               Text="Введите значение:"
                                Foreground="{StaticResource BrushTextSecondary}"
                                FontSize="12"
                                Margin="0,0,0,8" />
@@ -82,7 +82,7 @@
                         Padding="12,8">
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
                         <Button x:Name="BtnCancel"
-                                Content="Cancel"
+                                Content="Отмена"
                                 Width="80"
                                 Height="28"
                                 Margin="0,0,8,0"
@@ -90,7 +90,7 @@
                                 Click="BtnCancel_Click" />
 
                         <Button x:Name="BtnOk"
-                                Content="OK"
+                                Content="ОК"
                                 Width="80"
                                 Height="28"
                                 Background="{StaticResource BrushAccent}"

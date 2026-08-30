@@ -31,6 +31,7 @@ public partial class PropertiesDialog : Window
 
     private void LoadItemProperties(FileSystemItem item)
     {
+        Title = $"Свойства: {item.Name}";
         IconTextBlock.Text = item.IconGlyph;
         NameTextBlock.Text = item.Name;
         TypeTextBlock.Text = item.ItemType;
@@ -44,9 +45,9 @@ public partial class PropertiesDialog : Window
                 CreatedTextBlock.Text = dir.CreationTime.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture);
                 ModifiedTextBlock.Text = dir.LastWriteTime.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture);
                 AccessedTextBlock.Text = dir.LastAccessTime.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture);
-                AttributesTextBlock.Text = dir.Attributes.ToString();
-                SizeTextBlock.Text = "Calculating...";
-                ContainsTextBlock.Text = "Calculating...";
+                AttributesTextBlock.Text = FormatAttributes(dir.Attributes);
+                SizeTextBlock.Text = "Вычисление...";
+                ContainsTextBlock.Text = "Вычисление...";
 
                 // Async calculation of directory size & contents count
                 _ = Task.Run(() =>
@@ -74,8 +75,8 @@ public partial class PropertiesDialog : Window
                             dirCount++;
                         }
 
-                        string sizeStr = $"{FileSystemItem.FormatFileSize(totalSize)} ({totalSize:N0} bytes)";
-                        string containsStr = $"{fileCount:N0} Files, {dirCount:N0} Folders";
+                        string sizeStr = $"{FileSystemItem.FormatFileSize(totalSize)} ({totalSize:N0} байт)";
+                        string containsStr = $"{fileCount:N0} файлов, {dirCount:N0} папок";
 
                         Dispatcher.Invoke(() =>
                         {
@@ -87,15 +88,15 @@ public partial class PropertiesDialog : Window
                     {
                         Dispatcher.Invoke(() =>
                         {
-                            SizeTextBlock.Text = "Unknown";
-                            ContainsTextBlock.Text = "Access restricted";
+                            SizeTextBlock.Text = "Неизвестно";
+                            ContainsTextBlock.Text = "Доступ ограничен";
                         });
                     }
                 });
             }
             catch (Exception ex)
             {
-                SizeTextBlock.Text = "Error: " + ex.Message;
+                SizeTextBlock.Text = "Ошибка: " + ex.Message;
                 ContainsLabel.Visibility = Visibility.Collapsed;
                 ContainsTextBlock.Visibility = Visibility.Collapsed;
             }
@@ -108,16 +109,28 @@ public partial class PropertiesDialog : Window
             try
             {
                 var file = new FileInfo(item.FullPath);
-                SizeTextBlock.Text = $"{FileSystemItem.FormatFileSize(file.Length)} ({file.Length:N0} bytes)";
+                SizeTextBlock.Text = $"{FileSystemItem.FormatFileSize(file.Length)} ({file.Length:N0} байт)";
                 CreatedTextBlock.Text = file.CreationTime.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture);
                 ModifiedTextBlock.Text = file.LastWriteTime.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture);
                 AccessedTextBlock.Text = file.LastAccessTime.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture);
-                AttributesTextBlock.Text = file.Attributes.ToString();
+                AttributesTextBlock.Text = FormatAttributes(file.Attributes);
             }
             catch (Exception ex)
             {
-                SizeTextBlock.Text = "Error: " + ex.Message;
+                SizeTextBlock.Text = "Ошибка: " + ex.Message;
             }
         }
+    }
+
+    private static string FormatAttributes(FileAttributes attributes)
+    {
+        var list = new System.Collections.Generic.List<string>();
+        if ((attributes & FileAttributes.ReadOnly) != 0) list.Add("Только для чтения");
+        if ((attributes & FileAttributes.Hidden) != 0) list.Add("Скрытый");
+        if ((attributes & FileAttributes.System) != 0) list.Add("Системный");
+        if ((attributes & FileAttributes.Archive) != 0) list.Add("Архивный");
+        if ((attributes & FileAttributes.Directory) != 0) list.Add("Папка");
+        if (list.Count == 0) return "Обычный";
+        return string.Join(", ", list);
     }
 }

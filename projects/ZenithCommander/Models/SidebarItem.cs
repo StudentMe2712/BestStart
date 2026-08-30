@@ -12,7 +12,7 @@ public class SidebarItem : ViewModelBase
     public string Path { get; set; } = string.Empty;
     public string IconGlyph { get; set; } = "📁";
     public bool IsDrive { get; set; }
-    public string Section { get; set; } = "Quick Access"; // "Quick Access" or "Drives"
+    public string Section { get; set; } = "Быстрый доступ"; // "Быстрый доступ" or "Диски"
     public double FreeSpaceBytes { get; set; }
     public double TotalSizeBytes { get; set; }
 

@@ -4,7 +4,7 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d"
-        Title="Properties"
+        Title="Свойства"
         Height="440" Width="420"
         WindowStyle="None"
         AllowsTransparency="True"
@@ -39,7 +39,7 @@
                     <Grid>
                         <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="14,0,0,0">
                             <TextBlock Text="ℹ️ " FontSize="12" />
-                            <TextBlock Text="Properties"
+                            <TextBlock Text="Свойства"
                                        FontSize="12"
                                        FontWeight="SemiBold"
                                        Foreground="{StaticResource BrushTextPrimary}" />
@@ -51,7 +51,7 @@
                                 BorderThickness="0"
                                 Foreground="{StaticResource BrushTextSecondary}"
                                 Click="BtnClose_Click"
-                                ToolTip="Close">
+                                ToolTip="Закрыть">
                             <TextBlock Text="✕" FontSize="11" FontWeight="Bold" />
                         </Button>
                     </Grid>
@@ -87,7 +87,7 @@
                                            Foreground="{StaticResource BrushTextPrimary}"
                                            TextTrimming="CharacterEllipsis" />
                                 <TextBlock x:Name="TypeTextBlock"
-                                           Text="File Type"
+                                           Text="Тип файла"
                                            FontSize="11"
                                            Foreground="{StaticResource BrushTextSecondary}"
                                            Margin="0,2,0,0" />
@@ -99,7 +99,7 @@
                         <!-- Details Grid -->
                         <Grid>
                             <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="90" />
+                                <ColumnDefinition Width="100" />
                                 <ColumnDefinition Width="*" />
                             </Grid.ColumnDefinitions>
                             <Grid.RowDefinitions>
@@ -113,31 +113,31 @@
                             </Grid.RowDefinitions>
 
                             <!-- Location -->
-                            <TextBlock Grid.Row="0" Grid.Column="0" Text="Location:" Foreground="{StaticResource BrushTextSecondary}" FontSize="11" Margin="0,4" />
+                            <TextBlock Grid.Row="0" Grid.Column="0" Text="Расположение:" Foreground="{StaticResource BrushTextSecondary}" FontSize="11" Margin="0,4" />
                             <TextBox Grid.Row="0" Grid.Column="1" x:Name="LocationTextBox" IsReadOnly="True" BorderThickness="0" Background="Transparent" Foreground="{StaticResource BrushTextPrimary}" FontSize="11" TextWrapping="Wrap" Margin="0,2" />
 
                             <!-- Size -->
-                            <TextBlock Grid.Row="1" Grid.Column="0" Text="Size:" Foreground="{StaticResource BrushTextSecondary}" FontSize="11" Margin="0,4" />
+                            <TextBlock Grid.Row="1" Grid.Column="0" Text="Размер:" Foreground="{StaticResource BrushTextSecondary}" FontSize="11" Margin="0,4" />
                             <TextBlock Grid.Row="1" Grid.Column="1" x:Name="SizeTextBlock" Foreground="{StaticResource BrushTextPrimary}" FontSize="11" Margin="0,4" />
 
                             <!-- Contains (for directory) -->
-                            <TextBlock Grid.Row="2" Grid.Column="0" x:Name="ContainsLabel" Text="Contains:" Foreground="{StaticResource BrushTextSecondary}" FontSize="11" Margin="0,4" />
+                            <TextBlock Grid.Row="2" Grid.Column="0" x:Name="ContainsLabel" Text="Содержит:" Foreground="{StaticResource BrushTextSecondary}" FontSize="11" Margin="0,4" />
                             <TextBlock Grid.Row="2" Grid.Column="1" x:Name="ContainsTextBlock" Foreground="{StaticResource BrushTextPrimary}" FontSize="11" Margin="0,4" />
 
                             <!-- Created -->
-                            <TextBlock Grid.Row="3" Grid.Column="0" Text="Created:" Foreground="{StaticResource BrushTextSecondary}" FontSize="11" Margin="0,4" />
+                            <TextBlock Grid.Row="3" Grid.Column="0" Text="Создан:" Foreground="{StaticResource BrushTextSecondary}" FontSize="11" Margin="0,4" />
                             <TextBlock Grid.Row="3" Grid.Column="1" x:Name="CreatedTextBlock" Foreground="{StaticResource BrushTextPrimary}" FontSize="11" Margin="0,4" />
 
                             <!-- Modified -->
-                            <TextBlock Grid.Row="4" Grid.Column="0" Text="Modified:" Foreground="{StaticResource BrushTextSecondary}" FontSize="11" Margin="0,4" />
+                            <TextBlock Grid.Row="4" Grid.Column="0" Text="Изменен:" Foreground="{StaticResource BrushTextSecondary}" FontSize="11" Margin="0,4" />
                             <TextBlock Grid.Row="4" Grid.Column="1" x:Name="ModifiedTextBlock" Foreground="{StaticResource BrushTextPrimary}" FontSize="11" Margin="0,4" />
 
                             <!-- Accessed -->
-                            <TextBlock Grid.Row="5" Grid.Column="0" Text="Accessed:" Foreground="{StaticResource BrushTextSecondary}" FontSize="11" Margin="0,4" />
+                            <TextBlock Grid.Row="5" Grid.Column="0" Text="Открыт:" Foreground="{StaticResource BrushTextSecondary}" FontSize="11" Margin="0,4" />
                             <TextBlock Grid.Row="5" Grid.Column="1" x:Name="AccessedTextBlock" Foreground="{StaticResource BrushTextPrimary}" FontSize="11" Margin="0,4" />
 
                             <!-- Attributes -->
-                            <TextBlock Grid.Row="6" Grid.Column="0" Text="Attributes:" Foreground="{StaticResource BrushTextSecondary}" FontSize="11" Margin="0,4" />
+                            <TextBlock Grid.Row="6" Grid.Column="0" Text="Атрибуты:" Foreground="{StaticResource BrushTextSecondary}" FontSize="11" Margin="0,4" />
                             <TextBlock Grid.Row="6" Grid.Column="1" x:Name="AttributesTextBlock" Foreground="{StaticResource BrushTextPrimary}" FontSize="11" Margin="0,4" />
                         </Grid>
                     </StackPanel>
@@ -150,7 +150,7 @@
                         BorderThickness="0,1,0,0"
                         CornerRadius="0,0,8,8"
                         Padding="12,8">
-                    <Button Content="Close"
+                    <Button Content="Закрыть"
                             Width="80"
                             Height="28"
                             HorizontalAlignment="Right"
