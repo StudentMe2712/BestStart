@@ -352,8 +352,11 @@ class TestKzFlightSniperIntegration(unittest.TestCase):
             await handle_start(mock_message)
             self.assertEqual(mock_message.answer.call_count, 1)
             start_reply = mock_message.answer.call_args[0][0]
+            start_markup = mock_message.answer.call_args[1].get("reply_markup")
             self.assertIn("Добро пожаловать в KzFlightSniper", start_reply)
             self.assertIn("/list", start_reply)
+            self.assertIsNotNone(start_markup)
+            self.assertEqual(start_markup.inline_keyboard[0][0].callback_data, "start_new_snipe_fsm")
 
             mock_message.answer.reset_mock()
 
@@ -425,7 +428,7 @@ class TestKzFlightSniperIntegration(unittest.TestCase):
             tasks_after_del = await self.dao.get_user_tasks(chat_id=55555)
             self.assertEqual(len(tasks_after_del), 0)
 
-            # 10. Test NLP natural language input with typing action and status message edit
+            # 10. Test NLP natural language input with typing action, Live Preview, and state clearing
             mock_status_msg = MagicMock()
             mock_status_msg.edit_text = AsyncMock()
             mock_nlp_msg = MagicMock(spec=Message)
@@ -436,15 +439,34 @@ class TestKzFlightSniperIntegration(unittest.TestCase):
             mock_nlp_msg.bot.send_chat_action = AsyncMock()
             mock_nlp_msg.answer = AsyncMock(return_value=mock_status_msg)
 
-            await handle_nlp_message(mock_nlp_msg)
+            mock_state = AsyncMock()
+            mock_state.clear = AsyncMock()
+
+            mock_live_offers = [
+                FlightOffer(
+                    airline="Air Astana",
+                    flight_number="KC-871",
+                    origin="ALA",
+                    destination="BKK",
+                    departure_time="01:20",
+                    arrival_time="08:50",
+                    price_kzt=145000.0,
+                    transfers_count=0,
+                )
+            ]
+
+            with patch("backend.bot.handlers.AviataProvider.search", new=AsyncMock(return_value=mock_live_offers)):
+                await handle_nlp_message(mock_nlp_msg, mock_state)
+
             self.assertTrue(mock_nlp_msg.bot.send_chat_action.called)
             self.assertEqual(mock_nlp_msg.answer.call_count, 1)
-            self.assertEqual(mock_nlp_msg.answer.call_args[0][0], "⏳ Анализирую запрос...")
+            self.assertEqual(mock_nlp_msg.answer.call_args[0][0], "⏳ Анализирую запрос через AI...")
+            self.assertTrue(mock_state.clear.called)
             self.assertTrue(mock_status_msg.edit_text.called)
             nlp_card = mock_status_msg.edit_text.call_args[0][0]
             self.assertIn("ALA", nlp_card)
             self.assertIn("BKK", nlp_card)
-            self.assertIn("150 000 ₸", nlp_card)
+            self.assertIn("150,000 ₸", nlp_card)
 
         asyncio.run(_run())
 

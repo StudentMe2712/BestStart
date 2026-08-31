@@ -20,6 +20,11 @@ class FlightOffer(BaseModel):
     duration_minutes: Optional[int] = Field(default=None, description="Total journey duration in minutes")
     deep_link: Optional[str] = Field(default=None, description="Direct booking or search URL")
 
+    @property
+    def is_direct(self) -> bool:
+        """Return True if flight is non-stop direct flight."""
+        return self.transfers_count == 0
+
     @field_validator("origin", "destination", mode="before")
     @classmethod
     def normalize_iata(cls, value: str) -> str:
@@ -41,8 +46,8 @@ class ParsedFlightIntent(BaseModel):
     date: str = Field(..., description="Flight date in YYYY-MM-DD format")
     flight_number: Optional[str] = Field(default=None, description="Optional flight number filter (e.g. KC-871)")
     direct_only: bool = Field(default=True, description="Whether only direct flights are targeted")
-    target_price: float = Field(..., gt=0, description="Target maximum acceptable price in KZT")
-    currency_detected: Optional[str] = Field(default="KZT", description="Original currency symbol or code detected")
+    target_price: Optional[float] = Field(default=None, description="Optional target maximum price in KZT")
+    currency_detected: Optional[str] = Field(default=None, description="Original currency symbol or code detected")
     original_price: Optional[float] = Field(default=None, description="Original numeric price before conversion")
     interval_minutes: int = Field(default=5, ge=1, description="Periodic check frequency in minutes")
     confidence: float = Field(default=1.0, ge=0.0, le=1.0, description="Extraction confidence score")

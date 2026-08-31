@@ -1,5 +1,3 @@
-"""aiogram 3.x Telegram command routers, NLP text handlers, and callback handlers for KzFlightSniper."""
-
 from datetime import datetime, timezone
 import logging
 import uuid
@@ -8,15 +6,25 @@ from typing import Any, Dict, List, Optional, Tuple
 from aiogram import F, Router
 from aiogram.enums import ChatAction
 from aiogram.filters import Command, CommandObject, CommandStart
+from aiogram.fsm.context import FSMContext
+from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message
 
 from backend.bot.nlp_parser import parse_flight_request
-from backend.core.models import ParsedFlightIntent
+from backend.core.models import FlightOffer, ParsedFlightIntent
 from backend.db.dao import FlightSniperDAO
+from backend.providers.aviata_provider import AviataProvider
 
 logger = logging.getLogger("kzflight_sniper.bot.handlers")
 router = Router(name="flight_sniper_handlers")
 dao = FlightSniperDAO()
+
+
+class SniperStates(StatesGroup):
+    """FSM States for Flight Sniper conversation flow."""
+
+    waiting_for_flight_text = State()
+
 
 # In-memory storage for pending NLP confirmation sessions
 _pending_nlp_tasks: Dict[str, Dict[str, Any]] = {}
@@ -117,13 +125,36 @@ async def handle_start(message: Message) -> None:
         "🦅 <b>Добро пожаловать в KzFlightSniper!</b>\n"
         "Я — твой умный помощник для перехвата дешевых авиабилетов (Air Astana, FlyArystan, SCAT и др.).\n\n"
         "💬 <b>Просто напиши мне, что ты ищешь, обычным текстом. Например:</b>\n"
+        "• <i>«Алматы - Чэнду на 21 ноября»</i>\n"
         "• <i>«Астана - Шымкент на 1 ноября до 20000 тг»</i>\n"
-        "• <i>«Алматы - Бангкок, 15 октября, прямой, KC-871, ниже 300$, каждые 5 минут»</i>\n\n"
+        "• <i>«Алматы - Бангкок, 15 октября, прямой, KC-871, ниже 300$»</i>\n\n"
         "<b>Мои команды:</b>\n"
         "• <code>/list</code> — Посмотреть активные мониторинги\n"
         "• <code>/help</code> — Справочник кодов аэропортов"
     )
-    await message.answer(welcome_text)
+    keyboard = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="🎯 Создать мониторинг", callback_data="start_new_snipe_fsm")]
+        ]
+    )
+    await message.answer(welcome_text, reply_markup=keyboard)
+
+
+@router.callback_query(F.data == "start_new_snipe_fsm")
+async def handle_start_new_snipe_fsm_callback(callback: CallbackQuery, state: FSMContext) -> None:
+    """Activate FSM state for user to submit natural language flight search."""
+    await state.set_state(SniperStates.waiting_for_flight_text)
+    guide_text = (
+        "💬 <b>Напишите параметры поиска обычным текстом:</b>\n\n"
+        "Укажите город вылета, назначения, дату и (если знаете) желаемую цену или номер рейса.\n\n"
+        "<b>Например:</b>\n"
+        "• <i>«Алматы - Чэнду на 21 ноября»</i>\n"
+        "• <i>«Астана - Шымкент на 1 ноября до 20000 тг»</i>\n"
+        "• <i>«Алматы - Бангкок 15 октября, прямой, KC-871, ниже 300$»</i>"
+    )
+    await callback.answer()
+    if callback.message:
+        await callback.message.answer(guide_text, parse_mode="HTML")
 
 
 @router.message(Command("help"))
@@ -283,9 +314,9 @@ async def handle_delete(message: Message, command: CommandObject) -> None:
         await message.answer("❌ Ошибка при удалении задачи. Пожалуйста, попробуйте позже.")
 
 
-@router.message(F.text & ~F.text.startswith("/"))
-async def handle_nlp_message(message: Message) -> None:
-    """Handle natural language flight monitoring requests via AI / Rule NLP engine."""
+@router.message(SniperStates.waiting_for_flight_text, F.text & ~F.text.startswith("/"))
+async def handle_nlp_message(message: Message, state: FSMContext) -> None:
+    """Handle natural language flight monitoring requests via AI / Rule NLP engine with Live Preview."""
     user_text = (message.text or "").strip()
     if not user_text:
         return
@@ -298,7 +329,7 @@ async def handle_nlp_message(message: Message) -> None:
         pass
 
     # Send preliminary status message
-    status_msg = await message.answer("⏳ Анализирую запрос...")
+    status_msg = await message.answer("⏳ Анализирую запрос через AI...")
 
     try:
         intent = await parse_flight_request(user_text)
@@ -306,51 +337,86 @@ async def handle_nlp_message(message: Message) -> None:
         logger.exception("Error running NLP parser on message '%s': %s", user_text, e)
         intent = None
 
-    if not intent:
+    if intent is None:
         await status_msg.edit_text(
-            "🤔 <b>Не удалось распознать параметры рейса.</b>\n\n"
-            "Пожалуйста, укажите город вылета, назначения, дату и желаемую цену.\n\n"
-            "<b>Примеры запросов:</b>\n"
-            "• <i>«Астана - Шымкент на 1 ноября до 20000 тг»</i>\n"
-            "• <i>«Алматы - Бангкок, 15 октября, прямой, KC-871, ниже 300$, каждые 5 минут»</i>\n"
-            "• <i>«Из Актау в Дубай 25 декабря не дороже 80000 тенге»</i>",
+            "🤔 <b>Не удалось распознать маршрут и дату рейса.</b>\n\n"
+            "Пожалуйста, укажите город вылета, назначения и дату (например, <i>«Алматы - Чэнду 21 ноября»</i>).\n\n"
+            "Попробуйте написать еще раз:",
             parse_mode="HTML",
         )
         return
 
-    # Generate temporary session token for inline confirmation
+    # Valid intent recognized: clear FSM state
+    await state.clear()
+
+    await status_msg.edit_text("⏳ Ищу текущие билеты в реальном времени на Aviata.kz...", parse_mode="HTML")
+
+    # Live Preview search via AviataProvider
+    live_offers: List[FlightOffer] = []
+    try:
+        provider = AviataProvider()
+        live_offers = await provider.search(
+            origin=intent.origin,
+            destination=intent.destination,
+            date=intent.date,
+            flight_number=intent.flight_number,
+            direct_only=intent.direct_only,
+        )
+    except Exception as search_err:
+        logger.warning("Live preview search failed: %s", search_err)
+
+    # Determine effective target price
+    if intent.target_price is not None:
+        effective_target_price = intent.target_price
+        if intent.currency_detected and intent.currency_detected != "KZT" and intent.original_price:
+            price_note = f"💡 <i>({intent.original_price:g} {intent.currency_detected} ≈ {effective_target_price:,.0f} ₸)</i>\n"
+        else:
+            price_note = ""
+    elif live_offers:
+        effective_target_price = min(o.price_kzt for o in live_offers)
+        price_note = "💡 <i>(Цена установлена автоматически по мин. текущей цене на рынке)</i>\n"
+    else:
+        effective_target_price = 50000.0
+        price_note = "💡 <i>(Установлена стандартная базовая цена, т.к. билеты не найдены)</i>\n"
+
+    # Format live offers snippet
+    if live_offers:
+        displayed = live_offers[:4]
+        lines = []
+        for o in displayed:
+            direct_str = "Прямой ⚡" if o.is_direct else f"{o.transfers_count} перес."
+            lines.append(f"✈️ {o.airline} ({o.flight_number}): {o.price_kzt:,.0f} ₸ ({direct_str})")
+        live_offers_text = "\n".join(lines)
+    else:
+        live_offers_text = "⚠️ На данный момент билетов в свободной продаже не обнаружено (или рейс распродан)."
+
+    flight_label = f"<code>{intent.flight_number}</code>" if intent.flight_number else "<i>Любой рейс</i>"
+    flight_type = "Прямой рейс ⚡" if intent.direct_only else "Любой (вкл. пересадки)"
+
     token = uuid.uuid4().hex[:12]
     _pending_nlp_tasks[token] = {
         "chat_id": message.chat.id,
         "intent": intent,
+        "effective_target_price": effective_target_price,
         "created_at": datetime.now(timezone.utc),
     }
 
-    # Format user-facing confirmation card
-    target_formatted = f"{intent.target_price:,.0f} ₸".replace(",", " ")
-    orig_price_str = ""
-    if intent.currency_detected and intent.currency_detected != "KZT" and intent.original_price:
-        orig_price_str = f" ({intent.original_price:g} {intent.currency_detected} ≈ {target_formatted})"
-
-    flight_label = f"<code>{intent.flight_number}</code>" if intent.flight_number else "<i>Любой рейс</i>"
-    flight_type = "Прямой рейс ⚡" if intent.direct_only else "Любой (вкл. пересадки)"
-    interval_label = f"Каждые {intent.interval_minutes} мин"
-
     summary_card = (
-        "🔍 <b>Распознаны параметры снайпера:</b>\n\n"
-        f"✈️ <b>Маршрут:</b> <code>{intent.origin}</code> ➡️ <code>{intent.destination}</code>\n"
-        f"📅 <b>Дата:</b> <code>{intent.date}</code>\n"
-        f"💰 <b>Целевая цена:</b> ≤ <b>{target_formatted}</b>{orig_price_str}\n"
+        f"📍 <b>Маршрут:</b> <code>{intent.origin}</code> ➡️ <code>{intent.destination}</code> | 📅 <b>Дата:</b> <code>{intent.date}</code>\n"
         f"🔢 <b>Рейс:</b> {flight_label}\n"
-        f"🔀 <b>Тип:</b> {flight_type}\n"
-        f"⏱ <b>Интервал проверки:</b> {interval_label}\n\n"
-        "Создать задачу отслеживания?"
+        f"🔀 <b>Тип:</b> {flight_type}\n\n"
+        "🔎 <b>ТЕКУЩИЕ БИЛЕТЫ В ПРОДАЖЕ:</b>\n"
+        f"{live_offers_text}\n\n"
+        f"💰 <b>Целевая цена для снайпинга:</b> ≤ <b>{effective_target_price:,.0f} ₸</b>\n"
+        f"{price_note}"
+        f"⏱ <b>Интервал проверки:</b> каждые {intent.interval_minutes} мин.\n\n"
+        "Создать задачу мониторинга?"
     )
 
     keyboard = InlineKeyboardMarkup(
         inline_keyboard=[
             [
-                InlineKeyboardButton(text="✅ Подтвердить", callback_data=f"confirm_snipe:{token}"),
+                InlineKeyboardButton(text="✅ Начать мониторинг", callback_data=f"confirm_snipe:{token}"),
                 InlineKeyboardButton(text="❌ Отмена", callback_data=f"cancel_snipe:{token}"),
             ]
         ]
@@ -371,6 +437,7 @@ async def handle_confirm_snipe_callback(callback: CallbackQuery) -> None:
 
     intent: ParsedFlightIntent = pending["intent"]
     chat_id = pending["chat_id"]
+    target_price = pending.get("effective_target_price") or (intent.target_price if intent.target_price else 50000.0)
 
     try:
         task_id = await dao.add_task(
@@ -378,14 +445,14 @@ async def handle_confirm_snipe_callback(callback: CallbackQuery) -> None:
             origin=intent.origin,
             destination=intent.destination,
             date=intent.date,
-            target_price=intent.target_price,
+            target_price=target_price,
             flight_number=intent.flight_number,
             max_transfers=0 if intent.direct_only else 99,
             interval_minutes=intent.interval_minutes,
         )
 
         flight_label = f"<code>{intent.flight_number}</code>" if intent.flight_number else "<i>Любая авиакомпания / рейс</i>"
-        formatted_price = f"{intent.target_price:,.0f} ₸".replace(",", " ")
+        formatted_price = f"{target_price:,.0f} ₸".replace(",", " ")
 
         confirmation_card = (
             "🎯 <b>Снайпер активирован!</b>\n\n"

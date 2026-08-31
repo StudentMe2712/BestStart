@@ -70,6 +70,16 @@ CITY_TO_IATA: Dict[str, str] = {
     "стамбул": "IST", "стамбула": "IST", "стамбулу": "IST", "стамбуле": "IST", "istanbul": "IST", "ist": "IST",
     # Phuket
     "пхукет": "HKT", "пхукета": "HKT", "пхукету": "HKT", "пхукете": "HKT", "phuket": "HKT", "hkt": "HKT",
+    # Chengdu
+    "чэнду": "CTU", "ченду": "CTU", "chengdu": "CTU", "ctu": "CTU",
+    # Beijing
+    "пекин": "PEK", "пекина": "PEK", "пекину": "PEK", "пекине": "PEK", "beijing": "PEK", "pek": "PEK",
+    # Seoul
+    "сеул": "ICN", "сеула": "ICN", "сеулу": "ICN", "сеуле": "ICN", "seoul": "ICN", "icn": "ICN",
+    # Guangzhou
+    "гуанчжоу": "CAN", "гуаньчжоу": "CAN", "guangzhou": "CAN", "can": "CAN",
+    # Shanghai
+    "шанхай": "PVG", "шанхая": "PVG", "шанхаю": "PVG", "шанхае": "PVG", "shanghai": "PVG", "pvg": "PVG",
     # Tashkent
     "ташкент": "TAS", "ташкента": "TAS", "ташкенту": "TAS", "ташкенте": "TAS", "tashkent": "TAS", "tas": "TAS",
     # Bishkek
@@ -86,8 +96,6 @@ CITY_TO_IATA: Dict[str, str] = {
     "москва": "MOW", "москву": "MOW", "москве": "MOW", "москвы": "MOW", "moscow": "MOW", "mow": "MOW", "svo": "SVO", "vko": "VKO", "dme": "DME",
     # London
     "лондон": "LON", "лондона": "LON", "лондону": "LON", "лондоне": "LON", "london": "LON", "lon": "LON", "lhr": "LHR",
-    # Seoul
-    "сеул": "ICN", "сеула": "ICN", "сеулу": "ICN", "сеуле": "ICN", "seoul": "ICN", "icn": "ICN",
     # Tokyo
     "токио": "TYO", "tokyo": "TYO", "tyo": "TYO", "nrt": "NRT", "hnd": "HND",
     # Delhi
@@ -102,8 +110,6 @@ CITY_TO_IATA: Dict[str, str] = {
     "мале": "MLE", "мальдивы": "MLE", "мальдив": "MLE", "мальдивах": "MLE", "male": "MLE", "mle": "MLE",
     # Colombo
     "коломбо": "CMB", "colombo": "CMB", "cmb": "CMB",
-    # Beijing
-    "пекин": "PEK", "пекина": "PEK", "пекине": "PEK", "beijing": "PEK", "pek": "PEK",
     # Sanya
     "санья": "SYX", "санью": "SYX", "санье": "SYX", "sanya": "SYX", "syx": "SYX",
 }
@@ -276,11 +282,12 @@ def _extract_price_and_currency(text: str) -> Tuple[Optional[float], str, Option
         Tuple of (price_in_kzt, currency_detected, original_price)
     """
     text_clean = text.replace("\xa0", " ")
+    num_pat = r"(\d{1,3}(?:[\s,]\d{3})+(?:\.\d+)?|\d+(?:\.\d+)?)"
 
     # 1. USD Patterns: "$300", "300$", "300 USD", "300 долларов", "300 баксов"
     usd_patterns = [
-        r"\$\s*(\d+(?:[\s,]\d+)?(?:\.\d+)?)",
-        r"(\d+(?:[\s,]\d+)?(?:\.\d+)?)\s*(?:\$|usd|доллар(?:ов|а)?|баксов|бакса|бакс)",
+        rf"\$\s*{num_pat}",
+        rf"{num_pat}\s*(?:\$|usd|доллар(?:ов|а)?|баксов|бакса|бакс)",
     ]
     for pat in usd_patterns:
         m = re.search(pat, text_clean, re.IGNORECASE)
@@ -291,8 +298,8 @@ def _extract_price_and_currency(text: str) -> Tuple[Optional[float], str, Option
 
     # 2. EUR Patterns: "€300", "300€", "300 EUR", "300 евро"
     eur_patterns = [
-        r"€\s*(\d+(?:[\s,]\d+)?(?:\.\d+)?)",
-        r"(\d+(?:[\s,]\d+)?(?:\.\d+)?)\s*(?:€|eur|евро)",
+        rf"€\s*{num_pat}",
+        rf"{num_pat}\s*(?:€|eur|евро)",
     ]
     for pat in eur_patterns:
         m = re.search(pat, text_clean, re.IGNORECASE)
@@ -303,8 +310,8 @@ def _extract_price_and_currency(text: str) -> Tuple[Optional[float], str, Option
 
     # 3. RUB Patterns: "3000 руб", "3000 ₽", "3000 RUB", "3000 рублей"
     rub_patterns = [
-        r"₽\s*(\d+(?:[\s,]\d+)?(?:\.\d+)?)",
-        r"(\d+(?:[\s,]\d+)?(?:\.\d+)?)\s*(?:₽|rub|руб(?:лей|ля)?|руб)",
+        rf"₽\s*{num_pat}",
+        rf"{num_pat}\s*(?:₽|rub|руб(?:лей|ля)?|руб)",
     ]
     for pat in rub_patterns:
         m = re.search(pat, text_clean, re.IGNORECASE)
@@ -315,8 +322,8 @@ def _extract_price_and_currency(text: str) -> Tuple[Optional[float], str, Option
 
     # 4. KZT Patterns: "25000 ₸", "25 000 тг", "25000 тенге", "25000 kzt"
     kzt_patterns = [
-        r"(\d+(?:[\s,]\d+)?(?:\.\d+)?)\s*(?:₸|тг|тенге|kzt)",
-        r"(?:₸|kzt)\s*(\d+(?:[\s,]\d+)?(?:\.\d+)?)",
+        rf"{num_pat}\s*(?:₸|тг|тенге|kzt)",
+        rf"(?:₸|kzt)\s*{num_pat}",
     ]
     for pat in kzt_patterns:
         m = re.search(pat, text_clean, re.IGNORECASE)
@@ -327,7 +334,7 @@ def _extract_price_and_currency(text: str) -> Tuple[Optional[float], str, Option
 
     # 5. Generic Price with prefixes: "до 25000", "ниже 25000", "< 25000", "дешевле 25000", "бюджет 25000"
     prefix_patterns = [
-        r"(?:до|ниже|дешевле|бюджет|<|<=|не дороже|за)\s*(\d+(?:[\s,]\d+)?)",
+        rf"(?:до|ниже|дешевле|бюджет|<|<=|не дороже|за)\s*{num_pat}",
     ]
     for pat in prefix_patterns:
         m = re.search(pat, text_clean, re.IGNORECASE)
@@ -336,11 +343,17 @@ def _extract_price_and_currency(text: str) -> Tuple[Optional[float], str, Option
             if raw_val > 0:
                 return raw_val, "KZT", raw_val
 
-    # 6. Fallback: Last standalone large number (> 1000)
-    numbers = re.findall(r"\b\d{4,7}\b", text_clean)
+    # 6. Fallback: Standalone large number (> 1000), excluding date formats and 4-digit years
+    # Strip ISO dates, dotted dates, and years 2024-2039 from fallback search
+    text_no_dates = re.sub(r"\b\d{4}-\d{2}-\d{2}\b", " ", text_clean)
+    text_no_dates = re.sub(r"\b\d{1,2}\.\d{1,2}(?:\.\d{2,4})?\b", " ", text_no_dates)
+    text_no_dates = re.sub(r"\b(202\d|203\d)\b", " ", text_no_dates)
+
+    numbers = re.findall(r"\b\d{4,7}\b", text_no_dates)
     if numbers:
         raw_val = float(numbers[-1])
-        return raw_val, "KZT", raw_val
+        if raw_val >= 1000:
+            return raw_val, "KZT", raw_val
 
     return None, "KZT", None
 
@@ -401,7 +414,7 @@ def rule_based_flight_parser(text: str, base_date: Optional[date] = None) -> Opt
         base_date: Optional reference date for relative date resolution.
 
     Returns:
-        ParsedFlightIntent if origin, destination, date, and target price are found, else None.
+        ParsedFlightIntent if origin, destination, and date are found, else None.
     """
     if not text or not text.strip():
         return None
@@ -413,10 +426,10 @@ def rule_based_flight_parser(text: str, base_date: Optional[date] = None) -> Opt
     interval = _extract_interval(text)
     direct_only = _extract_direct_only(text)
 
-    if not (origin and dest and flight_date and price_kzt):
+    if not (origin and dest and flight_date):
         logger.debug(
-            "Rule-based parser incomplete: origin=%s, dest=%s, date=%s, price=%s",
-            origin, dest, flight_date, price_kzt,
+            "Rule-based parser incomplete: origin=%s, dest=%s, date=%s",
+            origin, dest, flight_date,
         )
         return None
 
@@ -427,11 +440,11 @@ def rule_based_flight_parser(text: str, base_date: Optional[date] = None) -> Opt
         flight_number=flight_num,
         direct_only=direct_only,
         target_price=price_kzt,
-        currency_detected=currency,
-        original_price=orig_price,
+        currency_detected=currency if price_kzt else None,
+        original_price=orig_price if price_kzt else None,
         interval_minutes=interval,
         confidence=0.9,
-        raw_explanation="Rule-based heuristic parsing successfully matched route, date, and price.",
+        raw_explanation="Rule-based heuristic parsing successfully matched route and date.",
     )
 
 
@@ -471,20 +484,20 @@ Current Reference Date: {ref_date.isoformat()} (Year: {ref_date.year}).
 
 Extract flight monitoring parameters from the user's message into strict JSON with the following schema:
 {{
-  "origin": "3-letter IATA code (e.g. ALA, NQZ, CIT, SCO, GUW, UKK, AKX, KSG, PWQ, PLX, DMB, KOV, BXH, URA, KGF, PPK, KZO, BKK, DXB, IST, HKT, TAS, FRU, TBS, AYT, DOH, AUH, MOW, LON, ICN, TYO, DEL, CDG, MXP, FRA, MLE, CMB, PEK, SYX)",
+  "origin": "3-letter IATA code (e.g. ALA, NQZ, CIT, SCO, GUW, UKK, AKX, KSG, PWQ, PLX, DMB, KOV, BXH, URA, KGF, PPK, KZO, CTU, PEK, ICN, HKT, CAN, PVG, BKK, DXB, IST, TAS, FRU, TBS, AYT, DOH, AUH, MOW, LON, TYO, DEL, CDG, MXP, FRA, MLE, CMB, SYX)",
   "destination": "3-letter IATA code",
   "date": "YYYY-MM-DD (resolve relative terms like 'завтра', 'послезавтра', '15 октября' using reference date {ref_date.isoformat()})",
   "flight_number": "Optional flight code (e.g. 'KC-871', 'DV-713') or null",
   "direct_only": boolean (true for direct flights, false if transfers allowed),
-  "target_price": number (converted to KZT in Tenge: USD*500, EUR*540, RUB*5.5, KZT*1),
-  "currency_detected": "USD" | "EUR" | "RUB" | "KZT",
-  "original_price": number (original price before conversion),
+  "target_price": number or null (converted to KZT in Tenge: USD*500, EUR*540, RUB*5.5, KZT*1; if user did not specify target price, set null),
+  "currency_detected": "USD" | "EUR" | "RUB" | "KZT" | null,
+  "original_price": number or null (original price before conversion),
   "interval_minutes": integer (check frequency in minutes, e.g. 5, 10, 30, 60, default 5),
   "confidence": float (between 0.0 and 1.0),
   "raw_explanation": "Brief Russian or English summary"
 }}
 
-If the user query does not contain flight intent or lacks critical route/date/price info, return:
+If the user query does not contain flight intent or lacks critical route/date info, return:
 {{"error": "insufficient_info", "confidence": 0.0}}
 """
             response = await client.chat.completions.create(
@@ -501,7 +514,7 @@ If the user query does not contain flight intent or lacks critical route/date/pr
             content = response.choices[0].message.content
             if content:
                 data = json.loads(content)
-                if "origin" in data and "destination" in data and "date" in data and "target_price" in data:
+                if "origin" in data and "destination" in data and "date" in data and data.get("origin") and data.get("destination") and data.get("date"):
                     intent = ParsedFlightIntent(**data)
                     logger.info("Groq LLM parsed flight intent successfully: %s -> %s on %s", intent.origin, intent.destination, intent.date)
                     return intent

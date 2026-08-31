@@ -75,8 +75,8 @@ async def run_simulation() -> bool:
     dao = FlightSniperDAO(db_path=test_db_path)
     print("  ✅ SQLite database initialized with tasks and alerts_history schema.")
 
-    # 2. Simulate Natural Language User Queries
-    print("\n🗣️ STEP 2: Simulating Natural Language User Inputs...")
+    # 2. Simulate Natural Language User Queries & Live Preview
+    print("\n🗣️ STEP 2: Simulating Natural Language User Inputs & Live Preview...")
     test_queries = [
         (
             "Рейс Алматы - Бангкок, 15 октября 2026, прямой, KC-871, ниже 300$. Проверять каждые 5 минут",
@@ -90,7 +90,28 @@ async def run_simulation() -> bool:
             "Хочу улететь из Актау в Дубай 25 декабря 2026 не дороже 80000 тенге, проверка раз в 10 минут",
             "User C (International / KZT / 10 min)",
         ),
+        (
+            "Алматы - Чэнду на 2026-11-21",
+            "User D (Asian Hub / Auto Target Price from Live Preview / 5 min)",
+        ),
     ]
+
+    mock_live_inventory = {
+        "ALA_CTU_2026-11-21": [
+            FlightOffer(
+                provider="aviata",
+                airline="Air China",
+                flight_number="CA-484",
+                origin="ALA",
+                destination="CTU",
+                departure_time="10:00",
+                arrival_time="17:00",
+                price_kzt=75000.0,
+                transfers_count=0,
+                deep_link="https://aviata.kz/search/ALA-CTU",
+            )
+        ]
+    }
 
     simulated_tasks: List[Dict[str, Any]] = []
 
@@ -103,10 +124,23 @@ async def run_simulation() -> bool:
         intent = await parse_flight_request(query, base_date=ref_date)
         assert intent is not None, f"Failed to parse query: {query}"
 
-        print(f"     ✅ Parsed Intent:")
+        # Resolve effective target price (Live preview simulation)
+        route_key = f"{intent.origin}_{intent.destination}_{intent.date}"
+        live_preview_offers = mock_live_inventory.get(route_key, [])
+        if intent.target_price is not None:
+            effective_price = intent.target_price
+            price_source = f"User Specified ({intent.original_price} {intent.currency_detected or 'KZT'})"
+        elif live_preview_offers:
+            effective_price = min(o.price_kzt for o in live_preview_offers)
+            price_source = f"Auto-selected min from Live Preview ({effective_price:,.0f} ₸)"
+        else:
+            effective_price = 50000.0
+            price_source = "Fallback default (50,000 ₸)"
+
+        print(f"     ✅ Parsed Intent & Live Preview:")
         print(f"        • Route: {intent.origin} ✈️ {intent.destination}")
         print(f"        • Date: {intent.date}")
-        print(f"        • Target Price: {intent.target_price:,.0f} KZT (Original: {intent.original_price} {intent.currency_detected})")
+        print(f"        • Target Price: {effective_price:,.0f} KZT [{price_source}]")
         print(f"        • Flight Filter: {intent.flight_number or 'Any'}")
         print(f"        • Direct Only: {intent.direct_only}")
         print(f"        • Interval: {intent.interval_minutes} minutes")
@@ -118,7 +152,7 @@ async def run_simulation() -> bool:
             origin=intent.origin,
             destination=intent.destination,
             date=intent.date,
-            target_price=intent.target_price,
+            target_price=effective_price,
             flight_number=intent.flight_number,
             max_transfers=0 if intent.direct_only else 1,
             interval_minutes=intent.interval_minutes,
@@ -128,12 +162,13 @@ async def run_simulation() -> bool:
             "task_id": task_id,
             "chat_id": chat_id,
             "intent": intent,
+            "effective_price": effective_price,
         })
 
     # 3. Verify Active Tasks Count and Structure
     print("\n🔍 STEP 3: Verifying Database Task Records...")
     active_tasks = await dao.get_active_tasks()
-    assert len(active_tasks) == 3, f"Expected 3 active tasks, got {len(active_tasks)}"
+    assert len(active_tasks) == 4, f"Expected 4 active tasks, got {len(active_tasks)}"
     print(f"  ✅ Retrieved {len(active_tasks)} active tasks from database.")
     for t in active_tasks:
         print(f"     • Task #{t['id']}: {t['origin']}->{t['destination']} on {t['date']} | Target: {t['target_price']} ₸ | Interval: {t['interval_minutes']}m")
@@ -141,7 +176,7 @@ async def run_simulation() -> bool:
     # 4. Interval Due Tasks Logic Check
     print("\n⏱️ STEP 4: Testing Custom Intervals & Due Tasks Query...")
     due_tasks = await dao.get_due_tasks()
-    assert len(due_tasks) == 3, f"Expected all 3 tasks to be due initially, got {len(due_tasks)}"
+    assert len(due_tasks) == 4, f"Expected all 4 tasks to be due initially, got {len(due_tasks)}"
     print(f"  ✅ All {len(due_tasks)} new tasks with NULL last_checked_at are immediately due.")
 
     # 5. Setup Mock Provider and Run First Sniper Check Cycle
@@ -189,6 +224,20 @@ async def run_simulation() -> bool:
                 deep_link="https://aviata.kz/search/SCO-DXB",
             ),
         ],
+        "ALA_CTU_2026-11-21": [
+            FlightOffer(
+                provider="aviata",
+                airline="Air China",
+                flight_number="CA-484",
+                origin="ALA",
+                destination="CTU",
+                departure_time="10:00",
+                arrival_time="17:00",
+                price_kzt=69000.0,  # Price dropped from 75k to 69k (Below 75,000 target!)
+                transfers_count=0,
+                deep_link="https://aviata.kz/search/ALA-CTU",
+            ),
+        ],
     }
 
     mock_provider = MockFlightProvider(offers_by_route=mock_offers)
@@ -200,10 +249,10 @@ async def run_simulation() -> bool:
 
     print(f"  📊 Cycle 1 Results:")
     print(f"     • Tasks checked: {stats1['tasks_checked']}")
-    print(f"     • Alerts triggered: {stats1['alerts_triggered']} (Expected: 2)")
+    print(f"     • Alerts triggered: {stats1['alerts_triggered']} (Expected: 3)")
     print(f"     • Errors: {stats1['errors']}")
-    assert stats1["alerts_triggered"] == 2, f"Expected 2 alerts, got {stats1['alerts_triggered']}"
-    assert mock_bot.send_message.call_count == 2, f"Expected 2 bot dispatches, got {mock_bot.send_message.call_count}"
+    assert stats1["alerts_triggered"] == 3, f"Expected 3 alerts, got {stats1['alerts_triggered']}"
+    assert mock_bot.send_message.call_count == 3, f"Expected 3 bot dispatches, got {mock_bot.send_message.call_count}"
 
     # 6. Verify Due Tasks Query immediately after check (Should be 0)
     print("\n⏳ STEP 6: Checking Due Tasks Immediately After Run...")
@@ -224,7 +273,8 @@ async def run_simulation() -> bool:
     # Task 1 (5m) -> Due
     # Task 2 (5m) -> Due
     # Task 3 (10m) -> NOT Due (needs 10 minutes)
-    assert len(due_6min) == 2, f"Expected exactly 2 tasks due (5-min interval tasks), got {len(due_6min)}"
+    # Task 4 (5m) -> Due
+    assert len(due_6min) == 3, f"Expected exactly 3 tasks due (5-min interval tasks), got {len(due_6min)}"
     due_ids = [t["id"] for t in due_6min]
     print(f"  ✅ Correct tasks due at 6 min: Task IDs {due_ids} (5-min tasks due, 10-min task skipped)")
 

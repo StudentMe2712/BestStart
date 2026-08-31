@@ -364,8 +364,14 @@ class AviataProvider(BaseFlightProvider):
                         logger.warning("Error during Aviata page navigation/interception: %s", page_err)
                 finally:
                     if context is not None:
-                        await context.close()
-                    await browser.close()
+                        try:
+                            await context.close()
+                        except Exception:
+                            pass
+                    try:
+                        await browser.close()
+                    except Exception:
+                        pass
 
         except Exception as browser_err:
             logger.error("Playwright browser execution failed: %s", browser_err)

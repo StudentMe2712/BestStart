@@ -9,10 +9,13 @@ import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from backend.bot.handlers import (
+    SniperStates,
     _pending_nlp_tasks,
-    handle_confirm_snipe_callback,
     handle_cancel_snipe_callback,
+    handle_confirm_snipe_callback,
     handle_nlp_message,
+    handle_start,
+    handle_start_new_snipe_fsm_callback,
     router,
 )
 from backend.bot.nlp_parser import (
@@ -43,7 +46,28 @@ class TestNlpParser:
         assert CITY_TO_IATA["дубай"] == "DXB"
         assert CITY_TO_IATA["стамбул"] == "IST"
         assert CITY_TO_IATA["пхукет"] == "HKT"
+        assert CITY_TO_IATA["чэнду"] == "CTU"
+        assert CITY_TO_IATA["ченду"] == "CTU"
+        assert CITY_TO_IATA["chengdu"] == "CTU"
+        assert CITY_TO_IATA["пекин"] == "PEK"
+        assert CITY_TO_IATA["сеул"] == "ICN"
+        assert CITY_TO_IATA["гуанчжоу"] == "CAN"
+        assert CITY_TO_IATA["шанхай"] == "PVG"
         assert CITY_TO_IATA["ташкент"] == "TAS"
+
+    def test_rule_based_parser_asian_city_without_price(self) -> None:
+        """Test parsing Asian city route without target price."""
+        text = "Алматы - Чэнду на 2026-11-21"
+        base = date(2026, 9, 1)
+        intent = rule_based_flight_parser(text, base_date=base)
+
+        assert intent is not None
+        assert intent.origin == "ALA"
+        assert intent.destination == "CTU"
+        assert intent.date == "2026-11-21"
+        assert intent.target_price is None
+        assert intent.flight_number is None
+        assert intent.interval_minutes == 5
 
     def test_currency_conversion_rates(self) -> None:
         """Verify currency exchange rates to KZT."""
@@ -272,10 +296,48 @@ class TestDatabaseCustomIntervalsAndMigration:
 
 @pytest.mark.asyncio
 class TestTelegramBotNlPHandlers:
-    """Test suite for Telegram Bot NLP messages and inline callbacks."""
+    """Test suite for Telegram Bot NLP messages, FSM states, and inline callbacks."""
+
+    async def test_handle_start_fsm_button(self) -> None:
+        """Test /start command attaches create monitoring FSM inline button."""
+        message = MagicMock()
+        message.answer = AsyncMock()
+
+        await handle_start(message)
+
+        assert message.answer.called
+        call_args = message.answer.call_args
+        reply_text = call_args[0][0]
+        reply_markup = call_args[1].get("reply_markup")
+
+        assert "Добро пожаловать в KzFlightSniper" in reply_text
+        assert reply_markup is not None
+        assert len(reply_markup.inline_keyboard) >= 1
+        assert reply_markup.inline_keyboard[0][0].callback_data == "start_new_snipe_fsm"
+
+    async def test_start_new_snipe_fsm_callback(self) -> None:
+        """Test start_new_snipe_fsm callback transitions state to waiting_for_flight_text."""
+        state = AsyncMock()
+        state.set_state = AsyncMock()
+
+        callback_msg = MagicMock()
+        callback_msg.answer = AsyncMock()
+
+        callback = MagicMock()
+        callback.data = "start_new_snipe_fsm"
+        callback.message = callback_msg
+        callback.answer = AsyncMock()
+
+        await handle_start_new_snipe_fsm_callback(callback, state)
+
+        assert state.set_state.called
+        assert state.set_state.call_args[0][0] == SniperStates.waiting_for_flight_text
+        assert callback.answer.called
+        assert callback_msg.answer.called
+        assert "Напишите параметры поиска обычным текстом" in callback_msg.answer.call_args[0][0]
 
     async def test_handle_nlp_message_recognized(self, tmp_path: Any) -> None:
-        """Test handling natural language text and generating confirmation card with keyboard."""
+        """Test handling natural language text with Live Preview and clearing FSM state."""
         status_msg = MagicMock()
         status_msg.edit_text = AsyncMock()
 
@@ -286,11 +348,29 @@ class TestTelegramBotNlPHandlers:
         message.bot.send_chat_action = AsyncMock()
         message.answer = AsyncMock(return_value=status_msg)
 
-        await handle_nlp_message(message)
+        state = AsyncMock()
+        state.clear = AsyncMock()
+
+        mock_offers = [
+            FlightOffer(
+                airline="Air Astana",
+                flight_number="KC-871",
+                origin="ALA",
+                destination="BKK",
+                departure_time="01:20",
+                arrival_time="08:50",
+                price_kzt=142000.0,
+                transfers_count=0,
+            )
+        ]
+
+        with patch("backend.bot.handlers.AviataProvider.search", new=AsyncMock(return_value=mock_offers)):
+            await handle_nlp_message(message, state)
 
         assert message.bot.send_chat_action.called
         assert message.answer.called
-        assert message.answer.call_args[0][0] == "⏳ Анализирую запрос..."
+        assert message.answer.call_args[0][0] == "⏳ Анализирую запрос через AI..."
+        assert state.clear.called
 
         assert status_msg.edit_text.called
         call_args = status_msg.edit_text.call_args
@@ -299,13 +379,64 @@ class TestTelegramBotNlPHandlers:
 
         assert "ALA" in card_text
         assert "BKK" in card_text
-        assert "150 000 ₸" in card_text
+        assert "150,000 ₸" in card_text
+        assert "Air Astana" in card_text
+        assert "142,000 ₸" in card_text
         assert reply_markup is not None
         assert len(reply_markup.inline_keyboard[0]) == 2
         assert "confirm_snipe:" in reply_markup.inline_keyboard[0][0].callback_data
 
+    async def test_handle_nlp_message_without_price_auto_target(self) -> None:
+        """Test natural language request without explicit price automatically uses min live offer."""
+        status_msg = MagicMock()
+        status_msg.edit_text = AsyncMock()
+
+        message = MagicMock()
+        message.text = "Алматы - Чэнду на 2026-11-21"
+        message.chat.id = 888
+        message.bot = MagicMock()
+        message.bot.send_chat_action = AsyncMock()
+        message.answer = AsyncMock(return_value=status_msg)
+
+        state = AsyncMock()
+        state.clear = AsyncMock()
+
+        mock_offers = [
+            FlightOffer(
+                airline="Air China",
+                flight_number="CA-484",
+                origin="ALA",
+                destination="CTU",
+                departure_time="10:00",
+                arrival_time="17:00",
+                price_kzt=78500.0,
+                transfers_count=0,
+            ),
+            FlightOffer(
+                airline="China Southern",
+                flight_number="CZ-6012",
+                origin="ALA",
+                destination="CTU",
+                departure_time="14:00",
+                arrival_time="21:00",
+                price_kzt=92000.0,
+                transfers_count=1,
+            ),
+        ]
+
+        with patch("backend.bot.handlers.AviataProvider.search", new=AsyncMock(return_value=mock_offers)):
+            await handle_nlp_message(message, state)
+
+        assert state.clear.called
+        assert status_msg.edit_text.called
+        card_text = status_msg.edit_text.call_args[0][0]
+        assert "ALA" in card_text
+        assert "CTU" in card_text
+        assert "78,500 ₸" in card_text
+        assert "Цена установлена автоматически" in card_text
+
     async def test_handle_nlp_message_unrecognized(self) -> None:
-        """Test unrecognized text message returns helpful usage guide."""
+        """Test unrecognized text message prompts retry without clearing FSM state."""
         status_msg = MagicMock()
         status_msg.edit_text = AsyncMock()
 
@@ -316,15 +447,19 @@ class TestTelegramBotNlPHandlers:
         message.bot.send_chat_action = AsyncMock()
         message.answer = AsyncMock(return_value=status_msg)
 
-        await handle_nlp_message(message)
+        state = AsyncMock()
+        state.clear = AsyncMock()
+
+        await handle_nlp_message(message, state)
 
         assert message.bot.send_chat_action.called
         assert message.answer.called
-        assert message.answer.call_args[0][0] == "⏳ Анализирую запрос..."
+        assert message.answer.call_args[0][0] == "⏳ Анализирую запрос через AI..."
+        assert not state.clear.called
 
         assert status_msg.edit_text.called
         card_text = status_msg.edit_text.call_args[0][0]
-        assert "Не удалось распознать параметры рейса" in card_text
+        assert "Не удалось распознать маршрут и дату рейса" in card_text
 
     async def test_confirm_and_cancel_callbacks(self, tmp_path: Any) -> None:
         """Test confirming and cancelling pending NLP snipe tasks."""
@@ -333,7 +468,7 @@ class TestTelegramBotNlPHandlers:
 
         # Inject DAO with test db path
         with patch("backend.bot.handlers.dao", FlightSniperDAO(db_path=db_file)):
-            # Store pending task
+            # Store pending task with effective_target_price
             token = "test_token_123"
             intent = ParsedFlightIntent(
                 origin="ALA",
@@ -347,6 +482,7 @@ class TestTelegramBotNlPHandlers:
             _pending_nlp_tasks[token] = {
                 "chat_id": 999,
                 "intent": intent,
+                "effective_target_price": 25000.0,
                 "created_at": datetime.now(timezone.utc),
             }
 
@@ -374,6 +510,7 @@ class TestTelegramBotNlPHandlers:
             assert tasks[0]["destination"] == "NQZ"
             assert tasks[0]["flight_number"] == "KC-871"
             assert tasks[0]["interval_minutes"] == 5
+            assert tasks[0]["target_price"] == 25000.0
 
             # Test Cancel Callback
             token_cancel = "cancel_token_456"

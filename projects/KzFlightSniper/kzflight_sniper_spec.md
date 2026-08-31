@@ -208,3 +208,11 @@ class BaseFlightProvider(ABC):
 - [x] Update `backend/engine/sniper_worker.py` and `backend/engine/scheduler.py` for due tasks evaluation.
 - [x] Implement standalone executable test runner and simulator `backend/tests/manual_test_simulator.py`.
 - [x] Create comprehensive test suite `backend/tests/test_nlp_and_intervals.py` (35/35 passing tests).
+
+### Дополнительный этап: UX-рефакторинг, FSM и Live Preview
+- [x] FSM стейт-машина (`SniperStates.waiting_for_flight_text`) и кнопка «🎯 Создать мониторинг» в `/start`.
+- [x] Защита от спама: обработка текста строго в активном FSM стейте.
+- [x] Опциональная целевая цена (`target_price: Optional[float] = None`) и расширение маппинга азиатских городов (Чэнду=CTU, Пекин=PEK, Сеул=ICN, Пхукет=HKT, Гуанчжоу=CAN, Шанхай=PVG).
+- [x] Live Preview: предварительный поиск реальных билетов через `AviataProvider` перед подтверждением задачи.
+- [x] Автоматическая установка `target_price` по минимальной найденной на рынке цене, если пользователь не указал цену.
+- [x] Защита от утечек контекстов Playwright (`try...finally` с `context.close()`).
