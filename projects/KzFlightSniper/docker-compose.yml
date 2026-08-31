@@ -1,0 +1,21 @@
+version: '3.8'
+
+services:
+  kzflight-sniper:
+    container_name: kzflight-sniper-backend
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    env_file:
+      - ./backend/.env
+    environment:
+      - BOT_TOKEN=${BOT_TOKEN}
+      - APP_PORT=${APP_PORT:-8000}
+      - DATABASE_PATH=${DATABASE_PATH:-/app/data/sniper.db}
+      - CHECK_INTERVAL_SECONDS=${CHECK_INTERVAL_SECONDS:-300}
+    ports:
+      - "${APP_PORT:-8000}:8000"
+    volumes:
+      - ./backend/data:/app/data
+    shm_size: '2gb'
