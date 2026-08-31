@@ -168,11 +168,14 @@ class BaseFlightProvider(ABC):
 - [x] Implement `poc_aviata.py` standalone asynchronous Playwright interceptor with stealth and structured console output.
 
 ### Stage 2: Database Layer, Models, and Provider Adapter Architecture
-- [ ] Implement `backend/core/config.py` using `pydantic-settings`.
-- [ ] Implement `backend/db/database.py` with `aiosqlite` connection manager, schema initialization, and async context managers.
-- [ ] Implement `backend/db/crud.py` for task creation, retrieval, updates, status toggling, and alert recording.
-- [ ] Implement `backend/core/models.py` with standard Pydantic models (`FlightOffer`, `SniperTask`, `AlertItem`).
-- [ ] Implement `backend/providers/base.py` defining `BaseFlightProvider`.
+- [x] Implement `backend/core/config.py` using `pydantic-settings`.
+- [x] Implement `backend/db/database.py` with `aiosqlite` connection manager, schema initialization, and async context managers.
+- [x] Implement `backend/db/dao.py` for task creation, retrieval, updates, status toggling, and alert recording.
+- [x] Implement `backend/core/models.py` with standard Pydantic models (`FlightOffer`, `TaskCreate`, `TaskRead`, `AlertRead`).
+- [x] Implement `backend/providers/base.py` defining `BaseFlightProvider`.
+- [x] Implement `backend/bot/` with `aiogram 3.x` handlers (`/start`, `/help`, `/snipe`, `/list`, `/delete`, `/cancel`).
+- [x] Implement `backend/main.py` with FastAPI endpoints (`/`, `/health`, `/api/tasks`) and lifespan management.
+- [x] Implement `backend/tests/test_stage2.py` with 100% passing unit & integration tests.
 
 ### Stage 3: Playwright-Stealth Aviata Engine & Parser Pipeline
 - [ ] Implement `backend/providers/aviata.py` extending `BaseFlightProvider`.
