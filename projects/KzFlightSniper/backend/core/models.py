@@ -25,6 +25,16 @@ class FlightOffer(BaseModel):
         """Return True if flight is non-stop direct flight."""
         return self.transfers_count == 0
 
+    @property
+    def route(self) -> str:
+        """Return route string representation e.g. ALA -> NQZ."""
+        return f"{self.origin} -> {self.destination}"
+
+    @property
+    def formatted_price(self) -> str:
+        """Return formatted price string in KZT."""
+        return f"{self.price_kzt:,.0f} ₸".replace(",", " ")
+
     @field_validator("origin", "destination", mode="before")
     @classmethod
     def normalize_iata(cls, value: str) -> str:
@@ -52,6 +62,18 @@ class ParsedFlightIntent(BaseModel):
     interval_minutes: int = Field(default=5, ge=1, description="Periodic check frequency in minutes")
     confidence: float = Field(default=1.0, ge=0.0, le=1.0, description="Extraction confidence score")
     raw_explanation: Optional[str] = Field(default=None, description="Human readable explanation or summary")
+
+    @property
+    def route(self) -> str:
+        """Return route string representation e.g. ALA -> NQZ."""
+        return f"{self.origin} -> {self.destination}"
+
+    @property
+    def formatted_target_price(self) -> str:
+        """Return formatted target price string in KZT."""
+        if self.target_price is not None:
+            return f"{self.target_price:,.0f} ₸".replace(",", " ")
+        return "Автоматически"
 
     @field_validator("origin", "destination", mode="before")
     @classmethod

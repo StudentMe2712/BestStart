@@ -1,16 +1,16 @@
 from datetime import datetime, timezone
 import logging
-import uuid
 from typing import Any, Dict, List, Optional, Tuple
 
 from aiogram import F, Router
 from aiogram.enums import ChatAction
 from aiogram.filters import Command, CommandObject, CommandStart
+from aiogram.filters.callback_data import CallbackData
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message
 
-from backend.bot.nlp_parser import parse_flight_request
+from backend.bot.nlp_parser import parse_interval_nlp, parse_search_query
 from backend.core.models import FlightOffer, ParsedFlightIntent
 from backend.db.dao import FlightSniperDAO
 from backend.providers.aviata_provider import AviataProvider
@@ -21,13 +21,47 @@ dao = FlightSniperDAO()
 
 
 class SniperStates(StatesGroup):
-    """FSM States for Flight Sniper conversation flow."""
+    """FSM States for 2-step Flight Sniper conversation flow."""
 
-    waiting_for_flight_text = State()
+    waiting_for_search_query = State()
+    waiting_for_interval = State()
 
 
-# In-memory storage for pending NLP confirmation sessions
-_pending_nlp_tasks: Dict[str, Dict[str, Any]] = {}
+class FlightSelectCallback(CallbackData, prefix="fl_sel"):
+    """Callback data for selecting a flight from search results."""
+
+    flight_idx: int
+
+
+class MonitorFlightCallback(CallbackData, prefix="fl_mon"):
+    """Callback data to proceed with monitoring the chosen flight."""
+
+    flight_idx: int
+
+
+class QuickIntervalCallback(CallbackData, prefix="fl_int"):
+    """Callback data for quick preset intervals (5, 10, 30, 60 min)."""
+
+    minutes: int
+
+
+class StepBackCallback(CallbackData, prefix="fl_back"):
+    """Callback data for navigating backwards in FSM wizard."""
+
+    to_step: str  # "flights" or "interval"
+
+
+class ConfirmSnipeCallback(CallbackData, prefix="fl_conf"):
+    """Callback data to commit snipe task creation into database."""
+
+    pass
+
+
+class CancelSnipeCallback(CallbackData, prefix="fl_canc"):
+    """Callback data to cancel current snipe creation session."""
+
+    pass
+
 
 KAZAKHSTAN_AIRPORTS_INFO = """
 <b>🇰🇿 Основные коды аэропортов Казахстана (IATA):</b>
@@ -49,6 +83,149 @@ KAZAKHSTAN_AIRPORTS_INFO = """
 • <code>PPK</code> — Петропавловск
 • <code>KZO</code> — Кызылорда
 """
+
+
+def _get_flight_attr(flight: Any, key: str, default: Any = None) -> Any:
+    """Helper to get attribute from dict or Pydantic FlightOffer model."""
+    if isinstance(flight, dict):
+        return flight.get(key, default)
+    return getattr(flight, key, default)
+
+
+def build_flight_list_keyboard(offers: List[Any]) -> InlineKeyboardMarkup:
+    """Build inline keyboard listing all available flight offers with cancel button."""
+    buttons = []
+    for i, o in enumerate(offers):
+        airline = _get_flight_attr(o, "airline", "Рейс")
+        flight_num = _get_flight_attr(o, "flight_number", "")
+        price = _get_flight_attr(o, "price_kzt", 0.0)
+        formatted_p = f"{price:,.0f} ₸".replace(",", " ")
+        btn_text = f"✈️ {airline} {flight_num} - {formatted_p}"
+        buttons.append([
+            InlineKeyboardButton(
+                text=btn_text,
+                callback_data=FlightSelectCallback(flight_idx=i).pack(),
+            )
+        ])
+    buttons.append([
+        InlineKeyboardButton(
+            text="❌ Отмена",
+            callback_data=CancelSnipeCallback().pack(),
+        )
+    ])
+    return InlineKeyboardMarkup(inline_keyboard=buttons)
+
+
+def build_flight_details_keyboard(flight_idx: int) -> InlineKeyboardMarkup:
+    """Build keyboard for flight detail view with Monitor and Back buttons."""
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text="🎯 Мониторить этот рейс",
+                    callback_data=MonitorFlightCallback(flight_idx=flight_idx).pack(),
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    text="⬅️ К списку рейсов",
+                    callback_data=StepBackCallback(to_step="flights").pack(),
+                )
+            ],
+        ]
+    )
+
+
+def build_interval_keyboard() -> InlineKeyboardMarkup:
+    """Build keyboard with quick interval options and Back button."""
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(text="5 мин", callback_data=QuickIntervalCallback(minutes=5).pack()),
+                InlineKeyboardButton(text="10 мин", callback_data=QuickIntervalCallback(minutes=10).pack()),
+                InlineKeyboardButton(text="30 мин", callback_data=QuickIntervalCallback(minutes=30).pack()),
+                InlineKeyboardButton(text="1 час", callback_data=QuickIntervalCallback(minutes=60).pack()),
+            ],
+            [
+                InlineKeyboardButton(text="⬅️ Назад", callback_data=StepBackCallback(to_step="flights").pack()),
+            ],
+        ]
+    )
+
+
+def build_confirmation_keyboard() -> InlineKeyboardMarkup:
+    """Build keyboard for final snipe confirmation."""
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text="⬅️ Назад",
+                    callback_data=StepBackCallback(to_step="interval").pack(),
+                ),
+                InlineKeyboardButton(
+                    text="✅ Подтвердить",
+                    callback_data=ConfirmSnipeCallback().pack(),
+                ),
+                InlineKeyboardButton(
+                    text="❌ Отменить",
+                    callback_data=CancelSnipeCallback().pack(),
+                ),
+            ]
+        ]
+    )
+
+
+def format_flight_details_card(flight: Any) -> str:
+    """Format detailed HTML card for a selected flight offer."""
+    airline = _get_flight_attr(flight, "airline", "N/A")
+    flight_num = _get_flight_attr(flight, "flight_number", "N/A")
+    origin = _get_flight_attr(flight, "origin", "")
+    dest = _get_flight_attr(flight, "destination", "")
+    dep_time = _get_flight_attr(flight, "departure_time", "N/A")
+    arr_time = _get_flight_attr(flight, "arrival_time", "N/A")
+    transfers = _get_flight_attr(flight, "transfers_count", 0)
+    transfers_str = "Прямой ⚡" if transfers == 0 else f"{transfers} пересад."
+    price = float(_get_flight_attr(flight, "price_kzt", 0.0))
+    price_fmt = f"{price:,.0f} ₸".replace(",", " ")
+
+    return (
+        "✈️ <b>Детали выбранного рейса:</b>\n\n"
+        f"• <b>Авиакомпания:</b> {airline}\n"
+        f"• <b>Рейс:</b> <code>{flight_num}</code>\n"
+        f"• <b>Маршрут:</b> <code>{origin}</code> ➡️ <code>{dest}</code>\n"
+        f"• <b>Время:</b> 🛫 {dep_time} — 🛬 {arr_time}\n"
+        f"• <b>Пересадки:</b> {transfers_str}\n"
+        f"• <b>Текущая цена:</b> <b>{price_fmt}</b>\n\n"
+        "Нажмите <b>«🎯 Мониторить этот рейс»</b> для настройки интервала проверки."
+    )
+
+
+def format_confirmation_card(data: Dict[str, Any]) -> str:
+    """Format final confirmation card before saving snipe task."""
+    origin = data.get("origin", "")
+    dest = data.get("destination", "")
+    date_str = data.get("date", "")
+    selected = data.get("selected_flight", {})
+    airline = _get_flight_attr(selected, "airline", "N/A")
+    flight_num = _get_flight_attr(selected, "flight_number", "N/A")
+    price = float(_get_flight_attr(selected, "price_kzt", 0.0))
+    target_price = float(data.get("target_price", price))
+    interval = int(data.get("interval_minutes", 5))
+
+    price_fmt = f"{price:,.0f} ₸".replace(",", " ")
+    target_fmt = f"{target_price:,.0f} ₸".replace(",", " ")
+
+    return (
+        "📋 <b>Подтверждение параметров мониторинга</b>\n\n"
+        f"• <b>Маршрут:</b> <code>{origin}</code> ✈️ <code>{dest}</code>\n"
+        f"• <b>Дата вылета:</b> <code>{date_str}</code>\n"
+        f"• <b>Авиакомпания:</b> {airline}\n"
+        f"• <b>Рейс:</b> <code>{flight_num}</code>\n"
+        f"• <b>Текущая цена:</b> {price_fmt}\n"
+        f"• <b>Целевая цена:</b> ≤ <b>{target_fmt}</b>\n"
+        f"• <b>Интервал проверки:</b> ⏱ <i>Каждые {interval} мин</i>\n\n"
+        "Запустить снайпер для этого рейса?"
+    )
 
 
 def parse_snipe_arguments(args_text: str) -> Tuple[str, str, str, Optional[str], float]:
@@ -120,14 +297,14 @@ def parse_snipe_arguments(args_text: str) -> Tuple[str, str, str, Optional[str],
 
 @router.message(CommandStart())
 async def handle_start(message: Message) -> None:
-    """Handle /start command with greeting, NLP capabilities, and quick-start instructions."""
+    """Handle /start command with greeting, NLP capabilities, and quick-start button."""
     welcome_text = (
         "🦅 <b>Добро пожаловать в KzFlightSniper!</b>\n"
         "Я — твой умный помощник для перехвата дешевых авиабилетов (Air Astana, FlyArystan, SCAT и др.).\n\n"
-        "💬 <b>Просто напиши мне, что ты ищешь, обычным текстом. Например:</b>\n"
-        "• <i>«Алматы - Чэнду на 21 ноября»</i>\n"
-        "• <i>«Астана - Шымкент на 1 ноября до 20000 тг»</i>\n"
-        "• <i>«Алматы - Бангкок, 15 октября, прямой, KC-871, ниже 300$»</i>\n\n"
+        "💬 <b>Нажмите кнопку ниже или отправьте маршрут для создания мониторинга:</b>\n"
+        "• <i>«Алматы - Чэнду 21 ноября»</i>\n"
+        "• <i>«Астана - Шымкент на 1 ноября»</i>\n"
+        "• <i>«Алматы - Бангкок 15 октября»</i>\n\n"
         "<b>Мои команды:</b>\n"
         "• <code>/list</code> — Посмотреть активные мониторинги\n"
         "• <code>/help</code> — Справочник кодов аэропортов"
@@ -142,15 +319,15 @@ async def handle_start(message: Message) -> None:
 
 @router.callback_query(F.data == "start_new_snipe_fsm")
 async def handle_start_new_snipe_fsm_callback(callback: CallbackQuery, state: FSMContext) -> None:
-    """Activate FSM state for user to submit natural language flight search."""
-    await state.set_state(SniperStates.waiting_for_flight_text)
+    """Activate FSM state waiting_for_search_query for user to submit flight search."""
+    await state.set_state(SniperStates.waiting_for_search_query)
     guide_text = (
-        "💬 <b>Напишите параметры поиска обычным текстом:</b>\n\n"
-        "Укажите город вылета, назначения, дату и (если знаете) желаемую цену или номер рейса.\n\n"
+        "💬 <b>Куда и когда вы планируете лететь?</b>\n\n"
+        "Напишите маршрут и дату обычным текстом.\n\n"
         "<b>Например:</b>\n"
-        "• <i>«Алматы - Чэнду на 21 ноября»</i>\n"
-        "• <i>«Астана - Шымкент на 1 ноября до 20000 тг»</i>\n"
-        "• <i>«Алматы - Бангкок 15 октября, прямой, KC-871, ниже 300$»</i>"
+        "• <i>«Алматы - Чэнду 21 ноября»</i>\n"
+        "• <i>«Астана в Сеул завтра»</i>\n"
+        "• <i>«Из Шымкента в Стамбул 25 декабря»</i>"
     )
     await callback.answer()
     if callback.message:
@@ -163,9 +340,10 @@ async def handle_help(message: Message) -> None:
     help_text = (
         "📖 <b>Справочник и команды KzFlightSniper</b>\n\n"
         "<b>💬 Поиск на обычном языке (AI):</b>\n"
-        "Просто отправь запрос обычным сообщением:\n"
-        "• <i>«Билет Алматы в Стамбул на 20 октября не дороже 100000 тг»</i>\n"
-        "• <i>«Из Актау в Дубай 25 декабря, рейс DV-713, до 400$, каждые 10 мин»</i>\n\n"
+        "Нажмите 🎯 «Создать мониторинг» или просто напишите сообщение:\n"
+        "• <i>«Алматы - Чэнду 21 ноября»</i>\n"
+        "• <i>«Астана в Сеул завтра»</i>\n"
+        "• <i>«Из Актау в Дубай 25 декабря»</i>\n\n"
         "<b>⚡ Основные команды:</b>\n"
         "• <code>/list</code> — Показать все активные задачи отслеживания\n"
         "• <code>/delete &lt;id&gt;</code> или <code>/cancel &lt;id&gt;</code> — Отменить задачу (например: <code>/delete 42</code>)\n"
@@ -177,7 +355,7 @@ async def handle_help(message: Message) -> None:
 
 @router.message(Command("snipe"))
 async def handle_snipe(message: Message, command: CommandObject) -> None:
-    """Handle /snipe command to register a new flight monitoring task."""
+    """Handle /snipe command to register a new flight monitoring task directly."""
     args = command.args
     if not args:
         guide_text = (
@@ -190,7 +368,7 @@ async def handle_snipe(message: Message, command: CommandObject) -> None:
             "• <code>/snipe ALA NQZ 2026-10-15 25000</code>\n"
             "• <code>/snipe ALA NQZ 2026-10-15 KC-871 28000</code>\n"
             "• <code>/snipe NQZ SCO 2026-11-01 32000</code>\n\n"
-            "💡 <i>Совет: Вы также можете просто написать запрос обычным текстом!</i>"
+            "💡 <i>Совет: Вы также можете нажать кнопку «🎯 Создать мониторинг» для интерактивного выбора рейса!</i>"
         )
         await message.answer(guide_text)
         return
@@ -246,9 +424,7 @@ async def handle_list(message: Message) -> None:
         if not tasks:
             await message.answer(
                 "📭 <b>У вас нет активных задач отслеживания.</b>\n\n"
-                "Чтобы начать мониторинг, просто отправьте сообщение, например:\n"
-                "<i>«Алматы - Бангкок на 15 октября до 300$»</i>\n"
-                "<i>«Астана - Шымкент на 1 ноября до 20000 тг»</i>"
+                "Чтобы начать мониторинг, нажмите кнопку «🎯 Создать мониторинг» в /start или отправьте маршрут."
             )
             return
 
@@ -314,27 +490,29 @@ async def handle_delete(message: Message, command: CommandObject) -> None:
         await message.answer("❌ Ошибка при удалении задачи. Пожалуйста, попробуйте позже.")
 
 
-@router.message(SniperStates.waiting_for_flight_text, F.text & ~F.text.startswith("/"))
-async def handle_nlp_message(message: Message, state: FSMContext) -> None:
-    """Handle natural language flight monitoring requests via AI / Rule NLP engine with Live Preview."""
+# ============================================================================
+# Step 1: Direction & Date Parsing + Live Flight List
+# ============================================================================
+
+@router.message(SniperStates.waiting_for_search_query, F.text & ~F.text.startswith("/"))
+async def handle_search_query_message(message: Message, state: FSMContext) -> None:
+    """Handle natural language flight query, run Live Search via AviataProvider, and render flight list."""
     user_text = (message.text or "").strip()
     if not user_text:
         return
 
-    # Trigger typing action if message.bot is available
     try:
         if message.bot:
             await message.bot.send_chat_action(chat_id=message.chat.id, action=ChatAction.TYPING)
     except Exception:
         pass
 
-    # Send preliminary status message
-    status_msg = await message.answer("⏳ Анализирую запрос через AI...")
+    status_msg = await message.answer("⏳ Выполняю Live-поиск рейсов...")
 
     try:
-        intent = await parse_flight_request(user_text)
+        intent = await parse_search_query(user_text)
     except Exception as e:
-        logger.exception("Error running NLP parser on message '%s': %s", user_text, e)
+        logger.exception("Error running parse_search_query on message '%s': %s", user_text, e)
         intent = None
 
     if intent is None:
@@ -346,122 +524,224 @@ async def handle_nlp_message(message: Message, state: FSMContext) -> None:
         )
         return
 
-    # Valid intent recognized: clear FSM state
-    await state.clear()
-
-    await status_msg.edit_text("⏳ Ищу текущие билеты в реальном времени на Aviata.kz...", parse_mode="HTML")
-
-    # Live Preview search via AviataProvider
-    live_offers: List[FlightOffer] = []
+    offers: List[FlightOffer] = []
     try:
         provider = AviataProvider()
-        live_offers = await provider.search(
+        offers = await provider.search(
             origin=intent.origin,
             destination=intent.destination,
             date=intent.date,
-            flight_number=intent.flight_number,
             direct_only=intent.direct_only,
+            flight_number=intent.flight_number,
         )
     except Exception as search_err:
         logger.warning("Live preview search failed: %s", search_err)
 
-    # Determine effective target price
-    if intent.target_price is not None:
-        effective_target_price = intent.target_price
-        if intent.currency_detected and intent.currency_detected != "KZT" and intent.original_price:
-            price_note = f"💡 <i>({intent.original_price:g} {intent.currency_detected} ≈ {effective_target_price:,.0f} ₸)</i>\n"
-        else:
-            price_note = ""
-    elif live_offers:
-        effective_target_price = min(o.price_kzt for o in live_offers)
-        price_note = "💡 <i>(Цена установлена автоматически по мин. текущей цене на рынке)</i>\n"
-    else:
-        effective_target_price = 50000.0
-        price_note = "💡 <i>(Установлена стандартная базовая цена, т.к. билеты не найдены)</i>\n"
-
-    # Format live offers snippet
-    if live_offers:
-        displayed = live_offers[:4]
-        lines = []
-        for o in displayed:
-            direct_str = "Прямой ⚡" if o.is_direct else f"{o.transfers_count} перес."
-            lines.append(f"✈️ {o.airline} ({o.flight_number}): {o.price_kzt:,.0f} ₸ ({direct_str})")
-        live_offers_text = "\n".join(lines)
-    else:
-        live_offers_text = "⚠️ На данный момент билетов в свободной продаже не обнаружено (или рейс распродан)."
-
-    flight_label = f"<code>{intent.flight_number}</code>" if intent.flight_number else "<i>Любой рейс</i>"
-    flight_type = "Прямой рейс ⚡" if intent.direct_only else "Любой (вкл. пересадки)"
-
-    token = uuid.uuid4().hex[:12]
-    _pending_nlp_tasks[token] = {
-        "chat_id": message.chat.id,
-        "intent": intent,
-        "effective_target_price": effective_target_price,
-        "created_at": datetime.now(timezone.utc),
-    }
-
-    summary_card = (
-        f"📍 <b>Маршрут:</b> <code>{intent.origin}</code> ➡️ <code>{intent.destination}</code> | 📅 <b>Дата:</b> <code>{intent.date}</code>\n"
-        f"🔢 <b>Рейс:</b> {flight_label}\n"
-        f"🔀 <b>Тип:</b> {flight_type}\n\n"
-        "🔎 <b>ТЕКУЩИЕ БИЛЕТЫ В ПРОДАЖЕ:</b>\n"
-        f"{live_offers_text}\n\n"
-        f"💰 <b>Целевая цена для снайпинга:</b> ≤ <b>{effective_target_price:,.0f} ₸</b>\n"
-        f"{price_note}"
-        f"⏱ <b>Интервал проверки:</b> каждые {intent.interval_minutes} мин.\n\n"
-        "Создать задачу мониторинга?"
-    )
-
-    keyboard = InlineKeyboardMarkup(
-        inline_keyboard=[
-            [
-                InlineKeyboardButton(text="✅ Начать мониторинг", callback_data=f"confirm_snipe:{token}"),
-                InlineKeyboardButton(text="❌ Отмена", callback_data=f"cancel_snipe:{token}"),
+    if not offers:
+        cancel_kb = InlineKeyboardMarkup(
+            inline_keyboard=[
+                [InlineKeyboardButton(text="❌ Отмена", callback_data=CancelSnipeCallback().pack())]
             ]
-        ]
-    )
-
-    await status_msg.edit_text(summary_card, reply_markup=keyboard, parse_mode="HTML")
-
-
-@router.callback_query(F.data.startswith("confirm_snipe:"))
-async def handle_confirm_snipe_callback(callback: CallbackQuery) -> None:
-    """Handle inline button confirmation to commit parsed NLP snipe task into database."""
-    token = (callback.data or "").split(":", 1)[1]
-    pending = _pending_nlp_tasks.pop(token, None)
-
-    if not pending:
-        await callback.answer("⚠️ Время сессии истекло. Пожалуйста, отправьте запрос снова.", show_alert=True)
+        )
+        await status_msg.edit_text(
+            f"⚠️ По маршруту <code>{intent.origin}</code> ✈️ <code>{intent.destination}</code> на <code>{intent.date}</code> "
+            "билетов в свободной продаже не обнаружено (или рейс распродан).\n\n"
+            "Попробуйте ввести другой маршрут/дату или нажмите «Отмена».",
+            reply_markup=cancel_kb,
+            parse_mode="HTML",
+        )
         return
 
-    intent: ParsedFlightIntent = pending["intent"]
-    chat_id = pending["chat_id"]
-    target_price = pending.get("effective_target_price") or (intent.target_price if intent.target_price else 50000.0)
+    offers_dump = [o.model_dump() for o in offers]
+    await state.update_data(
+        origin=intent.origin,
+        destination=intent.destination,
+        date=intent.date,
+        direct_only=intent.direct_only,
+        offers=offers_dump,
+    )
+
+    list_text = (
+        f"✈️ <b>Найдено рейсов ({len(offers)})</b> по маршруту <code>{intent.origin}</code> ✈️ <code>{intent.destination}</code> на <code>{intent.date}</code>:\n\n"
+        "Выберите рейс для настройки мониторинга:"
+    )
+    keyboard = build_flight_list_keyboard(offers_dump)
+    await status_msg.edit_text(list_text, reply_markup=keyboard, parse_mode="HTML")
+
+
+# Alias for backward-compatibility in tests
+handle_nlp_message = handle_search_query_message
+
+
+# ============================================================================
+# Step 2: Flight Details & "Мониторить этот рейс"
+# ============================================================================
+
+@router.callback_query(FlightSelectCallback.filter())
+async def handle_flight_select_callback(
+    callback: CallbackQuery,
+    callback_data: FlightSelectCallback,
+    state: FSMContext,
+) -> None:
+    """Handle flight selection from the search results list and display detailed flight card."""
+    data = await state.get_data()
+    offers = data.get("offers", [])
+
+    if not offers or callback_data.flight_idx >= len(offers):
+        await callback.answer("⚠️ Рейс не найден. Попробуйте выполнить поиск заново.", show_alert=True)
+        return
+
+    selected = offers[callback_data.flight_idx]
+    await state.update_data(
+        selected_flight_idx=callback_data.flight_idx,
+        selected_flight=selected,
+    )
+
+    card_text = format_flight_details_card(selected)
+    keyboard = build_flight_details_keyboard(callback_data.flight_idx)
+
+    await callback.answer()
+    if callback.message:
+        await callback.message.edit_text(card_text, reply_markup=keyboard, parse_mode="HTML")
+
+
+# ============================================================================
+# Step 3: Interval configuration
+# ============================================================================
+
+@router.callback_query(MonitorFlightCallback.filter())
+async def handle_monitor_flight_callback(
+    callback: CallbackQuery,
+    callback_data: MonitorFlightCallback,
+    state: FSMContext,
+) -> None:
+    """Transition to waiting_for_interval state and prompt for check frequency."""
+    await state.set_state(SniperStates.waiting_for_interval)
+    prompt_text = (
+        "⏱ <b>Настройка интервала проверки</b>\n\n"
+        "Напишите, как часто проверять цену? (например: <i>каждые 10 минут, раз в час</i>)\n"
+        "или выберите один из быстрых вариантов ниже:"
+    )
+    keyboard = build_interval_keyboard()
+    await callback.answer()
+    if callback.message:
+        await callback.message.edit_text(prompt_text, reply_markup=keyboard, parse_mode="HTML")
+
+
+@router.message(SniperStates.waiting_for_interval, F.text & ~F.text.startswith("/"))
+async def handle_interval_text_message(message: Message, state: FSMContext) -> None:
+    """Handle custom text check interval, set target price, and render confirmation card."""
+    user_text = (message.text or "").strip()
+    if not user_text:
+        return
+
+    interval = await parse_interval_nlp(user_text)
+    data = await state.get_data()
+    selected_flight = data.get("selected_flight")
+
+    if not selected_flight:
+        await message.answer(
+            "⚠️ Данные рейса не найдены. Пожалуйста, начните поиск заново через /start.",
+            parse_mode="HTML",
+        )
+        await state.clear()
+        return
+
+    target_price = float(_get_flight_attr(selected_flight, "price_kzt", 50000.0))
+    await state.update_data(interval_minutes=interval, target_price=target_price)
+
+    updated_data = await state.get_data()
+    card_text = format_confirmation_card(updated_data)
+    keyboard = build_confirmation_keyboard()
+
+    await message.answer(card_text, reply_markup=keyboard, parse_mode="HTML")
+
+
+@router.callback_query(QuickIntervalCallback.filter())
+async def handle_quick_interval_callback(
+    callback: CallbackQuery,
+    callback_data: QuickIntervalCallback,
+    state: FSMContext,
+) -> None:
+    """Handle quick preset interval button, set target price, and render confirmation card."""
+    interval = callback_data.minutes
+    data = await state.get_data()
+    selected_flight = data.get("selected_flight")
+
+    if not selected_flight:
+        await callback.answer("⚠️ Данные рейса не найдены. Начните поиск заново.", show_alert=True)
+        await state.clear()
+        return
+
+    target_price = float(_get_flight_attr(selected_flight, "price_kzt", 50000.0))
+    await state.update_data(interval_minutes=interval, target_price=target_price)
+
+    updated_data = await state.get_data()
+    card_text = format_confirmation_card(updated_data)
+    keyboard = build_confirmation_keyboard()
+
+    await callback.answer()
+    if callback.message:
+        await callback.message.edit_text(card_text, reply_markup=keyboard, parse_mode="HTML")
+
+
+# ============================================================================
+# Step 4: Confirm, Back & Cancel Callbacks
+# ============================================================================
+
+@router.callback_query(ConfirmSnipeCallback.filter())
+async def handle_confirm_snipe_callback(
+    callback: CallbackQuery,
+    callback_data: Optional[Any] = None,
+    state: Optional[FSMContext] = None,
+) -> None:
+    """Handle snipe confirmation, save task into database, and clear FSM state."""
+    data = await state.get_data() if state else {}
+    selected_flight = data.get("selected_flight")
+
+    if not data or not selected_flight:
+        await callback.answer("⚠️ Сессия истекла или данные не найдены. Попробуйте снова.", show_alert=True)
+        if state:
+            await state.clear()
+        return
+
+    chat_id = callback.message.chat.id if callback.message else 0
+    origin = data.get("origin", _get_flight_attr(selected_flight, "origin", ""))
+    destination = data.get("destination", _get_flight_attr(selected_flight, "destination", ""))
+    date_str = data.get("date", "")
+    flight_number = _get_flight_attr(selected_flight, "flight_number")
+    target_price = float(data.get("target_price", _get_flight_attr(selected_flight, "price_kzt", 50000.0)))
+    interval_minutes = int(data.get("interval_minutes", 5))
+    max_transfers = int(_get_flight_attr(selected_flight, "transfers_count", 0))
 
     try:
         task_id = await dao.add_task(
             chat_id=chat_id,
-            origin=intent.origin,
-            destination=intent.destination,
-            date=intent.date,
+            origin=origin,
+            destination=destination,
+            date=date_str,
             target_price=target_price,
-            flight_number=intent.flight_number,
-            max_transfers=0 if intent.direct_only else 99,
-            interval_minutes=intent.interval_minutes,
+            flight_number=flight_number,
+            max_transfers=max_transfers,
+            interval_minutes=interval_minutes,
         )
 
-        flight_label = f"<code>{intent.flight_number}</code>" if intent.flight_number else "<i>Любая авиакомпания / рейс</i>"
+        if state:
+            await state.clear()
+
+        flight_label = f"<code>{flight_number}</code>" if flight_number else "<i>Любой рейс</i>"
         formatted_price = f"{target_price:,.0f} ₸".replace(",", " ")
+        airline_label = _get_flight_attr(selected_flight, "airline", "N/A")
 
         confirmation_card = (
             "🎯 <b>Снайпер активирован!</b>\n\n"
             f"• <b>ID задачи:</b> <code>#{task_id}</code>\n"
-            f"• <b>Маршрут:</b> <code>{intent.origin}</code> ✈️ <code>{intent.destination}</code>\n"
-            f"• <b>Дата вылета:</b> <code>{intent.date}</code>\n"
+            f"• <b>Маршрут:</b> <code>{origin}</code> ✈️ <code>{destination}</code>\n"
+            f"• <b>Дата вылета:</b> <code>{date_str}</code>\n"
+            f"• <b>Авиакомпания:</b> {airline_label}\n"
+            f"• <b>Рейс:</b> {flight_label}\n"
             f"• <b>Целевая цена:</b> ≤ <b>{formatted_price}</b>\n"
-            f"• <b>Фильтр рейса:</b> {flight_label}\n"
-            f"• <b>Частота проверки:</b> ⏱ <i>Каждые {intent.interval_minutes} мин</i>\n"
+            f"• <b>Частота проверки:</b> ⏱ <i>Каждые {interval_minutes} мин</i>\n"
             "• <b>Статус:</b> 🟢 <i>Активный мониторинг</i>\n\n"
             "🔔 <i>Вы получите мгновенное уведомление в Telegram, как только цена билета упадет ниже целевой!</i>\n\n"
             f"<i>Для отмены в любой момент:</i> <code>/delete {task_id}</code>"
@@ -469,20 +749,71 @@ async def handle_confirm_snipe_callback(callback: CallbackQuery) -> None:
 
         await callback.answer("🎯 Задача успешно создана!")
         if callback.message:
-            await callback.message.edit_text(confirmation_card, reply_markup=None)
+            await callback.message.edit_text(confirmation_card, reply_markup=None, parse_mode="HTML")
 
     except Exception as e:
-        logger.exception("Failed to insert task from NLP callback: %s", e)
-        await callback.answer("❌ Ошибка создания задачи.", show_alert=True)
+        logger.exception("Failed to insert task from ConfirmSnipeCallback: %s", e)
+        await callback.answer("❌ Ошибка создания задачи. Пожалуйста, попробуйте позже.", show_alert=True)
 
 
+@router.callback_query(StepBackCallback.filter())
+async def handle_step_back_callback(
+    callback: CallbackQuery,
+    callback_data: StepBackCallback,
+    state: FSMContext,
+) -> None:
+    """Handle step back navigation between FSM steps."""
+    data = await state.get_data()
+
+    if callback_data.to_step == "flights":
+        offers = data.get("offers", [])
+        if offers:
+            origin = data.get("origin", "")
+            dest = data.get("destination", "")
+            date_str = data.get("date", "")
+            list_text = (
+                f"✈️ <b>Найдено рейсов ({len(offers)})</b> по маршруту <code>{origin}</code> ✈️ <code>{dest}</code> на <code>{date_str}</code>:\n\n"
+                "Выберите рейс для настройки мониторинга:"
+            )
+            keyboard = build_flight_list_keyboard(offers)
+            await state.set_state(SniperStates.waiting_for_search_query)
+            await callback.answer()
+            if callback.message:
+                await callback.message.edit_text(list_text, reply_markup=keyboard, parse_mode="HTML")
+        else:
+            await state.set_state(SniperStates.waiting_for_search_query)
+            await callback.answer()
+            if callback.message:
+                await callback.message.edit_text(
+                    "💬 <b>Напишите маршрут и дату для поиска:</b> (например, <i>«Алматы - Чэнду 21 ноября»</i>)",
+                    reply_markup=None,
+                    parse_mode="HTML",
+                )
+
+    elif callback_data.to_step == "interval":
+        await state.set_state(SniperStates.waiting_for_interval)
+        prompt_text = (
+            "⏱ <b>Настройка интервала проверки</b>\n\n"
+            "Напишите, как часто проверять цену? (например: <i>каждые 10 минут, раз в час</i>)\n"
+            "или выберите один из быстрых вариантов ниже:"
+        )
+        keyboard = build_interval_keyboard()
+        await callback.answer()
+        if callback.message:
+            await callback.message.edit_text(prompt_text, reply_markup=keyboard, parse_mode="HTML")
+
+
+@router.callback_query(CancelSnipeCallback.filter())
 @router.callback_query(F.data.startswith("cancel_snipe"))
-async def handle_cancel_snipe_callback(callback: CallbackQuery) -> None:
-    """Handle inline button cancellation for pending NLP snipe task."""
-    if callback.data and ":" in callback.data:
-        token = callback.data.split(":", 1)[1]
-        _pending_nlp_tasks.pop(token, None)
+async def handle_cancel_snipe_callback(
+    callback: CallbackQuery,
+    callback_data: Optional[Any] = None,
+    state: Optional[FSMContext] = None,
+) -> None:
+    """Handle cancellation of snipe task creation in FSM flow."""
+    if state:
+        await state.clear()
 
     await callback.answer("Отменено")
     if callback.message:
-        await callback.message.edit_text("❌ <b>Создание задачи отменено.</b>", reply_markup=None)
+        await callback.message.edit_text("❌ <b>Создание задачи отменено.</b>", reply_markup=None, parse_mode="HTML")

@@ -25,93 +25,152 @@ RATES_TO_KZT: Dict[str, float] = {
 
 # Known Airports & City Name Mappings (Including Russian/Kazakh case declensions)
 CITY_TO_IATA: Dict[str, str] = {
+    # --- Kazakhstan Hubs ---
     # Almaty
-    "алматы": "ALA", "алмата": "ALA", "алмату": "ALA", "алмате": "ALA", "almaty": "ALA", "ala": "ALA",
-    # Astana
-    "астана": "NQZ", "астану": "NQZ", "астане": "NQZ", "астаны": "NQZ", "astana": "NQZ", "nqz": "NQZ",
-    "нур-султан": "NQZ", "нур-султана": "NQZ", "нур-султану": "NQZ", "нур-султане": "NQZ",
-    "нурсултан": "NQZ", "нурсултана": "NQZ", "нурсултану": "NQZ", "нурсултане": "NQZ",
+    "алматы": "ALA", "алмата": "ALA", "алмату": "ALA", "алмате": "ALA", "алматыда": "ALA",
+    "almaty": "ALA", "ala": "ALA",
+    # Astana / Nur-Sultan
+    "астана": "NQZ", "астану": "NQZ", "астане": "NQZ", "астаны": "NQZ", "астаной": "NQZ",
+    "astana": "NQZ", "nqz": "NQZ",
+    "нур-султан": "NQZ", "нур-султана": "NQZ", "нур-султану": "NQZ", "нур-султане": "NQZ", "нур-султаном": "NQZ",
+    "нурсултан": "NQZ", "нурсултана": "NQZ", "нурсултану": "NQZ", "нурсултане": "NQZ", "нурсултаном": "NQZ",
+    "nur-sultan": "NQZ", "nursultan": "NQZ",
     # Shymkent
-    "шымкент": "CIT", "шымкента": "CIT", "шымкенту": "CIT", "шымкенте": "CIT", "shymkent": "CIT", "cit": "CIT",
+    "шымкент": "CIT", "шымкента": "CIT", "шымкенту": "CIT", "шымкенте": "CIT", "шымкентом": "CIT",
+    "shymkent": "CIT", "cit": "CIT",
+    "чимкент": "CIT", "чимкента": "CIT", "чимкенту": "CIT", "чимкенте": "CIT",
     # Aktau
-    "актау": "SCO", "aktau": "SCO", "sco": "SCO",
+    "актау": "SCO", "актауа": "SCO", "актауе": "SCO", "актауда": "SCO", "aktau": "SCO", "sco": "SCO",
     # Atyrau
-    "атырау": "GUW", "atyrau": "GUW", "guw": "GUW",
+    "атырау": "GUW", "атырауа": "GUW", "атырауе": "GUW", "атырауда": "GUW", "atyrau": "GUW", "guw": "GUW",
     # Aktobe
-    "актобе": "AKX", "aktobe": "AKX", "akx": "AKX",
-    # Oskemen
-    "усть-каменогорск": "UKK", "усть-каменогорска": "UKK", "усть-каменогорске": "UKK",
-    "устькаменогорск": "UKK", "оскемен": "UKK", "оскемена": "UKK", "оскемене": "UKK", "oskemen": "UKK", "ukk": "UKK",
+    "актобе": "AKX", "актюбинск": "AKX", "актюбинска": "AKX", "актюбинску": "AKX", "актюбинске": "AKX",
+    "aktobe": "AKX", "akx": "AKX",
+    # Oskemen / Ust-Kamenogorsk
+    "усть-каменогорск": "UKK", "усть-каменогорска": "UKK", "усть-каменогорску": "UKK", "усть-каменогорске": "UKK",
+    "устькаменогорск": "UKK", "устькаменогорска": "UKK", "устькаменогорску": "UKK", "устькаменогорске": "UKK",
+    "оскемен": "UKK", "оскемена": "UKK", "оскемену": "UKK", "оскемене": "UKK", "oskemen": "UKK", "ukk": "UKK",
     # Kostanay
-    "костанай": "KSG", "костаная": "KSG", "костанае": "KSG", "kostanay": "KSG", "ksg": "KSG",
+    "костанай": "KSG", "костаная": "KSG", "костанаю": "KSG", "костанае": "KSG", "костанаем": "KSG",
+    "kostanay": "KSG", "ksg": "KSG", "кустанай": "KSG", "кустаная": "KSG", "кустанае": "KSG",
     # Pavlodar
-    "павлодар": "PWQ", "павлодара": "PWQ", "павлодаре": "PWQ", "pavlodar": "PWQ", "pwq": "PWQ",
+    "павлодар": "PWQ", "павлодара": "PWQ", "павлодару": "PWQ", "павлодаре": "PWQ", "павлодаром": "PWQ",
+    "pavlodar": "PWQ", "pwq": "PWQ",
     # Semey
-    "семей": "PLX", "семея": "PLX", "семее": "PLX", "semey": "PLX", "plx": "PLX",
+    "семей": "PLX", "семея": "PLX", "семею": "PLX", "семее": "PLX", "семеем": "PLX",
+    "semey": "PLX", "plx": "PLX", "семипалатинск": "PLX", "семипалатинска": "PLX", "семипалатинске": "PLX",
     # Taraz
-    "тараз": "DMB", "тараза": "DMB", "таразе": "DMB", "taraz": "DMB", "dmb": "DMB",
+    "тараз": "DMB", "тараза": "DMB", "таразу": "DMB", "таразе": "DMB", "таразом": "DMB",
+    "taraz": "DMB", "dmb": "DMB", "джамбул": "DMB", "джамбула": "DMB", "джамбуле": "DMB",
     # Kokshetau
-    "кокшетау": "KOV", "kokshetau": "KOV", "kov": "KOV",
+    "кокшетау": "KOV", "кокшетауа": "KOV", "кокшетауе": "KOV", "кокшетауда": "KOV",
+    "kokshetau": "KOV", "kov": "KOV", "кокчетав": "KOV", "кокчетава": "KOV", "кокчетаве": "KOV",
     # Balkhash
-    "балхаш": "BXH", "балхаша": "BXH", "балхаше": "BXH", "balkhash": "BXH", "bxh": "BXH",
-    # Uralsk
-    "уральск": "URA", "уральска": "URA", "уральске": "URA", "орал": "URA", "орала": "URA", "орале": "URA", "uralsk": "URA", "ura": "URA",
+    "балхаш": "BXH", "балхаша": "BXH", "балхашу": "BXH", "балхаше": "BXH", "балхашом": "BXH",
+    "balkhash": "BXH", "bxh": "BXH",
+    # Uralsk / Oral
+    "уральск": "URA", "уральска": "URA", "уральску": "URA", "уральске": "URA", "уральском": "URA",
+    "орал": "URA", "орала": "URA", "оралу": "URA", "орале": "URA", "оралом": "URA", "uralsk": "URA", "ura": "URA",
     # Karaganda
-    "караганда": "KGF", "караганду": "KGF", "караганде": "KGF", "караганды": "KGF", "karaganda": "KGF", "kgf": "KGF",
+    "караганда": "KGF", "караганду": "KGF", "караганде": "KGF", "караганды": "KGF", "карагандой": "KGF",
+    "karaganda": "KGF", "kgf": "KGF",
     # Petropavlovsk
-    "петропавловск": "PPK", "петропавловска": "PPK", "петропавловске": "PPK", "petropavlovsk": "PPK", "ppk": "PPK",
+    "петропавловск": "PPK", "петропавловска": "PPK", "петропавловску": "PPK", "петропавловске": "PPK",
+    "petropavlovsk": "PPK", "ppk": "PPK",
     # Kyzylorda
-    "кызылорда": "KZO", "кызылорду": "KZO", "кызылорде": "KZO", "кызылорды": "KZO", "kyzylorda": "KZO", "kzo": "KZO",
-    # Bangkok
-    "бангкок": "BKK", "бангкока": "BKK", "бангкоку": "BKK", "бангкоке": "BKK", "bangkok": "BKK", "bkk": "BKK",
-    # Dubai
-    "дубай": "DXB", "дубая": "DXB", "дубаю": "DXB", "дубае": "DXB", "dubai": "DXB", "dxb": "DXB",
-    # Istanbul
-    "стамбул": "IST", "стамбула": "IST", "стамбулу": "IST", "стамбуле": "IST", "istanbul": "IST", "ist": "IST",
-    # Phuket
-    "пхукет": "HKT", "пхукета": "HKT", "пхукету": "HKT", "пхукете": "HKT", "phuket": "HKT", "hkt": "HKT",
+    "кызылорда": "KZO", "кызылорду": "KZO", "кызылорде": "KZO", "кызылорды": "KZO", "кызылордой": "KZO",
+    "kyzylorda": "KZO", "kzo": "KZO", "кзыл-орда": "KZO", "кзылорда": "KZO",
+    # Turkestan
+    "туркестан": "HSA", "туркестана": "HSA", "туркестану": "HSA", "туркестане": "HSA", "туркестаном": "HSA",
+    "turkestan": "HSA", "hsa": "HSA",
+    # Taldykorgan
+    "талдыкорган": "TDK", "талдыкоргана": "TDK", "талдыкоргану": "TDK", "талдыкоргане": "TDK",
+    "taldykorgan": "TDK", "tdk": "TDK",
+    # Zhezkazgan
+    "жезказган": "DZN", "жезказгана": "DZN", "жезказгану": "DZN", "жезказгане": "DZN",
+    "zhezkazgan": "DZN", "dzn": "DZN",
+
+    # --- Asian & Middle Eastern Hubs ---
     # Chengdu
-    "чэнду": "CTU", "ченду": "CTU", "chengdu": "CTU", "ctu": "CTU",
+    "чэнду": "CTU", "чэндо": "CTU", "ченду": "CTU", "chengdu": "CTU", "ctu": "CTU",
     # Beijing
-    "пекин": "PEK", "пекина": "PEK", "пекину": "PEK", "пекине": "PEK", "beijing": "PEK", "pek": "PEK",
+    "пекин": "PEK", "пекина": "PEK", "пекину": "PEK", "пекине": "PEK", "пекином": "PEK",
+    "beijing": "PEK", "pek": "PEK",
     # Seoul
-    "сеул": "ICN", "сеула": "ICN", "сеулу": "ICN", "сеуле": "ICN", "seoul": "ICN", "icn": "ICN",
+    "сеул": "ICN", "сеула": "ICN", "сеулу": "ICN", "сеуле": "ICN", "сеулом": "ICN",
+    "seoul": "ICN", "icn": "ICN", "инчхон": "ICN", "инчхона": "ICN", "инчхоне": "ICN", "incheon": "ICN",
+    # Phuket
+    "пхукет": "HKT", "пхукета": "HKT", "пхукету": "HKT", "пхукете": "HKT", "пхукетом": "HKT",
+    "phuket": "HKT", "hkt": "HKT",
     # Guangzhou
     "гуанчжоу": "CAN", "гуаньчжоу": "CAN", "guangzhou": "CAN", "can": "CAN",
     # Shanghai
-    "шанхай": "PVG", "шанхая": "PVG", "шанхаю": "PVG", "шанхае": "PVG", "shanghai": "PVG", "pvg": "PVG",
+    "шанхай": "PVG", "шанхая": "PVG", "шанхаю": "PVG", "шанхае": "PVG", "шанхаем": "PVG",
+    "shanghai": "PVG", "pvg": "PVG", "пудун": "PVG", "pudong": "PVG",
+    # Bangkok
+    "бангкок": "BKK", "бангкока": "BKK", "бангкоку": "BKK", "бангкоке": "BKK", "бангкоком": "BKK",
+    "bangkok": "BKK", "bkk": "BKK", "суварнабхуми": "BKK", "suvarnabhumi": "BKK",
+    # Dubai
+    "дубай": "DXB", "дубая": "DXB", "дубаю": "DXB", "дубае": "DXB", "дубаем": "DXB",
+    "дубаи": "DXB", "дубаях": "DXB", "dubai": "DXB", "dxb": "DXB",
+    # Istanbul
+    "стамбул": "IST", "стамбула": "IST", "стамбулу": "IST", "стамбуле": "IST", "стамбулом": "IST",
+    "istanbul": "IST", "ist": "IST", "сабиха": "SAW", "saw": "SAW",
     # Tashkent
-    "ташкент": "TAS", "ташкента": "TAS", "ташкенту": "TAS", "ташкенте": "TAS", "tashkent": "TAS", "tas": "TAS",
+    "ташкент": "TAS", "ташкента": "TAS", "ташкенту": "TAS", "ташкенте": "TAS", "ташкентом": "TAS",
+    "tashkent": "TAS", "tas": "TAS",
     # Bishkek
-    "бишкек": "FRU", "бишкека": "FRU", "бишкеку": "FRU", "бишкеке": "FRU", "bishkek": "FRU", "fru": "FRU",
+    "бишкек": "FRU", "бишкека": "FRU", "бишкеку": "FRU", "бишкеке": "FRU", "бишкеком": "FRU",
+    "bishkek": "FRU", "fru": "FRU", "манас": "FRU",
     # Tbilisi
-    "тбилиси": "TBS", "tbilisi": "TBS", "tbs": "TBS",
+    "тбилиси": "TBS", "тбилисиа": "TBS", "тбилисие": "TBS", "tbilisi": "TBS", "tbs": "TBS",
     # Antalya
-    "анталья": "AYT", "анталью": "AYT", "анталье": "AYT", "анталия": "AYT", "анталию": "AYT", "анталии": "AYT", "antalya": "AYT", "ayt": "AYT",
+    "анталья": "AYT", "анталью": "AYT", "анталье": "AYT", "анталия": "AYT", "анталию": "AYT",
+    "анталии": "AYT", "анталией": "AYT", "antalya": "AYT", "ayt": "AYT",
     # Doha
-    "доха": "DOH", "доху": "DOH", "дохе": "DOH", "дохи": "DOH", "doha": "DOH", "doh": "DOH",
+    "доха": "DOH", "доху": "DOH", "дохе": "DOH", "дохи": "DOH", "дохой": "DOH",
+    "doha": "DOH", "doh": "DOH", "хамад": "DOH", "hamad": "DOH",
     # Abu Dhabi
-    "абу-даби": "AUH", "абудаби": "AUH", "abu dhabi": "AUH", "auh": "AUH",
+    "абу-даби": "AUH", "абудаби": "AUH", "абу даби": "AUH", "абу-дабиа": "AUH", "абу-дабие": "AUH",
+    "abu dhabi": "AUH", "abu-dhabi": "AUH", "auh": "AUH",
+    # Sanya
+    "санья": "SYX", "санью": "SYX", "санье": "SYX", "саньи": "SYX", "саньей": "SYX",
+    "sanya": "SYX", "syx": "SYX",
+
+    # --- Other International Hubs ---
     # Moscow
-    "москва": "MOW", "москву": "MOW", "москве": "MOW", "москвы": "MOW", "moscow": "MOW", "mow": "MOW", "svo": "SVO", "vko": "VKO", "dme": "DME",
+    "москва": "MOW", "москву": "MOW", "москве": "MOW", "москвы": "MOW", "москвой": "MOW",
+    "moscow": "MOW", "mow": "MOW", "svo": "SVO", "vko": "VKO", "dme": "DME",
+    "шереметьево": "SVO", "внуково": "VKO", "домодедово": "DME",
     # London
-    "лондон": "LON", "лондона": "LON", "лондону": "LON", "лондоне": "LON", "london": "LON", "lon": "LON", "lhr": "LHR",
+    "лондон": "LON", "лондона": "LON", "лондону": "LON", "лондоне": "LON", "лондоном": "LON",
+    "london": "LON", "lon": "LON", "lhr": "LHR", "хитроу": "LHR",
     # Tokyo
     "токио": "TYO", "tokyo": "TYO", "tyo": "TYO", "nrt": "NRT", "hnd": "HND",
     # Delhi
-    "дели": "DEL", "delhi": "DEL", "del": "DEL",
+    "дели": "DEL", "delhi": "DEL", "del": "DEL", "нью-дели": "DEL", "new delhi": "DEL",
     # Paris
-    "париж": "CDG", "парижа": "CDG", "парижу": "CDG", "париже": "CDG", "paris": "CDG", "cdg": "CDG",
+    "париж": "CDG", "парижа": "CDG", "парижу": "CDG", "париже": "CDG", "парижем": "CDG",
+    "paris": "CDG", "cdg": "CDG",
     # Milan
-    "милан": "MXP", "милана": "MXP", "милану": "MXP", "милане": "MXP", "milan": "MXP", "mxp": "MXP",
+    "милан": "MXP", "милана": "MXP", "милану": "MXP", "милане": "MXP", "миланом": "MXP",
+    "milan": "MXP", "mxp": "MXP",
     # Frankfurt
-    "франкфурт": "FRA", "франкфурта": "FRA", "франкфурту": "FRA", "франкфурте": "FRA", "frankfurt": "FRA", "fra": "FRA",
-    # Male
-    "мале": "MLE", "мальдивы": "MLE", "мальдив": "MLE", "мальдивах": "MLE", "male": "MLE", "mle": "MLE",
+    "франкфурт": "FRA", "франкфурта": "FRA", "франкфурту": "FRA", "франкфурте": "FRA", "франкфуртом": "FRA",
+    "frankfurt": "FRA", "fra": "FRA",
+    # Male / Maldives
+    "мале": "MLE", "мальдивы": "MLE", "мальдив": "MLE", "мальдивах": "MLE", "мальдивам": "MLE",
+    "male": "MLE", "mle": "MLE",
     # Colombo
     "коломбо": "CMB", "colombo": "CMB", "cmb": "CMB",
-    # Sanya
-    "санья": "SYX", "санью": "SYX", "санье": "SYX", "sanya": "SYX", "syx": "SYX",
+    # Baku
+    "баку": "GYD", "baku": "GYD", "gyd": "GYD",
+    # Yerevan
+    "ереван": "EVN", "еревана": "EVN", "yerevan": "EVN", "evn": "EVN",
+    # Kuala Lumpur
+    "куала-лумпур": "KUL", "куала лумпур": "KUL", "kuala lumpur": "KUL", "kul": "KUL",
+    # Singapore
+    "сингапур": "SIN", "сингапура": "SIN", "singapore": "SIN", "sin": "SIN",
 }
 
 # Russian Month names to Month integer
@@ -132,17 +191,19 @@ MONTHS_RU = {
 
 
 def _lookup_city_iata(word: str) -> Optional[str]:
-    """Look up IATA code for a word with exact match or stem fallback."""
-    clean = word.strip().lower()
+    """Look up IATA code for a word or city name with exact match or stem fallback."""
+    clean = word.strip().lower().strip(".,!?:;\"'()[]{}«»")
     if clean in CITY_TO_IATA:
         return CITY_TO_IATA[clean]
 
     # Try common declension endings in Russian
-    for suffix in ["у", "е", "а", "ы", "и", "я", "ом", "ем"]:
-        if clean.endswith(suffix):
+    for suffix in ["у", "е", "а", "ы", "и", "я", "ом", "ем", "ой", "ей", "ях", "ах", "да", "де", "та", "те"]:
+        if clean.endswith(suffix) and len(clean) > len(suffix) + 2:
             stem = clean[:-len(suffix)]
+            if stem in CITY_TO_IATA:
+                return CITY_TO_IATA[stem]
             for name, iata in CITY_TO_IATA.items():
-                if name == stem or name.startswith(stem) and len(stem) >= 3:
+                if name == stem or (name.startswith(stem) and len(stem) >= 3):
                     return iata
     return None
 
@@ -151,55 +212,63 @@ def _extract_cities(text: str) -> Tuple[Optional[str], Optional[str]]:
     """Extract origin and destination IATA codes using heuristic keywords and patterns."""
     text_lower = text.lower()
 
-    # Direct pattern: "из <City1> в <City2>" or "от <City1> до <City2>"
-    from_to_match = re.search(
-        r"(?:из|от|c|с)\s+([а-яa-z\-]+)\s+(?:в|до|на|к)\s+([а-яa-z\-]+)",
-        text_lower,
-    )
-    if from_to_match:
-        c1, c2 = from_to_match.group(1).strip(), from_to_match.group(2).strip()
-        iata1 = _lookup_city_iata(c1)
-        iata2 = _lookup_city_iata(c2)
-        if iata1 and iata2 and iata1 != iata2:
-            return iata1, iata2
+    # 1. Look for explicit prepositions:
+    # Origin prepositions: "из <city>", "от <city>", "с <city>", "c <city>"
+    # Destination prepositions: "в <city>", "во <city>", "до <city>", "на <city>", "к <city>"
+    origin_iata: Optional[str] = None
+    dest_iata: Optional[str] = None
 
-    # Reverse pattern: "в <City2> из <City1>"
-    to_from_match = re.search(
-        r"(?:в|до|к)\s+([а-яa-z\-]+)\s+(?:из|от|с)\s+([а-яa-z\-]+)",
-        text_lower,
-    )
-    if to_from_match:
-        c2, c1 = to_from_match.group(1).strip(), to_from_match.group(2).strip()
-        iata1 = _lookup_city_iata(c1)
-        iata2 = _lookup_city_iata(c2)
-        if iata1 and iata2 and iata1 != iata2:
-            return iata1, iata2
+    # Search for origin: matches 1-2 words following origin preposition
+    origin_matches = re.finditer(r"(?:из|от|c|с)\s+([а-яa-z\-]+(?:\s+[а-яa-z\-]+)?)", text_lower)
+    for m in origin_matches:
+        candidate = m.group(1).strip()
+        iata = _lookup_city_iata(candidate)
+        if not iata and " " in candidate:
+            iata = _lookup_city_iata(candidate.split()[0])
+        if iata:
+            origin_iata = iata
+            break
 
-    # Dash / Arrow pattern: "<City1> - <City2>" or "<City1> -> <City2>"
+    # Search for destination: matches 1-2 words following destination preposition
+    dest_matches = re.finditer(r"(?:в|во|до|на|к)\s+([а-яa-z\-]+(?:\s+[а-яa-z\-]+)?)", text_lower)
+    for m in dest_matches:
+        candidate = m.group(1).strip()
+        iata = _lookup_city_iata(candidate)
+        if not iata and " " in candidate:
+            iata = _lookup_city_iata(candidate.split()[0])
+        if iata:
+            dest_iata = iata
+            break
+
+    if origin_iata and dest_iata and origin_iata != dest_iata:
+        return origin_iata, dest_iata
+
+    # 2. Dash / Arrow pattern: "<City1> - <City2>" or "<City1> -> <City2>"
     dash_match = re.search(
-        r"([а-яa-z\-]+)\s*(?:-|—|–|->|→)\s*([а-яa-z\-]+)",
+        r"([а-яa-z\-]+(?:\s+[а-яa-z\-]+)?)\s*(?:-|—|–|->|→)\s*([а-яa-z\-]+(?:\s+[а-яa-z\-]+)?)",
         text_lower,
     )
     if dash_match:
         c1, c2 = dash_match.group(1).strip(), dash_match.group(2).strip()
-        iata1 = _lookup_city_iata(c1)
-        iata2 = _lookup_city_iata(c2)
+        iata1 = _lookup_city_iata(c1) or (_lookup_city_iata(c1.split()[-1]) if " " in c1 else None)
+        iata2 = _lookup_city_iata(c2) or (_lookup_city_iata(c2.split()[0]) if " " in c2 else None)
         if iata1 and iata2 and iata1 != iata2:
             return iata1, iata2
 
-    # Direct 3-letter IATA uppercase token sequence (e.g. "ALA NQZ")
+    # 3. Direct 3-letter IATA uppercase token sequence (e.g. "ALA NQZ", "ALA CTU")
     words = re.findall(r"\b[A-Za-z]{3}\b", text)
     iatas = [w.upper() for w in words if _lookup_city_iata(w)]
     if len(iatas) >= 2 and iatas[0] != iatas[1]:
         return iatas[0], iatas[1]
 
-    # Heuristic: search all known city names in order of appearance
+    # 4. Heuristic: search all known city names in order of appearance
     found_cities: List[Tuple[int, str]] = []
-    # Sort keys by length descending to match multi-word or longer names first
     sorted_city_names = sorted(CITY_TO_IATA.keys(), key=len, reverse=True)
     for name in sorted_city_names:
-        idx = text_lower.find(name)
-        if idx != -1:
+        pattern = rf"(?:\b|^){re.escape(name)}"
+        m = re.search(pattern, text_lower)
+        if m:
+            idx = m.start()
             iata = CITY_TO_IATA[name]
             if not any(fc[1] == iata for fc in found_cities):
                 found_cities.append((idx, iata))
@@ -208,7 +277,7 @@ def _extract_cities(text: str) -> Tuple[Optional[str], Optional[str]]:
     if len(found_cities) >= 2 and found_cities[0][1] != found_cities[1][1]:
         return found_cities[0][1], found_cities[1][1]
 
-    return None, None
+    return origin_iata, dest_iata
 
 
 def _extract_date(text: str, base_date: Optional[date] = None) -> Optional[str]:
@@ -245,7 +314,7 @@ def _extract_date(text: str, base_date: Optional[date] = None) -> Optional[str]:
         days = int(rel_days_match.group(1))
         return (today + timedelta(days=days)).isoformat()
 
-    # 4. Textual month: "15 октября", "25 декабря 2026", "5 мая"
+    # 4. Textual month: "15 октября", "25 декабря 2026", "5 мая", "21 ноября"
     for month_str, month_num in MONTHS_RU.items():
         pattern = rf"\b(0?[1-9]|[12]\d|3[01])\s+{month_str}(?:\s+(202\d))?\b"
         match = re.search(pattern, text_lower)
@@ -344,7 +413,6 @@ def _extract_price_and_currency(text: str) -> Tuple[Optional[float], str, Option
                 return raw_val, "KZT", raw_val
 
     # 6. Fallback: Standalone large number (> 1000), excluding date formats and 4-digit years
-    # Strip ISO dates, dotted dates, and years 2024-2039 from fallback search
     text_no_dates = re.sub(r"\b\d{4}-\d{2}-\d{2}\b", " ", text_clean)
     text_no_dates = re.sub(r"\b\d{1,2}\.\d{1,2}(?:\.\d{2,4})?\b", " ", text_no_dates)
     text_no_dates = re.sub(r"\b(202\d|203\d)\b", " ", text_no_dates)
@@ -359,10 +427,10 @@ def _extract_price_and_currency(text: str) -> Tuple[Optional[float], str, Option
 
 
 def _extract_flight_number(text: str) -> Optional[str]:
-    """Extract airline flight number code (e.g. KC-871, DV-713, IQ-401, Z9-2101)."""
+    """Extract airline flight number code (e.g. KC-871, DV-713, IQ-401, Z9-2101, CA-484, CZ-6012)."""
     known_airlines = {
         "KC", "DV", "IQ", "Z9", "FZ", "TK", "QR", "HY", "PC", "EK", "SU", "S7",
-        "W6", "CZ", "LH", "BA", "AF", "KL", "EY", "QR", "J2", "SZ", "T9", "K9",
+        "W6", "CZ", "LH", "BA", "AF", "KL", "EY", "J2", "SZ", "T9", "K9", "CA", "MU",
     }
     stop_codes = {"DO", "NA", "OT", "PO", "ZA", "IZ", "TO", "IN", "ON", "AT", "KZT", "RUB", "USD", "EUR"}
     matches = re.finditer(r"\b([A-Za-z]{2}|[A-Za-z]\d|\d[A-Za-z])[-\s]?(\d{2,4})\b", text)
@@ -375,26 +443,74 @@ def _extract_flight_number(text: str) -> Optional[str]:
     return None
 
 
-def _extract_interval(text: str) -> int:
-    """Extract custom check interval in minutes (default 5)."""
-    text_lower = text.lower()
+def rule_based_interval_parser(text: str) -> int:
+    """Extract check interval in minutes from text using heuristics and regex.
 
-    if "каждый час" in text_lower or "раз в час" in text_lower:
-        return 60
-    if "каждые полчаса" in text_lower or "раз в полчаса" in text_lower:
-        return 30
-    if "каждый день" in text_lower or "раз в сутки" in text_lower:
+    Examples:
+        - "каждые 10 минут" -> 10
+        - "раз в час" / "каждый час" -> 60
+        - "раз в полчаса" / "полчаса" -> 30
+        - "каждые 2 часа" -> 120
+        - "раз в сутки" / "каждый день" -> 1440
+        - "15 минут" -> 15
+        - Default: 5
+    """
+    if not text or not text.strip():
+        return 5
+
+    text_lower = text.strip().lower()
+
+    # 1. Day / Daily / Сутки patterns -> 1440
+    if any(k in text_lower for k in [
+        "сутки", "суток", "суткам", "сутках",
+        "каждый день", "раз в день", "в день", "ежедневно",
+        "раз в сутки", "каждые сутки", "в сутки", "1 день", "один день",
+    ]):
         return 1440
 
-    m_min = re.search(r"(?:кажды[еяй]|раз в)\s+(\d+)\s*(?:мин|минут|minute|m\b)", text_lower)
-    if m_min:
-        return max(1, int(m_min.group(1)))
+    # 2. Half-hour / Полчаса patterns -> 30
+    if any(k in text_lower for k in [
+        "полчаса", "пол-часа", "пол часа", "раз в полчаса", "каждые полчаса",
+        "каждые пол часа", "раз в пол часа", "30 мин", "30мин", "30 минут", "30m", "30 min",
+    ]):
+        return 30
 
-    m_hour = re.search(r"(?:кажды[еяй]|раз в)\s+(\d+)\s*(?:час|часа|часов|hour|h\b)", text_lower)
-    if m_hour:
-        return max(1, int(m_hour.group(1)) * 60)
+    # 3. Hours patterns: "каждые 2 часа", "2 часа", "каждые 3 часа", "раз в 4 часа", "2h", "2 hours"
+    m_hours = re.search(
+        r"(?:кажды[еяй]|раз в|каждых)?\s*(\d+)\s*(?:час(?:а|ов)?|hour|hours|h|ч)\b",
+        text_lower,
+    )
+    if m_hours:
+        hours = int(m_hours.group(1))
+        return max(1, hours * 60)
+
+    # Hourly single patterns: "каждый час", "раз в час", "в час", "ежечасно", "1 час", "час"
+    if any(k in text_lower for k in [
+        "каждый час", "раз в час", "в час", "ежечасно", "каждые час", "один час", "1 час",
+    ]) or text_lower == "час":
+        return 60
+
+    # 4. Minutes patterns: "каждые 10 минут", "раз в 15 минут", "15 минут", "10 мин", "10мин", "10m", "10 min"
+    m_min = re.search(
+        r"(?:кажды[еяй]|раз в|каждых)?\s*(\d+)\s*(?:мин(?:ут(?:ы|у|а)?)?|minute|minutes|min|m)\b",
+        text_lower,
+    )
+    if m_min:
+        mins = int(m_min.group(1))
+        return max(1, mins)
+
+    # 5. Standalone integer, e.g. "10", "15", "60", "120"
+    m_num = re.search(r"^\s*(\d+)\s*$", text_lower)
+    if m_num:
+        val = int(m_num.group(1))
+        return max(1, val)
 
     return 5
+
+
+def _extract_interval(text: str) -> int:
+    """Internal helper to extract custom check interval in minutes (default 5)."""
+    return rule_based_interval_parser(text)
 
 
 def _extract_direct_only(text: str) -> bool:
@@ -448,6 +564,175 @@ def rule_based_flight_parser(text: str, base_date: Optional[date] = None) -> Opt
     )
 
 
+async def parse_search_query(
+    text: str,
+    api_key: Optional[str] = None,
+    model: Optional[str] = None,
+    base_date: Optional[date] = None,
+) -> Optional[ParsedFlightIntent]:
+    """Dedicated function for Step 1 of FSM flow to parse origin, destination, date, and direct_only.
+
+    Uses Groq LLM with a specialized prompt emphasizing Asian and Kazakhstan city IATAs,
+    or falls back to the rule-based parser.
+
+    Args:
+        text: Natural language search query (e.g. "Алматы - Чэнду 21 ноября", "Астана в Сеул завтра").
+        api_key: Optional Groq API key override.
+        model: Optional Groq Model identifier override.
+        base_date: Optional reference date for relative date resolution.
+
+    Returns:
+        ParsedFlightIntent if required route and date are resolved, else None.
+    """
+    settings = get_settings()
+    groq_key = api_key or settings.GROQ_API_KEY
+    groq_model = model or settings.GROQ_MODEL
+    ref_date = base_date or datetime.now(timezone.utc).date()
+
+    if not text or not text.strip():
+        return None
+
+    # Try Groq LLM if API Key is available
+    if groq_key and groq_key != "placeholder_token" and not groq_key.startswith("your_"):
+        try:
+            from groq import AsyncGroq
+
+            client = AsyncGroq(api_key=groq_key)
+            system_prompt = f"""You are an expert Flight Route & Date Extraction Assistant for KzFlightSniper (Kazakhstan, Asian and International Aviation).
+Current Reference Date: {ref_date.isoformat()} (Year: {ref_date.year}).
+
+Extract flight search query parameters from the user's message into strict JSON with the following schema:
+{{
+  "origin": "3-letter IATA code (e.g. ALA, NQZ, CIT, SCO, GUW, UKK, AKX, KSG, PWQ, PLX, DMB, KOV, BXH, URA, KGF, PPK, KZO, HSA, TDK, DZN, CTU, PEK, ICN, HKT, CAN, PVG, BKK, DXB, IST, TAS, FRU, TBS, AYT, DOH, AUH, SYX, MOW, LON, TYO, DEL, CDG, MXP, FRA, MLE, CMB, GYD, EVN, KUL, SIN)",
+  "destination": "3-letter IATA code",
+  "date": "YYYY-MM-DD (resolve relative terms like 'завтра', 'послезавтра', '15 октября', 'через неделю' using reference date {ref_date.isoformat()})",
+  "flight_number": "Optional flight code (e.g. 'KC-871', 'CA-484', 'DV-713') or null",
+  "direct_only": boolean (true for direct flights, false if transfers allowed/requested),
+  "target_price": number or null (converted to KZT: USD*500, EUR*540, RUB*5.5, KZT*1; null if not specified),
+  "currency_detected": "USD" | "EUR" | "RUB" | "KZT" | null,
+  "original_price": number or null,
+  "interval_minutes": integer (check frequency in minutes, default 5),
+  "confidence": float (between 0.0 and 1.0),
+  "raw_explanation": "Brief Russian or English summary"
+}}
+
+If the user query does not contain flight intent or lacks critical origin, destination, or date info, return:
+{{"error": "insufficient_info", "confidence": 0.0}}
+"""
+            response = await client.chat.completions.create(
+                model=groq_model,
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": text},
+                ],
+                response_format={"type": "json_object"},
+                temperature=0.1,
+                max_tokens=400,
+            )
+
+            content = response.choices[0].message.content
+            if content:
+                data = json.loads(content)
+                if (
+                    "origin" in data
+                    and "destination" in data
+                    and "date" in data
+                    and data.get("origin")
+                    and data.get("destination")
+                    and data.get("date")
+                    and len(str(data["origin"]).strip()) == 3
+                    and len(str(data["destination"]).strip()) == 3
+                ):
+                    intent = ParsedFlightIntent(**data)
+                    logger.info(
+                        "Groq LLM parsed search query successfully: %s -> %s on %s",
+                        intent.origin,
+                        intent.destination,
+                        intent.date,
+                    )
+                    return intent
+        except Exception as e:
+            logger.warning(
+                "Groq LLM search query parsing failed (%s). Falling back to rule-based parser.",
+                e,
+            )
+
+    # Fallback to Rule-Based Heuristic Parser
+    return rule_based_flight_parser(text, base_date=ref_date)
+
+
+async def parse_interval_nlp(
+    text: str,
+    api_key: Optional[str] = None,
+    model: Optional[str] = None,
+) -> int:
+    """Extract custom monitoring check interval in minutes from user text.
+
+    Uses light Groq LLM prompt when configured, with a resilient rule-based fallback.
+
+    Args:
+        text: User input text (e.g. "каждые 10 минут", "раз в час", "раз в полчаса",
+              "каждые 2 часа", "раз в сутки", "каждый день", "15 минут", "10").
+        api_key: Optional Groq API key override.
+        model: Optional Groq model override.
+
+    Returns:
+        Integer interval in minutes (>= 1, default 5).
+    """
+    if not text or not text.strip():
+        return 5
+
+    settings = get_settings()
+    groq_key = api_key or settings.GROQ_API_KEY
+    groq_model = model or settings.GROQ_MODEL
+
+    # Try Groq LLM if API Key is available
+    if groq_key and groq_key != "placeholder_token" and not groq_key.startswith("your_"):
+        try:
+            from groq import AsyncGroq
+
+            client = AsyncGroq(api_key=groq_key)
+            system_prompt = """You are an expert interval extraction assistant for flight monitoring bot.
+Extract the periodic check interval in integer minutes from the user text:
+- "каждые 10 минут" / "10 минут" / "10m" -> 10
+- "раз в полчаса" / "полчаса" / "30 минут" / "30m" -> 30
+- "раз в час" / "каждый час" / "1 час" / "час" / "1h" -> 60
+- "каждые 2 часа" / "2 часа" / "2h" -> 120
+- "раз в сутки" / "каждый день" / "сутки" -> 1440
+- "5 минут" / default -> 5
+
+Respond ONLY with strict JSON:
+{
+  "interval_minutes": integer
+}
+"""
+            response = await client.chat.completions.create(
+                model=groq_model,
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": text},
+                ],
+                response_format={"type": "json_object"},
+                temperature=0.0,
+                max_tokens=100,
+            )
+
+            content = response.choices[0].message.content
+            if content:
+                data = json.loads(content)
+                if "interval_minutes" in data and isinstance(data["interval_minutes"], (int, float)):
+                    val = int(data["interval_minutes"])
+                    if val >= 1:
+                        return val
+        except Exception as e:
+            logger.warning(
+                "Groq LLM interval parsing failed (%s). Falling back to rule-based parser.",
+                e,
+            )
+
+    return rule_based_interval_parser(text)
+
+
 async def parse_flight_request(
     text: str,
     api_key: Optional[str] = None,
@@ -479,15 +764,15 @@ async def parse_flight_request(
             from groq import AsyncGroq
 
             client = AsyncGroq(api_key=groq_key)
-            system_prompt = f"""You are an expert Flight Intent Extraction Assistant for KzFlightSniper (Kazakhstan Aviation).
+            system_prompt = f"""You are an expert Flight Intent Extraction Assistant for KzFlightSniper (Kazakhstan and Asian Aviation).
 Current Reference Date: {ref_date.isoformat()} (Year: {ref_date.year}).
 
 Extract flight monitoring parameters from the user's message into strict JSON with the following schema:
 {{
-  "origin": "3-letter IATA code (e.g. ALA, NQZ, CIT, SCO, GUW, UKK, AKX, KSG, PWQ, PLX, DMB, KOV, BXH, URA, KGF, PPK, KZO, CTU, PEK, ICN, HKT, CAN, PVG, BKK, DXB, IST, TAS, FRU, TBS, AYT, DOH, AUH, MOW, LON, TYO, DEL, CDG, MXP, FRA, MLE, CMB, SYX)",
+  "origin": "3-letter IATA code (e.g. ALA, NQZ, CIT, SCO, GUW, UKK, AKX, KSG, PWQ, PLX, DMB, KOV, BXH, URA, KGF, PPK, KZO, HSA, TDK, DZN, CTU, PEK, ICN, HKT, CAN, PVG, BKK, DXB, IST, TAS, FRU, TBS, AYT, DOH, AUH, SYX, MOW, LON, TYO, DEL, CDG, MXP, FRA, MLE, CMB, GYD, EVN, KUL, SIN)",
   "destination": "3-letter IATA code",
-  "date": "YYYY-MM-DD (resolve relative terms like 'завтра', 'послезавтра', '15 октября' using reference date {ref_date.isoformat()})",
-  "flight_number": "Optional flight code (e.g. 'KC-871', 'DV-713') or null",
+  "date": "YYYY-MM-DD (resolve relative terms like 'завтра', 'послезавтра', '15 октября', 'через неделю' using reference date {ref_date.isoformat()})",
+  "flight_number": "Optional flight code (e.g. 'KC-871', 'DV-713', 'CA-484') or null",
   "direct_only": boolean (true for direct flights, false if transfers allowed),
   "target_price": number or null (converted to KZT in Tenge: USD*500, EUR*540, RUB*5.5, KZT*1; if user did not specify target price, set null),
   "currency_detected": "USD" | "EUR" | "RUB" | "KZT" | null,
@@ -523,3 +808,4 @@ If the user query does not contain flight intent or lacks critical route/date in
 
     # Fallback to Rule-Based Heuristic Parser
     return rule_based_flight_parser(text, base_date=ref_date)
+

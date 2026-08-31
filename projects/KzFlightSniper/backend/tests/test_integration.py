@@ -37,12 +37,28 @@ from aiogram.types import Message
 
 import backend.main as main_module
 from backend.bot.handlers import (
+    CancelSnipeCallback,
+    ConfirmSnipeCallback,
+    FlightSelectCallback,
+    MonitorFlightCallback,
+    QuickIntervalCallback,
+    SniperStates,
+    StepBackCallback,
+    handle_cancel_snipe_callback,
+    handle_confirm_snipe_callback,
     handle_delete,
+    handle_flight_select_callback,
     handle_help,
+    handle_interval_text_message,
     handle_list,
+    handle_monitor_flight_callback,
     handle_nlp_message,
+    handle_quick_interval_callback,
+    handle_search_query_message,
     handle_snipe,
     handle_start,
+    handle_start_new_snipe_fsm_callback,
+    handle_step_back_callback,
     parse_snipe_arguments,
 )
 from backend.core.config import Settings, get_settings
@@ -428,19 +444,28 @@ class TestKzFlightSniperIntegration(unittest.TestCase):
             tasks_after_del = await self.dao.get_user_tasks(chat_id=55555)
             self.assertEqual(len(tasks_after_del), 0)
 
-            # 10. Test NLP natural language input with typing action, Live Preview, and state clearing
+            # 10. Test 2-step FSM & Live Preview flow
+            # Step 1: User sends flight search text in waiting_for_search_query
             mock_status_msg = MagicMock()
             mock_status_msg.edit_text = AsyncMock()
             mock_nlp_msg = MagicMock(spec=Message)
-            mock_nlp_msg.text = "Рейс Алматы - Бангкок 15 октября 2026 300$"
+            mock_nlp_msg.text = "Рейс Алматы - Бангкок 15 октября 2026"
             mock_nlp_msg.chat = MagicMock()
             mock_nlp_msg.chat.id = 55555
             mock_nlp_msg.bot = MagicMock()
             mock_nlp_msg.bot.send_chat_action = AsyncMock()
             mock_nlp_msg.answer = AsyncMock(return_value=mock_status_msg)
 
+            fsm_data: Dict[str, Any] = {}
+
+            async def _fsm_update(**kwargs: Any) -> None:
+                fsm_data.update(kwargs)
+
             mock_state = AsyncMock()
-            mock_state.clear = AsyncMock()
+            mock_state.get_data = AsyncMock(return_value=fsm_data)
+            mock_state.update_data = AsyncMock(side_effect=_fsm_update)
+            mock_state.set_state = AsyncMock()
+            mock_state.clear = AsyncMock(side_effect=lambda: fsm_data.clear())
 
             mock_live_offers = [
                 FlightOffer(
@@ -456,17 +481,76 @@ class TestKzFlightSniperIntegration(unittest.TestCase):
             ]
 
             with patch("backend.bot.handlers.AviataProvider.search", new=AsyncMock(return_value=mock_live_offers)):
-                await handle_nlp_message(mock_nlp_msg, mock_state)
+                await handle_search_query_message(mock_nlp_msg, mock_state)
 
             self.assertTrue(mock_nlp_msg.bot.send_chat_action.called)
             self.assertEqual(mock_nlp_msg.answer.call_count, 1)
-            self.assertEqual(mock_nlp_msg.answer.call_args[0][0], "⏳ Анализирую запрос через AI...")
-            self.assertTrue(mock_state.clear.called)
+            self.assertEqual(mock_nlp_msg.answer.call_args[0][0], "⏳ Выполняю Live-поиск рейсов...")
             self.assertTrue(mock_status_msg.edit_text.called)
-            nlp_card = mock_status_msg.edit_text.call_args[0][0]
-            self.assertIn("ALA", nlp_card)
-            self.assertIn("BKK", nlp_card)
-            self.assertIn("150,000 ₸", nlp_card)
+            list_card = mock_status_msg.edit_text.call_args[0][0]
+            self.assertIn("ALA", list_card)
+            self.assertIn("BKK", list_card)
+            self.assertIn("Найдено рейсов (1)", list_card)
+            self.assertEqual(fsm_data["origin"], "ALA")
+            self.assertEqual(fsm_data["destination"], "BKK")
+
+            # Step 2: User clicks FlightSelectCallback
+            cb_msg = MagicMock()
+            cb_msg.chat = MagicMock()
+            cb_msg.chat.id = 55555
+            cb_msg.edit_text = AsyncMock()
+
+            cb_select = MagicMock()
+            cb_select.message = cb_msg
+            cb_select.answer = AsyncMock()
+
+            await handle_flight_select_callback(cb_select, FlightSelectCallback(flight_idx=0), mock_state)
+            self.assertTrue(cb_msg.edit_text.called)
+            details_card = cb_msg.edit_text.call_args[0][0]
+            self.assertIn("Детали выбранного рейса", details_card)
+            self.assertIn("Air Astana", details_card)
+            self.assertIn("KC-871", details_card)
+            self.assertIn("145 000 ₸", details_card)
+
+            # Step 3: User clicks MonitorFlightCallback -> transitions to waiting_for_interval
+            cb_mon = MagicMock()
+            cb_mon.message = cb_msg
+            cb_mon.answer = AsyncMock()
+
+            await handle_monitor_flight_callback(cb_mon, MonitorFlightCallback(flight_idx=0), mock_state)
+            self.assertTrue(mock_state.set_state.called)
+            self.assertEqual(mock_state.set_state.call_args[0][0], SniperStates.waiting_for_interval)
+
+            # Step 3b: User selects QuickIntervalCallback(minutes=10)
+            cb_int = MagicMock()
+            cb_int.message = cb_msg
+            cb_int.answer = AsyncMock()
+
+            await handle_quick_interval_callback(cb_int, QuickIntervalCallback(minutes=10), mock_state)
+            self.assertEqual(fsm_data["interval_minutes"], 10)
+            self.assertEqual(fsm_data["target_price"], 145000.0)
+
+            # Step 4: User clicks ConfirmSnipeCallback -> creates task in DB and clears state
+            cb_conf = MagicMock()
+            cb_conf.message = cb_msg
+            cb_conf.answer = AsyncMock()
+
+            await handle_confirm_snipe_callback(cb_conf, ConfirmSnipeCallback(), mock_state)
+            self.assertTrue(mock_state.clear.called)
+            self.assertTrue(cb_msg.edit_text.called)
+            conf_reply = cb_msg.edit_text.call_args[0][0]
+            self.assertIn("Снайпер активирован!", conf_reply)
+            self.assertIn("KC-871", conf_reply)
+            self.assertIn("145 000 ₸", conf_reply)
+
+            # Verify task exists in database
+            fsm_tasks = await self.dao.get_user_tasks(chat_id=55555)
+            self.assertEqual(len(fsm_tasks), 1)
+            self.assertEqual(fsm_tasks[0]["origin"], "ALA")
+            self.assertEqual(fsm_tasks[0]["destination"], "BKK")
+            self.assertEqual(fsm_tasks[0]["flight_number"], "KC-871")
+            self.assertEqual(fsm_tasks[0]["target_price"], 145000.0)
+            self.assertEqual(fsm_tasks[0]["interval_minutes"], 10)
 
         asyncio.run(_run())
 
