@@ -6,6 +6,7 @@ import uuid
 from typing import Any, Dict, List, Optional, Tuple
 
 from aiogram import F, Router
+from aiogram.enums import ChatAction
 from aiogram.filters import Command, CommandObject, CommandStart
 from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message
 
@@ -306,7 +307,6 @@ async def handle_nlp_message(message: Message) -> None:
     # Trigger typing action if message.bot is available
     try:
         if message.bot:
-            from aiogram.enums import ChatAction
             await message.bot.send_chat_action(chat_id=message.chat.id, action=ChatAction.TYPING)
     except Exception:
         pass
