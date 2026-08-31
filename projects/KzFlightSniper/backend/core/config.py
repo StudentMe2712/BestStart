@@ -26,6 +26,9 @@ class Settings(BaseSettings):
     CHECK_INTERVAL_SECONDS: int = 60
     TICK_INTERVAL_SECONDS: int = 60
 
+    # Timezone Configuration
+    TZ: str = "Asia/Atyrau"
+
     # Playwright Headless Mode
     HEADLESS: bool = True
 

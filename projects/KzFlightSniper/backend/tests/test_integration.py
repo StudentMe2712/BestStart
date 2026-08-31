@@ -40,6 +40,7 @@ from backend.bot.handlers import (
     handle_delete,
     handle_help,
     handle_list,
+    handle_nlp_message,
     handle_snipe,
     handle_start,
     parse_snipe_arguments,
@@ -424,6 +425,27 @@ class TestKzFlightSniperIntegration(unittest.TestCase):
             # 9. Verify task is removed in database
             tasks_after_del = await self.dao.get_user_tasks(chat_id=55555)
             self.assertEqual(len(tasks_after_del), 0)
+
+            # 10. Test NLP natural language input with typing action and status message edit
+            mock_status_msg = MagicMock()
+            mock_status_msg.edit_text = AsyncMock()
+            mock_nlp_msg = MagicMock(spec=Message)
+            mock_nlp_msg.text = "Рейс Алматы - Бангкок 15 октября 2026 300$"
+            mock_nlp_msg.chat = MagicMock()
+            mock_nlp_msg.chat.id = 55555
+            mock_nlp_msg.bot = MagicMock()
+            mock_nlp_msg.bot.send_chat_action = AsyncMock()
+            mock_nlp_msg.answer = AsyncMock(return_value=mock_status_msg)
+
+            await handle_nlp_message(mock_nlp_msg)
+            self.assertTrue(mock_nlp_msg.bot.send_chat_action.called)
+            self.assertEqual(mock_nlp_msg.answer.call_count, 1)
+            self.assertEqual(mock_nlp_msg.answer.call_args[0][0], "⏳ Анализирую запрос...")
+            self.assertTrue(mock_status_msg.edit_text.called)
+            nlp_card = mock_status_msg.edit_text.call_args[0][0]
+            self.assertIn("ALA", nlp_card)
+            self.assertIn("BKK", nlp_card)
+            self.assertIn("150 000 ₸", nlp_card)
 
         asyncio.run(_run())
 

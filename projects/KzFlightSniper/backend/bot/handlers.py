@@ -303,6 +303,17 @@ async def handle_nlp_message(message: Message) -> None:
     if not user_text:
         return
 
+    # Trigger typing action if message.bot is available
+    try:
+        if message.bot:
+            from aiogram.enums import ChatAction
+            await message.bot.send_chat_action(chat_id=message.chat.id, action=ChatAction.TYPING)
+    except Exception:
+        pass
+
+    # Send preliminary status message
+    status_msg = await message.answer("⏳ Анализирую запрос...")
+
     try:
         intent = await parse_flight_request(user_text)
     except Exception as e:
@@ -310,14 +321,15 @@ async def handle_nlp_message(message: Message) -> None:
         intent = None
 
     if not intent:
-        await message.answer(
+        await status_msg.edit_text(
             "🤔 <b>Не удалось распознать параметры рейса.</b>\n\n"
             "Пожалуйста, укажите город вылета, назначения, дату и желаемую цену.\n\n"
             "<b>Примеры запросов:</b>\n"
             "• <i>«Рейс Алматы - Бангкок, 15 октября, прямой, KC-871, ниже 300$. Проверять каждые 5 минут»</i>\n"
             "• <i>«Астана - Шымкент на 2026-11-01 до 20000 тг»</i>\n"
             "• <i>«Из Актау в Дубай 25 декабря не дороже 80000 тенге»</i>\n\n"
-            "Или воспользуйтесь командой: <code>/snipe ALA NQZ 2026-10-15 25000</code>"
+            "Или воспользуйтесь командой: <code>/snipe ALA NQZ 2026-10-15 25000</code>",
+            parse_mode="HTML",
         )
         return
 
@@ -359,7 +371,7 @@ async def handle_nlp_message(message: Message) -> None:
         ]
     )
 
-    await message.answer(summary_card, reply_markup=keyboard)
+    await status_msg.edit_text(summary_card, reply_markup=keyboard, parse_mode="HTML")
 
 
 @router.callback_query(F.data.startswith("confirm_snipe:"))

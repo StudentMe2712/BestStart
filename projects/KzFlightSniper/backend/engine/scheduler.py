@@ -55,7 +55,7 @@ def init_scheduler(
     if event_loop is not None:
         kwargs["event_loop"] = event_loop
 
-    _scheduler = AsyncIOScheduler(**kwargs)
+    _scheduler = AsyncIOScheduler(timezone=settings.TZ, **kwargs)
     _scheduler.add_job(
         run_sniper_check,
         trigger="interval",

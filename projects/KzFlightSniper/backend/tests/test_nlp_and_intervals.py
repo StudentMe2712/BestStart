@@ -276,15 +276,24 @@ class TestTelegramBotNlPHandlers:
 
     async def test_handle_nlp_message_recognized(self, tmp_path: Any) -> None:
         """Test handling natural language text and generating confirmation card with keyboard."""
+        status_msg = MagicMock()
+        status_msg.edit_text = AsyncMock()
+
         message = MagicMock()
         message.text = "Рейс Алматы - Бангкок, 15 октября 2026, ниже 300$"
         message.chat.id = 777
-        message.answer = AsyncMock()
+        message.bot = MagicMock()
+        message.bot.send_chat_action = AsyncMock()
+        message.answer = AsyncMock(return_value=status_msg)
 
         await handle_nlp_message(message)
 
+        assert message.bot.send_chat_action.called
         assert message.answer.called
-        call_args = message.answer.call_args
+        assert message.answer.call_args[0][0] == "⏳ Анализирую запрос..."
+
+        assert status_msg.edit_text.called
+        call_args = status_msg.edit_text.call_args
         card_text = call_args[0][0]
         reply_markup = call_args[1].get("reply_markup")
 
@@ -297,15 +306,24 @@ class TestTelegramBotNlPHandlers:
 
     async def test_handle_nlp_message_unrecognized(self) -> None:
         """Test unrecognized text message returns helpful usage guide."""
+        status_msg = MagicMock()
+        status_msg.edit_text = AsyncMock()
+
         message = MagicMock()
         message.text = "Привет бот"
         message.chat.id = 777
-        message.answer = AsyncMock()
+        message.bot = MagicMock()
+        message.bot.send_chat_action = AsyncMock()
+        message.answer = AsyncMock(return_value=status_msg)
 
         await handle_nlp_message(message)
 
+        assert message.bot.send_chat_action.called
         assert message.answer.called
-        card_text = message.answer.call_args[0][0]
+        assert message.answer.call_args[0][0] == "⏳ Анализирую запрос..."
+
+        assert status_msg.edit_text.called
+        card_text = status_msg.edit_text.call_args[0][0]
         assert "Не удалось распознать параметры рейса" in card_text
 
     async def test_confirm_and_cancel_callbacks(self, tmp_path: Any) -> None:
