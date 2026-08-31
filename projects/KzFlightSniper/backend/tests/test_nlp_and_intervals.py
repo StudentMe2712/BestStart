@@ -363,7 +363,7 @@ class TestTelegramBotNlPHandlers:
             assert callback.answer.called
             assert cb_msg.edit_text.called
             edit_text = cb_msg.edit_text.call_args[0][0]
-            assert "Sniper Task Activated!" in edit_text
+            assert "Снайпер активирован!" in edit_text
             assert token not in _pending_nlp_tasks
 
             # Verify saved in database

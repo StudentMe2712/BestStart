@@ -352,8 +352,8 @@ class TestKzFlightSniperIntegration(unittest.TestCase):
             await handle_start(mock_message)
             self.assertEqual(mock_message.answer.call_count, 1)
             start_reply = mock_message.answer.call_args[0][0]
-            self.assertIn("Welcome to KzFlightSniper", start_reply)
-            self.assertIn("/snipe", start_reply)
+            self.assertIn("Добро пожаловать в KzFlightSniper", start_reply)
+            self.assertIn("/list", start_reply)
 
             mock_message.answer.reset_mock()
 
@@ -361,8 +361,8 @@ class TestKzFlightSniperIntegration(unittest.TestCase):
             await handle_help(mock_message)
             self.assertEqual(mock_message.answer.call_count, 1)
             help_reply = mock_message.answer.call_args[0][0]
-            self.assertIn("Command Guide & Syntax", help_reply)
-            self.assertIn("Major Kazakhstan IATA Airport Codes", help_reply)
+            self.assertIn("Справочник и команды KzFlightSniper", help_reply)
+            self.assertIn("Основные коды аэропортов Казахстана", help_reply)
 
             mock_message.answer.reset_mock()
 
@@ -371,7 +371,7 @@ class TestKzFlightSniperIntegration(unittest.TestCase):
             await handle_snipe(mock_message, empty_cmd)
             self.assertEqual(mock_message.answer.call_count, 1)
             guide_reply = mock_message.answer.call_args[0][0]
-            self.assertIn("How to Create a Flight Snipe", guide_reply)
+            self.assertIn("Создание мониторинга через команду", guide_reply)
 
             mock_message.answer.reset_mock()
 
@@ -380,8 +380,7 @@ class TestKzFlightSniperIntegration(unittest.TestCase):
             await handle_snipe(mock_message, invalid_cmd)
             self.assertEqual(mock_message.answer.call_count, 1)
             err_reply = mock_message.answer.call_args[0][0]
-            self.assertIn("Origin code", err_reply)
-            self.assertIn("invalid", err_reply)
+            self.assertIn("Неверный код аэропорта вылета", err_reply)
 
             mock_message.answer.reset_mock()
 
@@ -390,7 +389,7 @@ class TestKzFlightSniperIntegration(unittest.TestCase):
             await handle_snipe(mock_message, valid_cmd)
             self.assertEqual(mock_message.answer.call_count, 1)
             snipe_reply = mock_message.answer.call_args[0][0]
-            self.assertIn("Sniper Task Activated!", snipe_reply)
+            self.assertIn("Снайпер активирован!", snipe_reply)
             self.assertIn("ALA", snipe_reply)
             self.assertIn("NQZ", snipe_reply)
             self.assertIn("25 000 ₸", snipe_reply)
@@ -409,7 +408,7 @@ class TestKzFlightSniperIntegration(unittest.TestCase):
             await handle_list(mock_message)
             self.assertEqual(mock_message.answer.call_count, 1)
             list_reply = mock_message.answer.call_args[0][0]
-            self.assertIn("Your Active Sniping Tasks (1)", list_reply)
+            self.assertIn("Ваши активные мониторинги (1)", list_reply)
             self.assertIn(f"#{created_task_id}", list_reply)
             self.assertIn("<code>ALA</code> ✈️ <code>NQZ</code>", list_reply)
 
@@ -420,7 +419,7 @@ class TestKzFlightSniperIntegration(unittest.TestCase):
             await handle_delete(mock_message, del_cmd)
             self.assertEqual(mock_message.answer.call_count, 1)
             del_reply = mock_message.answer.call_args[0][0]
-            self.assertIn(f"Sniper Task #{created_task_id} has been deleted", del_reply)
+            self.assertIn(f"Задача мониторинга #{created_task_id} удалена", del_reply)
 
             # 9. Verify task is removed in database
             tasks_after_del = await self.dao.get_user_tasks(chat_id=55555)
