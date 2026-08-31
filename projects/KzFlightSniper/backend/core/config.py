@@ -14,7 +14,7 @@ class Settings(BaseSettings):
 
     # Groq LLM API Key & Model Configuration
     GROQ_API_KEY: Optional[str] = None
-    GROQ_MODEL: str = "llama-3.3-70b-versatile"
+    GROQ_MODEL: str = "llama-3.1-70b-versatile"
 
     # SQLite Database Path
     DATABASE_PATH: str = "data/sniper.db"
@@ -27,7 +27,7 @@ class Settings(BaseSettings):
     TICK_INTERVAL_SECONDS: int = 60
 
     # Timezone Configuration
-    TZ: str = "Asia/Atyrau"
+    TZ: str = "Asia/Almaty"
 
     # Playwright Headless Mode
     HEADLESS: bool = True

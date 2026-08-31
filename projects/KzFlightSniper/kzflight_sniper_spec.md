@@ -32,7 +32,7 @@ graph TD
    - Inline interactive keyboards for confirming or cancelling parsed flight intents.
 
 2. **NLP Intent Parsing Engine (`Groq LLM` + Heuristic Fallback)**:
-   - Structured JSON flight extraction powered by Groq Llama 3.3 (`llama-3.3-70b-versatile`).
+   - Structured JSON flight extraction powered by Groq Llama 3.1 (`llama-3.1-70b-versatile`).
    - Resilient zero-dependency rule-based heuristic parser with full Kazakhstan and international city name declensions, relative date resolution ("завтра", "через неделю", "15 октября"), currency conversion (USD, EUR, RUB to KZT), and custom interval detection.
 
 3. **Asynchronous Task Scheduler (`APScheduler`) & Custom Intervals**:
@@ -200,7 +200,7 @@ class BaseFlightProvider(ABC):
 - [x] Perform end-to-end integration test suite (`backend/tests/test_integration.py`) with 100% pass rate.
 
 ### Stage 6: NLP Evolution, Custom Intervals & Manual Test Simulator
-- [x] Implement `backend/bot/nlp_parser.py` with Groq Llama 3.3 LLM integration and rule-based heuristic fallback.
+- [x] Implement `backend/bot/nlp_parser.py` with Groq Llama 3.1 LLM integration and rule-based heuristic fallback.
 - [x] Support Russian/Kazakh city names declension mapping and dynamic currency conversion (USD, EUR, RUB $\rightarrow$ KZT).
 - [x] Update `backend/db/database.py` with automated migration for `interval_minutes` column in SQLite.
 - [x] Update `backend/db/dao.py` with `get_due_tasks()` and custom interval persistence.

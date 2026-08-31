@@ -5,8 +5,8 @@
 [![aiogram](https://img.shields.io/badge/aiogram-3.4+-2CA5E0.svg?style=flat&logo=telegram&logoColor=white)](https://docs.aiogram.dev/)
 [![Playwright](https://img.shields.io/badge/Playwright-1.42+-2EAD33.svg?style=flat&logo=playwright&logoColor=white)](https://playwright.dev/python/)
 [![SQLite](https://img.shields.io/badge/SQLite-aiosqlite-003B57.svg?style=flat&logo=sqlite&logoColor=white)](https://aiosqlite.omnilib.dev/)
-[![Groq](https://img.shields.io/badge/LLM-Groq%20Llama%203.3-F55036.svg?style=flat)](https://groq.com/)
-[![Tests](https://img.shields.io/badge/Tests-35%2F35%20passing-brightgreen.svg?style=flat)](file:///C:/Users/Mila/Desktop/BestStart/projects/KzFlightSniper/backend/tests/)
+[![Groq](https://img.shields.io/badge/LLM-Groq%20Llama%203.1-F55036.svg?style=flat)](https://groq.com/)
+[![Tests](https://img.shields.io/badge/Tests-51%2F51%20passing-brightgreen.svg?style=flat)](file:///C:/Users/Mila/Desktop/BestStart/projects/KzFlightSniper/backend/tests/)
 
 **KzFlightSniper** is an asynchronous flight price tracking and automated alerting engine built specifically for the **Kazakhstan aviation market** (covering Air Astana, FlyArystan, SCAT Airlines, and Qazaq Air across domestic routes like `ALA` ⇄ `NQZ`, `CIT`, `SCO`, `GUW`, `UKK`, and international connections like `BKK`, `DXB`, `IST`, `HKT`, `TAS`, `FRU`, `TBS`, `AYT`).
 
@@ -32,7 +32,7 @@ It runs continuous background checks using headless browser automation and steal
 
 ## ⚡ Key Features
 
-- 🧠 **Natural Language Intent Parsing (NLP)**: Create monitoring tasks by simply typing requests in Russian or English. Powered by **Groq Llama 3.3** with a resilient zero-dependency local heuristic fallback parser for 100% offline reliability.
+- 🧠 **Natural Language Intent Parsing (NLP)**: Create monitoring tasks by simply typing requests in Russian or English. Powered by **Groq Llama 3.1** with a resilient zero-dependency local heuristic fallback parser for 100% offline reliability.
 - 💱 **Multi-Currency Auto-Conversion**: Automatically converts foreign currency budgets (USD, EUR, RUB) into Kazakhstani Tenge (KZT).
 - ⏱️ **Custom Monitoring Intervals**: Configure independent checking intervals per flight task (e.g. every 5 minutes, 10 minutes, 30 minutes, 1 hour) with automated SQLite schema migrations.
 - 🎯 **Target-Based Price Sniping**: Set maximum budget thresholds in Kazakhstani Tenge (₸) for any domestic or international route.
@@ -219,7 +219,7 @@ python -m uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload
 | :--- | :--- | :--- | :--- |
 | `BOT_TOKEN` | `str` | `placeholder_token` | Telegram Bot API token from [@BotFather](https://t.me/BotFather) |
 | `GROQ_API_KEY` | `Optional[str]` | `None` | Optional Groq API Key for LLM-powered flight parsing |
-| `GROQ_MODEL` | `str` | `llama-3.3-70b-versatile` | Groq LLM model identifier |
+| `GROQ_MODEL` | `str` | `llama-3.1-70b-versatile` | Groq LLM model identifier |
 | `APP_PORT` | `int` | `8000` | HTTP port for FastAPI REST API |
 | `DATABASE_PATH` | `str` | `data/sniper.db` | Path to SQLite database file |
 | `CHECK_INTERVAL_SECONDS` | `int` | `60` | Scheduler tick interval in seconds |
@@ -235,7 +235,7 @@ python -m uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload
 ```bash
 pytest backend/tests/ -v
 ```
-All 35 tests covering database migrations, NLP parsers, currency conversions, custom intervals, bot handlers, and deduplication will run.
+All 51 tests covering database migrations, NLP parsers, currency conversions, custom intervals, bot handlers, and deduplication will run.
 
 ### 2. Run Interactive Manual Test Simulator
 ```bash

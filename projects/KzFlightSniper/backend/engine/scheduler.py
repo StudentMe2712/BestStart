@@ -19,6 +19,32 @@ logger = logging.getLogger("kzflight_sniper.engine.scheduler")
 _scheduler: Optional[AsyncIOScheduler] = None
 
 
+def _resolve_scheduler_timezone(tz_name: Optional[str] = None) -> Any:
+    """Resolve timezone safely with fallback to Asia/Almaty or UTC if system lookup encounters issues."""
+    target = tz_name or get_settings().TZ or "Asia/Almaty"
+    for candidate in [target, "Asia/Almaty", "UTC"]:
+        if not candidate:
+            continue
+        try:
+            try:
+                from zoneinfo import ZoneInfo
+                return ZoneInfo(candidate)
+            except Exception:
+                pass
+
+            try:
+                import pytz
+                return pytz.timezone(candidate)
+            except Exception:
+                pass
+
+            return candidate
+        except Exception as e:
+            logger.warning("Failed to resolve timezone candidate '%s': %s", candidate, e)
+            continue
+    return "UTC"
+
+
 def get_scheduler() -> Optional[AsyncIOScheduler]:
     """Return the active AsyncIOScheduler instance if initialized."""
     return _scheduler
@@ -55,7 +81,16 @@ def init_scheduler(
     if event_loop is not None:
         kwargs["event_loop"] = event_loop
 
-    _scheduler = AsyncIOScheduler(timezone=settings.TZ, **kwargs)
+    resolved_tz = _resolve_scheduler_timezone(settings.TZ)
+    try:
+        _scheduler = AsyncIOScheduler(timezone=resolved_tz, **kwargs)
+    except Exception as e:
+        logger.warning(
+            "AsyncIOScheduler initialization failed with timezone %s (%s). Falling back to UTC.",
+            resolved_tz,
+            e,
+        )
+        _scheduler = AsyncIOScheduler(timezone="UTC", **kwargs)
     _scheduler.add_job(
         run_sniper_check,
         trigger="interval",
