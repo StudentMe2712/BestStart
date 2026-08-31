@@ -178,10 +178,12 @@ class BaseFlightProvider(ABC):
 - [x] Implement `backend/tests/test_stage2.py` with 100% passing unit & integration tests.
 
 ### Stage 3: Playwright-Stealth Aviata Engine & Parser Pipeline
-- [ ] Implement `backend/providers/aviata.py` extending `BaseFlightProvider`.
-- [ ] Add robust browser pool / context management with stealth and custom user-agent rotation.
-- [ ] Implement resilience against anti-bot challenges and network timeouts.
-- [ ] Add unit & integration tests for Aviata response parsing and edge cases (0 flights, sold out, direct vs multi-segment).
+- [x] Implement `backend/providers/aviata_provider.py` extending `BaseFlightProvider`.
+- [x] Add robust browser context management with stealth scripts and user-agent emulation.
+- [x] Implement resilience against anti-bot challenges and network timeouts.
+- [x] Implement `backend/engine/sniper_worker.py` monitoring engine with alert deduplication and HTML notifications.
+- [x] Implement `backend/engine/scheduler.py` APScheduler integration and `POST /api/check-now` endpoint.
+- [x] Add unit & integration tests (`backend/tests/test_stage3.py`) with 100% pass rate.
 
 ### Stage 4: Telegram Bot (aiogram 3.x) & Asynchronous Scheduler Engine
 - [ ] Implement `backend/bot/` package with aiogram 3.x routers.

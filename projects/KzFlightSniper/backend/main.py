@@ -12,7 +12,8 @@ from backend.core.config import get_settings
 from backend.core.models import HealthResponse, TaskRead
 from backend.db.dao import FlightSniperDAO
 from backend.db.database import init_db
-
+from backend.engine.scheduler import start_scheduler, stop_scheduler
+from backend.engine.sniper_worker import run_sniper_check
 
 # Configure logging
 settings = get_settings()
@@ -56,10 +57,20 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             settings.BOT_TOKEN[:8] + "..." if len(settings.BOT_TOKEN) > 8 else settings.BOT_TOKEN,
         )
 
+    # 3. Start Periodic Flight Check Scheduler
+    try:
+        logger.info("Starting APScheduler flight check scheduler...")
+        start_scheduler(bot=bot if settings.is_bot_token_configured else None)
+        logger.info("Scheduler started successfully.")
+    except Exception as e:
+        logger.warning("Could not start scheduler: %s", e)
+
     yield
 
-    # 3. Graceful Shutdown
+    # 4. Graceful Shutdown
     logger.info("Shutting down KzFlightSniper services...")
+    stop_scheduler()
+
     if bot_task and not bot_task.done():
         bot_task.cancel()
         try:
@@ -126,6 +137,27 @@ async def list_active_tasks() -> List[TaskRead]:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to retrieve tasks from database.",
+        )
+
+
+@app.post("/api/check-now", summary="Trigger Manual Flight Sniper Check")
+async def trigger_check_now() -> Dict[str, Any]:
+    """Trigger an immediate flight price check cycle across all active tasks."""
+    try:
+        stats = await run_sniper_check(
+            bot=bot if settings.is_bot_token_configured else None,
+            dao=dao,
+        )
+        return {
+            "status": "success",
+            "message": "Manual sniper check cycle completed.",
+            "stats": stats,
+        }
+    except Exception as e:
+        logger.exception("Manual flight check execution failed: %s", e)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Check cycle failed: {str(e)}",
         )
 
 
