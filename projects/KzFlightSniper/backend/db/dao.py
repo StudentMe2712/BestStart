@@ -27,6 +27,8 @@ class FlightSniperDAO:
         date: str,
         target_price: float,
         flight_number: Optional[str] = None,
+        max_transfers: int = 0,
+        interval_minutes: int = 5,
     ) -> int:
         """Insert a new sniping task and return its generated ID.
 
@@ -37,6 +39,8 @@ class FlightSniperDAO:
             date: Flight date in YYYY-MM-DD format.
             target_price: Maximum acceptable price in KZT.
             flight_number: Optional specific flight number filter (e.g. 'KC-853').
+            max_transfers: Maximum transfer count (0 for direct flights only).
+            interval_minutes: Periodic check frequency in minutes (default: 5).
 
         Returns:
             The integer primary key ID of the inserted task.
@@ -44,15 +48,27 @@ class FlightSniperDAO:
         clean_origin = origin.strip().upper()
         clean_dest = destination.strip().upper()
         clean_flight = flight_number.strip().upper() if flight_number and flight_number.strip() else None
+        clean_interval = max(1, int(interval_minutes)) if interval_minutes else 5
+        clean_transfers = max(0, int(max_transfers)) if max_transfers else 0
 
         async with self._get_connection() as conn:
             cursor = await conn.execute(
                 """
                 INSERT INTO tasks (
-                    chat_id, origin, destination, date, flight_number, target_price, is_active
-                ) VALUES (?, ?, ?, ?, ?, ?, 1)
+                    chat_id, origin, destination, date, flight_number, target_price,
+                    is_active, max_transfers, interval_minutes
+                ) VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?)
                 """,
-                (chat_id, clean_origin, clean_dest, date.strip(), clean_flight, float(target_price)),
+                (
+                    chat_id,
+                    clean_origin,
+                    clean_dest,
+                    date.strip(),
+                    clean_flight,
+                    float(target_price),
+                    clean_transfers,
+                    clean_interval,
+                ),
             )
             await conn.commit()
             return int(cursor.lastrowid)
@@ -67,9 +83,39 @@ class FlightSniperDAO:
             cursor = await conn.execute(
                 """
                 SELECT id, chat_id, origin, destination, date, flight_number,
-                       target_price, is_active, created_at, last_checked_at, last_price
+                       target_price, is_active, created_at, last_checked_at, last_price,
+                       interval_minutes, max_transfers
                 FROM tasks
                 WHERE is_active = 1
+                ORDER BY created_at ASC
+                """
+            )
+            rows = await cursor.fetchall()
+            return [dict(row) for row in rows]
+
+    async def get_due_tasks(self) -> List[Dict[str, Any]]:
+        """Fetch active monitoring tasks that are due for price checking based on their interval.
+
+        A task is considered due if:
+        1. is_active = 1
+        2. AND (last_checked_at IS NULL OR
+                (strftime('%s', 'now') - strftime('%s', last_checked_at)) >= COALESCE(interval_minutes, 5) * 60)
+
+        Returns:
+            List of due task dictionaries.
+        """
+        async with self._get_connection() as conn:
+            cursor = await conn.execute(
+                """
+                SELECT id, chat_id, origin, destination, date, flight_number,
+                       target_price, is_active, created_at, last_checked_at, last_price,
+                       interval_minutes, max_transfers
+                FROM tasks
+                WHERE is_active = 1
+                  AND (
+                      last_checked_at IS NULL
+                      OR (strftime('%s', 'now') - strftime('%s', last_checked_at)) >= (COALESCE(interval_minutes, 5) * 60)
+                  )
                 ORDER BY created_at ASC
                 """
             )
@@ -88,7 +134,8 @@ class FlightSniperDAO:
         """
         query = """
             SELECT id, chat_id, origin, destination, date, flight_number,
-                   target_price, is_active, created_at, last_checked_at, last_price
+                   target_price, is_active, created_at, last_checked_at, last_price,
+                   interval_minutes, max_transfers
             FROM tasks
             WHERE chat_id = ?
         """
@@ -115,7 +162,8 @@ class FlightSniperDAO:
             cursor = await conn.execute(
                 """
                 SELECT id, chat_id, origin, destination, date, flight_number,
-                       target_price, is_active, created_at, last_checked_at, last_price
+                       target_price, is_active, created_at, last_checked_at, last_price,
+                       interval_minutes, max_transfers
                 FROM tasks
                 WHERE id = ?
                 """,

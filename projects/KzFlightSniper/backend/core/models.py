@@ -33,6 +33,34 @@ class FlightOffer(BaseModel):
         return value.strip().upper() if isinstance(value, str) else value
 
 
+class ParsedFlightIntent(BaseModel):
+    """Structured intent representation extracted by NLP parser from natural language input."""
+
+    origin: str = Field(..., min_length=3, max_length=3, description="3-letter IATA origin code (e.g. ALA)")
+    destination: str = Field(..., min_length=3, max_length=3, description="3-letter IATA destination code (e.g. BKK, NQZ)")
+    date: str = Field(..., description="Flight date in YYYY-MM-DD format")
+    flight_number: Optional[str] = Field(default=None, description="Optional flight number filter (e.g. KC-871)")
+    direct_only: bool = Field(default=True, description="Whether only direct flights are targeted")
+    target_price: float = Field(..., gt=0, description="Target maximum acceptable price in KZT")
+    currency_detected: Optional[str] = Field(default="KZT", description="Original currency symbol or code detected")
+    original_price: Optional[float] = Field(default=None, description="Original numeric price before conversion")
+    interval_minutes: int = Field(default=5, ge=1, description="Periodic check frequency in minutes")
+    confidence: float = Field(default=1.0, ge=0.0, le=1.0, description="Extraction confidence score")
+    raw_explanation: Optional[str] = Field(default=None, description="Human readable explanation or summary")
+
+    @field_validator("origin", "destination", mode="before")
+    @classmethod
+    def normalize_iata(cls, value: str) -> str:
+        """Normalize 3-letter IATA code to uppercase."""
+        return value.strip().upper() if isinstance(value, str) else value
+
+    @field_validator("flight_number", mode="before")
+    @classmethod
+    def normalize_flight_number(cls, value: Optional[str]) -> Optional[str]:
+        """Normalize optional flight number to uppercase."""
+        return value.strip().upper() if isinstance(value, str) and value.strip() else None
+
+
 class TaskCreate(BaseModel):
     """Schema for creating a new flight snipe monitoring task."""
 
@@ -42,6 +70,8 @@ class TaskCreate(BaseModel):
     date: str = Field(..., description="Flight date in YYYY-MM-DD format")
     target_price: float = Field(..., gt=0, description="Target maximum acceptable price in KZT")
     flight_number: Optional[str] = Field(default=None, description="Optional flight number filter")
+    interval_minutes: int = Field(default=5, ge=1, description="Check interval in minutes")
+    max_transfers: int = Field(default=0, ge=0, description="Maximum transfers (0 = direct only)")
 
     @field_validator("origin", "destination", mode="before")
     @classmethod
@@ -70,6 +100,8 @@ class TaskRead(BaseModel):
     created_at: Optional[str] = Field(default=None, description="Task creation timestamp")
     last_checked_at: Optional[str] = Field(default=None, description="Timestamp of last check")
     last_price: Optional[float] = Field(default=None, description="Lowest price observed on last check")
+    interval_minutes: int = Field(default=5, description="Check interval in minutes")
+    max_transfers: int = Field(default=0, description="Maximum transfers allowed")
 
 
 class AlertRead(BaseModel):

@@ -12,14 +12,19 @@ class Settings(BaseSettings):
     # Telegram Bot Token
     BOT_TOKEN: str = "placeholder_token"
 
+    # Groq LLM API Key & Model Configuration
+    GROQ_API_KEY: Optional[str] = None
+    GROQ_MODEL: str = "llama-3.3-70b-versatile"
+
     # SQLite Database Path
     DATABASE_PATH: str = "data/sniper.db"
 
     # FastAPI Application Server Port
     APP_PORT: int = 8000
 
-    # Periodic Flight Check Interval in Seconds (default: 300 = 5 minutes)
-    CHECK_INTERVAL_SECONDS: int = 300
+    # Periodic Flight Check Scheduler Tick in Seconds (default: 60 = 1 minute)
+    CHECK_INTERVAL_SECONDS: int = 60
+    TICK_INTERVAL_SECONDS: int = 60
 
     # Playwright Headless Mode
     HEADLESS: bool = True
@@ -45,6 +50,17 @@ class Settings(BaseSettings):
             and token != "placeholder_token"
             and not token.startswith("your_")
             and len(token) > 15
+        )
+
+    @property
+    def is_groq_configured(self) -> bool:
+        """Check if a real Groq API key has been configured."""
+        key = (self.GROQ_API_KEY or "").strip()
+        return bool(
+            key
+            and key != "placeholder_token"
+            and not key.startswith("your_")
+            and len(key) > 10
         )
 
 

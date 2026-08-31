@@ -1,7 +1,7 @@
 """Flight price sniper monitoring worker engine.
 
-Executes periodic checks across all active user tasks, searches flights
-using provider adapters, filters targets, verifies alert deduplication,
+Executes periodic checks across active user tasks (or due tasks based on custom intervals),
+searches flights using provider adapters, filters targets, verifies alert deduplication,
 and dispatches Telegram push notifications.
 """
 
@@ -84,12 +84,16 @@ class SniperWorker:
         self.provider = provider or AviataProvider()
         self.dao = dao or FlightSniperDAO()
 
-    async def run_check(self) -> Dict[str, Any]:
-        """Execute one complete monitoring cycle over all active sniping tasks.
+    async def run_check(self, due_only: bool = False) -> Dict[str, Any]:
+        """Execute one complete monitoring cycle over active or due sniping tasks.
+
+        Args:
+            due_only: If True, evaluates only tasks whose custom interval has elapsed.
+                      If False, evaluates all active tasks unconditionally.
 
         Returns:
             Dictionary containing cycle execution statistics:
-            - tasks_checked: Total active tasks evaluated
+            - tasks_checked: Total tasks evaluated in this cycle
             - alerts_triggered: Number of new alerts sent & logged
             - errors: Number of errors encountered
             - details: Per-task check outcomes
@@ -102,17 +106,20 @@ class SniperWorker:
         }
 
         try:
-            tasks = await self.dao.get_active_tasks()
+            if due_only:
+                tasks = await self.dao.get_due_tasks()
+            else:
+                tasks = await self.dao.get_active_tasks()
         except Exception as e:
-            logger.exception("Failed to query active tasks from database: %s", e)
+            logger.exception("Failed to query tasks from database: %s", e)
             stats["errors"] += 1
             return stats
 
         if not tasks:
-            logger.info("No active flight sniping tasks found. Cycle completed.")
+            logger.info("No due flight sniping tasks found. Cycle completed.")
             return stats
 
-        logger.info("Starting sniper cycle for %d active task(s)...", len(tasks))
+        logger.info("Starting sniper cycle for %d due task(s)...", len(tasks))
 
         # Group tasks by (origin, destination, date) to minimize browser queries
         grouped_tasks: Dict[Tuple[str, str, str], List[Dict[str, Any]]] = defaultdict(list)
@@ -123,7 +130,6 @@ class SniperWorker:
         for (origin, destination, date_str), route_tasks in grouped_tasks.items():
             try:
                 # Determine max transfers needed for this group
-                # If any task allows transfers, query with transfers, else direct only
                 max_transfer = max(t.get("max_transfers", 0) for t in route_tasks)
                 offers = await self.provider.search_flights(
                     origin=origin,
@@ -262,16 +268,20 @@ class SniperWorker:
         )
         return stats
 
-    async def run_check_cycle(self) -> Dict[str, Any]:
-        """Execute one complete flight price monitoring check cycle across all active tasks."""
-        return await self.run_check()
+    async def run_check_cycle(self, due_only: bool = False) -> Dict[str, Any]:
+        """Execute one complete flight price monitoring check cycle.
 
+        Args:
+            due_only: If True, evaluates only due tasks. If False, evaluates all active tasks.
+        """
+        return await self.run_check(due_only=due_only)
 
 
 async def run_sniper_check(
     bot: Optional[Bot] = None,
     provider: Optional[BaseFlightProvider] = None,
     dao: Optional[FlightSniperDAO] = None,
+    due_only: bool = True,
 ) -> Dict[str, Any]:
     """Helper function to instantiate worker and run a single sniper check cycle.
 
@@ -279,9 +289,10 @@ async def run_sniper_check(
         bot: Optional Bot instance.
         provider: Optional provider instance.
         dao: Optional FlightSniperDAO instance.
+        due_only: Whether to query only due tasks (defaults to True).
 
     Returns:
         Summary statistics dictionary.
     """
     worker = SniperWorker(bot=bot, provider=provider, dao=dao)
-    return await worker.run_check()
+    return await worker.run_check(due_only=due_only)

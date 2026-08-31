@@ -22,7 +22,9 @@ CREATE TABLE IF NOT EXISTS tasks (
     is_active INTEGER DEFAULT 1,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     last_checked_at TIMESTAMP NULL,
-    last_price REAL NULL
+    last_price REAL NULL,
+    interval_minutes INTEGER DEFAULT 5,
+    max_transfers INTEGER DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS alerts_history (
@@ -61,7 +63,18 @@ async def get_db(db_path: Optional[str] = None) -> AsyncGenerator[aiosqlite.Conn
 
 
 async def init_db(db_path: Optional[str] = None) -> None:
-    """Initialize database schema, tables, and indices."""
+    """Initialize database schema, tables, indices, and run automated migrations."""
     async with get_db(db_path) as conn:
         await conn.executescript(SCHEMA_SQL)
+
+        # Automated schema migration: verify tasks table columns
+        cursor = await conn.execute("PRAGMA table_info(tasks)")
+        columns = [row["name"] for row in await cursor.fetchall()]
+
+        if "interval_minutes" not in columns:
+            await conn.execute("ALTER TABLE tasks ADD COLUMN interval_minutes INTEGER DEFAULT 5")
+
+        if "max_transfers" not in columns:
+            await conn.execute("ALTER TABLE tasks ADD COLUMN max_transfers INTEGER DEFAULT 0")
+
         await conn.commit()

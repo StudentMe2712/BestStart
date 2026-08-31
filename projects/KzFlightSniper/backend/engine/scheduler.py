@@ -1,6 +1,7 @@
 """APScheduler async task scheduler integration for KzFlightSniper.
 
-Manages recurring execution of flight price checking cycles at configured intervals.
+Manages recurring execution of flight price checking cycles at configured tick intervals,
+evaluating tasks that are due according to their individual custom intervals.
 """
 
 import logging
@@ -36,7 +37,7 @@ def init_scheduler(
         bot: Optional Bot instance for dispatching notifications.
         provider: Optional flight search provider.
         dao: Optional FlightSniperDAO instance.
-        interval_seconds: Optional interval in seconds (defaults to CHECK_INTERVAL_SECONDS).
+        interval_seconds: Scheduler tick interval in seconds (defaults to CHECK_INTERVAL_SECONDS).
         event_loop: Optional asyncio event loop instance.
 
     Returns:
@@ -59,12 +60,12 @@ def init_scheduler(
         run_sniper_check,
         trigger="interval",
         seconds=interval,
-        kwargs={"bot": bot, "provider": provider, "dao": dao},
+        kwargs={"bot": bot, "provider": provider, "dao": dao, "due_only": True},
         id="sniper_flight_check",
-        name="Periodic Flight Price Sniper Check",
+        name="Periodic Flight Price Sniper Check (Due Tasks)",
         replace_existing=True,
     )
-    logger.info("Scheduler initialized with %ds check interval.", interval)
+    logger.info("Scheduler initialized with %ds tick interval for due tasks inspection.", interval)
     return _scheduler
 
 

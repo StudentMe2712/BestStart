@@ -10,14 +10,16 @@
 
 ```mermaid
 graph TD
-    User([Telegram User]) <-->|Commands & Alerts| Bot[aiogram 3.x Bot Router]
+    User([Telegram User]) <-->|Natural Text, Commands & Alerts| Bot[aiogram 3.x Bot Router]
+    Bot -->|NLP Extraction| Parser[NLP Parser (Groq / Heuristic)]
+    Parser -->|ParsedFlightIntent| Bot
     Bot <--> DB[(aiosqlite Database)]
-    Scheduler[APScheduler AsyncIOScheduler] -->|Triggers Periodic Checks| Worker[Sniper Worker Engine]
-    Worker -->|Fetch Active Tasks| DB
+    Scheduler[APScheduler AsyncIOScheduler (60s Tick)] -->|Triggers Due Checks| Worker[Sniper Worker Engine]
+    Worker -->|Fetch Due Tasks| DB
     Worker -->|Execute Search| ProviderAdapter[Provider Adapter Interface]
     ProviderAdapter -->|Interception & Scrape| AviataProvider[Aviata.kz Provider (Playwright + Stealth)]
     AviataProvider -->|JSON Intercept & Parse| Worker
-    Worker -->|Price <= Target| AlertDispatcher[Alert Dispatcher]
+    Worker -->|Price <= Target & Deduplication OK| AlertDispatcher[Alert Dispatcher]
     AlertDispatcher -->|Push Notification| Bot
     AlertDispatcher -->|Record Alert Log| DB
     FastAPI[FastAPI Service] -->|Health & Webhook API| Bot
@@ -26,25 +28,31 @@ graph TD
 ### Core Architecture Components:
 
 1. **Telegram Bot Interface (`aiogram 3.x`)**:
-   - Asynchronous Telegram bot utilizing Routers, FSM (Finite State Machine) for multi-step task creation (`/new_snipe`), inline keyboard management, task deletion/toggle (`/my_snipes`), and system stats (`/stats`).
+   - Asynchronous Telegram bot with natural language processing text handler and commands (`/start`, `/help`, `/snipe`, `/list`, `/delete`, `/cancel`).
+   - Inline interactive keyboards for confirming or cancelling parsed flight intents.
 
-2. **Asynchronous Task Scheduler (`APScheduler`)**:
-   - `AsyncIOScheduler` scheduling concurrent or rate-limited flight checks on user-defined intervals (e.g. default 300s / 5m), distributing scraping requests with randomized jitter to prevent rate-limiting.
+2. **NLP Intent Parsing Engine (`Groq LLM` + Heuristic Fallback)**:
+   - Structured JSON flight extraction powered by Groq Llama 3.3 (`llama-3.3-70b-versatile`).
+   - Resilient zero-dependency rule-based heuristic parser with full Kazakhstan and international city name declensions, relative date resolution ("завтра", "через неделю", "15 октября"), currency conversion (USD, EUR, RUB to KZT), and custom interval detection.
 
-3. **Browser Engine & Traffic Interception (`Playwright` + `playwright-stealth`)**:
+3. **Asynchronous Task Scheduler (`APScheduler`) & Custom Intervals**:
+   - `AsyncIOScheduler` executing checks at a configurable tick (default 60s), evaluating only tasks that are due based on their individual `interval_minutes` setting (e.g. 5m, 10m, 30m, 60m).
+
+4. **Browser Engine & Traffic Interception (`Playwright` + `playwright-stealth`)**:
    - Headless Chromium controlled via Playwright with stealth configurations (patching `navigator.webdriver`, webgl vendor, chrome runtime, randomized user agents, realistic viewport).
-   - Network response interception (`page.on("response", ...)`) to directly extract raw JSON payloads from internal flight search endpoints rather than fragile DOM scraping.
+   - Network response interception (`page.on("response", ...)`) to directly extract raw JSON payloads from internal flight search endpoints with safe resource disposal in `try...finally` blocks.
 
-4. **Provider Adapter Pattern (`FlightProvider` base class)**:
+5. **Provider Adapter Pattern (`FlightProvider` base class)**:
    - Modular architecture decoupling flight search sources. 
    - Initial implementation: `AviataProvider` (Aviata.kz aggregator).
    - Readily extensible for `KaspiTravelProvider`, `ChocotravelProvider`, `FlyArystanProvider`, and `AirAstanaProvider`.
 
-5. **Persistence Layer (`aiosqlite`)**:
+6. **Persistence Layer (`aiosqlite`) & Automated Migrations**:
    - Lightweight, async SQLite database engine handling transactional operations for sniping tasks, flight snapshot history, and alert deduplication.
+   - Built-in schema migration in `init_db()` ensuring `interval_minutes` and `max_transfers` columns are added to existing databases seamlessly.
 
-6. **Web Layer (`FastAPI`)**:
-   - Optional lightweight REST & health-check server (`/health`, `/metrics`, and optional Telegram webhook mode).
+7. **Web Layer (`FastAPI`)**:
+   - Integrated REST & health-check server (`/health`, `/api/tasks`, `/api/check-now`).
 
 ---
 
@@ -56,34 +64,38 @@ Stores target flight monitoring criteria configured by users.
 | Column | Type | Constraints | Description |
 | :--- | :--- | :--- | :--- |
 | `id` | `INTEGER` | `PRIMARY KEY AUTOINCREMENT` | Unique task ID |
-| `user_id` | `INTEGER` | `NOT NULL` | Telegram user ID / Chat ID |
+| `chat_id` | `INTEGER` | `NOT NULL` | Telegram user ID / Chat ID |
 | `origin` | `TEXT` | `NOT NULL` | 3-letter IATA origin code (e.g. `ALA`) |
 | `destination` | `TEXT` | `NOT NULL` | 3-letter IATA destination code (e.g. `NQZ`) |
 | `date` | `TEXT` | `NOT NULL` | Departure date (`YYYY-MM-DD`) |
+| `flight_number` | `TEXT` | `NULL` | Optional specific flight number filter (e.g. `KC-871`) |
 | `target_price` | `REAL` | `NOT NULL` | Max acceptable price in KZT |
-| `max_transfers` | `INTEGER` | `DEFAULT 0` | 0 = direct flights only, 1+ = max transfers |
 | `is_active` | `INTEGER` | `DEFAULT 1` | 1 = active monitoring, 0 = paused/completed |
 | `created_at` | `TIMESTAMP` | `DEFAULT CURRENT_TIMESTAMP` | Task creation timestamp |
 | `last_checked_at` | `TIMESTAMP` | `NULL` | Timestamp of last inspection |
 | `last_price` | `REAL` | `NULL` | Lowest price detected in last check |
+| `interval_minutes`| `INTEGER` | `DEFAULT 5` | Custom monitoring check frequency in minutes |
+| `max_transfers` | `INTEGER` | `DEFAULT 0` | 0 = direct flights only, 1+ = max transfers |
 
 ```sql
 CREATE TABLE IF NOT EXISTS tasks (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id INTEGER NOT NULL,
+    chat_id INTEGER NOT NULL,
     origin TEXT NOT NULL,
     destination TEXT NOT NULL,
     date TEXT NOT NULL,
+    flight_number TEXT NULL,
     target_price REAL NOT NULL,
-    max_transfers INTEGER DEFAULT 0,
     is_active INTEGER DEFAULT 1,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    last_checked_at TIMESTAMP,
-    last_price REAL
+    last_checked_at TIMESTAMP NULL,
+    last_price REAL NULL,
+    interval_minutes INTEGER DEFAULT 5,
+    max_transfers INTEGER DEFAULT 0
 );
 
 CREATE INDEX IF NOT EXISTS idx_tasks_active ON tasks (is_active);
-CREATE INDEX IF NOT EXISTS idx_tasks_user ON tasks (user_id);
+CREATE INDEX IF NOT EXISTS idx_tasks_chat_id ON tasks (chat_id);
 ```
 
 ---
@@ -95,31 +107,21 @@ Maintains log of triggered alerts to prevent duplicate spam notifications.
 | :--- | :--- | :--- | :--- |
 | `id` | `INTEGER` | `PRIMARY KEY AUTOINCREMENT` | Unique alert ID |
 | `task_id` | `INTEGER` | `NOT NULL, FK -> tasks(id)` | Associated task ID |
-| `user_id` | `INTEGER` | `NOT NULL` | Telegram user ID |
 | `flight_number` | `TEXT` | `NOT NULL` | e.g. `KC-853`, `IQ-401`, `DV-713` |
-| `airline` | `TEXT` | `NOT NULL` | e.g. `Air Astana`, `FlyArystan`, `Qazaq Air`, `SCAT` |
-| `departure_time` | `TEXT` | `NOT NULL` | ISO or formatted departure string |
-| `arrival_time` | `TEXT` | `NOT NULL` | ISO or formatted arrival string |
 | `price` | `REAL` | `NOT NULL` | Found price in KZT |
-| `deep_link` | `TEXT` | `NULL` | Direct booking URL |
-| `sent_at` | `TIMESTAMP` | `DEFAULT CURRENT_TIMESTAMP` | Alert dispatch timestamp |
+| `alert_time` | `TIMESTAMP` | `DEFAULT CURRENT_TIMESTAMP` | Alert dispatch timestamp |
 
 ```sql
 CREATE TABLE IF NOT EXISTS alerts_history (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    task_id INTEGER NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
-    user_id INTEGER NOT NULL,
+    task_id INTEGER NOT NULL,
     flight_number TEXT NOT NULL,
-    airline TEXT NOT NULL,
-    departure_time TEXT NOT NULL,
-    arrival_time TEXT NOT NULL,
     price REAL NOT NULL,
-    deep_link TEXT,
-    sent_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    alert_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY(task_id) REFERENCES tasks(id) ON DELETE CASCADE
 );
 
-CREATE INDEX IF NOT EXISTS idx_alerts_task ON alerts_history (task_id);
-CREATE INDEX IF NOT EXISTS idx_alerts_user ON alerts_history (user_id);
+CREATE INDEX IF NOT EXISTS idx_alerts_task_id ON alerts_history (task_id);
 ```
 
 ---
@@ -128,21 +130,21 @@ CREATE INDEX IF NOT EXISTS idx_alerts_user ON alerts_history (user_id);
 
 ```python
 from abc import ABC, abstractmethod
-from typing import List
+from typing import List, Optional
 from pydantic import BaseModel
 
 class FlightOffer(BaseModel):
-    provider: str
+    provider: str = "aviata"
     airline: str
     flight_number: str
     origin: str
     destination: str
     departure_time: str
     arrival_time: str
-    duration_minutes: int
-    transfers_count: int
     price_kzt: float
-    deep_link: str
+    transfers_count: int = 0
+    duration_minutes: Optional[int] = None
+    deep_link: Optional[str] = None
 
 class BaseFlightProvider(ABC):
     @abstractmethod
@@ -155,7 +157,7 @@ class BaseFlightProvider(ABC):
 
 ---
 
-## 5. 5-Stage Implementation Roadmap
+## 5. 6-Stage Implementation Roadmap
 
 ### Stage 1: Foundation, Spec, Scaffolding & Aviata PoC Interceptor
 - [x] Create project specification `kzflight_sniper_spec.md` with full architecture, database schema, and roadmap.
@@ -164,7 +166,6 @@ class BaseFlightProvider(ABC):
 - [x] Create production Playwright Dockerfile (`mcr.microsoft.com/playwright/python:v1.40.0-jammy`).
 - [x] Create `docker-compose.yml` with persistent volumes and environment wiring.
 - [x] Create `.env.example` with standard defaults.
-- [x] Create robust `sync.sh` script.
 - [x] Implement `poc_aviata.py` standalone asynchronous Playwright interceptor with stealth and structured console output.
 
 ### Stage 2: Database Layer, Models, and Provider Adapter Architecture
@@ -198,3 +199,12 @@ class BaseFlightProvider(ABC):
 - [x] Implement health check endpoint (`/health`), REST endpoints, and structured logging.
 - [x] Perform end-to-end integration test suite (`backend/tests/test_integration.py`) with 100% pass rate.
 
+### Stage 6: NLP Evolution, Custom Intervals & Manual Test Simulator
+- [x] Implement `backend/bot/nlp_parser.py` with Groq Llama 3.3 LLM integration and rule-based heuristic fallback.
+- [x] Support Russian/Kazakh city names declension mapping and dynamic currency conversion (USD, EUR, RUB $\rightarrow$ KZT).
+- [x] Update `backend/db/database.py` with automated migration for `interval_minutes` column in SQLite.
+- [x] Update `backend/db/dao.py` with `get_due_tasks()` and custom interval persistence.
+- [x] Implement natural language message handler with inline confirmation/cancellation buttons in `backend/bot/handlers.py`.
+- [x] Update `backend/engine/sniper_worker.py` and `backend/engine/scheduler.py` for due tasks evaluation.
+- [x] Implement standalone executable test runner and simulator `backend/tests/manual_test_simulator.py`.
+- [x] Create comprehensive test suite `backend/tests/test_nlp_and_intervals.py` (35/35 passing tests).

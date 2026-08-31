@@ -320,48 +320,51 @@ class AviataProvider(BaseFlightProvider):
                     ],
                 )
 
-                context = await browser.new_context(
-                    viewport={"width": 1440, "height": 900},
-                    user_agent=(
-                        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-                        "(KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
-                    ),
-                    locale="ru-RU",
-                    timezone_id="Asia/Almaty",
-                )
-
-                page = await context.new_page()
-                await _apply_stealth(page)
-
-                page.on("response", _handle_response)
-
+                context = None
                 try:
-                    await page.goto(search_url, wait_until="domcontentloaded", timeout=self.timeout_ms)
+                    context = await browser.new_context(
+                        viewport={"width": 1440, "height": 900},
+                        user_agent=(
+                            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+                            "(KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
+                        ),
+                        locale="ru-RU",
+                        timezone_id="Asia/Almaty",
+                    )
+
+                    page = await context.new_page()
+                    await _apply_stealth(page)
+
+                    page.on("response", _handle_response)
+
                     try:
-                        await asyncio.wait_for(data_received_event.wait(), timeout=12.0)
-                    except asyncio.TimeoutError:
-                        logger.debug("Initial API event wait timed out; giving brief settling grace period.")
+                        await page.goto(search_url, wait_until="domcontentloaded", timeout=self.timeout_ms)
+                        try:
+                            await asyncio.wait_for(data_received_event.wait(), timeout=12.0)
+                        except asyncio.TimeoutError:
+                            logger.debug("Initial API event wait timed out; giving brief settling grace period.")
 
-                    await page.wait_for_timeout(3000)
+                        await page.wait_for_timeout(3000)
 
-                    for payload_entry in intercepted_payloads:
-                        offers = self.parse_aviata_json(
-                            payload_entry["data"],
-                            clean_origin,
-                            clean_dest,
-                            search_url,
-                        )
-                        for off in offers:
-                            if not any(
-                                o.flight_number == off.flight_number and o.price_kzt == off.price_kzt
-                                for o in parsed_offers
-                            ):
-                                parsed_offers.append(off)
+                        for payload_entry in intercepted_payloads:
+                            offers = self.parse_aviata_json(
+                                payload_entry["data"],
+                                clean_origin,
+                                clean_dest,
+                                search_url,
+                            )
+                            for off in offers:
+                                if not any(
+                                    o.flight_number == off.flight_number and o.price_kzt == off.price_kzt
+                                    for o in parsed_offers
+                                ):
+                                    parsed_offers.append(off)
 
-                except Exception as page_err:
-                    logger.warning("Error during Aviata page navigation/interception: %s", page_err)
+                    except Exception as page_err:
+                        logger.warning("Error during Aviata page navigation/interception: %s", page_err)
                 finally:
-                    await context.close()
+                    if context is not None:
+                        await context.close()
                     await browser.close()
 
         except Exception as browser_err:

@@ -271,56 +271,59 @@ class AviataInterceptor:
                 ],
             )
 
-            context = await browser.new_context(
-                viewport={"width": 1440, "height": 900},
-                user_agent=(
-                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-                    "(KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
-                ),
-                locale="ru-RU",
-                timezone_id="Asia/Almaty",
-            )
-
-            page = await context.new_page()
-            await apply_stealth_to_page(page)
-
-            # Attach network response listener
-            page.on("response", self._handle_response)
-
+            context = None
             try:
-                logger.info(f"Navigating to Aviata flight search page for {origin.upper()} -> {destination.upper()}...")
-                await page.goto(aviata_url, wait_until="domcontentloaded", timeout=self.timeout_ms)
+                context = await browser.new_context(
+                    viewport={"width": 1440, "height": 900},
+                    user_agent=(
+                        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+                        "(KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
+                    ),
+                    locale="ru-RU",
+                    timezone_id="Asia/Almaty",
+                )
 
-                # Wait for data or network settlement
-                logger.info("Waiting for flight search API responses to settle...")
+                page = await context.new_page()
+                await apply_stealth_to_page(page)
+
+                # Attach network response listener
+                page.on("response", self._handle_response)
+
                 try:
-                    await asyncio.wait_for(self._data_received_event.wait(), timeout=15.0)
-                except asyncio.TimeoutError:
-                    logger.warning("No immediate API event triggered within initial window, waiting for page network idle...")
+                    logger.info(f"Navigating to Aviata flight search page for {origin.upper()} -> {destination.upper()}...")
+                    await page.goto(aviata_url, wait_until="domcontentloaded", timeout=self.timeout_ms)
 
-                # Additional grace period for secondary variants
-                await page.wait_for_timeout(5000)
+                    # Wait for data or network settlement
+                    logger.info("Waiting for flight search API responses to settle...")
+                    try:
+                        await asyncio.wait_for(self._data_received_event.wait(), timeout=15.0)
+                    except asyncio.TimeoutError:
+                        logger.warning("No immediate API event triggered within initial window, waiting for page network idle...")
 
-                # Parse intercepted network payloads
-                logger.info(f"Processing {len(self.intercepted_payloads)} intercepted JSON network payload(s)...")
-                for payload_entry in self.intercepted_payloads:
-                    raw_data = payload_entry["data"]
-                    offers = self._parse_aviata_json(raw_data, origin, destination, aviata_url)
-                    for off in offers:
-                        # Avoid duplicates
-                        if not any(o.flight_number == off.flight_number and o.price_kzt == off.price_kzt for o in parsed_offers):
-                            parsed_offers.append(off)
+                    # Additional grace period for secondary variants
+                    await page.wait_for_timeout(5000)
 
-                # If JSON interception yielded no offers (e.g. dynamic client hydration/SSR), fallback to DOM extraction
-                if not parsed_offers:
-                    logger.info("Attempting DOM fallback extraction from rendered flight cards...")
-                    dom_offers = await self._extract_from_dom(page, origin, destination, aviata_url)
-                    parsed_offers.extend(dom_offers)
+                    # Parse intercepted network payloads
+                    logger.info(f"Processing {len(self.intercepted_payloads)} intercepted JSON network payload(s)...")
+                    for payload_entry in self.intercepted_payloads:
+                        raw_data = payload_entry["data"]
+                        offers = self._parse_aviata_json(raw_data, origin, destination, aviata_url)
+                        for off in offers:
+                            # Avoid duplicates
+                            if not any(o.flight_number == off.flight_number and o.price_kzt == off.price_kzt for o in parsed_offers):
+                                parsed_offers.append(off)
 
-            except Exception as err:
-                logger.error(f"Error during search execution: {err}", exc_info=True)
+                    # If JSON interception yielded no offers (e.g. dynamic client hydration/SSR), fallback to DOM extraction
+                    if not parsed_offers:
+                        logger.info("Attempting DOM fallback extraction from rendered flight cards...")
+                        dom_offers = await self._extract_from_dom(page, origin, destination, aviata_url)
+                        parsed_offers.extend(dom_offers)
+
+                except Exception as err:
+                    logger.error(f"Error during search execution: {err}", exc_info=True)
             finally:
-                await context.close()
+                if context is not None:
+                    await context.close()
                 await browser.close()
 
         return parsed_offers
