@@ -262,6 +262,11 @@ class SniperWorker:
         )
         return stats
 
+    async def run_check_cycle(self) -> Dict[str, Any]:
+        """Execute one complete flight price monitoring check cycle across all active tasks."""
+        return await self.run_check()
+
+
 
 async def run_sniper_check(
     bot: Optional[Bot] = None,

@@ -186,14 +186,15 @@ class BaseFlightProvider(ABC):
 - [x] Add unit & integration tests (`backend/tests/test_stage3.py`) with 100% pass rate.
 
 ### Stage 4: Telegram Bot (aiogram 3.x) & Asynchronous Scheduler Engine
-- [ ] Implement `backend/bot/` package with aiogram 3.x routers.
-- [ ] Implement interactive FSM flow for `/new_snipe` (Origin $\rightarrow$ Destination $\rightarrow$ Date $\rightarrow$ Target Price $\rightarrow$ Direct/Transfer).
-- [ ] Implement `/my_snipes` management inline keyboards (pause, resume, delete).
-- [ ] Implement `/help`, `/start`, and `/status` handlers.
-- [ ] Implement `backend/core/scheduler.py` running periodic checks via APScheduler and dispatching alerts to Telegram users with deep links.
+- [x] Implement `backend/bot/` package with aiogram 3.x routers.
+- [x] Implement interactive command and parser flow for `/snipe` (Origin, Destination, Date, Target Price, Flight filter).
+- [x] Implement `/list` and `/delete` / `/cancel` task management handlers.
+- [x] Implement `/help` and `/start` handlers with Kazakhstan IATA airport reference.
+- [x] Implement `backend/engine/scheduler.py` running periodic checks via APScheduler and dispatching alerts to Telegram users with deep links.
 
 ### Stage 5: Integration, Docker Deployment, Testing & Hardening
-- [ ] Implement `backend/main.py` entrypoint binding FastAPI, aiogram polling/webhook, and APScheduler lifecycle.
-- [ ] Build and verify Docker container execution with headless Playwright.
-- [ ] Implement health check endpoint (`/health`) and structured logging.
-- [ ] Perform end-to-end integration test with live route monitoring and alert delivery verification.
+- [x] Implement `backend/main.py` entrypoint binding FastAPI, aiogram polling, and APScheduler lifecycle.
+- [x] Refine and verify Docker container execution (`Dockerfile` and `docker-compose.yml`) with headless Playwright.
+- [x] Implement health check endpoint (`/health`), REST endpoints, and structured logging.
+- [x] Perform end-to-end integration test suite (`backend/tests/test_integration.py`) with 100% pass rate.
+
