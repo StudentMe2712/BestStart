@@ -11,3 +11,11 @@ build/
 # .NET build outputs
 **/bin/
 **/obj/
+
+# Python & Databases
+__pycache__/
+*.py[cod]
+*.db
+*.sqlite3
+data/
+
