@@ -8,7 +8,7 @@ from datetime import date, datetime, timedelta, timezone
 import json
 import logging
 import re
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 from backend.core.config import get_settings
 from backend.core.models import ParsedFlightIntent
@@ -89,13 +89,14 @@ CITY_TO_IATA: Dict[str, str] = {
     # Zhezkazgan
     "жезказган": "DZN", "жезказгана": "DZN", "жезказгану": "DZN", "жезказгане": "DZN",
     "zhezkazgan": "DZN", "dzn": "DZN",
-
+ 
     # --- Asian & Middle Eastern Hubs ---
     # Chengdu
     "чэнду": "CTU", "чэндо": "CTU", "ченду": "CTU", "chengdu": "CTU", "ctu": "CTU",
+    "тяньфу": "TFU", "tianfu": "TFU", "tfu": "TFU", "шуанлю": "CTU", "shuangliu": "CTU",
     # Beijing
     "пекин": "PEK", "пекина": "PEK", "пекину": "PEK", "пекине": "PEK", "пекином": "PEK",
-    "beijing": "PEK", "pek": "PEK",
+    "beijing": "PEK", "pek": "PEK", "дасин": "PKX", "daxing": "PKX", "pkx": "PKX",
     # Seoul
     "сеул": "ICN", "сеула": "ICN", "сеулу": "ICN", "сеуле": "ICN", "сеулом": "ICN",
     "seoul": "ICN", "icn": "ICN", "инчхон": "ICN", "инчхона": "ICN", "инчхоне": "ICN", "incheon": "ICN",
@@ -110,12 +111,15 @@ CITY_TO_IATA: Dict[str, str] = {
     # Bangkok
     "бангкок": "BKK", "бангкока": "BKK", "бангкоку": "BKK", "бангкоке": "BKK", "бангкоком": "BKK",
     "bangkok": "BKK", "bkk": "BKK", "суварнабхуми": "BKK", "suvarnabhumi": "BKK",
+    "донмыанг": "DMK", "don mueang": "DMK", "dmk": "DMK",
     # Dubai
     "дубай": "DXB", "дубая": "DXB", "дубаю": "DXB", "дубае": "DXB", "дубаем": "DXB",
     "дубаи": "DXB", "дубаях": "DXB", "dubai": "DXB", "dxb": "DXB",
+    "аль-мактум": "DWC", "аль мактум": "DWC", "al maktoum": "DWC", "dwc": "DWC",
     # Istanbul
     "стамбул": "IST", "стамбула": "IST", "стамбулу": "IST", "стамбуле": "IST", "стамбулом": "IST",
-    "istanbul": "IST", "ist": "IST", "сабиха": "SAW", "saw": "SAW",
+    "istanbul": "IST", "ist": "IST",
+    "сабиха": "SAW", "сабиху": "SAW", "сабихе": "SAW", "сабихи": "SAW", "сабихой": "SAW", "saw": "SAW", "sabiha": "SAW",
     # Tashkent
     "ташкент": "TAS", "ташкента": "TAS", "ташкенту": "TAS", "ташкенте": "TAS", "ташкентом": "TAS",
     "tashkent": "TAS", "tas": "TAS",
@@ -136,17 +140,24 @@ CITY_TO_IATA: Dict[str, str] = {
     # Sanya
     "санья": "SYX", "санью": "SYX", "санье": "SYX", "саньи": "SYX", "саньей": "SYX",
     "sanya": "SYX", "syx": "SYX",
-
+ 
     # --- Other International Hubs ---
     # Moscow
     "москва": "MOW", "москву": "MOW", "москве": "MOW", "москвы": "MOW", "москвой": "MOW",
-    "moscow": "MOW", "mow": "MOW", "svo": "SVO", "vko": "VKO", "dme": "DME",
-    "шереметьево": "SVO", "внуково": "VKO", "домодедово": "DME",
+    "moscow": "MOW", "mow": "MOW", "svo": "SVO", "vko": "VKO", "dme": "DME", "zia": "ZIA",
+    "шереметьево": "SVO", "шереметьева": "SVO", "шереметьеву": "SVO", "шереметьеве": "SVO", "шереметьевом": "SVO",
+    "внуково": "VKO", "внукова": "VKO", "внукову": "VKO", "внукове": "VKO", "внуковом": "VKO",
+    "домодедово": "DME", "домодедова": "DME", "домодедову": "DME", "домодедове": "DME", "домодедовом": "DME",
+    "жуковский": "ZIA",
     # London
     "лондон": "LON", "лондона": "LON", "лондону": "LON", "лондоне": "LON", "лондоном": "LON",
     "london": "LON", "lon": "LON", "lhr": "LHR", "хитроу": "LHR",
+    "lgw": "LGW", "гатвик": "LGW", "гатвика": "LGW", "гатвику": "LGW", "гатвике": "LGW",
+    "stn": "STN", "станстед": "STN", "станстеда": "STN", "станстеду": "STN", "станстеде": "STN",
     # Tokyo
     "токио": "TYO", "tokyo": "TYO", "tyo": "TYO", "nrt": "NRT", "hnd": "HND",
+    "ханеда": "HND", "ханеду": "HND", "ханеде": "HND", "ханеды": "HND",
+    "нарита": "NRT", "нариту": "NRT", "нарите": "NRT", "нариты": "NRT",
     # Delhi
     "дели": "DEL", "delhi": "DEL", "del": "DEL", "нью-дели": "DEL", "new delhi": "DEL",
     # Paris
@@ -188,6 +199,170 @@ MONTHS_RU = {
     "ноября": 11, "ноябрь": 11, "ноя": 11, "nov": 11, "november": 11,
     "декабря": 12, "декабрь": 12, "дек": 12, "dec": 12, "december": 12,
 }
+
+# Multi-Airport Metropolitan Cities & Airport Disambiguation Catalog
+CITY_AMBIGUOUS_AIRPORTS: Dict[str, Dict[str, Any]] = {
+    "чэнду": {
+        "city_name": "Чэнду",
+        "airports": [
+            {"iata": "TFU", "name": "Тяньфу (TFU) — Основной/Лоукостеры"},
+            {"iata": "CTU", "name": "Шуанлю (CTU) — Старый терминал"},
+        ],
+    },
+    "москва": {
+        "city_name": "Москва",
+        "airports": [
+            {"iata": "SVO", "name": "Шереметьево (SVO)"},
+            {"iata": "DME", "name": "Домодедово (DME)"},
+            {"iata": "VKO", "name": "Внуково (VKO)"},
+        ],
+    },
+    "стамбул": {
+        "city_name": "Стамбул",
+        "airports": [
+            {"iata": "IST", "name": "Новый Аэропорт Стамбул (IST)"},
+            {"iata": "SAW", "name": "Сабиха Гёкчен (SAW)"},
+        ],
+    },
+    "дубай": {
+        "city_name": "Дубай",
+        "airports": [
+            {"iata": "DXB", "name": "Дубай International (DXB)"},
+            {"iata": "DWC", "name": "Аль-Мактум (DWC)"},
+        ],
+    },
+    "бангкок": {
+        "city_name": "Бангкок",
+        "airports": [
+            {"iata": "BKK", "name": "Суварнабхуми (BKK)"},
+            {"iata": "DMK", "name": "Донмыанг (DMK)"},
+        ],
+    },
+    "пекин": {
+        "city_name": "Пекин",
+        "airports": [
+            {"iata": "PEK", "name": "Столичный / Capital (PEK)"},
+            {"iata": "PKX", "name": "Дасин (PKX)"},
+        ],
+    },
+    "токио": {
+        "city_name": "Токио",
+        "airports": [
+            {"iata": "HND", "name": "Ханеда (HND)"},
+            {"iata": "NRT", "name": "Нарита (NRT)"},
+        ],
+    },
+    "лондон": {
+        "city_name": "Лондон",
+        "airports": [
+            {"iata": "LHR", "name": "Хитроу (LHR)"},
+            {"iata": "LGW", "name": "Гатвик (LGW)"},
+            {"iata": "STN", "name": "Станстед (STN)"},
+        ],
+    },
+}
+
+# Aliases and declensions for CITY_AMBIGUOUS_AIRPORTS keys
+for _alias in ["chengdu", "chengdou", "ченду", "чэндо", "чэнду"]:
+    CITY_AMBIGUOUS_AIRPORTS[_alias] = CITY_AMBIGUOUS_AIRPORTS["чэнду"]
+for _alias in ["moscow", "москва", "москву", "москве", "москвы", "москвой"]:
+    CITY_AMBIGUOUS_AIRPORTS[_alias] = CITY_AMBIGUOUS_AIRPORTS["москва"]
+for _alias in ["istanbul", "стамбул", "стамбула", "стамбулу", "стамбуле", "стамбулом"]:
+    CITY_AMBIGUOUS_AIRPORTS[_alias] = CITY_AMBIGUOUS_AIRPORTS["стамбул"]
+for _alias in ["dubai", "дубай", "дубая", "дубаю", "дубае", "дубаем", "дубаи", "дубаях"]:
+    CITY_AMBIGUOUS_AIRPORTS[_alias] = CITY_AMBIGUOUS_AIRPORTS["дубай"]
+for _alias in ["bangkok", "бангкок", "бангкока", "бангкоку", "бангкоке", "бангкоком"]:
+    CITY_AMBIGUOUS_AIRPORTS[_alias] = CITY_AMBIGUOUS_AIRPORTS["бангкок"]
+for _alias in ["beijing", "пекин", "пекина", "пекину", "пекине", "пекином"]:
+    CITY_AMBIGUOUS_AIRPORTS[_alias] = CITY_AMBIGUOUS_AIRPORTS["пекин"]
+for _alias in ["tokyo", "токио"]:
+    CITY_AMBIGUOUS_AIRPORTS[_alias] = CITY_AMBIGUOUS_AIRPORTS["токио"]
+for _alias in ["london", "лондон", "лондона", "лондону", "лондоне", "лондоном"]:
+    CITY_AMBIGUOUS_AIRPORTS[_alias] = CITY_AMBIGUOUS_AIRPORTS["лондон"]
+
+# Specific airport keywords: if present in text, query points to an exact airport and is not ambiguous
+SPECIFIC_AIRPORT_KEYWORDS: Dict[str, Set[str]] = {
+    "TFU": {"тяньфу", "tianfu", "tfu"},
+    "CTU": {"шуанлю", "shuangliu"},
+    "SVO": {"шереметьево", "sheremetyevo", "svo"},
+    "DME": {"домодедово", "domodedovo", "dme"},
+    "VKO": {"внуково", "vnukovo", "vko"},
+    "ZIA": {"жуковский", "zhukovsky", "zia"},
+    "IST": {"новый аэропорт стамбул", "новый аэропорт"},
+    "SAW": {"сабиха", "сабихи", "сабихе", "сабиху", "сабихой", "sabiha", "gokcen", "gökçen", "saw"},
+    "DXB": {"дубай international", "дубай интернешнл"},
+    "DWC": {"аль-мактум", "аль мактум", "al maktoum", "dwc"},
+    "BKK": {"суварнабхуми", "suvarnabhumi"},
+    "DMK": {"донмыанг", "don mueang", "dmk"},
+    "PEK": {"столичный", "capital"},
+    "PKX": {"дасин", "daxing", "pkx"},
+    "HND": {"ханеда", "haneda", "hnd"},
+    "NRT": {"нарита", "narita", "nrt"},
+    "LHR": {"хитроу", "heathrow", "lhr"},
+    "LGW": {"гатвик", "gatwick", "lgw"},
+    "STN": {"станстед", "stansted", "stn"},
+}
+
+# Mapping of all IATAs belonging to an ambiguous metropolitan area -> key in CITY_AMBIGUOUS_AIRPORTS
+AMBIGUOUS_IATA_TO_CITY_KEY: Dict[str, str] = {
+    "CTU": "чэнду", "TFU": "чэнду",
+    "MOW": "москва", "SVO": "москва", "DME": "москва", "VKO": "москва", "ZIA": "москва",
+    "IST": "стамбул", "SAW": "стамбул",
+    "DXB": "дубай", "DWC": "дубай",
+    "BKK": "бангкок", "DMK": "бангкок",
+    "PEK": "пекин", "PKX": "пекин",
+    "TYO": "токио", "HND": "токио", "NRT": "токио",
+    "LON": "лондон", "LHR": "лондон", "LGW": "лондон", "STN": "лондон",
+}
+
+
+def _check_disambiguation(
+    text: str, origin: str, dest: str
+) -> Tuple[bool, List[Dict[str, str]], Optional[str], Optional[str]]:
+    """Check whether origin or destination refers to an ambiguous multi-airport city without specifying an airport.
+
+    Returns:
+        Tuple of (is_ambiguous, ambiguous_options, ambiguous_target, ambiguous_city_name)
+    """
+    text_lower = text.lower()
+
+    # Check destination first
+    if dest in AMBIGUOUS_IATA_TO_CITY_KEY:
+        city_key = AMBIGUOUS_IATA_TO_CITY_KEY[dest]
+        info = CITY_AMBIGUOUS_AIRPORTS[city_key]
+        has_specific = False
+        for airport in info["airports"]:
+            iata = airport["iata"]
+            kws = SPECIFIC_AIRPORT_KEYWORDS.get(iata, set())
+            for kw in kws:
+                pattern = rf"(?:\b|^){re.escape(kw)}(?:\b|$)"
+                if re.search(pattern, text_lower):
+                    has_specific = True
+                    break
+            if has_specific:
+                break
+        if not has_specific:
+            return True, info["airports"], "destination", info["city_name"]
+
+    # Check origin second
+    if origin in AMBIGUOUS_IATA_TO_CITY_KEY:
+        city_key = AMBIGUOUS_IATA_TO_CITY_KEY[origin]
+        info = CITY_AMBIGUOUS_AIRPORTS[city_key]
+        has_specific = False
+        for airport in info["airports"]:
+            iata = airport["iata"]
+            kws = SPECIFIC_AIRPORT_KEYWORDS.get(iata, set())
+            for kw in kws:
+                pattern = rf"(?:\b|^){re.escape(kw)}(?:\b|$)"
+                if re.search(pattern, text_lower):
+                    has_specific = True
+                    break
+            if has_specific:
+                break
+        if not has_specific:
+            return True, info["airports"], "origin", info["city_name"]
+
+    return False, [], None, None
 
 
 def _lookup_city_iata(word: str) -> Optional[str]:
@@ -549,6 +724,8 @@ def rule_based_flight_parser(text: str, base_date: Optional[date] = None) -> Opt
         )
         return None
 
+    is_ambiguous, amb_opts, amb_tgt, amb_city = _check_disambiguation(text, origin, dest)
+
     return ParsedFlightIntent(
         origin=origin,
         destination=dest,
@@ -561,6 +738,10 @@ def rule_based_flight_parser(text: str, base_date: Optional[date] = None) -> Opt
         interval_minutes=interval,
         confidence=0.9,
         raw_explanation="Rule-based heuristic parsing successfully matched route and date.",
+        is_ambiguous=is_ambiguous,
+        ambiguous_options=amb_opts,
+        ambiguous_target=amb_tgt,
+        ambiguous_city_name=amb_city,
     )
 
 
@@ -585,8 +766,8 @@ async def parse_search_query(
         ParsedFlightIntent if required route and date are resolved, else None.
     """
     settings = get_settings()
-    groq_key = api_key or settings.GROQ_API_KEY
-    groq_model = model or settings.GROQ_MODEL
+    groq_key = api_key if api_key is not None else settings.GROQ_API_KEY
+    groq_model = model if model is not None else settings.GROQ_MODEL
     ref_date = base_date or datetime.now(timezone.utc).date()
 
     if not text or not text.strip():
@@ -603,7 +784,7 @@ Current Reference Date: {ref_date.isoformat()} (Year: {ref_date.year}).
 
 Extract flight search query parameters from the user's message into strict valid JSON object with the following schema:
 {{
-  "origin": "3-letter IATA code (e.g. ALA, NQZ, CIT, SCO, GUW, UKK, AKX, KSG, PWQ, PLX, DMB, KOV, BXH, URA, KGF, PPK, KZO, HSA, TDK, DZN, CTU, PEK, ICN, HKT, CAN, PVG, BKK, DXB, IST, TAS, FRU, TBS, AYT, DOH, AUH, SYX, MOW, LON, TYO, DEL, CDG, MXP, FRA, MLE, CMB, GYD, EVN, KUL, SIN)",
+  "origin": "3-letter IATA code (e.g. ALA, NQZ, CIT, SCO, GUW, UKK, AKX, KSG, PWQ, PLX, DMB, KOV, BXH, URA, KGF, PPK, KZO, HSA, TDK, DZN, CTU, TFU, PEK, PKX, ICN, HKT, CAN, PVG, BKK, DMK, DXB, DWC, IST, SAW, TAS, FRU, TBS, AYT, DOH, AUH, SYX, MOW, SVO, DME, VKO, LON, LHR, LGW, STN, TYO, HND, NRT, DEL, CDG, MXP, FRA, MLE, CMB, GYD, EVN, KUL, SIN)",
   "destination": "3-letter IATA code",
   "date": "YYYY-MM-DD (resolve relative terms like 'завтра', 'послезавтра', '15 октября', 'через неделю' using reference date {ref_date.isoformat()})",
   "flight_number": "Optional flight code (e.g. 'KC-871', 'CA-484', 'DV-713') or null",
@@ -613,8 +794,15 @@ Extract flight search query parameters from the user's message into strict valid
   "original_price": number or null,
   "interval_minutes": integer (check frequency in minutes, default 5),
   "confidence": float (between 0.0 and 1.0),
-  "raw_explanation": "Brief Russian or English summary"
+  "raw_explanation": "Brief Russian or English summary",
+  "is_ambiguous": boolean,
+  "ambiguous_target": "destination" | "origin" | null,
+  "ambiguous_city_name": string or null,
+  "ambiguous_options": [{{"iata": "...", "name": "..."}}]
 }}
+
+CRITICAL DISAMBIGUATION RULES:
+If the user query mentions a city with multiple major commercial airports (such as Chengdu, Moscow, Istanbul, Dubai, Bangkok, Beijing, Tokyo, London) and does NOT specify an exact single airport (like SVO or TFU), set 'is_ambiguous': true, 'ambiguous_target': 'destination' or 'origin', 'ambiguous_city_name': '<City>', and 'ambiguous_options': [{{"iata": "...", "name": "..."}}]. Otherwise, set 'is_ambiguous': false and 'ambiguous_options': [].
 
 If the user query does not contain flight intent or lacks critical origin, destination, or date info, return JSON:
 {{"error": "insufficient_info", "confidence": 0.0}}
@@ -644,11 +832,18 @@ If the user query does not contain flight intent or lacks critical origin, desti
                     and len(str(data["destination"]).strip()) == 3
                 ):
                     intent = ParsedFlightIntent(**data)
+                    is_amb, amb_opts, amb_tgt, amb_city = _check_disambiguation(text, intent.origin, intent.destination)
+                    if is_amb:
+                        intent.is_ambiguous = True
+                        intent.ambiguous_options = amb_opts
+                        intent.ambiguous_target = amb_tgt
+                        intent.ambiguous_city_name = amb_city
                     logger.info(
-                        "Groq LLM parsed search query successfully: %s -> %s on %s",
+                        "Groq LLM parsed search query successfully: %s -> %s on %s (ambiguous=%s)",
                         intent.origin,
                         intent.destination,
                         intent.date,
+                        intent.is_ambiguous,
                     )
                     return intent
         except Exception as e:
@@ -683,8 +878,8 @@ async def parse_interval_nlp(
         return 5
 
     settings = get_settings()
-    groq_key = api_key or settings.GROQ_API_KEY
-    groq_model = model or settings.GROQ_MODEL
+    groq_key = api_key if api_key is not None else settings.GROQ_API_KEY
+    groq_model = model if model is not None else settings.GROQ_MODEL
 
     # Try Groq LLM if API Key is available
     if groq_key and groq_key != "placeholder_token" and not groq_key.startswith("your_"):
@@ -699,6 +894,7 @@ Extract the periodic check interval in integer minutes from the user text:
 - "раз в час" / "каждый час" / "1 час" / "час" / "1h" -> 60
 - "каждые 2 часа" / "2 часа" / "2h" -> 120
 - "раз в сутки" / "каждый день" / "сутки" -> 1440
+- "15 минут" / "15 мин" / "15m" / "15 min" -> 15
 - "5 минут" / default -> 5
 
 Respond ONLY with a strict valid JSON object:
@@ -751,8 +947,8 @@ async def parse_flight_request(
         ParsedFlightIntent if successfully extracted, None otherwise.
     """
     settings = get_settings()
-    groq_key = api_key or settings.GROQ_API_KEY
-    groq_model = model or settings.GROQ_MODEL
+    groq_key = api_key if api_key is not None else settings.GROQ_API_KEY
+    groq_model = model if model is not None else settings.GROQ_MODEL
     ref_date = base_date or datetime.now(timezone.utc).date()
 
     if not text or not text.strip():
@@ -769,13 +965,17 @@ Current Reference Date: {ref_date.isoformat()} (Year: {ref_date.year}).
 
 Extract flight search query parameters from the user's message into strict valid JSON object with the following schema:
 {{
-    "origin_iata": "string (3-letter IATA code)",
-    "destination_iata": "string (3-letter IATA code)",
+    "origin": "string (3-letter IATA code, e.g. ALA, NQZ)",
+    "destination": "string (3-letter IATA code, e.g. CTU, BKK)",
     "date": "string (YYYY-MM-DD format)",
     "flight_number": "string or null (e.g., 'KC-871')",
     "direct_only": "boolean (true if user explicitly asked for direct flight, else false)",
     "target_price": "float or null (if user did not specify the price, set to null)",
-    "interval_minutes": "integer or null (e.g., 'каждые 10 минут' -> 10, 'раз в час' -> 60)"
+    "interval_minutes": "integer or null (e.g., 'каждые 10 минут' -> 10, 'раз в час' -> 60)",
+    "is_ambiguous": "boolean",
+    "ambiguous_target": "'destination' | 'origin' | null",
+    "ambiguous_city_name": "string or null",
+    "ambiguous_options": [{{"iata": "...", "name": "..."}}]
 }}
 
 CRITICAL RULES:
@@ -785,6 +985,7 @@ CRITICAL RULES:
    - Asia/Intl: Ченду -> CTU, Пекин -> PEK, Сеул -> ICN, Бангкок -> BKK, Пхукет -> HKT, Дубай -> DXB, Стамбул -> IST.
 3. If the user mentions a relative date ("завтра", "через неделю", "21 ноября"), calculate the exact YYYY-MM-DD based on the Current Reference Date.
 4. If NO price is mentioned in the text, you MUST return "target_price": null.
+5. If the user query mentions a city with multiple major commercial airports (such as Chengdu, Moscow, Istanbul, Dubai, Bangkok, Beijing, Tokyo, London) and does NOT specify an exact single airport (like SVO or TFU), set 'is_ambiguous': true, 'ambiguous_target': 'destination' or 'origin', 'ambiguous_city_name': '<City>', and 'ambiguous_options': [{{"iata": "...", "name": "..."}}]. Otherwise, set 'is_ambiguous': false and 'ambiguous_options': [].
 """
             response = await client.chat.completions.create(
                 model=groq_model,
@@ -801,14 +1002,26 @@ CRITICAL RULES:
             if content:
                 data = json.loads(content)
                 
-                # Ищем правильные ключи: origin_iata и destination_iata
-                if data.get("origin_iata") and data.get("destination_iata") and data.get("date"):
-                    
-                    # Пытаемся создать Pydantic-модель
+                # Normalize legacy keys if present
+                if "origin_iata" in data and "origin" not in data:
+                    data["origin"] = data["origin_iata"]
+                if "destination_iata" in data and "destination" not in data:
+                    data["destination"] = data["destination_iata"]
+
+                if data.get("origin") and data.get("destination") and data.get("date"):
                     try:
                         intent = ParsedFlightIntent(**data)
-                        logger.info("Groq LLM parsed flight intent successfully: %s -> %s on %s", 
-                                    intent.origin_iata, intent.destination_iata, intent.date)
+                        if not intent.is_ambiguous:
+                            is_amb, amb_opts, amb_tgt, amb_city = _check_disambiguation(text, intent.origin, intent.destination)
+                            if is_amb:
+                                intent.is_ambiguous = True
+                                intent.ambiguous_options = amb_opts
+                                intent.ambiguous_target = amb_tgt
+                                intent.ambiguous_city_name = amb_city
+                        logger.info(
+                            "Groq LLM parsed flight intent successfully: %s -> %s on %s (ambiguous=%s)", 
+                            intent.origin, intent.destination, intent.date, intent.is_ambiguous,
+                        )
                         return intent
                     except Exception as validation_error:
                         logger.error("Pydantic validation error: %s", validation_error)

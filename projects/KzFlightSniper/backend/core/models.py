@@ -1,7 +1,7 @@
 """Domain models and schemas for KzFlightSniper."""
 
 from datetime import datetime
-from typing import Optional
+from typing import Dict, List, Optional
 from pydantic import BaseModel, Field, field_validator
 
 
@@ -62,6 +62,10 @@ class ParsedFlightIntent(BaseModel):
     interval_minutes: int = Field(default=5, ge=1, description="Periodic check frequency in minutes")
     confidence: float = Field(default=1.0, ge=0.0, le=1.0, description="Extraction confidence score")
     raw_explanation: Optional[str] = Field(default=None, description="Human readable explanation or summary")
+    is_ambiguous: bool = Field(default=False, description="Whether origin or destination matches multiple major airport codes")
+    ambiguous_options: List[Dict[str, str]] = Field(default_factory=list, description="List of airport options e.g. [{'iata': 'TFU', 'name': 'Чэнду (Тяньфу)'}]")
+    ambiguous_target: Optional[str] = Field(default=None, description="'origin' or 'destination'")
+    ambiguous_city_name: Optional[str] = Field(default=None, description="Name of the ambiguous city (e.g. 'Чэнду')")
 
     @property
     def route(self) -> str:

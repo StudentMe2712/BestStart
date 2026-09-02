@@ -37,6 +37,7 @@ from aiogram.types import Message
 
 import backend.main as main_module
 from backend.bot.handlers import (
+    AirportSelectCallback,
     CancelSnipeCallback,
     ConfirmSnipeCallback,
     FlightSelectCallback,
@@ -44,6 +45,7 @@ from backend.bot.handlers import (
     QuickIntervalCallback,
     SniperStates,
     StepBackCallback,
+    handle_airport_select_callback,
     handle_cancel_snipe_callback,
     handle_confirm_snipe_callback,
     handle_delete,
@@ -445,8 +447,8 @@ class TestKzFlightSniperIntegration(unittest.TestCase):
             tasks_after_del = await self.dao.get_user_tasks(chat_id=55555)
             self.assertEqual(len(tasks_after_del), 0)
 
-            # 10. Test 2-step FSM & Live Preview flow
-            # Step 1: User sends flight search text in waiting_for_search_query
+            # 10. Test FSM with Disambiguation UX & Live Preview flow
+            # Step 1: User sends flight search text with ambiguous city (Бангкок)
             mock_status_msg = MagicMock()
             mock_status_msg.edit_text = AsyncMock()
             mock_nlp_msg = MagicMock(spec=Message)
@@ -468,6 +470,31 @@ class TestKzFlightSniperIntegration(unittest.TestCase):
             mock_state.set_state = AsyncMock()
             mock_state.clear = AsyncMock(side_effect=lambda: fsm_data.clear())
 
+            # Step 1 execution: triggers disambiguation prompt
+            await handle_search_query_message(mock_nlp_msg, mock_state)
+
+            self.assertTrue(mock_nlp_msg.bot.send_chat_action.called)
+            self.assertEqual(mock_nlp_msg.answer.call_count, 1)
+            self.assertEqual(mock_nlp_msg.answer.call_args[0][0], "⏳ Выполняю Live-поиск рейсов...")
+            self.assertTrue(mock_status_msg.edit_text.called)
+            disambig_card = mock_status_msg.edit_text.call_args[0][0]
+            self.assertIn("Бангкок", disambig_card)
+            self.assertIn("несколько крупных аэропортов", disambig_card)
+            self.assertEqual(mock_state.set_state.call_args[0][0], SniperStates.waiting_for_airport_disambiguation)
+            self.assertTrue(fsm_data["disambiguation_intent"]["is_ambiguous"])
+
+            # Step 1.5: User clicks AirportSelectCallback(iata="BKK", target="destination")
+            cb_msg = MagicMock()
+            cb_msg.chat = MagicMock()
+            cb_msg.chat.id = 55555
+            cb_msg.edit_text = AsyncMock()
+
+            cb_airport = MagicMock()
+            cb_airport.message = cb_msg
+            cb_airport.answer = AsyncMock()
+            cb_airport.bot = MagicMock()
+            cb_airport.bot.send_chat_action = AsyncMock()
+
             mock_live_offers = [
                 FlightOffer(
                     airline="Air Astana",
@@ -482,25 +509,22 @@ class TestKzFlightSniperIntegration(unittest.TestCase):
             ]
 
             with patch("backend.bot.handlers.AviasalesProvider.search", new=AsyncMock(return_value=mock_live_offers)):
-                await handle_search_query_message(mock_nlp_msg, mock_state)
+                await handle_airport_select_callback(
+                    cb_airport,
+                    AirportSelectCallback(iata="BKK", target="destination"),
+                    mock_state,
+                )
 
-            self.assertTrue(mock_nlp_msg.bot.send_chat_action.called)
-            self.assertEqual(mock_nlp_msg.answer.call_count, 1)
-            self.assertEqual(mock_nlp_msg.answer.call_args[0][0], "⏳ Выполняю Live-поиск рейсов...")
-            self.assertTrue(mock_status_msg.edit_text.called)
-            list_card = mock_status_msg.edit_text.call_args[0][0]
+            self.assertTrue(cb_msg.edit_text.called)
+            list_card = cb_msg.edit_text.call_args[0][0]
             self.assertIn("ALA", list_card)
             self.assertIn("BKK", list_card)
             self.assertIn("Найдено рейсов (1)", list_card)
             self.assertEqual(fsm_data["origin"], "ALA")
             self.assertEqual(fsm_data["destination"], "BKK")
+            self.assertEqual(mock_state.set_state.call_args[0][0], SniperStates.waiting_for_search_query)
 
             # Step 2: User clicks FlightSelectCallback
-            cb_msg = MagicMock()
-            cb_msg.chat = MagicMock()
-            cb_msg.chat.id = 55555
-            cb_msg.edit_text = AsyncMock()
-
             cb_select = MagicMock()
             cb_select.message = cb_msg
             cb_select.answer = AsyncMock()

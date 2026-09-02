@@ -21,10 +21,18 @@ dao = FlightSniperDAO()
 
 
 class SniperStates(StatesGroup):
-    """FSM States for 2-step Flight Sniper conversation flow."""
+    """FSM States for Flight Sniper conversation flow."""
 
     waiting_for_search_query = State()
+    waiting_for_airport_disambiguation = State()
     waiting_for_interval = State()
+
+
+class AirportSelectCallback(CallbackData, prefix="apt_sel"):
+    """Callback data for choosing airport in a multi-airport metropolitan area."""
+
+    iata: str
+    target: str = "destination"
 
 
 class FlightSelectCallback(CallbackData, prefix="fl_sel"):
@@ -90,6 +98,30 @@ def _get_flight_attr(flight: Any, key: str, default: Any = None) -> Any:
     if isinstance(flight, dict):
         return flight.get(key, default)
     return getattr(flight, key, default)
+
+
+def build_airport_disambiguation_keyboard(
+    options: List[Dict[str, str]],
+    target: str = "destination",
+) -> InlineKeyboardMarkup:
+    """Build inline keyboard for disambiguating city airport options with Cancel button."""
+    buttons = []
+    for opt in options:
+        iata = opt.get("iata", "")
+        name = opt.get("name", iata)
+        buttons.append([
+            InlineKeyboardButton(
+                text=name,
+                callback_data=AirportSelectCallback(iata=iata, target=target).pack(),
+            )
+        ])
+    buttons.append([
+        InlineKeyboardButton(
+            text="❌ Отмена",
+            callback_data=CancelSnipeCallback().pack(),
+        )
+    ])
+    return InlineKeyboardMarkup(inline_keyboard=buttons)
 
 
 def build_flight_list_keyboard(offers: List[Any]) -> InlineKeyboardMarkup:
@@ -524,6 +556,24 @@ async def handle_search_query_message(message: Message, state: FSMContext) -> No
         )
         return
 
+    # Check if airport disambiguation is required
+    if intent.is_ambiguous and intent.ambiguous_options:
+        await state.update_data(
+            disambiguation_intent=intent.model_dump(),
+        )
+        await state.set_state(SniperStates.waiting_for_airport_disambiguation)
+        city_label = intent.ambiguous_city_name or ("назначения" if intent.ambiguous_target == "destination" else "вылета")
+        text = (
+            f"🏢 В городе <b>{city_label}</b> несколько крупных аэропортов.\n\n"
+            "Пожалуйста, выберите подходящий аэропорт для поиска рейсов:"
+        )
+        kb = build_airport_disambiguation_keyboard(
+            intent.ambiguous_options,
+            target=intent.ambiguous_target or "destination",
+        )
+        await status_msg.edit_text(text, reply_markup=kb, parse_mode="HTML")
+        return
+
     offers: List[FlightOffer] = []
     try:
         provider = AviasalesProvider()
@@ -567,6 +617,100 @@ async def handle_search_query_message(message: Message, state: FSMContext) -> No
     )
     keyboard = build_flight_list_keyboard(offers_dump)
     await status_msg.edit_text(list_text, reply_markup=keyboard, parse_mode="HTML")
+
+
+# ============================================================================
+# Step 1.5: Airport Disambiguation Selection
+# ============================================================================
+
+@router.callback_query(AirportSelectCallback.filter())
+async def handle_airport_select_callback(
+    callback: CallbackQuery,
+    callback_data: AirportSelectCallback,
+    state: FSMContext,
+) -> None:
+    """Handle airport selection from disambiguation options, search flights, and render list."""
+    data = await state.get_data()
+    intent_data = data.get("disambiguation_intent")
+
+    if not intent_data:
+        await callback.answer("⚠️ Данные поиска устарели. Начните поиск заново.", show_alert=True)
+        return
+
+    intent = ParsedFlightIntent(**intent_data)
+
+    # Apply selected airport to target
+    if callback_data.target == "origin":
+        origin = callback_data.iata
+        destination = intent.destination
+    else:
+        origin = intent.origin
+        destination = callback_data.iata
+
+    intent.origin = origin
+    intent.destination = destination
+    intent.is_ambiguous = False
+
+    await callback.answer()
+
+    if callback.message:
+        try:
+            if callback.bot:
+                await callback.bot.send_chat_action(chat_id=callback.message.chat.id, action=ChatAction.TYPING)
+        except Exception:
+            pass
+
+        await callback.message.edit_text(
+            f"⏳ Выполняю Live-поиск рейсов <code>{origin}</code> ✈️ <code>{destination}</code> на <code>{intent.date}</code>...",
+            parse_mode="HTML",
+        )
+
+    offers: List[FlightOffer] = []
+    try:
+        provider = AviasalesProvider()
+        offers = await provider.search(
+            origin=origin,
+            destination=destination,
+            date=intent.date,
+            direct_only=intent.direct_only,
+            flight_number=intent.flight_number,
+        )
+    except Exception as search_err:
+        logger.warning("Live search after airport disambiguation failed: %s", search_err)
+
+    if not offers:
+        cancel_kb = InlineKeyboardMarkup(
+            inline_keyboard=[
+                [InlineKeyboardButton(text="❌ Отмена", callback_data=CancelSnipeCallback().pack())]
+            ]
+        )
+        if callback.message:
+            await callback.message.edit_text(
+                f"⚠️ По маршруту <code>{origin}</code> ✈️ <code>{destination}</code> на <code>{intent.date}</code> "
+                "билетов в свободной продаже не обнаружено (или рейс распродан).\n\n"
+                "Попробуйте ввести другой маршрут/дату или нажмите «Отмена».",
+                reply_markup=cancel_kb,
+                parse_mode="HTML",
+            )
+        return
+
+    offers_dump = [o.model_dump() for o in offers]
+    await state.update_data(
+        origin=origin,
+        destination=destination,
+        date=intent.date,
+        direct_only=intent.direct_only,
+        offers=offers_dump,
+    )
+    await state.set_state(SniperStates.waiting_for_search_query)
+
+    list_text = (
+        f"✈️ <b>Найдено рейсов ({len(offers)})</b> по маршруту <code>{origin}</code> ✈️ <code>{destination}</code> на <code>{intent.date}</code>:\n\n"
+        "Выберите рейс для настройки мониторинга:"
+    )
+    keyboard = build_flight_list_keyboard(offers_dump)
+    if callback.message:
+        await callback.message.edit_text(list_text, reply_markup=keyboard, parse_mode="HTML")
 
 
 # Alias for backward-compatibility in tests

@@ -9,6 +9,7 @@ import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from backend.bot.handlers import (
+    AirportSelectCallback,
     CancelSnipeCallback,
     ConfirmSnipeCallback,
     FlightSelectCallback,
@@ -16,6 +17,8 @@ from backend.bot.handlers import (
     QuickIntervalCallback,
     SniperStates,
     StepBackCallback,
+    build_airport_disambiguation_keyboard,
+    handle_airport_select_callback,
     handle_cancel_snipe_callback,
     handle_confirm_snipe_callback,
     handle_flight_select_callback,
@@ -30,6 +33,7 @@ from backend.bot.handlers import (
     router,
 )
 from backend.bot.nlp_parser import (
+    CITY_AMBIGUOUS_AIRPORTS,
     CITY_TO_IATA,
     RATES_TO_KZT,
     parse_flight_request,
@@ -70,7 +74,7 @@ class TestNlpParser:
         assert CITY_TO_IATA["ташкент"] == "TAS"
 
     def test_rule_based_parser_asian_city_without_price(self) -> None:
-        """Test parsing Asian city route without target price."""
+        """Test parsing Asian city route without target price and assert disambiguation fields."""
         text = "Алматы - Чэнду на 2026-11-21"
         base = date(2026, 9, 1)
         intent = rule_based_flight_parser(text, base_date=base)
@@ -82,6 +86,76 @@ class TestNlpParser:
         assert intent.target_price is None
         assert intent.flight_number is None
         assert intent.interval_minutes == 5
+        assert intent.is_ambiguous is True
+        assert len(intent.ambiguous_options) == 2
+        assert intent.ambiguous_target == "destination"
+        assert intent.ambiguous_city_name == "Чэнду"
+        assert intent.ambiguous_options[0]["iata"] == "TFU"
+        assert intent.ambiguous_options[1]["iata"] == "CTU"
+
+    def test_rule_based_parser_disambiguation_all_cities(self) -> None:
+        """Test disambiguation detection across multi-airport metropolitan cities."""
+        base = date(2026, 9, 1)
+
+        # 1. Chengdu ambiguous
+        intent_ctu = rule_based_flight_parser("Алматы - Чэнду 21 ноября", base_date=base)
+        assert intent_ctu is not None
+        assert intent_ctu.is_ambiguous is True
+        assert intent_ctu.ambiguous_target == "destination"
+        assert intent_ctu.ambiguous_city_name == "Чэнду"
+        assert [o["iata"] for o in intent_ctu.ambiguous_options] == ["TFU", "CTU"]
+
+        # 2. Chengdu specific (Tianfu / TFU) -> not ambiguous
+        intent_tfu = rule_based_flight_parser("Алматы в Тяньфу 21 ноября", base_date=base)
+        assert intent_tfu is not None
+        assert intent_tfu.is_ambiguous is False
+        assert intent_tfu.destination == "TFU"
+
+        # 3. Moscow origin ambiguous
+        intent_mow = rule_based_flight_parser("Москва - Алматы 10 октября", base_date=base)
+        assert intent_mow is not None
+        assert intent_mow.is_ambiguous is True
+        assert intent_mow.ambiguous_target == "origin"
+        assert intent_mow.ambiguous_city_name == "Москва"
+        assert [o["iata"] for o in intent_mow.ambiguous_options] == ["SVO", "DME", "VKO"]
+
+        # 4. Moscow specific (Sheremetyevo / SVO) -> not ambiguous
+        intent_svo = rule_based_flight_parser("Из Шереметьево в Алматы 10 октября", base_date=base)
+        assert intent_svo is not None
+        assert intent_svo.is_ambiguous is False
+        assert intent_svo.origin == "SVO"
+
+        # 5. Istanbul ambiguous
+        intent_ist = rule_based_flight_parser("Астана в Стамбул 25 декабря", base_date=base)
+        assert intent_ist is not None
+        assert intent_ist.is_ambiguous is True
+        assert intent_ist.ambiguous_city_name == "Стамбул"
+        assert [o["iata"] for o in intent_ist.ambiguous_options] == ["IST", "SAW"]
+
+        # 6. Istanbul specific (Sabiha / SAW) -> not ambiguous
+        intent_saw = rule_based_flight_parser("Астана в Сабиху 25 декабря", base_date=base)
+        assert intent_saw is not None
+        assert intent_saw.is_ambiguous is False
+        assert intent_saw.destination == "SAW"
+
+        # 7. Dubai ambiguous
+        intent_dxb = rule_based_flight_parser("Алматы в Дубай 15 января 2027", base_date=base)
+        assert intent_dxb is not None
+        assert intent_dxb.is_ambiguous is True
+        assert intent_dxb.ambiguous_city_name == "Дубай"
+        assert [o["iata"] for o in intent_dxb.ambiguous_options] == ["DXB", "DWC"]
+
+        # 8. Dubai specific (Al Maktoum / DWC) -> not ambiguous
+        intent_dwc = rule_based_flight_parser("Алматы в Аль-Мактум 15 января 2027", base_date=base)
+        assert intent_dwc is not None
+        assert intent_dwc.is_ambiguous is False
+        assert intent_dwc.destination == "DWC"
+
+        # 9. Non-ambiguous Kazakh domestic route
+        intent_kz = rule_based_flight_parser("Алматы - Астана 15 октября", base_date=base)
+        assert intent_kz is not None
+        assert intent_kz.is_ambiguous is False
+        assert intent_kz.ambiguous_options == []
 
     def test_currency_conversion_rates(self) -> None:
         """Verify currency exchange rates to KZT."""
@@ -239,7 +313,7 @@ class TestNlpParser:
         base = date(2026, 9, 1)
 
         # 1. Asian hub query without price
-        intent1 = await parse_search_query("Алматы - Пхукет на 25 декабря 2026", base_date=base)
+        intent1 = await parse_search_query("Алматы - Пхукет на 25 декабря 2026", api_key="", base_date=base)
         assert intent1 is not None
         assert intent1.origin == "ALA"
         assert intent1.destination == "HKT"
@@ -247,21 +321,21 @@ class TestNlpParser:
         assert intent1.direct_only is True
 
         # 2. Asian hub query with reverse order
-        intent2 = await parse_search_query("В Сеул из Астаны на 2026-11-20", base_date=base)
+        intent2 = await parse_search_query("В Сеул из Астаны на 2026-11-20", api_key="", base_date=base)
         assert intent2 is not None
         assert intent2.origin == "NQZ"
         assert intent2.destination == "ICN"
         assert intent2.date == "2026-11-20"
 
         # 3. Multi-word city name: Абу-Даби
-        intent3 = await parse_search_query("из Алматы в Абу-Даби 15 октября", base_date=base)
+        intent3 = await parse_search_query("из Алматы в Абу-Даби 15 октября", api_key="", base_date=base)
         assert intent3 is not None
         assert intent3.origin == "ALA"
         assert intent3.destination == "AUH"
         assert intent3.date == "2026-10-15"
 
         # 4. Incomplete query returns None
-        assert await parse_search_query("Хочу полететь на море", base_date=base) is None
+        assert await parse_search_query("Хочу полететь на море", api_key="", base_date=base) is None
 
     @pytest.mark.asyncio
     async def test_parse_search_query_with_mocked_groq(self) -> None:
@@ -538,7 +612,7 @@ class TestTelegramBotFSMAndLivePreviewFlow:
         status_msg.edit_text = AsyncMock()
 
         message = MagicMock()
-        message.text = "Алматы - Чэнду 21 ноября"
+        message.text = "Алматы - Сеул 21 ноября"
         message.chat.id = 777
         message.bot = MagicMock()
         message.bot.send_chat_action = AsyncMock()
@@ -555,24 +629,24 @@ class TestTelegramBotFSMAndLivePreviewFlow:
 
         mock_offers = [
             FlightOffer(
-                airline="Air China",
-                flight_number="CA-484",
+                airline="Air Astana",
+                flight_number="KC-909",
                 origin="ALA",
-                destination="CTU",
-                departure_time="10:00",
-                arrival_time="17:00",
-                price_kzt=78500.0,
+                destination="ICN",
+                departure_time="01:10",
+                arrival_time="09:45",
+                price_kzt=185000.0,
                 transfers_count=0,
             ),
             FlightOffer(
-                airline="China Southern",
-                flight_number="CZ-6012",
+                airline="Asiana Airlines",
+                flight_number="OZ-578",
                 origin="ALA",
-                destination="CTU",
-                departure_time="14:00",
-                arrival_time="21:00",
-                price_kzt=92000.0,
-                transfers_count=1,
+                destination="ICN",
+                departure_time="23:30",
+                arrival_time="08:10",
+                price_kzt=210000.0,
+                transfers_count=0,
             ),
         ]
 
@@ -583,7 +657,7 @@ class TestTelegramBotFSMAndLivePreviewFlow:
         assert message.answer.call_args[0][0] == "⏳ Выполняю Live-поиск рейсов..."
         assert state.update_data.called
         assert state_data["origin"] == "ALA"
-        assert state_data["destination"] == "CTU"
+        assert state_data["destination"] == "ICN"
         assert len(state_data["offers"]) == 2
 
         assert status_msg.edit_text.called
@@ -593,13 +667,219 @@ class TestTelegramBotFSMAndLivePreviewFlow:
 
         assert "Найдено рейсов (2)" in card_text
         assert "ALA" in card_text
-        assert "CTU" in card_text
+        assert "ICN" in card_text
         assert reply_markup is not None
         # 2 flight buttons + 1 cancel button
         assert len(reply_markup.inline_keyboard) == 3
         assert "fl_sel:0" in reply_markup.inline_keyboard[0][0].callback_data
         assert "fl_sel:1" in reply_markup.inline_keyboard[1][0].callback_data
         assert "fl_canc" in reply_markup.inline_keyboard[2][0].callback_data
+
+    async def test_search_query_step1_ambiguous_airport_disambiguation(self) -> None:
+        """Test Step 1: When user query targets a multi-airport city, bot presents airport selection."""
+        status_msg = MagicMock()
+        status_msg.edit_text = AsyncMock()
+
+        message = MagicMock()
+        message.text = "Алматы - Чэнду 21 ноября"
+        message.chat.id = 777
+        message.bot = MagicMock()
+        message.bot.send_chat_action = AsyncMock()
+        message.answer = AsyncMock(return_value=status_msg)
+
+        state_data: Dict[str, Any] = {}
+
+        async def mock_update_data(**kwargs: Any) -> None:
+            state_data.update(kwargs)
+
+        state = AsyncMock()
+        state.update_data = AsyncMock(side_effect=mock_update_data)
+        state.set_state = AsyncMock()
+        state.get_data = AsyncMock(return_value=state_data)
+
+        await handle_search_query_message(message, state)
+
+        # Verify state transitioned to waiting_for_airport_disambiguation
+        assert state.set_state.called
+        assert state.set_state.call_args[0][0] == SniperStates.waiting_for_airport_disambiguation
+        assert "disambiguation_intent" in state_data
+        assert state_data["disambiguation_intent"]["is_ambiguous"] is True
+        assert state_data["disambiguation_intent"]["ambiguous_city_name"] == "Чэнду"
+
+        # Verify message text and disambiguation keyboard
+        assert status_msg.edit_text.called
+        edit_args = status_msg.edit_text.call_args
+        card_text = edit_args[0][0]
+        reply_markup = edit_args[1].get("reply_markup")
+
+        assert "В городе <b>Чэнду</b> несколько крупных аэропортов" in card_text
+        assert reply_markup is not None
+        # 2 airport options (TFU, CTU) + 1 Cancel button
+        assert len(reply_markup.inline_keyboard) == 3
+        assert "apt_sel:TFU:destination" in reply_markup.inline_keyboard[0][0].callback_data
+        assert "apt_sel:CTU:destination" in reply_markup.inline_keyboard[1][0].callback_data
+        assert "fl_canc" in reply_markup.inline_keyboard[2][0].callback_data
+
+    async def test_handle_airport_select_callback_destination(self) -> None:
+        """Test AirportSelectCallback: choosing airport updates destination, searches live flights, and renders list."""
+        disambiguation_intent = {
+            "origin": "ALA",
+            "destination": "CTU",
+            "date": "2026-11-21",
+            "direct_only": True,
+            "flight_number": None,
+            "is_ambiguous": True,
+            "ambiguous_target": "destination",
+            "ambiguous_city_name": "Чэнду",
+            "ambiguous_options": [
+                {"iata": "TFU", "name": "Тяньфу (TFU) — Основной/Лоукостеры"},
+                {"iata": "CTU", "name": "Шуанлю (CTU) — Старый терминал"},
+            ],
+        }
+        state_data: Dict[str, Any] = {"disambiguation_intent": disambiguation_intent}
+
+        async def mock_update_data(**kwargs: Any) -> None:
+            state_data.update(kwargs)
+
+        state = AsyncMock()
+        state.get_data = AsyncMock(return_value=state_data)
+        state.update_data = AsyncMock(side_effect=mock_update_data)
+        state.set_state = AsyncMock()
+
+        cb_msg = MagicMock()
+        cb_msg.edit_text = AsyncMock()
+
+        callback = MagicMock()
+        callback.message = cb_msg
+        callback.answer = AsyncMock()
+        callback.bot = MagicMock()
+        callback.bot.send_chat_action = AsyncMock()
+
+        mock_offers = [
+            FlightOffer(
+                airline="Air China",
+                flight_number="CA-484",
+                origin="ALA",
+                destination="TFU",
+                departure_time="10:00",
+                arrival_time="17:00",
+                price_kzt=78500.0,
+                transfers_count=0,
+            )
+        ]
+
+        cb_data = AirportSelectCallback(iata="TFU", target="destination")
+        with patch("backend.bot.handlers.AviasalesProvider.search", new=AsyncMock(return_value=mock_offers)) as mock_search:
+            await handle_airport_select_callback(callback, cb_data, state)
+
+            assert mock_search.called
+            assert mock_search.call_args[1]["origin"] == "ALA"
+            assert mock_search.call_args[1]["destination"] == "TFU"
+
+        assert state.set_state.called
+        assert state.set_state.call_args[0][0] == SniperStates.waiting_for_search_query
+        assert state_data["origin"] == "ALA"
+        assert state_data["destination"] == "TFU"
+        assert len(state_data["offers"]) == 1
+
+        assert cb_msg.edit_text.called
+        last_edit_text = cb_msg.edit_text.call_args[0][0]
+        assert "Найдено рейсов (1)" in last_edit_text
+        assert "TFU" in last_edit_text
+
+    async def test_handle_airport_select_callback_origin(self) -> None:
+        """Test AirportSelectCallback: choosing airport updates origin (e.g. Moscow SVO -> ALA)."""
+        disambiguation_intent = {
+            "origin": "MOW",
+            "destination": "ALA",
+            "date": "2026-10-10",
+            "direct_only": True,
+            "flight_number": None,
+            "is_ambiguous": True,
+            "ambiguous_target": "origin",
+            "ambiguous_city_name": "Москва",
+            "ambiguous_options": [
+                {"iata": "SVO", "name": "Шереметьево (SVO)"},
+                {"iata": "DME", "name": "Домодедово (DME)"},
+                {"iata": "VKO", "name": "Внуково (VKO)"},
+            ],
+        }
+        state_data: Dict[str, Any] = {"disambiguation_intent": disambiguation_intent}
+
+        async def mock_update_data(**kwargs: Any) -> None:
+            state_data.update(kwargs)
+
+        state = AsyncMock()
+        state.get_data = AsyncMock(return_value=state_data)
+        state.update_data = AsyncMock(side_effect=mock_update_data)
+        state.set_state = AsyncMock()
+
+        cb_msg = MagicMock()
+        cb_msg.edit_text = AsyncMock()
+
+        callback = MagicMock()
+        callback.message = cb_msg
+        callback.answer = AsyncMock()
+        callback.bot = MagicMock()
+        callback.bot.send_chat_action = AsyncMock()
+
+        mock_offers = [
+            FlightOffer(
+                airline="Aeroflot",
+                flight_number="SU-1946",
+                origin="SVO",
+                destination="ALA",
+                departure_time="08:00",
+                arrival_time="15:30",
+                price_kzt=115000.0,
+                transfers_count=0,
+            )
+        ]
+
+        cb_data = AirportSelectCallback(iata="SVO", target="origin")
+        with patch("backend.bot.handlers.AviasalesProvider.search", new=AsyncMock(return_value=mock_offers)) as mock_search:
+            await handle_airport_select_callback(callback, cb_data, state)
+
+            assert mock_search.called
+            assert mock_search.call_args[1]["origin"] == "SVO"
+            assert mock_search.call_args[1]["destination"] == "ALA"
+
+        assert state_data["origin"] == "SVO"
+        assert state_data["destination"] == "ALA"
+
+    async def test_handle_airport_select_callback_no_offers(self) -> None:
+        """Test AirportSelectCallback: when live search yields no offers, renders no-offers card."""
+        disambiguation_intent = {
+            "origin": "ALA",
+            "destination": "CTU",
+            "date": "2026-11-21",
+            "direct_only": True,
+            "flight_number": None,
+            "is_ambiguous": True,
+        }
+        state_data: Dict[str, Any] = {"disambiguation_intent": disambiguation_intent}
+
+        state = AsyncMock()
+        state.get_data = AsyncMock(return_value=state_data)
+        state.update_data = AsyncMock()
+
+        cb_msg = MagicMock()
+        cb_msg.edit_text = AsyncMock()
+
+        callback = MagicMock()
+        callback.message = cb_msg
+        callback.answer = AsyncMock()
+        callback.bot = MagicMock()
+        callback.bot.send_chat_action = AsyncMock()
+
+        cb_data = AirportSelectCallback(iata="CTU", target="destination")
+        with patch("backend.bot.handlers.AviasalesProvider.search", new=AsyncMock(return_value=[])):
+            await handle_airport_select_callback(callback, cb_data, state)
+
+        assert cb_msg.edit_text.called
+        last_edit_args = cb_msg.edit_text.call_args
+        card_text = last_edit_args[0][0]
+        assert "билетов в свободной продаже не обнаружено" in card_text
 
     async def test_search_query_step1_no_offers(self) -> None:
         """Test Step 1: When no flights found, displays alert and cancel button."""
