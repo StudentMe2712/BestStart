@@ -48,11 +48,12 @@ class MockFlightProvider(BaseFlightProvider):
         destination: str,
         date: str,
         max_transfers: int = 0,
+        direct_only: bool = False,
     ) -> List[FlightOffer]:
         filtered = []
         for o in self._offers:
             if o.origin.upper() == origin.upper() and o.destination.upper() == destination.upper():
-                if max_transfers == 0 and o.transfers_count > 0:
+                if (direct_only or max_transfers == 0) and o.transfers_count > 0:
                     continue
                 if max_transfers > 0 and o.transfers_count > max_transfers:
                     continue

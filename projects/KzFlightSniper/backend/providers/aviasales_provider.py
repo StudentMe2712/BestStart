@@ -60,6 +60,24 @@ AIRLINE_IATA_MAP: Dict[str, str] = {
     "A4": "Azimuth",
 }
 
+# Map of metropolitan airport alternatives for multi-airport cities
+METRO_AIRPORT_ALTERNATIVES: Dict[str, List[str]] = {
+    "CTU": ["TFU"],
+    "TFU": ["CTU"],
+    "IST": ["SAW"],
+    "SAW": ["IST"],
+    "DXB": ["DWC"],
+    "DWC": ["DXB"],
+    "BKK": ["DMK"],
+    "DMK": ["BKK"],
+    "PEK": ["PKX"],
+    "PKX": ["PEK"],
+    "MOW": ["SVO", "DME", "VKO"],
+    "TYO": ["HND", "NRT"],
+    "LON": ["LHR", "LGW", "STN"],
+}
+
+
 
 def _normalize_flight_number(airline_code: str, flight_number: Any) -> str:
     """Normalize flight number into standardized format (e.g. 'FS-7051').
@@ -451,6 +469,7 @@ class AviasalesProvider(BaseFlightProvider):
         destination: str,
         date: str,
         max_transfers: int = 0,
+        direct_only: bool = False,
     ) -> List[FlightOffer]:
         """Search flights via Travelpayouts / Aviasales v3 API.
 
@@ -459,6 +478,7 @@ class AviasalesProvider(BaseFlightProvider):
             destination: 3-letter IATA code of destination airport (e.g. 'NQZ').
             date: Departure date in YYYY-MM-DD or YYYY-MM format.
             max_transfers: Maximum number of transfers allowed (0 for direct only).
+            direct_only: Whether to restrict search to direct flights only.
 
         Returns:
             List of matching FlightOffer instances sorted by price.
@@ -468,10 +488,11 @@ class AviasalesProvider(BaseFlightProvider):
         clean_date = date.strip()
 
         logger.info(
-            "Executing Aviasales flight search: %s -> %s on %s (max_transfers=%d)",
+            "Querying Aviasales/Travelpayouts Flight Data Cache API for route %s -> %s on %s (direct_only=%s, max_transfers=%d)",
             clean_origin,
             clean_dest,
             clean_date,
+            direct_only,
             max_transfers,
         )
 
@@ -484,6 +505,11 @@ class AviasalesProvider(BaseFlightProvider):
             "sorting": "price",
             "token": self.token,
         }
+
+        if direct_only or max_transfers == 0:
+            params["direct"] = "true"
+        elif not direct_only and max_transfers > 0:
+            params["direct"] = "false"
 
         headers: Dict[str, str] = {
             "User-Agent": (
@@ -500,7 +526,23 @@ class AviasalesProvider(BaseFlightProvider):
             async with httpx.AsyncClient(timeout=self.timeout, follow_redirects=True) as client:
                 response = await client.get(self.api_url, params=params, headers=headers)
 
-                if response.status_code != 200:
+                if response.status_code == 200:
+                    data = response.json()
+                    raw_offers = self.parse_aviasales_json(
+                        raw_data=data,
+                        origin=clean_origin,
+                        destination=clean_dest,
+                        base_url=self.base_url,
+                    )
+
+                    # Filter by direct_only and max_transfers
+                    for offer in raw_offers:
+                        if (direct_only or max_transfers == 0) and offer.transfers_count > 0:
+                            continue
+                        if max_transfers > 0 and offer.transfers_count > max_transfers:
+                            continue
+                        offers.append(offer)
+                else:
                     logger.warning(
                         "Aviasales API returned HTTP %d for %s->%s on %s: %s",
                         response.status_code,
@@ -509,23 +551,100 @@ class AviasalesProvider(BaseFlightProvider):
                         clean_date,
                         response.text[:200],
                     )
-                    return []
 
-                data = response.json()
-                raw_offers = self.parse_aviasales_json(
-                    raw_data=data,
-                    origin=clean_origin,
-                    destination=clean_dest,
-                    base_url=self.base_url,
-                )
+                # Metro IATA Airport Resolution fallback if 0 offers found
+                if not offers and clean_dest in METRO_AIRPORT_ALTERNATIVES:
+                    for alt_code in METRO_AIRPORT_ALTERNATIVES[clean_dest]:
+                        alt_params = dict(params)
+                        alt_params["destination"] = alt_code
+                        try:
+                            alt_response = await client.get(self.api_url, params=alt_params, headers=headers)
+                            if alt_response.status_code == 200:
+                                alt_data = alt_response.json()
+                                raw_alt_offers = self.parse_aviasales_json(
+                                    raw_data=alt_data,
+                                    origin=clean_origin,
+                                    destination=alt_code,
+                                    base_url=self.base_url,
+                                )
+                                alt_offers: List[FlightOffer] = []
+                                for offer in raw_alt_offers:
+                                    if (direct_only or max_transfers == 0) and offer.transfers_count > 0:
+                                        continue
+                                    if max_transfers > 0 and offer.transfers_count > max_transfers:
+                                        continue
+                                    alt_offers.append(offer)
 
-                # Filter by max_transfers
-                for offer in raw_offers:
-                    if max_transfers == 0 and offer.transfers_count > 0:
-                        continue
-                    if max_transfers > 0 and offer.transfers_count > max_transfers:
-                        continue
-                    offers.append(offer)
+                                if alt_offers:
+                                    logger.info(
+                                        "Found %d flight(s) via alternative metro airport %s for %s",
+                                        len(alt_offers),
+                                        alt_code,
+                                        clean_dest,
+                                    )
+                                    offers.extend(alt_offers)
+                        except Exception as alt_err:
+                            logger.debug(
+                                "Alternative metro airport query failed for %s->%s: %s",
+                                clean_origin,
+                                alt_code,
+                                alt_err,
+                            )
+
+                # Fallback Month Cache Lookup if 0 offers found
+                if not offers:
+                    month_str = clean_date[:7] if len(clean_date) >= 7 else clean_date
+                    fallback_params: Dict[str, Any] = {
+                        "origin": clean_origin,
+                        "destination": clean_dest,
+                        "departure_at": month_str,
+                        "currency": "kzt",
+                        "unique": "false",
+                        "sorting": "price",
+                        "token": self.token,
+                    }
+                    try:
+                        fallback_response = await client.get(
+                            self.api_url,
+                            params=fallback_params,
+                            headers=headers,
+                        )
+                        if fallback_response.status_code == 200:
+                            fallback_data = fallback_response.json()
+                            fallback_offers = self.parse_aviasales_json(
+                                raw_data=fallback_data,
+                                origin=clean_origin,
+                                destination=clean_dest,
+                                base_url=self.base_url,
+                            )
+                            if fallback_offers:
+                                min_price = min(o.price_kzt for o in fallback_offers)
+                                logger.info(
+                                    "ℹ️ [Cache Fallback] Route %s -> %s: Found %d cached flight offer(s) across month %s (e.g. min price %.0f KZT). Exact date %s has no matching %s offers.",
+                                    clean_origin,
+                                    clean_dest,
+                                    len(fallback_offers),
+                                    month_str,
+                                    min_price,
+                                    clean_date,
+                                    "direct" if direct_only else "",
+                                )
+                            else:
+                                logger.info(
+                                    "ℹ️ [Cache Fallback] Route %s -> %s: Cache is completely empty for the entire month %s.",
+                                    clean_origin,
+                                    clean_dest,
+                                    month_str,
+                                )
+                        else:
+                            logger.info(
+                                "ℹ️ [Cache Fallback] Route %s -> %s: Cache is completely empty for the entire month %s.",
+                                clean_origin,
+                                clean_dest,
+                                month_str,
+                            )
+                    except Exception as fb_err:
+                        logger.debug("Fallback month cache query failed for %s->%s: %s", clean_origin, clean_dest, fb_err)
 
                 # Sort offers by price ascending
                 offers.sort(key=lambda o: o.price_kzt)
@@ -596,6 +715,7 @@ class AviasalesProvider(BaseFlightProvider):
             destination=destination,
             date=date,
             max_transfers=effective_max_transfers,
+            direct_only=direct_only,
         )
 
         if direct_only:

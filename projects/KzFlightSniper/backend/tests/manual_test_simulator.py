@@ -49,11 +49,12 @@ class MockFlightProvider(BaseFlightProvider):
         destination: str,
         date: str,
         max_transfers: int = 0,
+        direct_only: bool = False,
     ) -> List[FlightOffer]:
         self.search_call_count += 1
         key = f"{origin.upper()}_{destination.upper()}_{date}"
         available = self.offers_by_route.get(key, [])
-        if max_transfers == 0:
+        if direct_only or max_transfers == 0:
             return [o for o in available if o.transfers_count == 0]
         return [o for o in available if o.transfers_count <= max_transfers]
 

@@ -10,6 +10,7 @@ import httpx
 from backend.core.models import FlightOffer
 from backend.providers.aviasales_provider import (
     AIRLINE_IATA_MAP,
+    METRO_AIRPORT_ALTERNATIVES,
     AviasalesProvider,
     _build_deep_link,
     _normalize_flight_number,
@@ -363,6 +364,157 @@ class TestAviasalesProvider(unittest.TestCase):
                     direct_only=False,
                 )
                 self.assertEqual(len(res4), 3)
+
+        asyncio.run(_run())
+
+    def test_metro_airport_alternatives_dict(self) -> None:
+        """Verify METRO_AIRPORT_ALTERNATIVES dictionary mappings."""
+        self.assertIn("CTU", METRO_AIRPORT_ALTERNATIVES)
+        self.assertEqual(METRO_AIRPORT_ALTERNATIVES["CTU"], ["TFU"])
+        self.assertIn("TFU", METRO_AIRPORT_ALTERNATIVES)
+        self.assertEqual(METRO_AIRPORT_ALTERNATIVES["TFU"], ["CTU"])
+        self.assertEqual(METRO_AIRPORT_ALTERNATIVES["IST"], ["SAW"])
+        self.assertEqual(METRO_AIRPORT_ALTERNATIVES["SAW"], ["IST"])
+        self.assertEqual(METRO_AIRPORT_ALTERNATIVES["DXB"], ["DWC"])
+        self.assertEqual(METRO_AIRPORT_ALTERNATIVES["DWC"], ["DXB"])
+        self.assertEqual(METRO_AIRPORT_ALTERNATIVES["BKK"], ["DMK"])
+        self.assertEqual(METRO_AIRPORT_ALTERNATIVES["DMK"], ["BKK"])
+        self.assertEqual(METRO_AIRPORT_ALTERNATIVES["PEK"], ["PKX"])
+        self.assertEqual(METRO_AIRPORT_ALTERNATIVES["PKX"], ["PEK"])
+        self.assertEqual(METRO_AIRPORT_ALTERNATIVES["MOW"], ["SVO", "DME", "VKO"])
+        self.assertEqual(METRO_AIRPORT_ALTERNATIVES["TYO"], ["HND", "NRT"])
+        self.assertEqual(METRO_AIRPORT_ALTERNATIVES["LON"], ["LHR", "LGW", "STN"])
+
+    def test_search_flights_direct_only_param(self) -> None:
+        """Verify direct query param sent to Travelpayouts API based on direct_only and max_transfers."""
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.json.return_value = {"success": True, "data": []}
+
+        async def _run() -> None:
+            # Case 1: direct_only=True -> direct="true"
+            with patch("httpx.AsyncClient.get", new=AsyncMock(return_value=mock_resp)) as mock_get:
+                await self.provider.search_flights("ALA", "NQZ", "2026-10-15", max_transfers=2, direct_only=True)
+                primary_call = mock_get.call_args_list[0]
+                self.assertEqual(primary_call.kwargs["params"]["direct"], "true")
+
+            # Case 2: max_transfers=0, direct_only=False -> direct="true"
+            with patch("httpx.AsyncClient.get", new=AsyncMock(return_value=mock_resp)) as mock_get:
+                await self.provider.search_flights("ALA", "NQZ", "2026-10-15", max_transfers=0, direct_only=False)
+                primary_call = mock_get.call_args_list[0]
+                self.assertEqual(primary_call.kwargs["params"]["direct"], "true")
+
+            # Case 3: direct_only=False, max_transfers=2 -> direct="false"
+            with patch("httpx.AsyncClient.get", new=AsyncMock(return_value=mock_resp)) as mock_get:
+                await self.provider.search_flights("ALA", "NQZ", "2026-10-15", max_transfers=2, direct_only=False)
+                primary_call = mock_get.call_args_list[0]
+                self.assertEqual(primary_call.kwargs["params"]["direct"], "false")
+
+        asyncio.run(_run())
+
+    def test_search_flights_metro_airport_fallback(self) -> None:
+        """Verify alternate metro airport (e.g. CTU -> TFU) is queried when primary airport returns 0 offers."""
+        ctu_empty_resp = MagicMock()
+        ctu_empty_resp.status_code = 200
+        ctu_empty_resp.json.return_value = {"success": True, "data": []}
+
+        tfu_resp = MagicMock()
+        tfu_resp.status_code = 200
+        tfu_resp.json.return_value = {
+            "success": True,
+            "data": [
+                {
+                    "origin": "ALA",
+                    "destination": "TFU",
+                    "price": 85000,
+                    "airline": "CZ",
+                    "flight_number": "CZ-6012",
+                    "departure_at": "2026-11-21T10:00:00+06:00",
+                    "transfers": 0,
+                    "duration": 240,
+                }
+            ],
+        }
+
+        async def _run() -> None:
+            async def side_effect(*args: Any, **kwargs: Any) -> MagicMock:
+                params = kwargs.get("params", {})
+                if params.get("destination") == "CTU":
+                    return ctu_empty_resp
+                elif params.get("destination") == "TFU":
+                    return tfu_resp
+                return ctu_empty_resp
+
+            with patch("httpx.AsyncClient.get", new=AsyncMock(side_effect=side_effect)):
+                with self.assertLogs("kzflight_sniper.providers.aviasales", level="INFO") as cm:
+                    offers = await self.provider.search_flights("ALA", "CTU", "2026-11-21", direct_only=True)
+                    self.assertEqual(len(offers), 1)
+                    self.assertEqual(offers[0].destination, "TFU")
+                    self.assertEqual(offers[0].price_kzt, 85000.0)
+                    self.assertTrue(
+                        any("Found 1 flight(s) via alternative metro airport TFU for CTU" in log for log in cm.output)
+                    )
+
+        asyncio.run(_run())
+
+    def test_search_flights_fallback_month_lookup(self) -> None:
+        """Verify fallback month cache lookup is executed and logged when exact date returns 0 offers."""
+        empty_exact_resp = MagicMock()
+        empty_exact_resp.status_code = 200
+        empty_exact_resp.json.return_value = {"success": True, "data": []}
+
+        month_resp = MagicMock()
+        month_resp.status_code = 200
+        month_resp.json.return_value = {
+            "success": True,
+            "data": [
+                {
+                    "origin": "ALA",
+                    "destination": "NQZ",
+                    "price": 24000,
+                    "airline": "KC",
+                    "flight_number": "KC-853",
+                    "departure_at": "2026-11-10T08:00:00+06:00",
+                    "transfers": 0,
+                },
+                {
+                    "origin": "ALA",
+                    "destination": "NQZ",
+                    "price": 19000,
+                    "airline": "FS",
+                    "flight_number": "FS-7051",
+                    "departure_at": "2026-11-15T06:45:00+06:00",
+                    "transfers": 0,
+                },
+            ],
+        }
+
+        async def _run() -> None:
+            async def side_effect(*args: Any, **kwargs: Any) -> MagicMock:
+                params = kwargs.get("params", {})
+                if params.get("departure_at") == "2026-11-21":
+                    return empty_exact_resp
+                elif params.get("departure_at") == "2026-11":
+                    return month_resp
+                return empty_exact_resp
+
+            # Case A: Month cache contains offers
+            with patch("httpx.AsyncClient.get", new=AsyncMock(side_effect=side_effect)):
+                with self.assertLogs("kzflight_sniper.providers.aviasales", level="INFO") as cm:
+                    offers = await self.provider.search_flights("ALA", "NQZ", "2026-11-21", direct_only=True)
+                    self.assertEqual(offers, [])
+                    self.assertTrue(
+                        any("Found 2 cached flight offer(s) across month 2026-11 (e.g. min price 19000 KZT)" in log for log in cm.output)
+                    )
+
+            # Case B: Month cache completely empty
+            with patch("httpx.AsyncClient.get", new=AsyncMock(return_value=empty_exact_resp)):
+                with self.assertLogs("kzflight_sniper.providers.aviasales", level="INFO") as cm:
+                    offers = await self.provider.search_flights("ALA", "NQZ", "2026-11-21", direct_only=False)
+                    self.assertEqual(offers, [])
+                    self.assertTrue(
+                        any("Cache is completely empty for the entire month 2026-11" in log for log in cm.output)
+                    )
 
         asyncio.run(_run())
 

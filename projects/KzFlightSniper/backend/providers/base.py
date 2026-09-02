@@ -21,6 +21,7 @@ class BaseFlightProvider(ABC):
         destination: str,
         date: str,
         max_transfers: int = 0,
+        direct_only: bool = False,
     ) -> List[FlightOffer]:
         """Search flights for route and date, returning standardized flight offers.
 
@@ -29,8 +30,10 @@ class BaseFlightProvider(ABC):
             destination: 3-letter IATA code of destination airport (e.g. 'NQZ').
             date: Departure date in YYYY-MM-DD format.
             max_transfers: Maximum number of transfers allowed (0 for direct only).
+            direct_only: Whether to restrict search to direct flights only.
 
         Returns:
             List of standardized FlightOffer instances.
         """
         pass
+

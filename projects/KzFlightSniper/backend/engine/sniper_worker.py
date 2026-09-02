@@ -136,6 +136,7 @@ class SniperWorker:
                     destination=destination,
                     date=date_str,
                     max_transfers=max_transfer,
+                    direct_only=(max_transfer == 0),
                 )
             except Exception as search_err:
                 logger.error(
