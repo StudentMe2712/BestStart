@@ -647,24 +647,135 @@ class AviataProvider(BaseFlightProvider):
                         logger.info("[NAV] Landed on: %s", final_url)
                         await page.wait_for_timeout(2000)
 
-                        # Dismiss any popups/modals/cookie banners
-                        dismiss_selectors = [
-                            "[class*='cookie'] button",
-                            "[class*='modal'] [class*='close']",
-                            "[class*='banner'] button[class*='close']",
-                            "[class*='popup'] [class*='close']",
-                            "button[aria-label='Close']",
-                            "[class*='overlay'] button",
-                        ]
-                        for dsel in dismiss_selectors:
+                        # ============================================================
+                        # STEP 1.5: Aggressive modal/popup/banner dismissal
+                        # ============================================================
+                        logger.info("[MODAL] Attempting to dismiss any blocking popups...")
+
+                        # --- Layer 1: Escape key (closes most modals) ---
+                        for _ in range(3):
+                            await page.keyboard.press("Escape")
+                            await page.wait_for_timeout(300)
+                        logger.debug("[MODAL] Sent 3x Escape key presses.")
+
+                        # --- Layer 2: Click on empty background corners ---
+                        for x, y in [(10, 10), (1430, 10), (10, 890), (720, 5)]:
                             try:
-                                btn = await page.query_selector(dsel)
-                                if btn and await btn.is_visible():
+                                await page.mouse.click(x, y)
+                                await page.wait_for_timeout(200)
+                            except Exception:
+                                pass
+                        logger.debug("[MODAL] Clicked background corners.")
+
+                        # --- Layer 3: Find and click close/dismiss buttons ---
+                        close_button_selectors = [
+                            # Exact aria-label patterns
+                            "button[aria-label='close']",
+                            "button[aria-label='Close']",
+                            "button[aria-label='Закрыть']",
+                            "button[aria-label='закрыть']",
+                            # Freedom SuperApp / generic modal close buttons
+                            "[class*='modal'] button[class*='close']",
+                            "[class*='modal'] [class*='close']",
+                            "[class*='modal'] button:has(svg)",
+                            "[class*='Modal'] button[class*='close']",
+                            "[class*='Modal'] [class*='Close']",
+                            "[class*='dialog'] button[class*='close']",
+                            "[class*='dialog'] [class*='close']",
+                            "[role='dialog'] button[aria-label='Close']",
+                            "[role='dialog'] button[aria-label='close']",
+                            "[role='dialog'] button:has(svg)",
+                            # Overlay / backdrop dismiss
+                            "[class*='overlay'][class*='close']",
+                            "[class*='backdrop']",
+                            "[class*='Overlay'] button",
+                            # Popup / banner / promo
+                            "[class*='popup'] button[class*='close']",
+                            "[class*='popup'] [class*='close']",
+                            "[class*='Popup'] button[class*='close']",
+                            "[class*='banner'] button[class*='close']",
+                            "[class*='Banner'] button[class*='close']",
+                            "[class*='promo'] button[class*='close']",
+                            "[class*='promo'] [class*='close']",
+                            "[class*='Promo'] [class*='close']",
+                            # SuperApp specific
+                            "[class*='superapp'] button",
+                            "[class*='SuperApp'] button",
+                            "[class*='super-app'] button",
+                            # Cookie consent
+                            "[class*='cookie'] button",
+                            "[class*='Cookie'] button",
+                            "[class*='consent'] button",
+                            # Generic icon-only close buttons (X / cross)
+                            "button[class*='icon-close']",
+                            "button[class*='btn-close']",
+                            "button[class*='close-btn']",
+                            ".close",
+                            "[class*='dismiss']",
+                            # SVG cross inside buttons near top of viewport
+                            "button > svg",
+                        ]
+
+                        dismissed_count = 0
+                        for sel in close_button_selectors:
+                            try:
+                                btn = await page.wait_for_selector(sel, timeout=800, state="visible")
+                                if btn:
                                     await btn.click()
-                                    logger.debug("[NAV] Dismissed popup: %s", dsel)
+                                    dismissed_count += 1
+                                    logger.info("[MODAL] Dismissed via: %s", sel)
                                     await page.wait_for_timeout(500)
                             except Exception:
                                 pass
+
+                        if dismissed_count > 0:
+                            logger.info("[MODAL] Dismissed %d popup element(s).", dismissed_count)
+                        else:
+                            logger.debug("[MODAL] No popup close buttons found (may be clean page).")
+
+                        # --- Layer 4: JavaScript-based forced removal of overlays ---
+                        try:
+                            removed = await page.evaluate("""() => {
+                                let removed = 0;
+                                // Remove elements that look like modal overlays
+                                const selectors = [
+                                    '[class*="modal"]', '[class*="Modal"]',
+                                    '[class*="overlay"]', '[class*="Overlay"]',
+                                    '[class*="popup"]', '[class*="Popup"]',
+                                    '[class*="backdrop"]', '[class*="Backdrop"]',
+                                    '[class*="dialog"]', '[class*="Dialog"]',
+                                    '[class*="superapp"]', '[class*="SuperApp"]',
+                                    '[class*="promo"]', '[class*="Promo"]',
+                                    '[class*="banner"]',
+                                ];
+                                for (const sel of selectors) {
+                                    document.querySelectorAll(sel).forEach(el => {
+                                        const style = window.getComputedStyle(el);
+                                        const isOverlay = (
+                                            style.position === 'fixed' ||
+                                            style.position === 'absolute' ||
+                                            style.zIndex > 100
+                                        );
+                                        if (isOverlay && el.offsetHeight > 200) {
+                                            el.remove();
+                                            removed++;
+                                        }
+                                    });
+                                }
+                                // Also restore body scroll
+                                document.body.style.overflow = 'auto';
+                                document.documentElement.style.overflow = 'auto';
+                                return removed;
+                            }""")
+                            if removed > 0:
+                                logger.info("[MODAL] JS force-removed %d overlay element(s).", removed)
+                        except Exception as js_err:
+                            logger.debug("[MODAL] JS overlay removal failed: %s", js_err)
+
+                        # --- Layer 5: Final Escape + settle ---
+                        await page.keyboard.press("Escape")
+                        await page.wait_for_timeout(1000)
+                        logger.info("[MODAL] Modal dismissal sequence complete.")
 
                         # ============================================================
                         # STEP 2: Fill "Origin" (Откуда) field
@@ -690,10 +801,10 @@ class AviataProvider(BaseFlightProvider):
                         origin_input = None
                         for sel in origin_selectors:
                             try:
-                                elem = await page.wait_for_selector(sel, timeout=3000)
-                                if elem and await elem.is_visible():
+                                elem = await page.wait_for_selector(sel, state="visible", timeout=10000)
+                                if elem:
                                     origin_input = elem
-                                    logger.info("[FORM] Found origin input: %s", sel)
+                                    logger.info("[FORM] Found origin input (visible): %s", sel)
                                     break
                             except Exception:
                                 continue
@@ -736,10 +847,10 @@ class AviataProvider(BaseFlightProvider):
                         dest_input = None
                         for sel in dest_selectors:
                             try:
-                                elem = await page.wait_for_selector(sel, timeout=3000)
-                                if elem and await elem.is_visible():
+                                elem = await page.wait_for_selector(sel, state="visible", timeout=10000)
+                                if elem:
                                     dest_input = elem
-                                    logger.info("[FORM] Found destination input: %s", sel)
+                                    logger.info("[FORM] Found destination input (visible): %s", sel)
                                     break
                             except Exception:
                                 continue
