@@ -115,9 +115,9 @@ if (-not $Name) { throw "Provide -Name <project> (or use -List to see the catalo
 # Resolve preset defaults (explicit flags override the preset)
 switch ($Preset) {
     'lean' {
-        if (-not $Skills)   { $Skills   = 'superpowers,karpathy' }
+        if (-not $Skills)   { $Skills   = 'spec-kit,superpowers,karpathy' }
         if (-not $Rules)    { $Rules    = 'karpathy' }
-        if (-not $Commands) { $Commands = 'gsd' }
+        if (-not $Commands) { $Commands = 'gsd,speckit' }
     }
     'full' {
         if (-not $Agents)   { $Agents   = 'all' }
@@ -282,6 +282,33 @@ This project is containerised so it never conflicts with other projects.
     $dockerSection = $dockerSection.Replace('__APP__', "$appPort").Replace('__DB__', "$dbPort")
 }
 
+# Spec-Kit (SDD) Initialization (.specify/ + specs/)
+$specifyDir = Join-Path $projDir '.specify'
+$specsDir   = Join-Path $projDir 'specs'
+New-Item -ItemType Directory -Path $specsDir -Force | Out-Null
+New-Item -ItemType Directory -Path $specifyDir -Force | Out-Null
+
+$specKitLib = Join-Path $Library 'spec-kit'
+if (Test-Path $specKitLib) {
+    foreach ($sub in 'templates','scripts','extensions','workflows') {
+        $srcSub = Join-Path $specKitLib $sub
+        if (Test-Path $srcSub) {
+            $destSub = Join-Path $specifyDir $sub
+            New-Item -ItemType Directory -Path $destSub -Force | Out-Null
+            Copy-Item "$srcSub/*" $destSub -Recurse -Force
+        }
+    }
+    # Initialize project constitution
+    $memDir = Join-Path $specifyDir 'memory'
+    New-Item -ItemType Directory -Path $memDir -Force | Out-Null
+    $constTpl = Join-Path $specKitLib 'templates/constitution-template.md'
+    if (Test-Path $constTpl) {
+        $cText = [System.IO.File]::ReadAllText($constTpl, [System.Text.Encoding]::UTF8)
+        $cText.Replace('[PROJECT_NAME]', $Name) | Out-File -FilePath (Join-Path $memDir 'constitution.md') -Encoding utf8
+    }
+    Write-Host "  + Spec-Kit initialized (.specify/ + specs/)" -ForegroundColor DarkGray
+}
+
 # Project LESSONS.md (from template) — paired with the /lesson command
 $projLessons = Join-Path $projDir 'LESSONS.md'
 if (-not (Test-Path $projLessons)) {
@@ -300,6 +327,18 @@ if (-not (Test-Path $projClaudeMd)) {
 
 Project-specific instructions for Claude Code. This file overrides / extends the
 baseline philosophy in the root CLAUDE.md.
+
+## 📐 Spec-Driven Development (github/spec-kit) — Mandatory Standard
+Все новые фичи и изменения должны проектироваться через spec-kit:
+1. ``/speckit-specify <feature>`` — создать спецификацию в ``specs/<NNN-feature>/spec.md``
+2. ``/speckit-plan`` — составить архитектурный план и контракты в ``specs/<NNN-feature>/plan.md``
+3. ``/speckit-tasks`` — сгенерировать атомарные задачи в ``specs/<NNN-feature>/tasks.md``
+4. ``/speckit-implement`` — реализовать задачи пошагово
+5. ``/speckit-converge`` — верифицировать код относительно спеки и дописать оставшиеся задачи
+
+### Баги и идеи:
+- Баги: ``/speckit-bug-assess`` -> ``/speckit-bug-fix`` (TDD) -> ``/speckit-bug-test``
+- Идеи: ``/speckit-assess-intake`` -> ``/speckit-assess-shape`` -> ``/speckit-assess-research`` -> ``/speckit-assess-define`` -> ``/speckit-assess-decide``
 
 ## Stack
 - (describe languages, frameworks, run commands here)

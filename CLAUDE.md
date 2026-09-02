@@ -11,33 +11,102 @@ below apply everywhere unless a project's own `CLAUDE.md` overrides them.
 ## Layout
 ```
 start/
-├── CLAUDE.md            # this file — philosophy + gate + lessons protocol
+├── CLAUDE.md            # this file — philosophy + gate + SDD standard + lessons protocol
 ├── LESSONS.md           # GLOBAL lessons learned (all projects)
 ├── README.md            # human overview, catalog, attribution
+├── .specify/            # GLOBAL Spec-Kit configuration & constitution
+├── specs/               # Root specifications (if applicable)
 ├── library/             # the tool catalog (copy FROM here)
-│   ├── agents/   {ecc, gsd, awesome}
-│   ├── skills/   {ecc, superpowers, karpathy, alireza}
-│   ├── commands/ {core, ecc, gsd}     # "core" = start-task / add-tools / lesson
-│   ├── hooks/    {ecc, gsd, superpowers}
-│   ├── rules/    {ecc, karpathy, best-practice}
-│   ├── mcp/      {starter.mcp.json, full.mcp.json, README}
-│   ├── memory/   {claude-mem}
-│   ├── templates/{LESSONS.template.md}
+│   ├── spec-kit/        # github/spec-kit core: templates, schemas, scripts, workflows, extensions
+│   ├── agents/          # {ecc, gsd, awesome}
+│   ├── skills/          # {spec-kit, ecc, superpowers, karpathy, alireza}
+│   ├── commands/        # {core, speckit, ecc, gsd}     # "core" = start-task / add-tools / lesson
+│   ├── hooks/           # {ecc, gsd, superpowers}
+│   ├── rules/           # {ecc, karpathy, best-practice}
+│   ├── mcp/             # {starter.mcp.json, full.mcp.json, README}
+│   ├── memory/          # {claude-mem}
+│   ├── templates/       # {LESSONS.template.md}
 │   └── CATALOG.md
 ├── projects/
 │   ├── _templates/      # starter codebases (e.g. vibe full-stack)
-│   └── <your projects>  # each has .claude/ + CLAUDE.md + LESSONS.md
+│   └── <your projects>  # each has .claude/ + .specify/ + specs/ + CLAUDE.md + LESSONS.md
 ├── scripts/
-│   ├── new-project.ps1  # scaffold a project + copy chosen tools
+│   ├── new-project.ps1  # scaffold a project + copy chosen tools + init spec-kit
 │   ├── add-tools.ps1    # add more tools to an existing project
 │   └── install-global.ps1  # install curated core (orchestrator + core cmds) into ~/.claude/
 └── _sources/            # raw upstream clones (provenance; gitignored, deletable)
 ```
 
+## 📐 Spec-Driven Development (github/spec-kit) — Mandatory Standard
+
+> **Все новые и текущие проекты должны проектироваться и документироваться с использованием глобального spec-kit.**
+
+GitHub Spec-Kit (`github/spec-kit` / `specify-cli`) является **обязательным стандартом проектирования, разработки и документирования** для всего репозитория BestStart. Код создаётся исключительно на основе формализованных спецификаций, архитектурных планов и структурированных задач под управлением проектной Конституции.
+
+### Core SDD Workflow (Жизненный цикл фичи)
+
+```mermaid
+flowchart LR
+    C["1. Constitution"] --> S["2. Specify"]
+    S --> CL["3. Clarify"]
+    CL --> P["4. Plan"]
+    P --> CHK["5. Checklist"]
+    CHK --> T["6. Tasks"]
+    T --> A["7. Analyze"]
+    A --> I["8. Implement"]
+    I --> CV["9. Converge"]
+    CV -- "Невыполненные задачи" --> I
+    CV -- "100% готовность" --> Done(("Complete"))
+```
+
+1. **📜 Constitution (`/speckit-constitution`)**:
+   - Формирует и валидирует конституцию проекта (`.specify/memory/constitution.md`).
+   - Содержит нерушимые правила: TDD, простота (Karpathy), Docker-изоляция, модульность. Все планы сверяются с конституцией.
+2. **📝 Specify (`/speckit-specify <описание_фичи>`)**:
+   - Создает спецификацию `specs/<NNN-feature-name>/spec.md`.
+   - Фокусируется только на **ЧТО** и **ЗАЧЕМ** (User Stories с приоритетами P1/P2/P3, Functional Requirements `FR-XXX`, Success Criteria `SC-XXX`).
+   - Каждая User Story должна быть независимо тестируемой!
+3. **🔍 Clarify (`/speckit-clarify`)** *(Опционально, но рекомендуется)*:
+   - Анализирует спецификацию на скрытые предположения, серые зоны и нестыковки перед началом планирования.
+4. **🗺️ Plan (`/speckit-plan`)**:
+   - Создает технический план `specs/<NNN-feature-name>/plan.md`, `research.md`, `data-model.md`, `contracts/`, `quickstart.md`.
+   - Проверяет соответствие Конституции (Constitution Check Gate).
+5. **📋 Checklist (`/speckit-checklist`)** *(Опционально)*:
+   - Генерирует чеклист контроля качества для валидации требований.
+6. **✅ Tasks (`/speckit-tasks`)**:
+   - Декомпозирует план на атомарные задачи в `specs/<NNN-feature-name>/tasks.md`:
+     - Phase 1: Setup (инфраструктура, зависимости)
+     - Phase 2: Foundational (блокирующий фундамент: схемы БД, роутинг, миграции)
+     - Phase 3+: Инкременты User Stories (`US1 [P1]`, `US2 [P2]`, ...)
+     - Phase N: Polish & Cross-Cutting Concerns
+   - Помечает параллельные задачи маркером `[P]`.
+7. **🔎 Analyze (`/speckit-analyze`)** *(Опционально)*:
+   - Проверяет кросс-артефактную согласованность (spec vs plan vs tasks).
+8. **⚡ Implement (`/speckit-implement`)**:
+   - Выполняет задачи из `tasks.md` строго в заданном порядке.
+9. **🎯 Converge (`/speckit-converge`)**:
+   - Сверяет текущий код с `spec.md`, `plan.md` и `tasks.md`.
+   - Находит невыполненные требования и **дописывает** оставшуюся работу в конец `tasks.md` новой фазой (`## Phase N: Convergence`).
+   - Никаких перезаписей — строго append-only!
+
+### 🐛 Bug Triage & Fix Workflow (Исправление багов)
+1. **/speckit-bug-assess** — Воспроизведение дефекта, изоляция первопричины (Root Cause), определение severity.
+2. **/speckit-bug-fix** — Исправление по TDD: пишется падающий тест (Red) -> минимальный фикс (Green) -> рефакторинг.
+3. **/speckit-bug-test** — Регрессионная верификация, проверка граничных условий, фиксация в `LESSONS.md`.
+
+### 💡 Idea Assessment Workflow (Оценка и проработка идей)
+1. **/speckit-assess-intake** — Сбор исходной идеи / запроса.
+2. **/speckit-assess-shape** — Формирование контуров решения и профиля пользователя.
+3. **/speckit-assess-research** — Исследование технической и продуктовой реализуемости.
+4. **/speckit-assess-define** — Определение скоупа и требований.
+5. **/speckit-assess-decide** — Решение Go/No-Go. При Go — передача в `/speckit-specify`.
+
+---
+
 ## How to start a project
 ```powershell
 ./scripts/new-project.ps1 -List                          # browse the catalog
-./scripts/new-project.ps1 -Name myapp -Preset lean       # minimal, add per task
+./scripts/new-project.ps1 -Name myapp -Preset lean       # minimal, add per task (spec-kit included)
 ./scripts/new-project.ps1 -Name shop -Template vibe -Mcp starter -Preset lean
 ```
 
@@ -62,8 +131,9 @@ and expect the whole task done with no manual steps. When given a task at the ro
 1. Scaffold a NEW project under `projects/<name>/` via `scripts/new-project.ps1` (never build
    the app in the root itself). **Default `-Preset lean`.**
 2. Run the tool-selection gate below to add ~7 task-specific tools.
-3. Build it.
-4. **When done, commit and push to `origin` automatically** (this is durable authorization for
+3. Apply the SDD workflow (`/speckit-specify` -> `/speckit-plan` -> `/speckit-tasks` -> `/speckit-implement` -> `/speckit-converge`).
+4. Build it.
+5. **When done, commit and push to `origin` automatically** (this is durable authorization for
    THIS repo — don't ask each time). Always `git pull` before starting in case another machine
    pushed first.
 
@@ -108,9 +178,9 @@ Skip the gate only if I explicitly say "skip tools" or the needed tools are alre
 
 ## Conflict policy (how the merge was done)
 Everything is **namespaced by source bucket**, so tools never collide. GSD is `gsd-*` prefixed.
-True duplicates removed: agents `code-reviewer` & `seo-specialist` (kept ECC); 5 skills from
-`alireza` that duplicated ECC by name. When a project enables overlapping tools, prefer ONE
-per function.
+Spec-Kit tools are `speckit-*` prefixed. True duplicates removed: agents `code-reviewer` & `seo-specialist`
+(kept ECC); 5 skills from `alireza` that duplicated ECC by name. When a project enables overlapping tools,
+prefer ONE per function.
 
 ## Baseline working philosophy (Karpathy guidelines — see library/rules/karpathy/)
 1. **Think before coding** — surface trade-offs and ask when ambiguous.

@@ -22,7 +22,10 @@ gsd-advisor-researcher, gsd-ai-researcher, gsd-assumptions-analyzer, gsd-code-fi
 - **09-meta-orchestration**: agent-installer,agent-organizer codebase-orchestrator,context-manager error-coordinator,it-ops-orchestrator knowledge-synthesizer,multi-agent-coordinator performance-monitor,task-distributor workflow-orchestrator
 - **10-research-analysis**: ab-test-analysis,cohort-analysis competitive-analyst,data-researcher first-principles-thinking,market-researcher project-idea-validator,research-analyst scientific-literature-researcher,search-specialist trend-analyst
 
-## Skills (618)
+## Skills (641)
+
+### skills/spec-kit (23) — Spec-Driven Development standard (github/spec-kit)
+speckit-analyze, speckit-assess-decide, speckit-assess-define, speckit-assess-intake, speckit-assess-research, speckit-assess-shape, speckit-bug-assess, speckit-bug-fix, speckit-bug-test, speckit-checklist, speckit-clarify, speckit-constitution, speckit-converge, speckit-git-commit, speckit-git-feature, speckit-git-initialize, speckit-git-remote, speckit-git-validate, speckit-implement, speckit-plan, speckit-specify, speckit-tasks, speckit-taskstoissues
 
 ### skills/superpowers (14)
 brainstorming, dispatching-parallel-agents, executing-plans, finishing-a-development-branch, receiving-code-review, requesting-code-review, subagent-driven-development, systematic-debugging, test-driven-development, using-git-worktrees, using-superpowers, verification-before-completion, writing-plans, writing-skills
@@ -52,10 +55,13 @@ accessibility, agent-architecture-audit, agent-eval, agent-harness-construction,
 - **research** (8): dossier, grants, litreview, notebooklm, patent, pulse, research, syllabus
 - **research-ops** (4): clinical-research, product-research, research-finance, research-ops-skills
 
-## Commands (154)
+## Commands (172)
 
 ### commands/core (3) — the gate + lessons; auto-installed into every project
 start-task (tool-selection gate — propose & install matching tools before coding), add-tools (install more tools from the library), lesson (record a lesson into LESSONS.md)
+
+### commands/speckit (18) — Spec-Driven Development commands (github/spec-kit)
+analyze, checklist, clarify, constitution, converge, implement, plan, specify, tasks, taskstoissues, speckit.bug.assess, speckit.bug.fix, speckit.bug.test, speckit.assess.intake, speckit.assess.shape, speckit.assess.research, speckit.assess.define, speckit.assess.decide
 
 ### commands/ecc (84) — invoked as /ecc:<name>
 aside, auto-update, build-fix, checkpoint, code-review, cost-report, cpp-build, cpp-review, cpp-test, ecc-guide, evolve, fastapi-review, feature-dev, flutter-build, flutter-review, flutter-test, gan-build, gan-design, go-build, go-review, go-test, gradle-build, harness-audit, hookify-configure, hookify-help, hookify-list, hookify, instinct-export, instinct-import, instinct-status, jira, kotlin-build, kotlin-review, kotlin-test, learn-eval, learn, loop-start, loop-status, marketing-campaign, model-route, multi-backend, multi-execute, multi-frontend, multi-plan, multi-workflow, orch-add-feature, orch-build-mvp, orch-change-feature, orch-fix-defect, orch-refine-code, plan-prd, plan, pm2, pr, project-init, projects, promote, prp-commit, prp-implement, prp-plan, prp-pr, prp-prd, prune, python-review, quality-gate, react-build, react-review, react-test, refactor-clean, resume-session, review-pr, rust-build, rust-review, rust-test, santa-loop, save-session, security-scan, sessions, setup-pm, skill-create, skill-health, test-coverage, update-codemaps, update-docs
@@ -80,3 +86,10 @@ add-tests, ai-integration-phase, audit-fix, audit-milestone, audit-uat, autonomo
 
 ## Memory
 - **memory/claude-mem**: self-contained memory plugin (use `-Memory` flag).
+
+## Spec-Kit Core (`library/spec-kit`)
+- **Templates**: `spec-template.md`, `plan-template.md`, `tasks-template.md`, `constitution-template.md`, `checklist-template.md`
+- **Extensions**: `bug` (assess/fix/test), `assess` (intake/shape/research/define/decide), `git` (branching & auto-commit), `agent-context`
+- **Workflows**: `speckit/workflow.yml`
+- **Scripts**: PowerShell, Bash, and Python prerequisite checkers and feature scaffolders
+
