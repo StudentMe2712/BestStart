@@ -13,7 +13,10 @@ from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMar
 from backend.bot.nlp_parser import parse_interval_nlp, parse_search_query
 from backend.core.models import FlightOffer, ParsedFlightIntent
 from backend.db.dao import FlightSniperDAO
-from backend.providers.aviata_provider import AviataProvider
+from backend.providers.aviasales_provider import AviasalesProvider
+
+# Backward compatibility alias for tests and legacy callers
+AviataProvider = AviasalesProvider
 
 logger = logging.getLogger("kzflight_sniper.bot.handlers")
 router = Router(name="flight_sniper_handlers")

@@ -13,8 +13,11 @@ from aiogram.enums import ParseMode
 
 from backend.core.models import FlightOffer
 from backend.db.dao import FlightSniperDAO
-from backend.providers.aviata_provider import AviataProvider
+from backend.providers.aviasales_provider import AviasalesProvider
 from backend.providers.base import BaseFlightProvider
+
+# Backward compatibility alias for deprecated provider
+AviataProvider = AviasalesProvider
 
 logger = logging.getLogger("kzflight_sniper.engine.worker")
 
@@ -44,7 +47,7 @@ def format_alert_message(task: Dict[str, Any], offer: FlightOffer) -> str:
     )
 
     deep_link_html = (
-        f'\n\n🔗 <a href="{offer.deep_link}"><b>Купить билет на Aviata</b></a>'
+        f'\n\n🔗 <a href="{offer.deep_link}"><b>Купить билет на Aviasales</b></a>'
         if offer.deep_link
         else ""
     )
@@ -77,11 +80,11 @@ class SniperWorker:
 
         Args:
             bot: Optional aiogram Bot instance for dispatching alerts.
-            provider: Optional flight search provider (defaults to AviataProvider).
+            provider: Optional flight search provider (defaults to AviasalesProvider).
             dao: Optional FlightSniperDAO instance (defaults to standard singleton).
         """
         self.bot = bot
-        self.provider = provider or AviataProvider()
+        self.provider = provider or AviasalesProvider()
         self.dao = dao or FlightSniperDAO()
 
     async def run_check(self, due_only: bool = False) -> Dict[str, Any]:

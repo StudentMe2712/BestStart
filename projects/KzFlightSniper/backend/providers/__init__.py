@@ -1,6 +1,9 @@
 """Flight provider adapters package."""
 
 from backend.providers.base import BaseFlightProvider
-from backend.providers.aviata_provider import AviataProvider
+from backend.providers.aviasales_provider import AviasalesProvider
 
-__all__ = ["BaseFlightProvider", "AviataProvider"]
+# Backward-compatible alias for deprecated provider
+AviataProvider = AviasalesProvider
+
+__all__ = ["BaseFlightProvider", "AviasalesProvider", "AviataProvider"]

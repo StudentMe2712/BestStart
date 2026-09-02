@@ -26,8 +26,7 @@ from backend.db.database import get_db, init_db
 from backend.engine.scheduler import get_scheduler, init_scheduler, start_scheduler, stop_scheduler
 from backend.engine.sniper_worker import SniperWorker, format_alert_message, run_sniper_check
 from backend.main import app
-from backend.providers.aviata_provider import AviataProvider
-from backend.providers.base import BaseFlightProvider
+from backend.providers import AviasalesProvider, AviataProvider, BaseFlightProvider
 
 
 class MockFlightProvider(BaseFlightProvider):

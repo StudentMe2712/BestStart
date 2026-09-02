@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field, field_validator
 class FlightOffer(BaseModel):
     """Represents a standardized flight offer extracted from any provider."""
 
-    provider: str = Field(default="aviata", description="Provider identifier (e.g. aviata, kaspi)")
+    provider: str = Field(default="aviasales", description="Provider identifier (e.g. aviasales, aviata, kaspi)")
     airline: str = Field(..., description="Operating airline name (e.g. Air Astana, FlyArystan, SCAT)")
     flight_number: str = Field(..., description="Flight code (e.g. KC-853, DV-713, IQ-401)")
     origin: str = Field(..., description="3-letter IATA origin airport code")
