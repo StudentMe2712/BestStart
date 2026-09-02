@@ -334,7 +334,7 @@ class AviataProvider(BaseFlightProvider):
         """Fill a city input field and select the matching autocomplete suggestion.
 
         Tries multiple strategies: type IATA code, type city name in Russian,
-        and select the first matching dropdown item.
+        and select the first matching dropdown item using programmatic DOM events.
 
         Args:
             page: Playwright page instance.
@@ -346,8 +346,19 @@ class AviataProvider(BaseFlightProvider):
         """
         city_name = self._IATA_CITY_NAMES.get(iata_code, iata_code)
 
-        # Clear existing content and type city name
-        await input_elem.click(force=True)
+        # Clear existing content and type city name with programmatic focus/click
+        try:
+            await input_elem.dispatch_event("click")
+        except Exception:
+            try:
+                await input_elem.evaluate("el => el.click()")
+            except Exception:
+                pass
+        try:
+            await input_elem.focus()
+        except Exception:
+            pass
+
         await page.wait_for_timeout(300)
         await input_elem.fill("")
         await page.wait_for_timeout(200)
@@ -356,6 +367,13 @@ class AviataProvider(BaseFlightProvider):
 
         # Try to find and click a dropdown suggestion
         dropdown_selectors = [
+            # Specific listbox & item selectors from dump
+            "[role='listbox'] [role='option']",
+            "[role='option']",
+            "#city-listbox-origin1 li",
+            "#city-listbox-destination1 li",
+            "[id*='city-listbox'] li",
+            "[id*='city-listbox'] [role='option']",
             # Generic autocomplete / dropdown patterns
             "[class*='dropdown'] [class*='item']",
             "[class*='dropdown'] li",
@@ -364,8 +382,6 @@ class AviataProvider(BaseFlightProvider):
             "[class*='autocomplete'] [class*='item']",
             "[class*='autocomplete'] li",
             "[class*='option']",
-            "[role='option']",
-            "[role='listbox'] [role='option']",
             "[class*='list'] [class*='item']",
             "ul[class*='dropdown'] li",
             "div[class*='popup'] div[class*='item']",
@@ -380,13 +396,19 @@ class AviataProvider(BaseFlightProvider):
                     for item in items:
                         text = (await item.inner_text() or "").strip()
                         if iata_code in text.upper() or city_name.lower() in text.lower():
-                            await item.click(force=True)
+                            try:
+                                await item.dispatch_event("click")
+                            except Exception:
+                                await item.evaluate("el => el.click()")
                             logger.info("[FORM] Selected suggestion: '%s' for %s (%s)", text[:60], iata_code, sel)
                             await page.wait_for_timeout(500)
                             return True
                     # Fallback: click the first visible item
                     first_text = (await items[0].inner_text() or "").strip()
-                    await items[0].click(force=True)
+                    try:
+                        await items[0].dispatch_event("click")
+                    except Exception:
+                        await items[0].evaluate("el => el.click()")
                     logger.info("[FORM] Selected first suggestion: '%s' for %s (%s)", first_text[:60], iata_code, sel)
                     await page.wait_for_timeout(500)
                     return True
@@ -400,7 +422,7 @@ class AviataProvider(BaseFlightProvider):
         return False
 
     async def _select_date_in_calendar(self, page: Any, target_date: str) -> bool:
-        """Select a date in the calendar/date-picker widget.
+        """Select a date in the calendar/date-picker widget using programmatic DOM interaction.
 
         Tries to find the date trigger, open the calendar, and click the target date.
 
@@ -447,12 +469,17 @@ class AviataProvider(BaseFlightProvider):
                 continue
 
         if date_trigger:
-            await date_trigger.click(force=True)
+            try:
+                await date_trigger.dispatch_event("click")
+            except Exception:
+                try:
+                    await date_trigger.evaluate("el => el.click()")
+                except Exception:
+                    await date_trigger.click(force=True)
             await page.wait_for_timeout(800)
 
         # Step 2: Navigate calendar to the correct month if needed
         # Try to find month/year display and navigate forward if needed
-        target_month_year = dt.strftime("%Y-%m")
         for _ in range(12):  # max 12 months forward
             try:
                 # Check if current calendar shows the right month
@@ -477,7 +504,13 @@ class AviataProvider(BaseFlightProvider):
                     try:
                         nbtn = await page.query_selector(nsel)
                         if nbtn:
-                            await nbtn.click(force=True)
+                            try:
+                                await nbtn.dispatch_event("click")
+                            except Exception:
+                                try:
+                                    await nbtn.evaluate("el => el.click()")
+                                except Exception:
+                                    await nbtn.click(force=True)
                             await page.wait_for_timeout(400)
                             clicked = True
                             break
@@ -504,7 +537,13 @@ class AviataProvider(BaseFlightProvider):
             try:
                 day_elem = await page.query_selector(sel)
                 if day_elem:
-                    await day_elem.click(force=True)
+                    try:
+                        await day_elem.dispatch_event("click")
+                    except Exception:
+                        try:
+                            await day_elem.evaluate("el => el.click()")
+                        except Exception:
+                            await day_elem.click(force=True)
                     logger.info("[FORM] Selected date %s via selector: %s", iso_date, sel)
                     await page.wait_for_timeout(500)
                     return True
@@ -519,7 +558,13 @@ class AviataProvider(BaseFlightProvider):
                 for cell in all_cells:
                     text = (await cell.inner_text() or "").strip()
                     if text == day_str:
-                        await cell.click(force=True)
+                        try:
+                            await cell.dispatch_event("click")
+                        except Exception:
+                            try:
+                                await cell.evaluate("el => el.click()")
+                            except Exception:
+                                await cell.click(force=True)
                         logger.info("[FORM] Selected date %s via cell text match.", iso_date)
                         await page.wait_for_timeout(500)
                         return True
@@ -658,6 +703,7 @@ class AviataProvider(BaseFlightProvider):
                     # PERFORMANCE: Block analytics/tracking to avoid networkidle stalls
                     # ============================================================
                     _BLOCKED_DOMAINS = [
+                        "freedompromocodebanner", "appmodal", "promocode",
                         "tiktok.com", "analytics.tiktok.com",
                         "sentry.io", "sentry-cdn.com",
                         "google-analytics.com", "googletagmanager.com",
@@ -766,7 +812,9 @@ class AviataProvider(BaseFlightProvider):
                         # ============================================================
                         logger.info("[FORM] Step 2: Filling origin = %s", clean_origin)
                         origin_selectors = [
+                            'input[aria-controls="city-listbox-origin1"]',
                             "[data-qa*='origin'] input",
+                            "input[data-qa*='origin']",
                             "[data-qa*='from'] input",
                             "input[placeholder*='Откуда']",
                             "input[placeholder*='откуда']",
@@ -815,7 +863,9 @@ class AviataProvider(BaseFlightProvider):
                         # ============================================================
                         logger.info("[FORM] Step 3: Filling destination = %s", clean_dest)
                         dest_selectors = [
+                            'input[aria-controls="city-listbox-destination1"]',
                             "[data-qa*='destination'] input",
+                            "input[data-qa*='destination']",
                             "[data-qa*='to'] input",
                             "input[placeholder*='Куда']",
                             "input[placeholder*='куда']",
@@ -870,6 +920,9 @@ class AviataProvider(BaseFlightProvider):
                         # ============================================================
                         logger.info("[FORM] Step 5: Clicking search button...")
                         search_btn_selectors = [
+                            "button.search-form__btn",
+                            ".search-form__btn",
+                            "button[class*='search-form__btn']",
                             "button:has-text('Найти')",
                             "button:has-text('найти')",
                             "button:has-text('Поиск')",
@@ -888,12 +941,35 @@ class AviataProvider(BaseFlightProvider):
                             try:
                                 btn = await page.wait_for_selector(sel, timeout=3000)
                                 if btn and await btn.is_visible():
-                                    await btn.click(force=True)
+                                    try:
+                                        await btn.dispatch_event("click")
+                                    except Exception:
+                                        try:
+                                            await btn.evaluate("el => el.click()")
+                                        except Exception:
+                                            await btn.click(force=True)
                                     logger.info("[FORM] Clicked search button: %s", sel)
                                     search_clicked = True
                                     break
                             except Exception:
                                 continue
+
+                        # Also execute instant direct evaluate trigger for .search-form__btn
+                        try:
+                            await page.evaluate("document.querySelector('.search-form__btn')?.click()")
+                            logger.info("[FORM] Executed direct evaluate click on .search-form__btn")
+                        except Exception as eval_err:
+                            logger.debug("Direct evaluate click on .search-form__btn failed: %s", eval_err)
+
+                        if not search_clicked:
+                            try:
+                                search_loc = page.locator(".search-form__btn")
+                                if await search_loc.count() > 0:
+                                    await search_loc.first.dispatch_event("click")
+                                    search_clicked = True
+                                    logger.info("[FORM] Clicked search button via locator('.search-form__btn').dispatch_event")
+                            except Exception:
+                                pass
 
                         if not search_clicked:
                             logger.warning("[FORM] Could not find search button. Trying Enter key...")
