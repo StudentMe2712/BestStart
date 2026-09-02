@@ -29,7 +29,7 @@ We decided to execute a **strategic architectural pivot** from Playwright-based 
   `https://api.travelpayouts.com/aviasales/v3/prices_for_dates`
 - **Client Implementation**: Asynchronous HTTP client (`httpx.AsyncClient`) with connection pooling, automatic gzip/deflate decompression, configurable timeout budgets (default: 15.0s), and strict exception handling.
 - **Data Normalization**: Centralized parsing engine `AviasalesProvider.parse_aviasales_json()` standardizing raw JSON payloads into uniform Pydantic `FlightOffer` objects with IATA airline mapping, time computation, duration extraction, and deep booking link generation (`https://www.aviasales.kz/...`).
-- **Provider Deprecation**: Transitioned `aviata_provider.py` to `aviata_provider.py.deprecated`, preserving historical reference while establishing `AviasalesProvider` as the core operational provider.
+- **Tech Debt Eradication (Stage 8)**: Completely removed deprecated scraping scripts (`aviata_provider.py.deprecated`, `poc_aviata.py`), establishing `AviasalesProvider` as the sole operational provider with `python:3.11-slim` containerization.
 
 ---
 
@@ -88,5 +88,4 @@ We decided to execute a **strategic architectural pivot** from Playwright-based 
 
 - Implementation: [`backend/providers/aviasales_provider.py`](file:///C:/Users/Mila/Desktop/BestStart/projects/KzFlightSniper/backend/providers/aviasales_provider.py)
 - Base Class: [`backend/providers/base.py`](file:///C:/Users/Mila/Desktop/BestStart/projects/KzFlightSniper/backend/providers/base.py)
-- Deprecated Artifact: [`backend/providers/aviata_provider.py.deprecated`](file:///C:/Users/Mila/Desktop/BestStart/projects/KzFlightSniper/backend/providers/aviata_provider.py.deprecated)
 - Spec-Kit Design Document: [`specs/design.md`](file:///C:/Users/Mila/Desktop/BestStart/projects/KzFlightSniper/specs/design.md)

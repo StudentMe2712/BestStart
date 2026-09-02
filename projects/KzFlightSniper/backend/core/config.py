@@ -29,8 +29,10 @@ class Settings(BaseSettings):
     # Timezone Configuration
     TZ: str = "Asia/Almaty"
 
-    # Playwright Headless Mode
-    HEADLESS: bool = True
+    # Travelpayouts / Aviasales Flight Data API Configuration
+    TRAVELPAYOUTS_TOKEN: str = "321d6a221f8926b5ec41ae89a3b2ae7b"
+    AVIASALES_API_URL: str = "https://api.travelpayouts.com/aviasales/v3/prices_for_dates"
+    AVIASALES_BASE_URL: str = "https://www.aviasales.kz"
 
     # Environment Name (development, testing, production)
     ENVIRONMENT: str = "production"

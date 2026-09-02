@@ -16,9 +16,6 @@ from backend.db.dao import FlightSniperDAO
 from backend.providers.aviasales_provider import AviasalesProvider
 from backend.providers.base import BaseFlightProvider
 
-# Backward compatibility alias for deprecated provider
-AviataProvider = AviasalesProvider
-
 logger = logging.getLogger("kzflight_sniper.engine.worker")
 
 
@@ -124,7 +121,7 @@ class SniperWorker:
 
         logger.info("Starting sniper cycle for %d due task(s)...", len(tasks))
 
-        # Group tasks by (origin, destination, date) to minimize browser queries
+        # Group tasks by (origin, destination, date) to minimize upstream API queries
         grouped_tasks: Dict[Tuple[str, str, str], List[Dict[str, Any]]] = defaultdict(list)
         for t in tasks:
             key = (t["origin"].strip().upper(), t["destination"].strip().upper(), t["date"].strip())

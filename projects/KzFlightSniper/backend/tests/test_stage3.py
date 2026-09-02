@@ -1,8 +1,8 @@
 """Unit and integration tests for KzFlightSniper Stage 3 components.
 
 Tests cover:
-- AviataProvider JSON API response parsing and normalization
-- AviataProvider search convenience method with filtering
+- AviasalesProvider JSON API response parsing and normalization
+- AviasalesProvider search convenience method with filtering
 - SniperWorker alert triggering, target price comparisons, and DB logging
 - SniperWorker alert deduplication window suppression
 - APScheduler lifecycle management (init, start, stop)
@@ -25,8 +25,8 @@ from backend.db.dao import FlightSniperDAO
 from backend.db.database import get_db, init_db
 from backend.engine.scheduler import get_scheduler, init_scheduler, start_scheduler, stop_scheduler
 from backend.engine.sniper_worker import SniperWorker, format_alert_message, run_sniper_check
+from backend.providers import AviasalesProvider, BaseFlightProvider
 from backend.main import app
-from backend.providers import AviasalesProvider, AviataProvider, BaseFlightProvider
 
 
 class MockFlightProvider(BaseFlightProvider):
@@ -75,7 +75,7 @@ class TestStage3Components(unittest.TestCase):
         shutil.rmtree(self.test_dir, ignore_errors=True)
 
     def test_aviata_json_parser_standard(self) -> None:
-        """Test AviataProvider JSON parser on standard results structure."""
+        """Test AviasalesProvider JSON parser on standard results structure."""
         raw_payload = {
             "results": [
                 {
@@ -108,7 +108,7 @@ class TestStage3Components(unittest.TestCase):
             ]
         }
 
-        offers = AviataProvider.parse_aviata_json(raw_payload, "ALA", "NQZ", "https://aviata.kz")
+        offers = AviasalesProvider.parse_aviata_json(raw_payload, "ALA", "NQZ", "https://aviata.kz")
         self.assertEqual(len(offers), 3)
 
         # Offer 1
@@ -152,7 +152,7 @@ class TestStage3Components(unittest.TestCase):
                 ]
             }
         }
-        offers_nested = AviataProvider.parse_aviata_json(payload_nested, "CIT", "NQZ")
+        offers_nested = AviasalesProvider.parse_aviata_json(payload_nested, "CIT", "NQZ")
         self.assertEqual(len(offers_nested), 1)
         self.assertEqual(offers_nested[0].airline, "Qazaq Air")
         self.assertEqual(offers_nested[0].flight_number, "IQ-401 / IQ-402")
@@ -168,7 +168,7 @@ class TestStage3Components(unittest.TestCase):
                 "transfers_count": 0,
             }
         ]
-        offers_list = AviataProvider.parse_aviata_json(payload_list, "ALA", "CIT")
+        offers_list = AviasalesProvider.parse_aviata_json(payload_list, "ALA", "CIT")
         self.assertEqual(len(offers_list), 1)
         self.assertEqual(offers_list[0].flight_number, "KC-871")
 
@@ -180,12 +180,12 @@ class TestStage3Components(unittest.TestCase):
                 {"invalid": True},
             ]
         }
-        offers_invalid = AviataProvider.parse_aviata_json(invalid_payload, "ALA", "NQZ")
+        offers_invalid = AviasalesProvider.parse_aviata_json(invalid_payload, "ALA", "NQZ")
         self.assertEqual(len(offers_invalid), 0)
 
     def test_aviata_provider_search_convenience_filter(self) -> None:
-        """Test AviataProvider convenience search method with flight_number and direct_only filters."""
-        provider = AviataProvider(headless=True)
+        """Test AviasalesProvider convenience search method with flight_number and direct_only filters."""
+        provider = AviasalesProvider()
 
         sample_offers = [
             FlightOffer(

@@ -1,5 +1,5 @@
 param (
-    [string]$CommitMessage = "feat(KzFlightSniper): Stage 1 - Architecture specification, scaffolding, and Aviata Playwright PoC"
+    [string]$CommitMessage = "feat(KzFlightSniper): update flight search engine and monitoring services"
 )
 
 $ErrorActionPreference = "Stop"

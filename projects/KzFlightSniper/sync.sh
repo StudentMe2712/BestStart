@@ -12,7 +12,7 @@ echo "[2/4] Verifying staged changes..."
 if git diff --staged --quiet; then
     echo "No changes detected to commit. Workspace is clean."
 else
-    COMMIT_MSG="${1:-feat(KzFlightSniper): Stage 1 - Architecture specification, scaffolding, and Aviata Playwright PoC}"
+    COMMIT_MSG="${1:-feat(KzFlightSniper): update flight search engine and monitoring services}"
     echo "Committing with message: '$COMMIT_MSG'..."
     git commit -m "$COMMIT_MSG"
 fi

@@ -1,5 +1,5 @@
-# Base Playwright image with pre-installed browsers and system dependencies
-FROM mcr.microsoft.com/playwright/python:v1.40.0-jammy
+# Lightweight Python base image (zero browser runtime overhead)
+FROM python:3.11-slim
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1 \
@@ -18,9 +18,6 @@ RUN apt-get update && apt-get install -y tzdata && rm -rf /var/lib/apt/lists/*
 COPY requirements.txt .
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
-
-# Ensure Chromium browser is ready
-RUN playwright install chromium
 
 # Create data directory for SQLite database storage
 RUN mkdir -p /app/data

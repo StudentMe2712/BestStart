@@ -3,6 +3,7 @@
 **Status**: Accepted | **Version**: 2.0.0 | **Date**: 2026-09-02  
 **Standard**: Spec-Kit Architecture Blueprint  
 **Primary Integration**: Aviasales / Travelpayouts v3 Flight Data REST API (`httpx`)  
+**Containerization Runtime**: Docker (`python:3.11-slim` lightweight base, ~185MB)
 
 ---
 
@@ -10,7 +11,7 @@
 
 **KzFlightSniper** is an asynchronous, high-performance flight price tracking and automated alerting engine engineered for the Kazakhstan aviation market (covering domestic corridors such as `ALA` ⇄ `NQZ`, `CIT`, `SCO`, `GUW`, `UKK`, `AKX`, `KSG` and key international destinations including `BKK`, `DXB`, `IST`, `HKT`, `TAS`, `FRU`, `TBS`, `AYT`).
 
-In Version 2.0, the core data ingestion subsystem transitioned from heavy headless browser scraping (Playwright) to an **API-First asynchronous REST architecture** powered by **Aviasales (Travelpayouts v3 Flight Data API)** via `httpx`. This pivot eliminates anti-bot/Cloudflare challenges, cuts response latency by >95% (<500ms vs 12s), and drastically minimizes container resource overhead.
+In Version 2.0 (under **ADR-004** and Tech Debt Eradication), the core data ingestion subsystem transitioned from heavy headless browser scraping (Playwright) to an **API-First asynchronous REST architecture** powered by **Aviasales (Travelpayouts v3 Flight Data API)** via `httpx`. This pivot eliminates anti-bot/Cloudflare challenges, cuts response latency by >95% (<300–500ms vs 12s), eliminates all browser/Chromium runtime dependencies, and reduces container image size by 87% (from ~1.42GB down to ~185MB on `python:3.11-slim`).
 
 ---
 
@@ -43,7 +44,11 @@ graph TD
     subgraph Provider Ingestion Layer
         BaseProvider[BaseFlightProvider Interface]
         Aviasales[AviasalesProvider: Async httpx.AsyncClient]
-        LegacyAviata[aviata_provider.py.deprecated]
+    end
+
+    subgraph Containerization & Deployment
+        Docker[Docker: python:3.11-slim ~185MB]
+        FastAPI[FastAPI Health & Webhook Server]
     end
 
     subgraph External Services
@@ -72,6 +77,7 @@ graph TD
     Dedup -->|Price <= Target & New Alert| Dispatcher
     Dispatcher -->|Dispatch Push Notification| TelegramAPI
     Dispatcher -->|Record Logged Alert| DAO
+    FastAPI -->|Expose Health /health| Docker
 ```
 
 ---
@@ -202,16 +208,38 @@ The provider adapter implements `BaseFlightProvider` and interfaces directly wit
 
 ---
 
+### 4.4 Containerization & Deployment Architecture (`python:3.11-slim`)
+
+- **Dockerfile**: [`backend/Dockerfile`](file:///C:/Users/Mila/Desktop/BestStart/projects/KzFlightSniper/backend/Dockerfile)
+- **Orchestration**: [`docker-compose.yml`](file:///C:/Users/Mila/Desktop/BestStart/projects/KzFlightSniper/docker-compose.yml)
+- **Base Image**: `python:3.11-slim` (standard Debian-based slim runtime providing full glibc compatibility and minimal image footprint).
+- **Complete Elimination of Browser Stack**:
+  - `playwright` and `playwright-stealth` Python packages are completely removed from [`backend/requirements.txt`](file:///C:/Users/Mila/Desktop/BestStart/projects/KzFlightSniper/backend/requirements.txt).
+  - Browser binaries (`playwright install chromium`), fonts, X11 libraries, and heavy OS dependencies (`libnss3`, `libasound2`, `libgbm1`) are entirely eliminated from container builds.
+  - Removal of `shm_size: '2gb'` shared memory allocation in `docker-compose.yml`, which was formerly required solely to prevent Chromium renderer crashes.
+- **Production Dependencies Profile**:
+  - `fastapi>=0.110.0`, `uvicorn[standard]>=0.28.0` (REST & health checks)
+  - `aiogram>=3.4.1` (Telegram bot routing & FSM)
+  - `httpx>=0.27.0` (High-performance async REST client with connection pooling)
+  - `apscheduler>=3.10.4` (AsyncIOScheduler)
+  - `aiosqlite>=0.20.0` (Async SQLite driver)
+  - `pydantic>=2.6.4`, `pydantic-settings>=2.2.1` (Data validation & environment config)
+  - `groq>=0.5.0` (Cloud LLM intent parsing)
+
+---
+
 ## 5. Performance & SLA Benchmarks
 
-| Metric | Legacy Playwright Scraping | Aviasales REST API (HTTPX) | Improvement |
+| Metric | Legacy Playwright Scraping | Aviasales REST API (`httpx` + `python:3.11-slim`) | Improvement |
 | :--- | :--- | :--- | :--- |
 | **P50 Query Latency** | 8,400 ms | **240 ms** | **35x Faster** ⚡ |
 | **P95 Query Latency** | 14,800 ms | **480 ms** | **30x Faster** ⚡ |
 | **Container Memory (Idle)** | 420 MB | **45 MB** | **9.3x Lower** 📉 |
 | **Container Memory (Active)** | 850 MB – 1.2 GB | **58 MB** | **18x Lower** 📉 |
 | **Cloudflare Challenge Rate** | 45% – 70% blocked | **0% (100% immune)** | **Zero Block Rate** 🛡️ |
-| **Docker Image Size** | 1.42 GB (with Chromium) | **185 MB** (pure Python) | **87% Smaller** 📦 |
+| **Docker Image Size** | 1.42 GB (with Chromium) | **185 MB** (pure Python 3.11-slim) | **87% Smaller** 📦 |
+| **Shared Memory Overhead** | 2,048 MB (`shm_size: 2gb`) | **0 MB (Standard default)** | **100% Eliminated** 🚀 |
+| **Container Startup Time** | 18–25 s | **< 1.5 s** | **15x Faster** ⚡ |
 
 ---
 

@@ -576,7 +576,7 @@ class TestTelegramBotFSMAndLivePreviewFlow:
             ),
         ]
 
-        with patch("backend.bot.handlers.AviataProvider.search", new=AsyncMock(return_value=mock_offers)):
+        with patch("backend.bot.handlers.AviasalesProvider.search", new=AsyncMock(return_value=mock_offers)):
             await handle_search_query_message(message, state)
 
         assert message.answer.called
@@ -616,7 +616,7 @@ class TestTelegramBotFSMAndLivePreviewFlow:
         state = AsyncMock()
         state.update_data = AsyncMock()
 
-        with patch("backend.bot.handlers.AviataProvider.search", new=AsyncMock(return_value=[])):
+        with patch("backend.bot.handlers.AviasalesProvider.search", new=AsyncMock(return_value=[])):
             await handle_search_query_message(message, state)
 
         assert status_msg.edit_text.called

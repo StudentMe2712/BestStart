@@ -231,14 +231,26 @@ class AviasalesProvider(BaseFlightProvider):
             timeout: HTTP request timeout in seconds.
             **kwargs: Extra parameters accepted for backward compatibility.
         """
+        try:
+            from backend.core.config import get_settings
+            settings = get_settings()
+            cfg_token = getattr(settings, "TRAVELPAYOUTS_TOKEN", self.DEFAULT_TOKEN)
+            cfg_api_url = getattr(settings, "AVIASALES_API_URL", self.DEFAULT_API_URL)
+            cfg_base_url = getattr(settings, "AVIASALES_BASE_URL", self.DEFAULT_BASE_URL)
+        except Exception:
+            cfg_token = self.DEFAULT_TOKEN
+            cfg_api_url = self.DEFAULT_API_URL
+            cfg_base_url = self.DEFAULT_BASE_URL
+
         self.token = (
             token
             or os.getenv("TRAVELPAYOUTS_TOKEN")
             or os.getenv("AVIASALES_TOKEN")
+            or cfg_token
             or self.DEFAULT_TOKEN
         ).strip()
-        self.api_url = (api_url or os.getenv("AVIASALES_API_URL") or self.DEFAULT_API_URL).strip()
-        self.base_url = (base_url or os.getenv("AVIASALES_BASE_URL") or self.DEFAULT_BASE_URL).strip()
+        self.api_url = (api_url or os.getenv("AVIASALES_API_URL") or cfg_api_url or self.DEFAULT_API_URL).strip()
+        self.base_url = (base_url or os.getenv("AVIASALES_BASE_URL") or cfg_base_url or self.DEFAULT_BASE_URL).strip()
         self.timeout = timeout
 
     @property

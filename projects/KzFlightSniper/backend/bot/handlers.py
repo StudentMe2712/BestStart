@@ -15,9 +15,6 @@ from backend.core.models import FlightOffer, ParsedFlightIntent
 from backend.db.dao import FlightSniperDAO
 from backend.providers.aviasales_provider import AviasalesProvider
 
-# Backward compatibility alias for tests and legacy callers
-AviataProvider = AviasalesProvider
-
 logger = logging.getLogger("kzflight_sniper.bot.handlers")
 router = Router(name="flight_sniper_handlers")
 dao = FlightSniperDAO()
@@ -499,7 +496,7 @@ async def handle_delete(message: Message, command: CommandObject) -> None:
 
 @router.message(SniperStates.waiting_for_search_query, F.text & ~F.text.startswith("/"))
 async def handle_search_query_message(message: Message, state: FSMContext) -> None:
-    """Handle natural language flight query, run Live Search via AviataProvider, and render flight list."""
+    """Handle natural language flight query, run Live Search via AviasalesProvider, and render flight list."""
     user_text = (message.text or "").strip()
     if not user_text:
         return
@@ -529,7 +526,7 @@ async def handle_search_query_message(message: Message, state: FSMContext) -> No
 
     offers: List[FlightOffer] = []
     try:
-        provider = AviataProvider()
+        provider = AviasalesProvider()
         offers = await provider.search(
             origin=intent.origin,
             destination=intent.destination,

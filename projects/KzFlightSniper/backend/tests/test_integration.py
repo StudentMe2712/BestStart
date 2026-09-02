@@ -480,7 +480,7 @@ class TestKzFlightSniperIntegration(unittest.TestCase):
                 )
             ]
 
-            with patch("backend.bot.handlers.AviataProvider.search", new=AsyncMock(return_value=mock_live_offers)):
+            with patch("backend.bot.handlers.AviasalesProvider.search", new=AsyncMock(return_value=mock_live_offers)):
                 await handle_search_query_message(mock_nlp_msg, mock_state)
 
             self.assertTrue(mock_nlp_msg.bot.send_chat_action.called)

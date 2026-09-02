@@ -17,4 +17,3 @@ services:
       - "${APP_PORT:-8000}:8000"
     volumes:
       - ./backend/data:/app/data
-    shm_size: '2gb'
