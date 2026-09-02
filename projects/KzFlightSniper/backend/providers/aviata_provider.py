@@ -347,7 +347,7 @@ class AviataProvider(BaseFlightProvider):
         city_name = self._IATA_CITY_NAMES.get(iata_code, iata_code)
 
         # Clear existing content and type city name
-        await input_elem.click()
+        await input_elem.click(force=True)
         await page.wait_for_timeout(300)
         await input_elem.fill("")
         await page.wait_for_timeout(200)
@@ -380,13 +380,13 @@ class AviataProvider(BaseFlightProvider):
                     for item in items:
                         text = (await item.inner_text() or "").strip()
                         if iata_code in text.upper() or city_name.lower() in text.lower():
-                            await item.click()
+                            await item.click(force=True)
                             logger.info("[FORM] Selected suggestion: '%s' for %s (%s)", text[:60], iata_code, sel)
                             await page.wait_for_timeout(500)
                             return True
                     # Fallback: click the first visible item
                     first_text = (await items[0].inner_text() or "").strip()
-                    await items[0].click()
+                    await items[0].click(force=True)
                     logger.info("[FORM] Selected first suggestion: '%s' for %s (%s)", first_text[:60], iata_code, sel)
                     await page.wait_for_timeout(500)
                     return True
@@ -447,7 +447,7 @@ class AviataProvider(BaseFlightProvider):
                 continue
 
         if date_trigger:
-            await date_trigger.click()
+            await date_trigger.click(force=True)
             await page.wait_for_timeout(800)
 
         # Step 2: Navigate calendar to the correct month if needed
@@ -477,7 +477,7 @@ class AviataProvider(BaseFlightProvider):
                     try:
                         nbtn = await page.query_selector(nsel)
                         if nbtn:
-                            await nbtn.click()
+                            await nbtn.click(force=True)
                             await page.wait_for_timeout(400)
                             clicked = True
                             break
@@ -504,7 +504,7 @@ class AviataProvider(BaseFlightProvider):
             try:
                 day_elem = await page.query_selector(sel)
                 if day_elem:
-                    await day_elem.click()
+                    await day_elem.click(force=True)
                     logger.info("[FORM] Selected date %s via selector: %s", iso_date, sel)
                     await page.wait_for_timeout(500)
                     return True
@@ -519,7 +519,7 @@ class AviataProvider(BaseFlightProvider):
                 for cell in all_cells:
                     text = (await cell.inner_text() or "").strip()
                     if text == day_str:
-                        await cell.click()
+                        await cell.click(force=True)
                         logger.info("[FORM] Selected date %s via cell text match.", iso_date)
                         await page.wait_for_timeout(500)
                         return True
@@ -695,6 +695,16 @@ class AviataProvider(BaseFlightProvider):
                         final_url = page.url
                         logger.info("[NAV] Landed on: %s", final_url)
 
+                        # Global CSS Injection to suppress modals, overlays, popups, banners, superapp widgets
+                        await page.add_style_tag(content="""
+                            [class*='modal'], [class*='overlay'], [class*='popup'], [class*='banner'], [class*='superapp'], [class*='SuperApp'], iframe {
+                                display: none !important;
+                                opacity: 0 !important;
+                                visibility: hidden !important;
+                                pointer-events: none !important;
+                            }
+                        """)
+
                         # ============================================================
                         # STEP 1.5: Nuclear modal/popup/banner dismissal
                         # ============================================================
@@ -743,7 +753,7 @@ class AviataProvider(BaseFlightProvider):
                             try:
                                 btn = await page.query_selector(sel)
                                 if btn and await btn.is_visible():
-                                    await btn.click()
+                                    await btn.click(force=True)
                                     logger.info("[MODAL] Dismissed via: %s", sel)
                                     break
                             except Exception:
@@ -878,7 +888,7 @@ class AviataProvider(BaseFlightProvider):
                             try:
                                 btn = await page.wait_for_selector(sel, timeout=3000)
                                 if btn and await btn.is_visible():
-                                    await btn.click()
+                                    await btn.click(force=True)
                                     logger.info("[FORM] Clicked search button: %s", sel)
                                     search_clicked = True
                                     break
