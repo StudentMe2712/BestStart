@@ -576,10 +576,36 @@ class AviataProvider(BaseFlightProvider):
                     response.headers.get("content-type", "n/a"),
                 )
 
-            # Broad keyword match for flight data endpoints
+            # ============================================================
+            # BINGO DETECTOR: api.freedom-travel.kz flight search endpoint
+            # ============================================================
+            is_freedom_api = "api.freedom-travel.kz" in url_lower or "freedom-travel" in url_lower
+            freedom_api_keywords = ["search", "flight", "result", "direction", "offer", "ticket", "fare"]
+
+            if is_freedom_api and any(kw in url_lower for kw in freedom_api_keywords):
+                content_type = response.headers.get("content-type", "")
+                if "json" in content_type or "json" in url_lower:
+                    try:
+                        payload = await response.json()
+                        if isinstance(payload, (dict, list)):
+                            payload_info = (
+                                list(payload.keys())[:12] if isinstance(payload, dict) else f"list[{len(payload)}]"
+                            )
+                            logger.warning("=" * 80)
+                            logger.warning("[BINGO! FOUND FLIGHT API URL]: %s", url)
+                            logger.warning("[BINGO! RESPONSE STATUS]: %s", response.status)
+                            logger.warning("[BINGO! PAYLOAD TYPE]: %s | KEYS/LEN: %s", type(payload).__name__, payload_info)
+                            logger.warning("=" * 80)
+                            intercepted_payloads.append({"url": url, "data": payload, "bingo": True})
+                            data_received_event.set()
+                            return  # Already captured, skip generic handler below
+                    except Exception as e:
+                        logger.debug("Could not parse Freedom API JSON from %s: %s", url[:100], e)
+
+            # Broad keyword match for any flight data endpoints
             flight_keywords = [
                 "search", "flight", "offer", "variant", "v2/avia", "avia/",
-                "result", "ticket", "price", "fare",
+                "result", "ticket", "price", "fare", "direction",
             ]
             if any(kw in url_lower for kw in flight_keywords):
                 content_type = response.headers.get("content-type", "")
@@ -628,6 +654,34 @@ class AviataProvider(BaseFlightProvider):
                     page = await context.new_page()
                     await _apply_stealth(page)
 
+                    # ============================================================
+                    # PERFORMANCE: Block analytics/tracking to avoid networkidle stalls
+                    # ============================================================
+                    _BLOCKED_DOMAINS = [
+                        "tiktok.com", "analytics.tiktok.com",
+                        "sentry.io", "sentry-cdn.com",
+                        "google-analytics.com", "googletagmanager.com",
+                        "mc.yandex.ru", "yandex.ru/metrika", "metrika.yandex",
+                        "hotjar.com", "hotjar.io",
+                        "facebook.net", "facebook.com", "fbcdn.net",
+                        "doubleclick.net", "googlesyndication.com",
+                        "adservice.google", "googleads",
+                        "amplitude.com", "mixpanel.com", "segment.io", "segment.com",
+                        "appsflyer.com", "adjust.com",
+                        "clarity.ms",
+                    ]
+
+                    async def _block_trackers(route: Any) -> None:
+                        url = route.request.url.lower()
+                        if any(domain in url for domain in _BLOCKED_DOMAINS):
+                            logger.debug("[PERF] Blocked tracker: %s", url[:80])
+                            await route.abort()
+                        else:
+                            await route.continue_()
+
+                    await page.route("**/*", _block_trackers)
+                    logger.info("[PERF] Tracker blocking active for %d domains.", len(_BLOCKED_DOMAINS))
+
                     # Attach network interceptor BEFORE any navigation
                     page.on("response", _handle_response)
 
@@ -638,14 +692,10 @@ class AviataProvider(BaseFlightProvider):
                         logger.info("[NAV] Step 1: Navigating to homepage...")
                         await page.goto(home_url, wait_until="domcontentloaded", timeout=self.timeout_ms)
 
-                        try:
-                            await page.wait_for_load_state("networkidle", timeout=15000)
-                        except Exception:
-                            logger.debug("[NAV] networkidle timeout on homepage, continuing.")
-
                         final_url = page.url
                         logger.info("[NAV] Landed on: %s", final_url)
-                        await page.wait_for_timeout(2000)
+                        # Short settle — trackers are blocked, so page loads fast
+                        await page.wait_for_timeout(1500)
 
                         # ============================================================
                         # STEP 1.5: Aggressive modal/popup/banner dismissal
@@ -920,13 +970,7 @@ class AviataProvider(BaseFlightProvider):
                         # ============================================================
                         logger.info("[NAV] Step 6: Waiting for search results...")
 
-                        try:
-                            await page.wait_for_load_state("networkidle", timeout=20000)
-                            logger.info("[NAV] networkidle reached after search.")
-                        except Exception:
-                            logger.debug("[NAV] networkidle timeout after search click, continuing.")
-
-                        # Wait for the intercepted JSON data event
+                        # Wait ONLY for the intercepted JSON data event — no networkidle!
                         try:
                             await asyncio.wait_for(data_received_event.wait(), timeout=25.0)
                             logger.info(
@@ -936,10 +980,9 @@ class AviataProvider(BaseFlightProvider):
                         except asyncio.TimeoutError:
                             logger.warning("[NAV] API data event timed out (25s). No JSON payloads intercepted.")
 
-                        # Additional grace period for late-arriving results
-                        await page.wait_for_timeout(5000)
+                        # Short grace period for any trailing result chunks
+                        await page.wait_for_timeout(3000)
 
-                        # Collect any further payloads that arrived during grace period
                         logger.info(
                             "[NAV] Total intercepted payloads after settling: %d",
                             len(intercepted_payloads),
