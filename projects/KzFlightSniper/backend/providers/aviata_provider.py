@@ -294,13 +294,29 @@ class AviataProvider(BaseFlightProvider):
 
         async def _handle_response(response: Any) -> None:
             url = response.url
-            if any(kw in url.lower() for kw in ["search", "flight", "offer", "variant", "v2/avia", "avia/"]):
+            url_lower = url.lower()
+
+            # --- Network Debugging: log any request hitting /api/ or /search/ ---
+            if "/api/" in url_lower or "/search/" in url_lower:
+                logger.info(
+                    "[NET-DEBUG] Response %s %s (content-type: %s)",
+                    response.status,
+                    url[:120],
+                    response.headers.get("content-type", "n/a"),
+                )
+
+            if any(kw in url_lower for kw in ["search", "flight", "offer", "variant", "v2/avia", "avia/"]):
                 content_type = response.headers.get("content-type", "")
-                if "application/json" in content_type or "json" in url:
+                if "application/json" in content_type or "json" in url_lower:
                     try:
                         payload = await response.json()
                         if isinstance(payload, (dict, list)):
-                            logger.debug("Captured flight API JSON from %s", url[:80])
+                            logger.info(
+                                "[NET-DEBUG] Captured JSON payload from %s (type=%s, keys/len=%s)",
+                                url[:120],
+                                type(payload).__name__,
+                                list(payload.keys())[:8] if isinstance(payload, dict) else len(payload),
+                            )
                             intercepted_payloads.append({"url": url, "data": payload})
                             data_received_event.set()
                     except Exception as e:
@@ -338,14 +354,44 @@ class AviataProvider(BaseFlightProvider):
                     page.on("response", _handle_response)
 
                     try:
+                        # --- Improved navigation: wait for full network settle ---
                         await page.goto(search_url, wait_until="domcontentloaded", timeout=self.timeout_ms)
+                        logger.info("[NAV-DEBUG] Page loaded (domcontentloaded). Waiting for networkidle...")
+
                         try:
-                            await asyncio.wait_for(data_received_event.wait(), timeout=12.0)
+                            await page.wait_for_load_state("networkidle", timeout=15000)
+                            logger.info("[NAV-DEBUG] networkidle reached.")
+                        except Exception as idle_err:
+                            logger.warning("[NAV-DEBUG] networkidle timed out: %s. Continuing anyway.", idle_err)
+
+                        # Wait for the JSON data event from the interceptor
+                        try:
+                            await asyncio.wait_for(data_received_event.wait(), timeout=15.0)
+                            logger.info("[NAV-DEBUG] data_received_event fired. Payloads captured: %d", len(intercepted_payloads))
                         except asyncio.TimeoutError:
-                            logger.debug("Initial API event wait timed out; giving brief settling grace period.")
+                            logger.warning("[NAV-DEBUG] API data event wait timed out (15s). No JSON payloads intercepted yet.")
 
-                        await page.wait_for_timeout(3000)
+                        # Wait for result-specific DOM selector (flight cards / result container)
+                        result_selectors = [
+                            "[class*='result']",
+                            "[class*='flight']",
+                            "[class*='offer']",
+                            "[data-qa='search-results']",
+                            "[class*='ticket']",
+                        ]
+                        for sel in result_selectors:
+                            try:
+                                await page.wait_for_selector(sel, timeout=5000)
+                                logger.info("[NAV-DEBUG] Found result selector: %s", sel)
+                                break
+                            except Exception:
+                                pass
 
+                        # Extra settling grace period for late-arriving XHR/fetch responses
+                        await page.wait_for_timeout(5000)
+                        logger.info("[NAV-DEBUG] Settling complete. Total intercepted payloads: %d", len(intercepted_payloads))
+
+                        # --- Parse all intercepted JSON payloads ---
                         for payload_entry in intercepted_payloads:
                             offers = self.parse_aviata_json(
                                 payload_entry["data"],
@@ -360,8 +406,39 @@ class AviataProvider(BaseFlightProvider):
                                 ):
                                     parsed_offers.append(off)
 
+                        # --- Visual Debugging: screenshot on 0 offers ---
+                        if len(parsed_offers) == 0:
+                            screenshot_path = "/app/data/aviata_debug_0_offers.png"
+                            logger.warning(
+                                "[DEBUG-SCREENSHOT] 0 offers parsed! Saving screenshot to %s",
+                                screenshot_path,
+                            )
+                            try:
+                                await page.screenshot(path=screenshot_path, full_page=True)
+                                logger.info("[DEBUG-SCREENSHOT] Screenshot saved: %s", screenshot_path)
+                            except Exception as ss_err:
+                                logger.error("[DEBUG-SCREENSHOT] Failed to save screenshot: %s", ss_err)
+
+                            # Also log the page title & URL for extra context
+                            try:
+                                page_title = await page.title()
+                                page_url = page.url
+                                logger.warning(
+                                    "[DEBUG-SCREENSHOT] Page title: '%s' | Current URL: %s",
+                                    page_title,
+                                    page_url,
+                                )
+                            except Exception:
+                                pass
+
                     except Exception as page_err:
                         logger.warning("Error during Aviata page navigation/interception: %s", page_err)
+                        # Attempt screenshot even on exception
+                        try:
+                            await page.screenshot(path="/app/data/aviata_debug_error.png", full_page=True)
+                            logger.info("[DEBUG-SCREENSHOT] Error-state screenshot saved.")
+                        except Exception:
+                            pass
                 finally:
                     if context is not None:
                         try:

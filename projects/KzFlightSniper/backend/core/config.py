@@ -14,7 +14,7 @@ class Settings(BaseSettings):
 
     # Groq LLM API Key & Model Configuration
     GROQ_API_KEY: Optional[str] = None
-    GROQ_MODEL: str = "llama-3.1-70b-versatile"
+    GROQ_MODEL: str = "openai/gpt-oss-20b"
 
     # SQLite Database Path
     DATABASE_PATH: str = "data/sniper.db"

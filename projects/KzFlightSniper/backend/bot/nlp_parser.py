@@ -601,7 +601,7 @@ async def parse_search_query(
             system_prompt = f"""You are an expert Flight Route & Date Extraction Assistant for KzFlightSniper (Kazakhstan, Asian and International Aviation).
 Current Reference Date: {ref_date.isoformat()} (Year: {ref_date.year}).
 
-Extract flight search query parameters from the user's message into strict JSON with the following schema:
+Extract flight search query parameters from the user's message into strict valid JSON object with the following schema:
 {{
   "origin": "3-letter IATA code (e.g. ALA, NQZ, CIT, SCO, GUW, UKK, AKX, KSG, PWQ, PLX, DMB, KOV, BXH, URA, KGF, PPK, KZO, HSA, TDK, DZN, CTU, PEK, ICN, HKT, CAN, PVG, BKK, DXB, IST, TAS, FRU, TBS, AYT, DOH, AUH, SYX, MOW, LON, TYO, DEL, CDG, MXP, FRA, MLE, CMB, GYD, EVN, KUL, SIN)",
   "destination": "3-letter IATA code",
@@ -616,7 +616,7 @@ Extract flight search query parameters from the user's message into strict JSON 
   "raw_explanation": "Brief Russian or English summary"
 }}
 
-If the user query does not contain flight intent or lacks critical origin, destination, or date info, return:
+If the user query does not contain flight intent or lacks critical origin, destination, or date info, return JSON:
 {{"error": "insufficient_info", "confidence": 0.0}}
 """
             response = await client.chat.completions.create(
@@ -626,8 +626,8 @@ If the user query does not contain flight intent or lacks critical origin, desti
                     {"role": "user", "content": text},
                 ],
                 response_format={"type": "json_object"},
-                temperature=0.1,
-                max_tokens=400,
+                temperature=0.0,
+                max_tokens=600,
             )
 
             content = response.choices[0].message.content
@@ -701,9 +701,9 @@ Extract the periodic check interval in integer minutes from the user text:
 - "раз в сутки" / "каждый день" / "сутки" -> 1440
 - "5 минут" / default -> 5
 
-Respond ONLY with strict JSON:
+Respond ONLY with a strict valid JSON object:
 {
-  "interval_minutes": integer
+  "interval_minutes": 5
 }
 """
             response = await client.chat.completions.create(
@@ -714,7 +714,7 @@ Respond ONLY with strict JSON:
                 ],
                 response_format={"type": "json_object"},
                 temperature=0.0,
-                max_tokens=100,
+                max_tokens=150,
             )
 
             content = response.choices[0].message.content
@@ -764,26 +764,27 @@ async def parse_flight_request(
             from groq import AsyncGroq
 
             client = AsyncGroq(api_key=groq_key)
-            system_prompt = f"""You are an expert Flight Intent Extraction Assistant for KzFlightSniper (Kazakhstan and Asian Aviation).
+            system_prompt = f"""You are an expert Flight Route & Date Extraction Assistant for KzFlightSniper (Kazakhstan, Asian and International Aviation).
 Current Reference Date: {ref_date.isoformat()} (Year: {ref_date.year}).
 
-Extract flight monitoring parameters from the user's message into strict JSON with the following schema:
+Extract flight search query parameters from the user's message into strict valid JSON object with the following schema:
 {{
-  "origin": "3-letter IATA code (e.g. ALA, NQZ, CIT, SCO, GUW, UKK, AKX, KSG, PWQ, PLX, DMB, KOV, BXH, URA, KGF, PPK, KZO, HSA, TDK, DZN, CTU, PEK, ICN, HKT, CAN, PVG, BKK, DXB, IST, TAS, FRU, TBS, AYT, DOH, AUH, SYX, MOW, LON, TYO, DEL, CDG, MXP, FRA, MLE, CMB, GYD, EVN, KUL, SIN)",
-  "destination": "3-letter IATA code",
-  "date": "YYYY-MM-DD (resolve relative terms like 'завтра', 'послезавтра', '15 октября', 'через неделю' using reference date {ref_date.isoformat()})",
-  "flight_number": "Optional flight code (e.g. 'KC-871', 'DV-713', 'CA-484') or null",
-  "direct_only": boolean (true for direct flights, false if transfers allowed),
-  "target_price": number or null (converted to KZT in Tenge: USD*500, EUR*540, RUB*5.5, KZT*1; if user did not specify target price, set null),
-  "currency_detected": "USD" | "EUR" | "RUB" | "KZT" | null,
-  "original_price": number or null (original price before conversion),
-  "interval_minutes": integer (check frequency in minutes, e.g. 5, 10, 30, 60, default 5),
-  "confidence": float (between 0.0 and 1.0),
-  "raw_explanation": "Brief Russian or English summary"
+    "origin_iata": "string (3-letter IATA code)",
+    "destination_iata": "string (3-letter IATA code)",
+    "date": "string (YYYY-MM-DD format)",
+    "flight_number": "string or null (e.g., 'KC-871')",
+    "direct_only": "boolean (true if user explicitly asked for direct flight, else false)",
+    "target_price": "float or null (if user did not specify the price, set to null)",
+    "interval_minutes": "integer or null (e.g., 'каждые 10 минут' -> 10, 'раз в час' -> 60)"
 }}
 
-If the user query does not contain flight intent or lacks critical route/date info, return:
-{{"error": "insufficient_info", "confidence": 0.0}}
+CRITICAL RULES:
+1. Верни ответ СТРОГО В ФОРМАТЕ JSON. Никакого текста, пояснений или markdown-разметки вокруг JSON.
+2. Convert city names to standard IATA codes:
+   - Kazakhstan: Алматы -> ALA, Астана -> NQZ, Атырау -> GUW, Актау -> SCO, Шымкент -> CIT
+   - Asia/Intl: Ченду -> CTU, Пекин -> PEK, Сеул -> ICN, Бангкок -> BKK, Пхукет -> HKT, Дубай -> DXB, Стамбул -> IST.
+3. If the user mentions a relative date ("завтра", "через неделю", "21 ноября"), calculate the exact YYYY-MM-DD based on the Current Reference Date.
+4. If NO price is mentioned in the text, you MUST return "target_price": null.
 """
             response = await client.chat.completions.create(
                 model=groq_model,
@@ -792,17 +793,26 @@ If the user query does not contain flight intent or lacks critical route/date in
                     {"role": "user", "content": text},
                 ],
                 response_format={"type": "json_object"},
-                temperature=0.1,
-                max_tokens=400,
+                temperature=0.0,
+                max_tokens=600,
             )
 
             content = response.choices[0].message.content
             if content:
                 data = json.loads(content)
-                if "origin" in data and "destination" in data and "date" in data and data.get("origin") and data.get("destination") and data.get("date"):
-                    intent = ParsedFlightIntent(**data)
-                    logger.info("Groq LLM parsed flight intent successfully: %s -> %s on %s", intent.origin, intent.destination, intent.date)
-                    return intent
+                
+                # Ищем правильные ключи: origin_iata и destination_iata
+                if data.get("origin_iata") and data.get("destination_iata") and data.get("date"):
+                    
+                    # Пытаемся создать Pydantic-модель
+                    try:
+                        intent = ParsedFlightIntent(**data)
+                        logger.info("Groq LLM parsed flight intent successfully: %s -> %s on %s", 
+                                    intent.origin_iata, intent.destination_iata, intent.date)
+                        return intent
+                    except Exception as validation_error:
+                        logger.error("Pydantic validation error: %s", validation_error)
+                        
         except Exception as e:
             logger.warning("Groq LLM parsing failed or timed out (%s). Falling back to rule-based parser.", e)
 
