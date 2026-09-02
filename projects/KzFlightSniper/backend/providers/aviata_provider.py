@@ -1,7 +1,8 @@
-"""Aviata.kz flight provider implementation using Playwright with stealth.
+"""Aviata.kz / Freedom Travel flight provider using Playwright UI automation.
 
-Intersects internal search JSON API endpoints from Aviata.kz, parses
-standardized flight offers, and provides fallback DOM extraction.
+Navigates to the Aviata homepage, fills the search form (origin, destination,
+date) via UI interaction, intercepts internal JSON API responses containing
+flight data, and parses standardized FlightOffer instances.
 """
 
 import asyncio
@@ -260,6 +261,274 @@ class AviataProvider(BaseFlightProvider):
 
         return offers
 
+    # ------------------------------------------------------------------ #
+    #  IATA city name mapping for form autocomplete selection              #
+    # ------------------------------------------------------------------ #
+    _IATA_CITY_NAMES: Dict[str, str] = {
+        "ALA": "Алматы",
+        "NQZ": "Астана",
+        "TSE": "Астана",
+        "CIT": "Шымкент",
+        "AKX": "Актобе",
+        "GUW": "Атырау",
+        "KZO": "Кызылорда",
+        "URA": "Уральск",
+        "SCO": "Актау",
+        "KGF": "Караганда",
+        "PWQ": "Павлодар",
+        "PLX": "Семей",
+        "DMB": "Тараз",
+        "DZN": "Жезказган",
+        "KOV": "Кокшетау",
+        "PPK": "Петропавловск",
+        "TDK": "Талдыкорган",
+        "USJ": "Усть-Каменогорск",
+        "HSA": "Туркестан",
+        # International popular destinations
+        "IST": "Стамбул",
+        "AYT": "Анталья",
+        "DXB": "Дубай",
+        "SHJ": "Шарджа",
+        "BKK": "Бангкок",
+        "HKT": "Пхукет",
+        "ICN": "Сеул",
+        "CJU": "Чеджу",
+        "PEK": "Пекин",
+        "CAN": "Гуанчжоу",
+        "URC": "Урумчи",
+        "DEL": "Дели",
+        "GYD": "Баку",
+        "TBS": "Тбилиси",
+        "LED": "Санкт-Петербург",
+        "SVO": "Москва",
+        "DME": "Москва",
+        "LHR": "Лондон",
+        "FRA": "Франкфурт",
+        "KUL": "Куала-Лумпур",
+    }
+
+    async def _take_debug_screenshot(self, page: Any, filename: str, context_msg: str = "") -> None:
+        """Save a debug screenshot and log page state.
+
+        Args:
+            page: Playwright page instance.
+            filename: Screenshot filename (saved under /app/data/).
+            context_msg: Additional context for the log message.
+        """
+        screenshot_path = f"/app/data/{filename}"
+        try:
+            await page.screenshot(path=screenshot_path, full_page=True)
+            logger.info("[DEBUG-SCREENSHOT] Saved: %s %s", screenshot_path, context_msg)
+        except Exception as ss_err:
+            logger.error("[DEBUG-SCREENSHOT] Failed to save %s: %s", screenshot_path, ss_err)
+        try:
+            page_title = await page.title()
+            logger.warning(
+                "[DEBUG-SCREENSHOT] Page title: '%s' | URL: %s %s",
+                page_title, page.url, context_msg,
+            )
+        except Exception:
+            pass
+
+    async def _fill_city_input(self, page: Any, input_elem: Any, iata_code: str) -> bool:
+        """Fill a city input field and select the matching autocomplete suggestion.
+
+        Tries multiple strategies: type IATA code, type city name in Russian,
+        and select the first matching dropdown item.
+
+        Args:
+            page: Playwright page instance.
+            input_elem: The located input element handle.
+            iata_code: 3-letter IATA code (e.g. 'ALA').
+
+        Returns:
+            True if a suggestion was clicked, False otherwise.
+        """
+        city_name = self._IATA_CITY_NAMES.get(iata_code, iata_code)
+
+        # Clear existing content and type city name
+        await input_elem.click()
+        await page.wait_for_timeout(300)
+        await input_elem.fill("")
+        await page.wait_for_timeout(200)
+        await input_elem.type(city_name, delay=80)
+        await page.wait_for_timeout(1000)
+
+        # Try to find and click a dropdown suggestion
+        dropdown_selectors = [
+            # Generic autocomplete / dropdown patterns
+            "[class*='dropdown'] [class*='item']",
+            "[class*='dropdown'] li",
+            "[class*='suggest'] [class*='item']",
+            "[class*='suggest'] li",
+            "[class*='autocomplete'] [class*='item']",
+            "[class*='autocomplete'] li",
+            "[class*='option']",
+            "[role='option']",
+            "[role='listbox'] [role='option']",
+            "[class*='list'] [class*='item']",
+            "ul[class*='dropdown'] li",
+            "div[class*='popup'] div[class*='item']",
+            "[class*='menu'] [class*='item']",
+        ]
+
+        for sel in dropdown_selectors:
+            try:
+                items = await page.query_selector_all(sel)
+                if items and len(items) > 0:
+                    # Prefer item whose text contains the IATA code or city name
+                    for item in items:
+                        text = (await item.inner_text() or "").strip()
+                        if iata_code in text.upper() or city_name.lower() in text.lower():
+                            await item.click()
+                            logger.info("[FORM] Selected suggestion: '%s' for %s (%s)", text[:60], iata_code, sel)
+                            await page.wait_for_timeout(500)
+                            return True
+                    # Fallback: click the first visible item
+                    first_text = (await items[0].inner_text() or "").strip()
+                    await items[0].click()
+                    logger.info("[FORM] Selected first suggestion: '%s' for %s (%s)", first_text[:60], iata_code, sel)
+                    await page.wait_for_timeout(500)
+                    return True
+            except Exception:
+                continue
+
+        # Final fallback: try pressing Enter to confirm typed text
+        logger.warning("[FORM] No dropdown found for %s (%s). Pressing Enter as fallback.", iata_code, city_name)
+        await input_elem.press("Enter")
+        await page.wait_for_timeout(500)
+        return False
+
+    async def _select_date_in_calendar(self, page: Any, target_date: str) -> bool:
+        """Select a date in the calendar/date-picker widget.
+
+        Tries to find the date trigger, open the calendar, and click the target date.
+
+        Args:
+            page: Playwright page instance.
+            target_date: Date string in YYYY-MM-DD format.
+
+        Returns:
+            True if date was selected, False otherwise.
+        """
+        dt = datetime.strptime(target_date, "%Y-%m-%d")
+        day = dt.day
+        # Formatted date strings for matching
+        day_str = str(day)
+        iso_date = dt.strftime("%Y-%m-%d")
+
+        # Step 1: Click on the date input/trigger to open the calendar
+        date_trigger_selectors = [
+            "[class*='date'] input",
+            "[class*='date'][class*='picker']",
+            "[class*='calendar'] input",
+            "[data-qa*='date']",
+            "[placeholder*='Когда']",
+            "[placeholder*='когда']",
+            "[placeholder*='Дата']",
+            "[placeholder*='дата']",
+            "[class*='departure'] [class*='date']",
+            "input[type='date']",
+            "[class*='date-input']",
+            "[class*='datepicker']",
+            "button[class*='date']",
+            "[class*='field'][class*='date']",
+        ]
+
+        date_trigger = None
+        for sel in date_trigger_selectors:
+            try:
+                elem = await page.wait_for_selector(sel, timeout=2000)
+                if elem:
+                    date_trigger = elem
+                    logger.info("[FORM] Found date trigger: %s", sel)
+                    break
+            except Exception:
+                continue
+
+        if date_trigger:
+            await date_trigger.click()
+            await page.wait_for_timeout(800)
+
+        # Step 2: Navigate calendar to the correct month if needed
+        # Try to find month/year display and navigate forward if needed
+        target_month_year = dt.strftime("%Y-%m")
+        for _ in range(12):  # max 12 months forward
+            try:
+                # Check if current calendar shows the right month
+                cal_text = await page.inner_text("[class*='calendar']") or ""
+                # Simple heuristic: check if the month name is visible
+                month_names_ru = [
+                    "", "январ", "феврал", "март", "апрел", "ма", "июн",
+                    "июл", "август", "сентябр", "октябр", "ноябр", "декабр",
+                ]
+                target_month_fragment = month_names_ru[dt.month]
+                if target_month_fragment.lower() in cal_text.lower() and str(dt.year) in cal_text:
+                    logger.info("[FORM] Calendar shows correct month.")
+                    break
+                # Click next month button
+                next_btn_sels = [
+                    "[class*='next']", "[class*='forward']", "[aria-label*='next']",
+                    "[aria-label*='Next']", "button[class*='arrow-right']",
+                    "[class*='calendar'] [class*='right']",
+                ]
+                clicked = False
+                for nsel in next_btn_sels:
+                    try:
+                        nbtn = await page.query_selector(nsel)
+                        if nbtn:
+                            await nbtn.click()
+                            await page.wait_for_timeout(400)
+                            clicked = True
+                            break
+                    except Exception:
+                        continue
+                if not clicked:
+                    break
+            except Exception:
+                break
+
+        # Step 3: Click the target day cell
+        day_selectors = [
+            f"[data-date='{iso_date}']",
+            f"[data-day='{day}']",
+            f"td[data-date='{iso_date}']",
+            f"[aria-label*='{day}']",
+            f"[class*='calendar'] [class*='day']:has-text('{day_str}')",
+            f"[class*='calendar'] td:has-text('{day_str}')",
+            f"[class*='calendar'] button:has-text('{day_str}')",
+            f"[class*='calendar'] div[class*='cell']:has-text('{day_str}')",
+        ]
+
+        for sel in day_selectors:
+            try:
+                day_elem = await page.query_selector(sel)
+                if day_elem:
+                    await day_elem.click()
+                    logger.info("[FORM] Selected date %s via selector: %s", iso_date, sel)
+                    await page.wait_for_timeout(500)
+                    return True
+            except Exception:
+                continue
+
+        # Fallback: try clicking any element with the exact day number text in the calendar area
+        try:
+            cal_area = await page.query_selector("[class*='calendar']")
+            if cal_area:
+                all_cells = await cal_area.query_selector_all("td, div[class*='day'], button, span")
+                for cell in all_cells:
+                    text = (await cell.inner_text() or "").strip()
+                    if text == day_str:
+                        await cell.click()
+                        logger.info("[FORM] Selected date %s via cell text match.", iso_date)
+                        await page.wait_for_timeout(500)
+                        return True
+        except Exception:
+            pass
+
+        logger.warning("[FORM] Could not select date %s in calendar.", iso_date)
+        return False
+
     async def search_flights(
         self,
         origin: str,
@@ -267,7 +536,10 @@ class AviataProvider(BaseFlightProvider):
         date: str,
         max_transfers: int = 0,
     ) -> List[FlightOffer]:
-        """Search Aviata for flights between origin and destination on specified date.
+        """Search Aviata/Freedom Travel for flights via UI form automation.
+
+        Navigates to the homepage, fills the search form (origin, destination,
+        date), submits it, and intercepts the backend JSON API response.
 
         Args:
             origin: 3-letter IATA origin airport code (e.g. 'ALA').
@@ -282,17 +554,16 @@ class AviataProvider(BaseFlightProvider):
 
         clean_origin = origin.strip().upper()
         clean_dest = destination.strip().upper()
-        date_formatted = date.replace("-", "").strip()
-        search_path = f"{clean_origin}{clean_dest}{date_formatted}100E"
-        search_url = f"https://aviata.kz/flights/search/{search_path}/"
+        home_url = "https://aviata.kz/"
 
         logger.info("Executing Aviata flight search: %s -> %s on %s", clean_origin, clean_dest, date)
-        logger.debug("Aviata target URL: %s", search_url)
+        logger.info("[NAV] Strategy: UI form automation from homepage %s", home_url)
 
         intercepted_payloads: List[Dict[str, Any]] = []
         data_received_event = asyncio.Event()
 
         async def _handle_response(response: Any) -> None:
+            """Intercept network responses and capture flight-related JSON payloads."""
             url = response.url
             url_lower = url.lower()
 
@@ -301,28 +572,34 @@ class AviataProvider(BaseFlightProvider):
                 logger.info(
                     "[NET-DEBUG] Response %s %s (content-type: %s)",
                     response.status,
-                    url[:120],
+                    url[:150],
                     response.headers.get("content-type", "n/a"),
                 )
 
-            if any(kw in url_lower for kw in ["search", "flight", "offer", "variant", "v2/avia", "avia/"]):
+            # Broad keyword match for flight data endpoints
+            flight_keywords = [
+                "search", "flight", "offer", "variant", "v2/avia", "avia/",
+                "result", "ticket", "price", "fare",
+            ]
+            if any(kw in url_lower for kw in flight_keywords):
                 content_type = response.headers.get("content-type", "")
                 if "application/json" in content_type or "json" in url_lower:
                     try:
                         payload = await response.json()
                         if isinstance(payload, (dict, list)):
                             logger.info(
-                                "[NET-DEBUG] Captured JSON payload from %s (type=%s, keys/len=%s)",
-                                url[:120],
+                                "[NET-DEBUG] Captured JSON from %s (type=%s, keys/len=%s)",
+                                url[:150],
                                 type(payload).__name__,
-                                list(payload.keys())[:8] if isinstance(payload, dict) else len(payload),
+                                list(payload.keys())[:10] if isinstance(payload, dict) else len(payload),
                             )
                             intercepted_payloads.append({"url": url, "data": payload})
                             data_received_event.set()
                     except Exception as e:
-                        logger.debug("Could not parse JSON response from %s: %s", url[:80], e)
+                        logger.debug("Could not parse JSON from %s: %s", url[:100], e)
 
         parsed_offers: List[FlightOffer] = []
+        final_url = home_url  # track actual URL for deep links
 
         try:
             async with async_playwright() as pw:
@@ -351,53 +628,223 @@ class AviataProvider(BaseFlightProvider):
                     page = await context.new_page()
                     await _apply_stealth(page)
 
+                    # Attach network interceptor BEFORE any navigation
                     page.on("response", _handle_response)
 
                     try:
-                        # --- Improved navigation: wait for full network settle ---
-                        await page.goto(search_url, wait_until="domcontentloaded", timeout=self.timeout_ms)
-                        logger.info("[NAV-DEBUG] Page loaded (domcontentloaded). Waiting for networkidle...")
+                        # ============================================================
+                        # STEP 1: Navigate to the homepage
+                        # ============================================================
+                        logger.info("[NAV] Step 1: Navigating to homepage...")
+                        await page.goto(home_url, wait_until="domcontentloaded", timeout=self.timeout_ms)
 
                         try:
                             await page.wait_for_load_state("networkidle", timeout=15000)
-                            logger.info("[NAV-DEBUG] networkidle reached.")
-                        except Exception as idle_err:
-                            logger.warning("[NAV-DEBUG] networkidle timed out: %s. Continuing anyway.", idle_err)
+                        except Exception:
+                            logger.debug("[NAV] networkidle timeout on homepage, continuing.")
 
-                        # Wait for the JSON data event from the interceptor
-                        try:
-                            await asyncio.wait_for(data_received_event.wait(), timeout=15.0)
-                            logger.info("[NAV-DEBUG] data_received_event fired. Payloads captured: %d", len(intercepted_payloads))
-                        except asyncio.TimeoutError:
-                            logger.warning("[NAV-DEBUG] API data event wait timed out (15s). No JSON payloads intercepted yet.")
+                        final_url = page.url
+                        logger.info("[NAV] Landed on: %s", final_url)
+                        await page.wait_for_timeout(2000)
 
-                        # Wait for result-specific DOM selector (flight cards / result container)
-                        result_selectors = [
-                            "[class*='result']",
-                            "[class*='flight']",
-                            "[class*='offer']",
-                            "[data-qa='search-results']",
-                            "[class*='ticket']",
+                        # Dismiss any popups/modals/cookie banners
+                        dismiss_selectors = [
+                            "[class*='cookie'] button",
+                            "[class*='modal'] [class*='close']",
+                            "[class*='banner'] button[class*='close']",
+                            "[class*='popup'] [class*='close']",
+                            "button[aria-label='Close']",
+                            "[class*='overlay'] button",
                         ]
-                        for sel in result_selectors:
+                        for dsel in dismiss_selectors:
                             try:
-                                await page.wait_for_selector(sel, timeout=5000)
-                                logger.info("[NAV-DEBUG] Found result selector: %s", sel)
-                                break
+                                btn = await page.query_selector(dsel)
+                                if btn and await btn.is_visible():
+                                    await btn.click()
+                                    logger.debug("[NAV] Dismissed popup: %s", dsel)
+                                    await page.wait_for_timeout(500)
                             except Exception:
                                 pass
 
-                        # Extra settling grace period for late-arriving XHR/fetch responses
-                        await page.wait_for_timeout(5000)
-                        logger.info("[NAV-DEBUG] Settling complete. Total intercepted payloads: %d", len(intercepted_payloads))
+                        # ============================================================
+                        # STEP 2: Fill "Origin" (Откуда) field
+                        # ============================================================
+                        logger.info("[FORM] Step 2: Filling origin = %s", clean_origin)
+                        origin_selectors = [
+                            "[data-qa*='origin'] input",
+                            "[data-qa*='from'] input",
+                            "input[placeholder*='Откуда']",
+                            "input[placeholder*='откуда']",
+                            "input[placeholder*='From']",
+                            "input[placeholder*='Город вылета']",
+                            "input[name*='origin']",
+                            "input[name*='from']",
+                            "[class*='origin'] input",
+                            "[class*='from'] input",
+                            "[class*='departure'] input",
+                            # Broad fallbacks: first and second input in the search form
+                            "form input:first-of-type",
+                            "[class*='search'] input:first-of-type",
+                        ]
 
-                        # --- Parse all intercepted JSON payloads ---
+                        origin_input = None
+                        for sel in origin_selectors:
+                            try:
+                                elem = await page.wait_for_selector(sel, timeout=3000)
+                                if elem and await elem.is_visible():
+                                    origin_input = elem
+                                    logger.info("[FORM] Found origin input: %s", sel)
+                                    break
+                            except Exception:
+                                continue
+
+                        if not origin_input:
+                            # Ultra-fallback: grab all visible inputs and use the first one
+                            all_inputs = await page.query_selector_all("input[type='text'], input:not([type])")
+                            for inp in all_inputs:
+                                if await inp.is_visible():
+                                    origin_input = inp
+                                    logger.warning("[FORM] Using fallback first visible input for origin.")
+                                    break
+
+                        if origin_input:
+                            await self._fill_city_input(page, origin_input, clean_origin)
+                        else:
+                            logger.error("[FORM] Could not find origin input field!")
+                            await self._take_debug_screenshot(page, "aviata_debug_no_origin_input.png")
+
+                        await page.wait_for_timeout(800)
+
+                        # ============================================================
+                        # STEP 3: Fill "Destination" (Куда) field
+                        # ============================================================
+                        logger.info("[FORM] Step 3: Filling destination = %s", clean_dest)
+                        dest_selectors = [
+                            "[data-qa*='destination'] input",
+                            "[data-qa*='to'] input",
+                            "input[placeholder*='Куда']",
+                            "input[placeholder*='куда']",
+                            "input[placeholder*='To']",
+                            "input[placeholder*='Город прибытия']",
+                            "input[name*='destination']",
+                            "input[name*='to']",
+                            "[class*='destination'] input",
+                            "[class*='to'] input",
+                            "[class*='arrival'] input",
+                        ]
+
+                        dest_input = None
+                        for sel in dest_selectors:
+                            try:
+                                elem = await page.wait_for_selector(sel, timeout=3000)
+                                if elem and await elem.is_visible():
+                                    dest_input = elem
+                                    logger.info("[FORM] Found destination input: %s", sel)
+                                    break
+                            except Exception:
+                                continue
+
+                        if not dest_input:
+                            # Fallback: second visible text input
+                            all_inputs = await page.query_selector_all("input[type='text'], input:not([type])")
+                            visible_inputs = []
+                            for inp in all_inputs:
+                                if await inp.is_visible():
+                                    visible_inputs.append(inp)
+                            if len(visible_inputs) >= 2:
+                                dest_input = visible_inputs[1]
+                                logger.warning("[FORM] Using fallback second visible input for destination.")
+
+                        if dest_input:
+                            await self._fill_city_input(page, dest_input, clean_dest)
+                        else:
+                            logger.error("[FORM] Could not find destination input field!")
+                            await self._take_debug_screenshot(page, "aviata_debug_no_dest_input.png")
+
+                        await page.wait_for_timeout(800)
+
+                        # ============================================================
+                        # STEP 4: Select departure date
+                        # ============================================================
+                        logger.info("[FORM] Step 4: Selecting date = %s", date)
+                        await self._select_date_in_calendar(page, date)
+                        await page.wait_for_timeout(800)
+
+                        # ============================================================
+                        # STEP 5: Click "Search" / "Найти" button
+                        # ============================================================
+                        logger.info("[FORM] Step 5: Clicking search button...")
+                        search_btn_selectors = [
+                            "button:has-text('Найти')",
+                            "button:has-text('найти')",
+                            "button:has-text('Поиск')",
+                            "button:has-text('Search')",
+                            "button:has-text('Найти билеты')",
+                            "[data-qa*='search'] button",
+                            "[class*='search'] button[type='submit']",
+                            "form button[type='submit']",
+                            "button[class*='search']",
+                            "[class*='submit'] button",
+                            "a:has-text('Найти')",
+                        ]
+
+                        search_clicked = False
+                        for sel in search_btn_selectors:
+                            try:
+                                btn = await page.wait_for_selector(sel, timeout=3000)
+                                if btn and await btn.is_visible():
+                                    await btn.click()
+                                    logger.info("[FORM] Clicked search button: %s", sel)
+                                    search_clicked = True
+                                    break
+                            except Exception:
+                                continue
+
+                        if not search_clicked:
+                            logger.warning("[FORM] Could not find search button. Trying Enter key...")
+                            await page.keyboard.press("Enter")
+
+                        # ============================================================
+                        # STEP 6: Wait for search results (API interception)
+                        # ============================================================
+                        logger.info("[NAV] Step 6: Waiting for search results...")
+
+                        try:
+                            await page.wait_for_load_state("networkidle", timeout=20000)
+                            logger.info("[NAV] networkidle reached after search.")
+                        except Exception:
+                            logger.debug("[NAV] networkidle timeout after search click, continuing.")
+
+                        # Wait for the intercepted JSON data event
+                        try:
+                            await asyncio.wait_for(data_received_event.wait(), timeout=25.0)
+                            logger.info(
+                                "[NAV] data_received_event fired! Payloads captured: %d",
+                                len(intercepted_payloads),
+                            )
+                        except asyncio.TimeoutError:
+                            logger.warning("[NAV] API data event timed out (25s). No JSON payloads intercepted.")
+
+                        # Additional grace period for late-arriving results
+                        await page.wait_for_timeout(5000)
+
+                        # Collect any further payloads that arrived during grace period
+                        logger.info(
+                            "[NAV] Total intercepted payloads after settling: %d",
+                            len(intercepted_payloads),
+                        )
+
+                        final_url = page.url
+
+                        # ============================================================
+                        # STEP 7: Parse all intercepted JSON payloads
+                        # ============================================================
                         for payload_entry in intercepted_payloads:
                             offers = self.parse_aviata_json(
                                 payload_entry["data"],
                                 clean_origin,
                                 clean_dest,
-                                search_url,
+                                final_url,
                             )
                             for off in offers:
                                 if not any(
@@ -406,37 +853,19 @@ class AviataProvider(BaseFlightProvider):
                                 ):
                                     parsed_offers.append(off)
 
-                        # --- Visual Debugging: screenshot on 0 offers ---
+                        # ============================================================
+                        # STEP 8: Debug screenshot if 0 offers found
+                        # ============================================================
                         if len(parsed_offers) == 0:
-                            screenshot_path = "/app/data/aviata_debug_0_offers.png"
-                            logger.warning(
-                                "[DEBUG-SCREENSHOT] 0 offers parsed! Saving screenshot to %s",
-                                screenshot_path,
-                            )
-                            try:
-                                await page.screenshot(path=screenshot_path, full_page=True)
-                                logger.info("[DEBUG-SCREENSHOT] Screenshot saved: %s", screenshot_path)
-                            except Exception as ss_err:
-                                logger.error("[DEBUG-SCREENSHOT] Failed to save screenshot: %s", ss_err)
-
-                            # Also log the page title & URL for extra context
-                            try:
-                                page_title = await page.title()
-                                page_url = page.url
-                                logger.warning(
-                                    "[DEBUG-SCREENSHOT] Page title: '%s' | Current URL: %s",
-                                    page_title,
-                                    page_url,
-                                )
-                            except Exception:
-                                pass
+                            logger.warning("[RESULT] 0 offers parsed from %d payloads!", len(intercepted_payloads))
+                            await self._take_debug_screenshot(page, "aviata_debug_0_offers.png", "(0 offers)")
+                        else:
+                            logger.info("[RESULT] Successfully parsed %d offers.", len(parsed_offers))
 
                     except Exception as page_err:
-                        logger.warning("Error during Aviata page navigation/interception: %s", page_err)
-                        # Attempt screenshot even on exception
+                        logger.warning("Error during Aviata page interaction: %s", page_err)
                         try:
-                            await page.screenshot(path="/app/data/aviata_debug_error.png", full_page=True)
-                            logger.info("[DEBUG-SCREENSHOT] Error-state screenshot saved.")
+                            await self._take_debug_screenshot(page, "aviata_debug_error.png", f"(exception: {page_err})")
                         except Exception:
                             pass
                 finally:
