@@ -4,7 +4,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from aiogram import F, Router
 from aiogram.enums import ChatAction
-from aiogram.filters import Command, CommandObject, CommandStart
+from aiogram.filters import Command, CommandObject, CommandStart, StateFilter
 from aiogram.filters.callback_data import CallbackData
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
@@ -526,7 +526,10 @@ async def handle_delete(message: Message, command: CommandObject) -> None:
 # Step 1: Direction & Date Parsing + Live Flight List
 # ============================================================================
 
-@router.message(SniperStates.waiting_for_search_query, F.text & ~F.text.startswith("/"))
+@router.message(
+    StateFilter(None, SniperStates.waiting_for_search_query, SniperStates.waiting_for_airport_disambiguation),
+    F.text & ~F.text.startswith("/"),
+)
 async def handle_search_query_message(message: Message, state: FSMContext) -> None:
     """Handle natural language flight query, run Live Search via AviasalesProvider, and render flight list."""
     user_text = (message.text or "").strip()
@@ -600,6 +603,8 @@ async def handle_search_query_message(message: Message, state: FSMContext) -> No
             reply_markup=cancel_kb,
             parse_mode="HTML",
         )
+        await state.update_data(disambiguation_intent=None)
+        await state.set_state(SniperStates.waiting_for_search_query)
         return
 
     offers_dump = [o.model_dump() for o in offers]
@@ -609,7 +614,9 @@ async def handle_search_query_message(message: Message, state: FSMContext) -> No
         date=intent.date,
         direct_only=intent.direct_only,
         offers=offers_dump,
+        disambiguation_intent=None,
     )
+    await state.set_state(SniperStates.waiting_for_search_query)
 
     list_text = (
         f"✈️ <b>Найдено рейсов ({len(offers)})</b> по маршруту <code>{intent.origin}</code> ✈️ <code>{intent.destination}</code> на <code>{intent.date}</code>:\n\n"
@@ -772,7 +779,10 @@ async def handle_monitor_flight_callback(
         await callback.message.edit_text(prompt_text, reply_markup=keyboard, parse_mode="HTML")
 
 
-@router.message(SniperStates.waiting_for_interval, F.text & ~F.text.startswith("/"))
+@router.message(
+    StateFilter(SniperStates.waiting_for_interval),
+    F.text & ~F.text.startswith("/"),
+)
 async def handle_interval_text_message(message: Message, state: FSMContext) -> None:
     """Handle custom text check interval, set target price, and render confirmation card."""
     user_text = (message.text or "").strip()
@@ -961,3 +971,29 @@ async def handle_cancel_snipe_callback(
     await callback.answer("Отменено")
     if callback.message:
         await callback.message.edit_text("❌ <b>Создание задачи отменено.</b>", reply_markup=None, parse_mode="HTML")
+
+
+# ============================================================================
+# Step 5: Fallback / Catch-All Handlers
+# ============================================================================
+
+@router.message()
+async def handle_fallback_unhandled_message(message: Message) -> None:
+    """Catch-all fallback handler for unhandled messages, media, voice, stickers, or unknown commands."""
+    fallback_text = (
+        "🤖 <b>Я не понял это сообщение.</b>\n\n"
+        "Я умею находить дешевые авиабилеты и отслеживать изменение цен.\n\n"
+        "<b>Как мной пользоваться:</b>\n"
+        "• Отправьте маршрут и дату обычным текстом (например: <i>«Алматы - Сеул 25 декабря»</i>)\n"
+        "• <code>/start</code> — Начать работу и открыть меню поиска\n"
+        "• <code>/list</code> — Список ваших активных мониторингов\n"
+        "• <code>/help</code> — Справочник команд и IATA-кодов аэропортов"
+    )
+    await message.answer(fallback_text, parse_mode="HTML")
+
+
+@router.callback_query()
+async def handle_fallback_unhandled_callback(callback: CallbackQuery) -> None:
+    """Catch-all fallback handler for unhandled callback queries."""
+    await callback.answer("⚠️ Действие устарело или недоступно.", show_alert=False)
+

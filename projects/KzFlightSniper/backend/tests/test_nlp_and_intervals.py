@@ -21,6 +21,8 @@ from backend.bot.handlers import (
     handle_airport_select_callback,
     handle_cancel_snipe_callback,
     handle_confirm_snipe_callback,
+    handle_fallback_unhandled_callback,
+    handle_fallback_unhandled_message,
     handle_flight_select_callback,
     handle_interval_text_message,
     handle_monitor_flight_callback,
@@ -1251,3 +1253,243 @@ class TestTelegramBotFSMAndLivePreviewFlow:
         assert callback.answer.called
         assert cb_msg.edit_text.called
         assert "Создание задачи отменено" in cb_msg.edit_text.call_args[0][0]
+
+    async def test_search_query_step1_empty_state_seamless_ux(self) -> None:
+        """Test sending a flight search text directly in empty state (None) parses and triggers search seamlessly."""
+        status_msg = MagicMock()
+        status_msg.edit_text = AsyncMock()
+
+        message = MagicMock()
+        message.text = "Астана - Шымкент 1 ноября"
+        message.chat.id = 999
+        message.bot = MagicMock()
+        message.bot.send_chat_action = AsyncMock()
+        message.answer = AsyncMock(return_value=status_msg)
+
+        state_data: Dict[str, Any] = {}
+
+        async def mock_update_data(**kwargs: Any) -> None:
+            state_data.update(kwargs)
+
+        state = AsyncMock()
+        state.update_data = AsyncMock(side_effect=mock_update_data)
+        state.set_state = AsyncMock()
+        state.get_data = AsyncMock(return_value=state_data)
+
+        mock_offers = [
+            FlightOffer(
+                airline="SCAT",
+                flight_number="DV-713",
+                origin="NQZ",
+                destination="CIT",
+                departure_time="09:00",
+                arrival_time="10:40",
+                price_kzt=16500.0,
+                transfers_count=0,
+            )
+        ]
+
+        with patch("backend.bot.handlers.AviasalesProvider.search", new=AsyncMock(return_value=mock_offers)) as mock_search:
+            await handle_search_query_message(message, state)
+
+            assert mock_search.called
+            assert mock_search.call_args[1]["origin"] == "NQZ"
+            assert mock_search.call_args[1]["destination"] == "CIT"
+
+        assert state.set_state.called
+        assert state.set_state.call_args[0][0] == SniperStates.waiting_for_search_query
+        assert state_data["origin"] == "NQZ"
+        assert state_data["destination"] == "CIT"
+        assert state_data.get("disambiguation_intent") is None
+        assert len(state_data["offers"]) == 1
+
+        assert status_msg.edit_text.called
+        card_text = status_msg.edit_text.call_args[0][0]
+        assert "Найдено рейсов (1)" in card_text
+        assert "NQZ" in card_text
+        assert "CIT" in card_text
+
+    async def test_search_query_disambiguation_override_with_new_direct_query(self) -> None:
+        """Test sending a new flight query during waiting_for_airport_disambiguation overrides and resets prior state."""
+        old_disambiguation_intent = {
+            "origin": "ALA",
+            "destination": "CTU",
+            "date": "2026-11-21",
+            "direct_only": True,
+            "flight_number": None,
+            "is_ambiguous": True,
+            "ambiguous_target": "destination",
+            "ambiguous_city_name": "Чэнду",
+            "ambiguous_options": [
+                {"iata": "TFU", "name": "Тяньфу (TFU)"},
+                {"iata": "CTU", "name": "Шуанлю (CTU)"},
+            ],
+        }
+
+        state_data: Dict[str, Any] = {"disambiguation_intent": old_disambiguation_intent}
+
+        async def mock_update_data(**kwargs: Any) -> None:
+            state_data.update(kwargs)
+
+        state = AsyncMock()
+        state.get_data = AsyncMock(return_value=state_data)
+        state.update_data = AsyncMock(side_effect=mock_update_data)
+        state.set_state = AsyncMock()
+
+        status_msg = MagicMock()
+        status_msg.edit_text = AsyncMock()
+
+        message = MagicMock()
+        # User types a completely different non-ambiguous query instead of clicking airport buttons
+        message.text = "Алматы - Сеул 21 ноября"
+        message.chat.id = 555
+        message.bot = MagicMock()
+        message.bot.send_chat_action = AsyncMock()
+        message.answer = AsyncMock(return_value=status_msg)
+
+        mock_offers = [
+            FlightOffer(
+                airline="Air Astana",
+                flight_number="KC-909",
+                origin="ALA",
+                destination="ICN",
+                departure_time="01:10",
+                arrival_time="09:45",
+                price_kzt=185000.0,
+                transfers_count=0,
+            )
+        ]
+
+        with patch("backend.bot.handlers.AviasalesProvider.search", new=AsyncMock(return_value=mock_offers)) as mock_search:
+            await handle_search_query_message(message, state)
+
+            assert mock_search.called
+            assert mock_search.call_args[1]["origin"] == "ALA"
+            assert mock_search.call_args[1]["destination"] == "ICN"
+
+        # Previous disambiguation intent must be cleared
+        assert state_data.get("disambiguation_intent") is None
+        assert state_data["origin"] == "ALA"
+        assert state_data["destination"] == "ICN"
+        assert state.set_state.called
+        assert state.set_state.call_args[0][0] == SniperStates.waiting_for_search_query
+
+        assert status_msg.edit_text.called
+        card_text = status_msg.edit_text.call_args[0][0]
+        assert "Найдено рейсов (1)" in card_text
+        assert "ICN" in card_text
+
+    async def test_search_query_disambiguation_override_with_another_ambiguous_query(self) -> None:
+        """Test sending a new ambiguous query replaces previous disambiguation options."""
+        old_disambiguation_intent = {
+            "origin": "ALA",
+            "destination": "CTU",
+            "date": "2026-11-21",
+            "direct_only": True,
+            "flight_number": None,
+            "is_ambiguous": True,
+            "ambiguous_target": "destination",
+            "ambiguous_city_name": "Чэнду",
+            "ambiguous_options": [{"iata": "TFU"}, {"iata": "CTU"}],
+        }
+
+        state_data: Dict[str, Any] = {"disambiguation_intent": old_disambiguation_intent}
+
+        async def mock_update_data(**kwargs: Any) -> None:
+            state_data.update(kwargs)
+
+        state = AsyncMock()
+        state.get_data = AsyncMock(return_value=state_data)
+        state.update_data = AsyncMock(side_effect=mock_update_data)
+        state.set_state = AsyncMock()
+
+        status_msg = MagicMock()
+        status_msg.edit_text = AsyncMock()
+
+        message = MagicMock()
+        # User types another ambiguous query (Moscow)
+        message.text = "Москва - Алматы 10 октября"
+        message.chat.id = 555
+        message.bot = MagicMock()
+        message.bot.send_chat_action = AsyncMock()
+        message.answer = AsyncMock(return_value=status_msg)
+
+        await handle_search_query_message(message, state)
+
+        assert state.set_state.called
+        assert state.set_state.call_args[0][0] == SniperStates.waiting_for_airport_disambiguation
+        assert state_data["disambiguation_intent"]["ambiguous_city_name"] == "Москва"
+        assert [o["iata"] for o in state_data["disambiguation_intent"]["ambiguous_options"]] == ["SVO", "DME", "VKO"]
+
+        assert status_msg.edit_text.called
+        card_text = status_msg.edit_text.call_args[0][0]
+        assert "Москва" in card_text
+
+    async def test_fallback_unhandled_message(self) -> None:
+        """Test fallback catch-all handler replies with polite guidance and command list."""
+        message = MagicMock()
+        message.text = None  # non-text / sticker / media or unhandled state
+        message.answer = AsyncMock()
+
+        await handle_fallback_unhandled_message(message)
+
+        assert message.answer.called
+        reply_text = message.answer.call_args[0][0]
+        assert "Я не понял это сообщение" in reply_text
+        assert "/start" in reply_text
+        assert "/list" in reply_text
+        assert "/help" in reply_text
+
+    async def test_fallback_unhandled_callback(self) -> None:
+        """Test fallback catch-all callback handler acknowledges callback cleanly."""
+        callback = MagicMock()
+        callback.answer = AsyncMock()
+
+        await handle_fallback_unhandled_callback(callback)
+
+        assert callback.answer.called
+        assert "⚠️" in callback.answer.call_args[0][0]
+
+
+class TestRouterFSMAndFilterResolution:
+    """Test router registration, FSM state filters, and catch-all handler topology."""
+
+    def test_search_query_handler_state_filter_contains_empty_and_disambiguation(self) -> None:
+        """Verify handle_search_query_message is registered with None, waiting_for_search_query, and waiting_for_airport_disambiguation."""
+        search_handler_obj = None
+        for handler in router.message.handlers:
+            if handler.callback == handle_search_query_message:
+                search_handler_obj = handler
+                break
+
+        assert search_handler_obj is not None, "handle_search_query_message not registered in router.message"
+
+        state_filters = [f.callback for f in search_handler_obj.filters if hasattr(f.callback, "states")]
+        assert len(state_filters) > 0, "No state filter found on handle_search_query_message"
+        registered_states = state_filters[0].states
+        assert None in registered_states, "StateFilter must accept None (empty state)"
+        assert SniperStates.waiting_for_search_query in registered_states
+        assert SniperStates.waiting_for_airport_disambiguation in registered_states
+
+    def test_interval_handler_state_filter(self) -> None:
+        """Verify handle_interval_text_message is registered specifically for waiting_for_interval."""
+        interval_handler_obj = None
+        for handler in router.message.handlers:
+            if handler.callback == handle_interval_text_message:
+                interval_handler_obj = handler
+                break
+
+        assert interval_handler_obj is not None, "handle_interval_text_message not registered in router.message"
+        state_filters = [f.callback for f in interval_handler_obj.filters if hasattr(f.callback, "states")]
+        assert len(state_filters) > 0
+        assert SniperStates.waiting_for_interval in state_filters[0].states
+
+    def test_fallback_handlers_registered_last(self) -> None:
+        """Verify fallback message and callback handlers are registered at the very end of router."""
+        last_message_handler = router.message.handlers[-1]
+        assert last_message_handler.callback == handle_fallback_unhandled_message
+
+        last_callback_handler = router.callback_query.handlers[-1]
+        assert last_callback_handler.callback == handle_fallback_unhandled_callback
+
+
