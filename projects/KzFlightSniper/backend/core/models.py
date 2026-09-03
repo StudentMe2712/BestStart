@@ -1,7 +1,7 @@
 """Domain models and schemas for KzFlightSniper."""
 
 from datetime import datetime
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 from pydantic import BaseModel, Field, field_validator
 
 
@@ -62,8 +62,8 @@ class ParsedFlightIntent(BaseModel):
     interval_minutes: int = Field(default=5, ge=1, description="Periodic check frequency in minutes")
     confidence: float = Field(default=1.0, ge=0.0, le=1.0, description="Extraction confidence score")
     raw_explanation: Optional[str] = Field(default=None, description="Human readable explanation or summary")
-    is_ambiguous: bool = Field(default=False, description="Whether origin or destination matches multiple major airport codes")
-    ambiguous_options: List[Dict[str, str]] = Field(default_factory=list, description="List of airport options e.g. [{'iata': 'TFU', 'name': 'Чэнду (Тяньфу)'}]")
+    is_ambiguous: Optional[bool] = Field(default=False, description="Whether origin or destination matches multiple major airport codes")
+    ambiguous_options: Optional[List[Dict[str, str]]] = Field(default_factory=list, description="List of airport options e.g. [{'iata': 'TFU', 'name': 'Чэнду (Тяньфу)'}]")
     ambiguous_target: Optional[str] = Field(default=None, description="'origin' or 'destination'")
     ambiguous_city_name: Optional[str] = Field(default=None, description="Name of the ambiguous city (e.g. 'Чэнду')")
 
@@ -81,15 +81,100 @@ class ParsedFlightIntent(BaseModel):
 
     @field_validator("origin", "destination", mode="before")
     @classmethod
-    def normalize_iata(cls, value: str) -> str:
+    def normalize_iata(cls, value: Any) -> str:
         """Normalize 3-letter IATA code to uppercase."""
-        return value.strip().upper() if isinstance(value, str) else value
+        if not value:
+            return ""
+        val_str = str(value).strip().upper()
+        cleaned = "".join(c for c in val_str if c.isalpha())
+        return cleaned[:3] if len(cleaned) >= 3 else val_str
 
     @field_validator("flight_number", mode="before")
     @classmethod
-    def normalize_flight_number(cls, value: Optional[str]) -> Optional[str]:
+    def normalize_flight_number(cls, value: Any) -> Optional[str]:
         """Normalize optional flight number to uppercase."""
-        return value.strip().upper() if isinstance(value, str) and value.strip() else None
+        if value is None or str(value).strip().lower() in ("none", "null", ""):
+            return None
+        return str(value).strip().upper()
+
+    @field_validator("is_ambiguous", mode="before")
+    @classmethod
+    def normalize_is_ambiguous(cls, value: Any) -> bool:
+        """Ensure is_ambiguous defaults to False if None or parses truthy/falsy values."""
+        if value is None:
+            return False
+        if isinstance(value, str):
+            return value.strip().lower() in ("true", "1", "yes")
+        return bool(value)
+
+    @field_validator("ambiguous_options", mode="before")
+    @classmethod
+    def normalize_ambiguous_options(cls, value: Optional[List[Dict[str, str]]]) -> List[Dict[str, str]]:
+        """Ensure ambiguous options defaults to empty list if None."""
+        if value is None:
+            return []
+        if isinstance(value, list):
+            clean_list = []
+            for item in value:
+                if isinstance(item, dict):
+                    clean_list.append({str(k): str(v) for k, v in item.items()})
+            return clean_list
+        return []
+
+    @field_validator("ambiguous_target", mode="before")
+    @classmethod
+    def normalize_ambiguous_target(cls, value: Any) -> Optional[str]:
+        """Ensure ambiguous_target is valid or None."""
+        if value is None or str(value).strip().lower() in ("none", "null", ""):
+            return None
+        val_str = str(value).strip().lower()
+        if "dest" in val_str:
+            return "destination"
+        if "orig" in val_str:
+            return "origin"
+        return None
+
+    @field_validator("ambiguous_city_name", mode="before")
+    @classmethod
+    def normalize_ambiguous_city_name(cls, value: Any) -> Optional[str]:
+        """Ensure ambiguous_city_name is string or None."""
+        if value is None or str(value).strip().lower() in ("none", "null", ""):
+            return None
+        return str(value).strip()
+
+    @field_validator("target_price", "original_price", mode="before")
+    @classmethod
+    def normalize_prices(cls, value: Any) -> Optional[float]:
+        """Convert string prices or return float/None."""
+        if value is None or value == "" or str(value).strip().lower() in ("null", "none"):
+            return None
+        try:
+            val = float(str(value).replace(" ", "").replace(",", ""))
+            return val if val > 0 else None
+        except (ValueError, TypeError):
+            return None
+
+    @field_validator("direct_only", mode="before")
+    @classmethod
+    def normalize_direct_only(cls, value: Any) -> bool:
+        """Ensure direct_only defaults to True if None."""
+        if value is None:
+            return True
+        if isinstance(value, str):
+            return value.strip().lower() in ("true", "1", "yes")
+        return bool(value)
+
+    @field_validator("interval_minutes", mode="before")
+    @classmethod
+    def normalize_interval_minutes(cls, value: Any) -> int:
+        """Ensure interval_minutes is integer >= 1."""
+        if value is None:
+            return 5
+        try:
+            val = int(value)
+            return max(1, val)
+        except (ValueError, TypeError):
+            return 5
 
 
 class TaskCreate(BaseModel):

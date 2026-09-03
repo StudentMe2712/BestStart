@@ -398,9 +398,19 @@ class AviasalesProvider(BaseFlightProvider):
                             if first_carrier:
                                 airline_name = str(first_carrier).strip()
 
-                # Origin and Destination codes
-                item_origin = str(item.get("origin") or item.get("origin_airport") or clean_origin).strip().upper()
-                item_dest = str(item.get("destination") or item.get("destination_airport") or clean_dest).strip().upper()
+                # Strict airport post-filtering: enforce exact destination and origin matching
+                raw_dest = str(item.get("destination_airport") or item.get("destination") or "").strip().upper()
+                if raw_dest and raw_dest != clean_dest:
+                    logger.debug("Discarding ticket: destination %s does not match requested %s", raw_dest, clean_dest)
+                    continue
+
+                raw_orig = str(item.get("origin_airport") or item.get("origin") or "").strip().upper()
+                if raw_orig and raw_orig != clean_origin:
+                    logger.debug("Discarding ticket: origin %s does not match requested %s", raw_orig, clean_origin)
+                    continue
+
+                item_origin = raw_orig if raw_orig else clean_origin
+                item_dest = raw_dest if raw_dest else clean_dest
 
                 # Transfers count
                 transfers_raw = item.get("transfers", item.get("transfers_count", item.get("stops", 0)))
@@ -535,8 +545,10 @@ class AviasalesProvider(BaseFlightProvider):
                         base_url=self.base_url,
                     )
 
-                    # Filter by direct_only and max_transfers
+                    # Filter by direct_only, max_transfers, and enforce strict origin and destination
                     for offer in raw_offers:
+                        if offer.destination != clean_dest or offer.origin != clean_origin:
+                            continue
                         if (direct_only or max_transfers == 0) and offer.transfers_count > 0:
                             continue
                         if max_transfers > 0 and offer.transfers_count > max_transfers:
@@ -551,45 +563,6 @@ class AviasalesProvider(BaseFlightProvider):
                         clean_date,
                         response.text[:200],
                     )
-
-                # Metro IATA Airport Resolution fallback if 0 offers found
-                if not offers and clean_dest in METRO_AIRPORT_ALTERNATIVES:
-                    for alt_code in METRO_AIRPORT_ALTERNATIVES[clean_dest]:
-                        alt_params = dict(params)
-                        alt_params["destination"] = alt_code
-                        try:
-                            alt_response = await client.get(self.api_url, params=alt_params, headers=headers)
-                            if alt_response.status_code == 200:
-                                alt_data = alt_response.json()
-                                raw_alt_offers = self.parse_aviasales_json(
-                                    raw_data=alt_data,
-                                    origin=clean_origin,
-                                    destination=alt_code,
-                                    base_url=self.base_url,
-                                )
-                                alt_offers: List[FlightOffer] = []
-                                for offer in raw_alt_offers:
-                                    if (direct_only or max_transfers == 0) and offer.transfers_count > 0:
-                                        continue
-                                    if max_transfers > 0 and offer.transfers_count > max_transfers:
-                                        continue
-                                    alt_offers.append(offer)
-
-                                if alt_offers:
-                                    logger.info(
-                                        "Found %d flight(s) via alternative metro airport %s for %s",
-                                        len(alt_offers),
-                                        alt_code,
-                                        clean_dest,
-                                    )
-                                    offers.extend(alt_offers)
-                        except Exception as alt_err:
-                            logger.debug(
-                                "Alternative metro airport query failed for %s->%s: %s",
-                                clean_origin,
-                                alt_code,
-                                alt_err,
-                            )
 
                 # Fallback Month Cache Lookup if 0 offers found
                 if not offers:

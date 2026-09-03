@@ -745,6 +745,26 @@ def rule_based_flight_parser(text: str, base_date: Optional[date] = None) -> Opt
     )
 
 
+def _clean_json_text(text: str) -> str:
+    """Clean and extract raw JSON object string from LLM response text."""
+    if not text:
+        return ""
+    clean = text.strip()
+    if clean.startswith("```json"):
+        clean = clean[7:]
+    elif clean.startswith("```"):
+        clean = clean[3:]
+    if clean.endswith("```"):
+        clean = clean[:-3]
+    clean = clean.strip()
+
+    start_idx = clean.find("{")
+    end_idx = clean.rfind("}")
+    if start_idx != -1 and end_idx != -1 and end_idx > start_idx:
+        clean = clean[start_idx : end_idx + 1]
+    return clean
+
+
 async def parse_search_query(
     text: str,
     api_key: Optional[str] = None,
@@ -782,27 +802,46 @@ async def parse_search_query(
             system_prompt = f"""You are an expert Flight Route & Date Extraction Assistant for KzFlightSniper (Kazakhstan, Asian and International Aviation).
 Current Reference Date: {ref_date.isoformat()} (Year: {ref_date.year}).
 
-Extract flight search query parameters from the user's message into strict valid JSON object with the following schema:
+Extract flight search query parameters from the user's message into a strict, valid JSON object following this format:
 {{
-  "origin": "3-letter IATA code (e.g. ALA, NQZ, CIT, SCO, GUW, UKK, AKX, KSG, PWQ, PLX, DMB, KOV, BXH, URA, KGF, PPK, KZO, HSA, TDK, DZN, CTU, TFU, PEK, PKX, ICN, HKT, CAN, PVG, BKK, DMK, DXB, DWC, IST, SAW, TAS, FRU, TBS, AYT, DOH, AUH, SYX, MOW, SVO, DME, VKO, LON, LHR, LGW, STN, TYO, HND, NRT, DEL, CDG, MXP, FRA, MLE, CMB, GYD, EVN, KUL, SIN)",
-  "destination": "3-letter IATA code",
-  "date": "YYYY-MM-DD (resolve relative terms like 'завтра', 'послезавтра', '15 октября', 'через неделю' using reference date {ref_date.isoformat()})",
-  "flight_number": "Optional flight code (e.g. 'KC-871', 'CA-484', 'DV-713') or null",
-  "direct_only": boolean (true for direct flights, false if transfers allowed/requested),
-  "target_price": number or null (converted to KZT: USD*500, EUR*540, RUB*5.5, KZT*1; null if not specified),
-  "currency_detected": "USD" | "EUR" | "RUB" | "KZT" | null,
-  "original_price": number or null,
-  "interval_minutes": integer (check frequency in minutes, default 5),
-  "confidence": float (between 0.0 and 1.0),
-  "raw_explanation": "Brief Russian or English summary",
-  "is_ambiguous": boolean,
-  "ambiguous_target": "destination" | "origin" | null,
-  "ambiguous_city_name": string or null,
-  "ambiguous_options": [{{"iata": "...", "name": "..."}}]
+  "origin": "ALA",
+  "destination": "CTU",
+  "date": "2026-11-21",
+  "flight_number": null,
+  "direct_only": true,
+  "target_price": null,
+  "currency_detected": null,
+  "original_price": null,
+  "interval_minutes": 5,
+  "confidence": 1.0,
+  "raw_explanation": "Flight from Almaty to Chengdu",
+  "is_ambiguous": false,
+  "ambiguous_target": null,
+  "ambiguous_city_name": null,
+  "ambiguous_options": []
 }}
 
+Respond ONLY with a valid JSON object. Do NOT wrap output in markdown code blocks, backticks, or comments (no ```json or ```).
+
+FIELD SPECIFICATIONS:
+- "origin": 3-letter uppercase IATA code (e.g. ALA, NQZ, CIT, SCO, GUW, UKK, AKX, KSG, PWQ, PLX, DMB, KOV, BXH, URA, KGF, PPK, KZO, HSA, TDK, DZN)
+- "destination": 3-letter uppercase IATA code (e.g. CTU, TFU, PEK, PKX, ICN, HKT, CAN, PVG, BKK, DMK, DXB, DWC, IST, SAW, TAS, FRU, TBS, AYT, DOH, AUH, SYX, MOW, SVO, DME, VKO, LON, LHR, LGW, STN, TYO, HND, NRT, DEL, CDG, MXP, FRA, MLE, CMB, GYD, EVN, KUL, SIN)
+- "date": Departure date in YYYY-MM-DD format (resolve relative terms like 'завтра', 'послезавтра', '15 октября', 'через неделю' using reference date {ref_date.isoformat()})
+- "flight_number": Optional flight code (e.g. 'KC-871', 'CA-484', 'DV-713') or null
+- "direct_only": boolean (true by default for direct flights, false only if user explicitly allows/asks for transfers like 'с пересадками')
+- "target_price": number converted to KZT (USD*500, EUR*540, RUB*5.5, KZT*1) or null if not specified
+- "currency_detected": "USD" | "EUR" | "RUB" | "KZT" or null
+- "original_price": numeric unconverted price or null
+- "interval_minutes": integer check frequency in minutes (default 5)
+- "confidence": number between 0.0 and 1.0
+- "raw_explanation": brief summary string or null
+- "is_ambiguous": boolean (false by default)
+- "ambiguous_target": "destination" | "origin" | null
+- "ambiguous_city_name": string or null
+- "ambiguous_options": array of {{"iata": "...", "name": "..."}} objects (empty list [] by default)
+
 CRITICAL DISAMBIGUATION RULES:
-If the user query mentions a city with multiple major commercial airports (such as Chengdu, Moscow, Istanbul, Dubai, Bangkok, Beijing, Tokyo, London) and does NOT specify an exact single airport (like SVO or TFU), set 'is_ambiguous': true, 'ambiguous_target': 'destination' or 'origin', 'ambiguous_city_name': '<City>', and 'ambiguous_options': [{{"iata": "...", "name": "..."}}]. Otherwise, set 'is_ambiguous': false and 'ambiguous_options': [].
+If the user query mentions a city with multiple major commercial airports (such as Chengdu, Moscow, Istanbul, Dubai, Bangkok, Beijing, Tokyo, London) and does NOT specify an exact single airport (like SVO or TFU), set 'is_ambiguous': true, 'ambiguous_target': 'destination' or 'origin', 'ambiguous_city_name': '<City>', and 'ambiguous_options': [{{"iata": "...", "name": "..."}}]. Otherwise, set 'is_ambiguous': false, 'ambiguous_options': [], 'ambiguous_target': null, 'ambiguous_city_name': null.
 
 If the user query does not contain flight intent or lacks critical origin, destination, or date info, return JSON:
 {{"error": "insufficient_info", "confidence": 0.0}}
@@ -820,7 +859,8 @@ If the user query does not contain flight intent or lacks critical origin, desti
 
             content = response.choices[0].message.content
             if content:
-                data = json.loads(content)
+                clean_content = _clean_json_text(content)
+                data = json.loads(clean_content)
                 if (
                     "origin" in data
                     and "destination" in data
@@ -828,16 +868,16 @@ If the user query does not contain flight intent or lacks critical origin, desti
                     and data.get("origin")
                     and data.get("destination")
                     and data.get("date")
-                    and len(str(data["origin"]).strip()) == 3
-                    and len(str(data["destination"]).strip()) == 3
+                    and len(str(data["origin"]).strip()) >= 3
+                    and len(str(data["destination"]).strip()) >= 3
                 ):
                     intent = ParsedFlightIntent(**data)
+                    intent.direct_only = _extract_direct_only(text)
                     is_amb, amb_opts, amb_tgt, amb_city = _check_disambiguation(text, intent.origin, intent.destination)
-                    if is_amb:
-                        intent.is_ambiguous = True
-                        intent.ambiguous_options = amb_opts
-                        intent.ambiguous_target = amb_tgt
-                        intent.ambiguous_city_name = amb_city
+                    intent.is_ambiguous = is_amb
+                    intent.ambiguous_options = amb_opts
+                    intent.ambiguous_target = amb_tgt
+                    intent.ambiguous_city_name = amb_city
                     logger.info(
                         "Groq LLM parsed search query successfully: %s -> %s on %s (ambiguous=%s)",
                         intent.origin,
@@ -897,10 +937,12 @@ Extract the periodic check interval in integer minutes from the user text:
 - "15 минут" / "15 мин" / "15m" / "15 min" -> 15
 - "5 минут" / default -> 5
 
-Respond ONLY with a strict valid JSON object:
+You MUST return a pure, valid JSON object matching the following structure:
 {
   "interval_minutes": 5
 }
+
+Respond ONLY with a valid JSON object. Do NOT wrap output in markdown code blocks, backticks, or comments (no ```json or ```).
 """
             response = await client.chat.completions.create(
                 model=groq_model,
@@ -915,7 +957,8 @@ Respond ONLY with a strict valid JSON object:
 
             content = response.choices[0].message.content
             if content:
-                data = json.loads(content)
+                clean_content = _clean_json_text(content)
+                data = json.loads(clean_content)
                 if "interval_minutes" in data and isinstance(data["interval_minutes"], (int, float)):
                     val = int(data["interval_minutes"])
                     if val >= 1:
@@ -963,29 +1006,52 @@ async def parse_flight_request(
             system_prompt = f"""You are an expert Flight Route & Date Extraction Assistant for KzFlightSniper (Kazakhstan, Asian and International Aviation).
 Current Reference Date: {ref_date.isoformat()} (Year: {ref_date.year}).
 
-Extract flight search query parameters from the user's message into strict valid JSON object with the following schema:
+Extract flight search query parameters from the user's message into a strict, valid JSON object following this format:
 {{
-    "origin": "string (3-letter IATA code, e.g. ALA, NQZ)",
-    "destination": "string (3-letter IATA code, e.g. CTU, BKK)",
-    "date": "string (YYYY-MM-DD format)",
-    "flight_number": "string or null (e.g., 'KC-871')",
-    "direct_only": "boolean (true if user explicitly asked for direct flight, else false)",
-    "target_price": "float or null (if user did not specify the price, set to null)",
-    "interval_minutes": "integer or null (e.g., 'каждые 10 минут' -> 10, 'раз в час' -> 60)",
-    "is_ambiguous": "boolean",
-    "ambiguous_target": "'destination' | 'origin' | null",
-    "ambiguous_city_name": "string or null",
-    "ambiguous_options": [{{"iata": "...", "name": "..."}}]
+  "origin": "ALA",
+  "destination": "BKK",
+  "date": "2026-10-15",
+  "flight_number": "KC-871",
+  "direct_only": true,
+  "target_price": 150000.0,
+  "currency_detected": "USD",
+  "original_price": 300.0,
+  "interval_minutes": 5,
+  "confidence": 1.0,
+  "raw_explanation": "Extracted flight from Almaty to Bangkok",
+  "is_ambiguous": false,
+  "ambiguous_target": null,
+  "ambiguous_city_name": null,
+  "ambiguous_options": []
 }}
 
+Respond ONLY with a valid JSON object. Do NOT wrap output in markdown code blocks, backticks, or comments (no ```json or ```).
+
+FIELD SPECIFICATIONS:
+- "origin": 3-letter uppercase IATA code (e.g. ALA, NQZ, CIT, SCO, GUW)
+- "destination": 3-letter uppercase IATA code (e.g. CTU, TFU, BKK, ICN, DXB, IST)
+- "date": Departure date in YYYY-MM-DD format (resolve relative dates like 'завтра', 'через неделю' from reference date {ref_date.isoformat()})
+- "flight_number": Flight code string (e.g. 'KC-871') or null if not specified
+- "direct_only": boolean (true by default for direct flights, false only if user explicitly allows/asks for transfers like 'с пересадками')
+- "target_price": number converted to KZT (USD*500, EUR*540, RUB*5.5, KZT*1) or null if not specified
+- "currency_detected": "USD" | "EUR" | "RUB" | "KZT" or null
+- "original_price": numeric unconverted price or null
+- "interval_minutes": integer minutes (default 5)
+- "confidence": number between 0.0 and 1.0
+- "raw_explanation": string or null
+- "is_ambiguous": boolean (false by default)
+- "ambiguous_target": "destination" | "origin" | null
+- "ambiguous_city_name": string or null
+- "ambiguous_options": array of {{"iata": "...", "name": "..."}} objects (empty list [] by default)
+
 CRITICAL RULES:
-1. Верни ответ СТРОГО В ФОРМАТЕ JSON. Никакого текста, пояснений или markdown-разметки вокруг JSON.
+1. Respond ONLY with a valid JSON object. Do NOT wrap output in markdown code blocks, backticks, or comments (no ```json or ```).
 2. Convert city names to standard IATA codes:
    - Kazakhstan: Алматы -> ALA, Астана -> NQZ, Атырау -> GUW, Актау -> SCO, Шымкент -> CIT
    - Asia/Intl: Ченду -> CTU, Пекин -> PEK, Сеул -> ICN, Бангкок -> BKK, Пхукет -> HKT, Дубай -> DXB, Стамбул -> IST.
 3. If the user mentions a relative date ("завтра", "через неделю", "21 ноября"), calculate the exact YYYY-MM-DD based on the Current Reference Date.
-4. If NO price is mentioned in the text, you MUST return "target_price": null.
-5. If the user query mentions a city with multiple major commercial airports (such as Chengdu, Moscow, Istanbul, Dubai, Bangkok, Beijing, Tokyo, London) and does NOT specify an exact single airport (like SVO or TFU), set 'is_ambiguous': true, 'ambiguous_target': 'destination' or 'origin', 'ambiguous_city_name': '<City>', and 'ambiguous_options': [{{"iata": "...", "name": "..."}}]. Otherwise, set 'is_ambiguous': false and 'ambiguous_options': [].
+4. If currency is detected ($, USD, €, EUR, ₽, RUB, ₸, тг, KZT), convert target_price to KZT (USD*500, EUR*540, RUB*5.5, KZT*1), set currency_detected to the currency code ("USD", "EUR", "RUB", "KZT"), and original_price to the unconverted numeric price. If NO price is mentioned in the text, you MUST return "target_price": null, "currency_detected": null, "original_price": null.
+5. If the user query mentions a city with multiple major commercial airports (such as Chengdu, Moscow, Istanbul, Dubai, Bangkok, Beijing, Tokyo, London) and does NOT specify an exact single airport (like SVO or TFU), set 'is_ambiguous': true, 'ambiguous_target': 'destination' or 'origin', 'ambiguous_city_name': '<City>', and 'ambiguous_options': [{{"iata": "...", "name": "..."}}]. Otherwise, set 'is_ambiguous': false, 'ambiguous_options': [], 'ambiguous_target': null, 'ambiguous_city_name': null.
 """
             response = await client.chat.completions.create(
                 model=groq_model,
@@ -1000,7 +1066,8 @@ CRITICAL RULES:
 
             content = response.choices[0].message.content
             if content:
-                data = json.loads(content)
+                clean_content = _clean_json_text(content)
+                data = json.loads(clean_content)
                 
                 # Normalize legacy keys if present
                 if "origin_iata" in data and "origin" not in data:
@@ -1011,13 +1078,22 @@ CRITICAL RULES:
                 if data.get("origin") and data.get("destination") and data.get("date"):
                     try:
                         intent = ParsedFlightIntent(**data)
-                        if not intent.is_ambiguous:
-                            is_amb, amb_opts, amb_tgt, amb_city = _check_disambiguation(text, intent.origin, intent.destination)
-                            if is_amb:
-                                intent.is_ambiguous = True
-                                intent.ambiguous_options = amb_opts
-                                intent.ambiguous_target = amb_tgt
-                                intent.ambiguous_city_name = amb_city
+                        intent.direct_only = _extract_direct_only(text)
+                        if intent.target_price is not None and intent.currency_detected is None:
+                            p_kzt, curr, orig_p = _extract_price_and_currency(text)
+                            if curr and curr != "KZT" and (intent.target_price == orig_p or intent.target_price < 1000):
+                                intent.target_price = p_kzt
+                                intent.currency_detected = curr
+                                intent.original_price = orig_p
+                            elif curr:
+                                intent.currency_detected = curr
+                                if intent.original_price is None:
+                                    intent.original_price = orig_p
+                        is_amb, amb_opts, amb_tgt, amb_city = _check_disambiguation(text, intent.origin, intent.destination)
+                        intent.is_ambiguous = is_amb
+                        intent.ambiguous_options = amb_opts
+                        intent.ambiguous_target = amb_tgt
+                        intent.ambiguous_city_name = amb_city
                         logger.info(
                             "Groq LLM parsed flight intent successfully: %s -> %s on %s (ambiguous=%s)", 
                             intent.origin, intent.destination, intent.date, intent.is_ambiguous,

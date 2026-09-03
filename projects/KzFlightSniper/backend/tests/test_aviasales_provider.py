@@ -412,48 +412,64 @@ class TestAviasalesProvider(unittest.TestCase):
 
         asyncio.run(_run())
 
-    def test_search_flights_metro_airport_fallback(self) -> None:
-        """Verify alternate metro airport (e.g. CTU -> TFU) is queried when primary airport returns 0 offers."""
-        ctu_empty_resp = MagicMock()
-        ctu_empty_resp.status_code = 200
-        ctu_empty_resp.json.return_value = {"success": True, "data": []}
-
-        tfu_resp = MagicMock()
-        tfu_resp.status_code = 200
-        tfu_resp.json.return_value = {
+    def test_strict_airport_post_filtering(self) -> None:
+        """Verify strict airport filtering discards wrong airport items (e.g. CTU when TFU requested)."""
+        # Test 1: Direct parse_aviasales_json filtering
+        raw_payload = {
             "success": True,
             "data": [
                 {
                     "origin": "ALA",
+                    "destination": "CTU",
+                    "destination_airport": "CTU",
+                    "price": 75000,
+                    "airline": "CA",
+                    "flight_number": "CA-484",
+                    "departure_at": "2026-11-21T08:00:00+06:00",
+                    "transfers": 0,
+                },
+                {
+                    "origin": "ALA",
                     "destination": "TFU",
+                    "destination_airport": "TFU",
                     "price": 85000,
                     "airline": "CZ",
                     "flight_number": "CZ-6012",
                     "departure_at": "2026-11-21T10:00:00+06:00",
                     "transfers": 0,
-                    "duration": 240,
-                }
+                },
+                {
+                    "origin": "NQZ",
+                    "destination": "TFU",
+                    "price": 95000,
+                    "airline": "CZ",
+                    "flight_number": "CZ-6014",
+                    "departure_at": "2026-11-21T12:00:00+06:00",
+                    "transfers": 0,
+                },
             ],
         }
 
-        async def _run() -> None:
-            async def side_effect(*args: Any, **kwargs: Any) -> MagicMock:
-                params = kwargs.get("params", {})
-                if params.get("destination") == "CTU":
-                    return ctu_empty_resp
-                elif params.get("destination") == "TFU":
-                    return tfu_resp
-                return ctu_empty_resp
+        offers = AviasalesProvider.parse_aviasales_json(raw_payload, "ALA", "TFU")
+        # Only the second offer (ALA -> TFU) must be retained
+        self.assertEqual(len(offers), 1)
+        self.assertEqual(offers[0].origin, "ALA")
+        self.assertEqual(offers[0].destination, "TFU")
+        self.assertEqual(offers[0].flight_number, "CZ-6012")
+        self.assertEqual(offers[0].price_kzt, 85000.0)
 
-            with patch("httpx.AsyncClient.get", new=AsyncMock(side_effect=side_effect)):
-                with self.assertLogs("kzflight_sniper.providers.aviasales", level="INFO") as cm:
-                    offers = await self.provider.search_flights("ALA", "CTU", "2026-11-21", direct_only=True)
-                    self.assertEqual(len(offers), 1)
-                    self.assertEqual(offers[0].destination, "TFU")
-                    self.assertEqual(offers[0].price_kzt, 85000.0)
-                    self.assertTrue(
-                        any("Found 1 flight(s) via alternative metro airport TFU for CTU" in log for log in cm.output)
-                    )
+        # Test 2: search_flights with mocked response containing mixed destination airports
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.json.return_value = raw_payload
+
+        async def _run() -> None:
+            with patch("httpx.AsyncClient.get", new=AsyncMock(return_value=mock_resp)):
+                search_offers = await self.provider.search_flights("ALA", "TFU", "2026-11-21", direct_only=True)
+                self.assertEqual(len(search_offers), 1)
+                self.assertEqual(search_offers[0].destination, "TFU")
+                self.assertEqual(search_offers[0].origin, "ALA")
+                self.assertEqual(search_offers[0].flight_number, "CZ-6012")
 
         asyncio.run(_run())
 

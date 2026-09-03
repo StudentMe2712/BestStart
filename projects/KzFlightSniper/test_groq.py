@@ -14,7 +14,7 @@ MODELS_TO_TEST = [
     "groq/compound"
 ]
 
-async def test_model(model_name: str):
+async def check_model(model_name: str):
     url = "https://api.groq.com/openai/v1/chat/completions"
     headers = {
         "Authorization": f"Bearer {GROQ_API_KEY}",
@@ -67,7 +67,7 @@ async def main():
 
     print("🚀 Запуск тестирования актуальных моделей Groq...")
     for model in MODELS_TO_TEST:
-        await test_model(model)
+        await check_model(model)
 
 if __name__ == "__main__":
     asyncio.run(main())
