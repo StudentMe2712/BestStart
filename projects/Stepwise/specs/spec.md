@@ -1,6 +1,6 @@
 # Stepwise — Главная архитектурная спецификация и Центр Проекта (Brain Specification)
 
-> **Статус:** В активной разработке (Срез: Фазы 1–6 завершены)  
+> **Статус:** В активной разработке (Срез: Шаги 1–8 завершены — Фаза 3: WinUI 3 Shell + 3-Panel Editor сдана на 100%)  
 > **Версия спецификации:** 2.0.0 (Объединена с Master Engineering Prompt / ultraprompt.md)  
 > **Платформа:** Windows 10/11 (x64 / ARM64)  
 > **Технологический стек:** C# 13, .NET 9+, WinUI 3, Windows App SDK, Microsoft UI Automation (UIA), Win32 API (CsWin32 / PInvoke), Windows.Graphics.Capture, SQLite, CommunityToolkit.Mvvm, System.Text.Json.

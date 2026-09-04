@@ -1,17 +1,32 @@
 <Project Sdk="Microsoft.NET.Sdk">
-
   <PropertyGroup>
-    <OutputType>Exe</OutputType>
+    <OutputType>WinExe</OutputType>
     <TargetFramework>net9.0-windows10.0.19041.0</TargetFramework>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>enable</Nullable>
+    <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
     <RootNamespace>Stepwise.App</RootNamespace>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <Platforms>x64;x86;ARM64</Platforms>
+    <RuntimeIdentifiers>win-x64;win-x86;win-arm64</RuntimeIdentifiers>
+    <Platform Condition="'$(Platform)' == ''">x64</Platform>
+    <RuntimeIdentifier Condition="'$(RuntimeIdentifier)' == ''">win-x64</RuntimeIdentifier>
+    <UseWinUI>true</UseWinUI>
+    <EnableMsixTooling>true</EnableMsixTooling>
+    <WindowsPackageType>None</WindowsPackageType>
+    <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
+    <DefineConstants>DISABLE_XAML_GENERATED_MAIN</DefineConstants>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <NoWarn>$(NoWarn);MVVMTK0045</NoWarn>
   </PropertyGroup>
-
+  <ItemGroup>
+    <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.6.250108002" />
+    <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.26100.1742" />
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.2" />
+  </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Stepwise.Core\Stepwise.Core.csproj" />
-    <ProjectReference Include="..\Stepwise.WindowsIntegration\Stepwise.WindowsIntegration.csproj" />
     <ProjectReference Include="..\Stepwise.Storage\Stepwise.Storage.csproj" />
+    <ProjectReference Include="..\Stepwise.WindowsIntegration\Stepwise.WindowsIntegration.csproj" />
   </ItemGroup>
-
 </Project>

@@ -16,23 +16,23 @@ Write-Host "  STEPWISE PROJECT HEALTH & INTEGRITY VALIDATOR" -ForegroundColor Wh
 Write-Host "==========================================================" -ForegroundColor Magenta
 
 # 1. Build
-Write-Host "`n[1/3] Проверка сборки солюшена..." -ForegroundColor Cyan
+Write-Host "`n[1/3] Checking solution build..." -ForegroundColor Cyan
 & (Join-Path $ScriptDir "build-project.ps1")
 if ($LASTEXITCODE -ne 0) {
-    Write-Host ">> Сборка провалена. Валидация остановлена." -ForegroundColor Red
+    Write-Host ">> Build failed. Validation stopped." -ForegroundColor Red
     exit 1
 }
 
 # 2. Tests
-Write-Host "`n[2/3] Запуск набора тестов xUnit..." -ForegroundColor Cyan
+Write-Host "`n[2/3] Running xUnit test suite..." -ForegroundColor Cyan
 & (Join-Path $ScriptDir "run-tests.ps1")
 if ($LASTEXITCODE -ne 0) {
-    Write-Host ">> Тесты провалены. Валидация остановлена." -ForegroundColor Red
+    Write-Host ">> Tests failed. Validation stopped." -ForegroundColor Red
     exit 1
 }
 
 # 3. Structure
-Write-Host "`n[3/3] Проверка ключевых каталогов и артефактов..." -ForegroundColor Cyan
+Write-Host "`n[3/3] Checking core directories and artifacts..." -ForegroundColor Cyan
 $requiredPaths = @(
     "Stepwise.sln",
     "specs/spec.md",
@@ -52,11 +52,11 @@ foreach ($rel in $requiredPaths) {
 }
 
 if ($missing.Count -gt 0) {
-    Write-Host ">> Отсутствуют обязательные компоненты: $($missing -join ', ')" -ForegroundColor Red
+    Write-Host ">> Missing required components: $($missing -join ', ')" -ForegroundColor Red
     exit 1
 }
 
 Write-Host "`n==========================================================" -ForegroundColor Green
-Write-Host "  ВСЕ ПРОВЕРКИ УСПЕШНО ПРОЙДЕНЫ (HEALTH STATUS: 100% OK)" -ForegroundColor Green
+Write-Host "  ALL CHECKS PASSED (HEALTH STATUS: 100% OK)" -ForegroundColor Green
 Write-Host "==========================================================" -ForegroundColor Green
 exit 0

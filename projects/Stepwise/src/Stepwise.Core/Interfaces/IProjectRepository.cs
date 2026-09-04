@@ -31,4 +31,9 @@ public interface IProjectRepository : IDisposable
     /// Загружает упорядоченный список шагов инструкции.
     /// </summary>
     IReadOnlyList<Step> LoadSteps();
+
+    /// <summary>
+    /// Обновляет заголовок и описание указанного шага инструкции.
+    /// </summary>
+    void UpdateStepDetails(Guid stepId, string? title, string? description);
 }

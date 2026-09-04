@@ -1,0 +1,347 @@
+<Page
+    x:Class="Stepwise.App.Views.EditorPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:vm="using:Stepwise.App.ViewModels"
+    mc:Ignorable="d">
+
+    <Grid Background="{ThemeResource SolidBackgroundFillColorBaseBrush}">
+        <Grid.ColumnDefinitions>
+            <!-- Left: Steps Navigation Panel (340px) -->
+            <ColumnDefinition Width="340" MinWidth="260" MaxWidth="440" />
+            <!-- Center: Dominant Screenshot Viewer (*) -->
+            <ColumnDefinition Width="*" MinWidth="380" />
+            <!-- Right: Properties & Telemetry Panel (380px) -->
+            <ColumnDefinition Width="380" MinWidth="280" MaxWidth="500" />
+        </Grid.ColumnDefinitions>
+
+        <!-- COLUMN 0: LEFT PANEL (Steps Sequence) -->
+        <Border Grid.Column="0" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="0,0,1,0" Background="{ThemeResource SolidBackgroundFillColorBaseBrush}">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+
+                <!-- Panel Header -->
+                <Grid Grid.Row="0" Padding="16,14,16,12" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="0,0,0,1">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                        <TextBlock Text="Шаги" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center" />
+                        <Border Background="{ThemeResource SubtleFillColorSecondaryBrush}" CornerRadius="10" Padding="8,2" VerticalAlignment="Center">
+                            <TextBlock Text="{x:Bind ViewModel.StepCount, Mode=OneWay}" FontSize="12" FontWeight="SemiBold" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
+                        </Border>
+                    </StackPanel>
+
+                    <CommandBar Grid.Column="1" DefaultLabelPosition="Collapsed" Background="Transparent">
+                        <AppBarButton Label="Удалить шаг" Command="{x:Bind ViewModel.DeleteStepCommand}" ToolTipService.ToolTip="Удалить выбранный шаг (Del)">
+                            <AppBarButton.Icon>
+                                <SymbolIcon Symbol="Delete" />
+                            </AppBarButton.Icon>
+                        </AppBarButton>
+                    </CommandBar>
+                </Grid>
+
+                <!-- Steps ListView -->
+                <ListView
+                    x:Name="StepsListView"
+                    Grid.Row="1"
+                    Padding="12,8"
+                    ItemsSource="{x:Bind ViewModel.Steps}"
+                    SelectedItem="{x:Bind ViewModel.SelectedStep, Mode=TwoWay}"
+                    SelectionMode="Single">
+                    <ListView.ItemContainerStyle>
+                        <Style TargetType="ListViewItem">
+                            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                            <Setter Property="Padding" Value="0,4" />
+                            <Setter Property="Margin" Value="0,2" />
+                        </Style>
+                    </ListView.ItemContainerStyle>
+                    <ListView.ItemTemplate>
+                        <DataTemplate x:DataType="vm:StepItemViewModel">
+                            <Border
+                                Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                BorderThickness="1"
+                                CornerRadius="8"
+                                Padding="12">
+                                <Grid RowSpacing="8">
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                    </Grid.RowDefinitions>
+
+                                    <!-- Top Badges Row -->
+                                    <Grid Grid.Row="0">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+
+                                        <!-- Step Number Chip -->
+                                        <Border Grid.Column="0" Background="{ThemeResource AccentFillColorDefaultBrush}" CornerRadius="4" Padding="6,2" Margin="0,0,6,0">
+                                            <TextBlock Text="{x:Bind StepNumber}" FontSize="11" FontWeight="Bold" Foreground="White" />
+                                        </Border>
+
+                                        <!-- Action Chip -->
+                                        <Border Grid.Column="1" Background="{ThemeResource SubtleFillColorSecondaryBrush}" CornerRadius="4" Padding="6,2">
+                                            <TextBlock Text="{x:Bind ActionBadgeText}" FontSize="11" FontWeight="SemiBold" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                        </Border>
+
+                                        <!-- Timestamp -->
+                                        <TextBlock Grid.Column="2" Text="{x:Bind FormattedTimestamp}" FontSize="11" Foreground="{ThemeResource TextFillColorTertiaryBrush}" HorizontalAlignment="Right" VerticalAlignment="Center" />
+                                    </Grid>
+
+                                    <!-- Thumbnail (180px width) -->
+                                    <Border Grid.Row="1" Width="180" Height="101" CornerRadius="6" Background="{ThemeResource CardBackgroundFillColorSecondaryBrush}" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1" HorizontalAlignment="Center" Margin="0,4">
+                                        <Grid>
+                                            <!-- Actual Thumbnail Image -->
+                                            <Image Source="{x:Bind ThumbnailImage, Mode=OneWay}" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center" />
+
+                                            <!-- Loading indicator -->
+                                            <ProgressRing IsActive="{x:Bind IsThumbnailLoading, Mode=OneWay}" Visibility="{x:Bind ThumbnailLoadingVisibility, Mode=OneWay}" Width="24" Height="24" HorizontalAlignment="Center" VerticalAlignment="Center" />
+
+                                            <!-- Placeholder / Missing thumbnail -->
+                                            <StackPanel Orientation="Vertical" Spacing="4" HorizontalAlignment="Center" VerticalAlignment="Center" Visibility="{x:Bind ThumbnailErrorVisibility, Mode=OneWay}">
+                                                <FontIcon Glyph="&#xEB9F;" FontSize="20" Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
+                                                <TextBlock Text="Нет превью" FontSize="10" Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
+                                            </StackPanel>
+                                        </Grid>
+                                    </Border>
+
+                                    <!-- Step Title & Target Summary -->
+                                    <StackPanel Grid.Row="2" Spacing="2">
+                                        <TextBlock Text="{x:Bind Title, Mode=OneWay}" FontWeight="SemiBold" FontSize="13" TextTrimming="CharacterEllipsis" MaxLines="1" />
+                                        <TextBlock Text="{x:Bind ElementSummary}" FontSize="11" Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextTrimming="CharacterEllipsis" MaxLines="1" />
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ListView.ItemTemplate>
+                </ListView>
+            </Grid>
+        </Border>
+
+        <!-- COLUMN 1: CENTER PANEL (Dominant Screenshot View & Overlay) -->
+        <Grid Grid.Column="1" Background="{ThemeResource SolidBackgroundFillColorQuarternaryBrush}">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+
+            <!-- Center View Top Bar -->
+            <Border Grid.Row="0" Padding="16,10" Background="{ThemeResource SolidBackgroundFillColorBaseBrush}" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="0,0,0,1">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                        <TextBlock Text="{x:Bind ViewModel.SelectedStepTitle, Mode=OneWay}" FontWeight="SemiBold" FontSize="14" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                    </StackPanel>
+
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                        <ToggleButton Content="Подсветка" IsChecked="{x:Bind ViewModel.ShowHighlightOverlay, Mode=TwoWay}" ToolTipService.ToolTip="Переключить рамку целевого элемента" />
+                        <Button Content="Назад" Command="{x:Bind ViewModel.SelectPreviousStepCommand}" ToolTipService.ToolTip="Предыдущий шаг" />
+                        <Button Content="Вперед" Command="{x:Bind ViewModel.SelectNextStepCommand}" ToolTipService.ToolTip="Следующий шаг" />
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <!-- Center View Content -->
+            <Grid Grid.Row="1" Padding="20">
+                <!-- EMPTY STATE (No step selected or no steps) -->
+                <StackPanel
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    Spacing="12"
+                    Visibility="{x:Bind ViewModel.EmptyStateVisibility, Mode=OneWay}">
+                    <FontIcon Glyph="&#xE91B;" FontSize="56" Foreground="{ThemeResource TextFillColorTertiaryBrush}" HorizontalAlignment="Center" />
+                    <TextBlock Text="Select a step to inspect" FontSize="18" FontWeight="SemiBold" Foreground="{ThemeResource TextFillColorSecondaryBrush}" HorizontalAlignment="Center" />
+                    <TextBlock Text="Выберите шаг из списка слева для просмотра скриншота и деталей." FontSize="13" Foreground="{ThemeResource TextFillColorTertiaryBrush}" HorizontalAlignment="Center" />
+                </StackPanel>
+
+                <!-- LOADING STATE -->
+                <StackPanel
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    Spacing="12"
+                    Visibility="{x:Bind ViewModel.PreviewLoadingVisibility, Mode=OneWay}">
+                    <ProgressRing IsActive="True" Width="44" Height="44" HorizontalAlignment="Center" />
+                    <TextBlock Text="Загрузка скриншота..." FontSize="13" Foreground="{ThemeResource TextFillColorSecondaryBrush}" HorizontalAlignment="Center" />
+                </StackPanel>
+
+                <!-- ERROR STATE (Section 14: Missing or corrupted asset) -->
+                <Border
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                    BorderThickness="1"
+                    CornerRadius="8"
+                    Padding="24"
+                    MaxWidth="480"
+                    Visibility="{x:Bind ViewModel.PreviewErrorVisibility, Mode=OneWay}">
+                    <StackPanel Spacing="16" HorizontalAlignment="Center">
+                        <FontIcon Glyph="&#xEB9F;" FontSize="40" Foreground="#EF4444" HorizontalAlignment="Center" />
+                        <TextBlock Text="Скриншот недоступен" FontSize="16" FontWeight="SemiBold" HorizontalAlignment="Center" />
+                        <TextBlock Text="{x:Bind ViewModel.PreviewErrorMessage, Mode=OneWay}" FontSize="13" Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextWrapping="Wrap" HorizontalAlignment="Center" TextAlignment="Center" />
+                        <Button Content="Повторить" Command="{x:Bind ViewModel.RetryLoadPreviewCommand}" HorizontalAlignment="Center" />
+                    </StackPanel>
+                </Border>
+
+                <!-- ACTIVE SCREENSHOT PREVIEW WITH HIGHLIGHT OVERLAY -->
+                <Viewbox
+                    Stretch="Uniform"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    Visibility="{x:Bind ViewModel.PreviewImageVisibility, Mode=OneWay}">
+                    <Grid Width="{x:Bind ViewModel.ScreenshotNaturalWidth, Mode=OneWay}" Height="{x:Bind ViewModel.ScreenshotNaturalHeight, Mode=OneWay}">
+                        <!-- Original Screenshot Image -->
+                        <Image Source="{x:Bind ViewModel.PreviewImage, Mode=OneWay}" />
+
+                        <!-- Vector Overlay Canvas -->
+                        <Canvas>
+                            <!-- Highlight Box around target element -->
+                            <Rectangle
+                                Canvas.Left="{x:Bind ViewModel.HighlightLeft, Mode=OneWay}"
+                                Canvas.Top="{x:Bind ViewModel.HighlightTop, Mode=OneWay}"
+                                Width="{x:Bind ViewModel.HighlightWidth, Mode=OneWay}"
+                                Height="{x:Bind ViewModel.HighlightHeight, Mode=OneWay}"
+                                Stroke="#EF4444"
+                                StrokeThickness="3"
+                                Fill="#25EF4444"
+                                RadiusX="4"
+                                RadiusY="4"
+                                Visibility="{x:Bind ViewModel.HighlightVisibility, Mode=OneWay}" />
+
+                            <!-- Click Pin Indicator -->
+                            <Ellipse
+                                Canvas.Left="{x:Bind ViewModel.ClickPinLeft, Mode=OneWay}"
+                                Canvas.Top="{x:Bind ViewModel.ClickPinTop, Mode=OneWay}"
+                                Width="18"
+                                Height="18"
+                                Fill="#EF4444"
+                                Stroke="White"
+                                StrokeThickness="2"
+                                Visibility="{x:Bind ViewModel.ClickPinVisibility, Mode=OneWay}" />
+                        </Canvas>
+                    </Grid>
+                </Viewbox>
+            </Grid>
+        </Grid>
+
+        <!-- COLUMN 2: RIGHT PANEL (Properties & UI Automation Telemetry) -->
+        <Border Grid.Column="2" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1,0,0,0" Background="{ThemeResource SolidBackgroundFillColorBaseBrush}">
+            <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="20">
+                <StackPanel Spacing="20" Visibility="{x:Bind ViewModel.PropertiesVisibility, Mode=OneWay}">
+                    <!-- Properties Header -->
+                    <StackPanel Spacing="4">
+                        <TextBlock Text="Свойства шага" FontSize="18" FontWeight="SemiBold" />
+                        <TextBlock Text="Редактирование описания и UIA-телеметрия Windows" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                    </StackPanel>
+
+                    <!-- Title Field -->
+                    <StackPanel Spacing="6">
+                        <TextBlock Text="Заголовок шага" FontSize="12" FontWeight="SemiBold" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                        <TextBox Text="{x:Bind ViewModel.CurrentStepTitle, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" PlaceholderText="Введите заголовок шага..." />
+                    </StackPanel>
+
+                    <!-- Description Field -->
+                    <StackPanel Spacing="6">
+                        <TextBlock Text="Описание / Инструкции" FontSize="12" FontWeight="SemiBold" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                        <TextBox
+                            Text="{x:Bind ViewModel.CurrentStepDescription, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                            AcceptsReturn="True"
+                            TextWrapping="Wrap"
+                            MinHeight="100"
+                            PlaceholderText="Опишите действие, которое необходимо выполнить..." />
+                    </StackPanel>
+
+                    <MenuFlyoutSeparator />
+
+                    <!-- UIA Metadata Section -->
+                    <StackPanel Spacing="12">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <FontIcon Glyph="&#xE7BE;" FontSize="16" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
+                            <TextBlock Text="UIA Метаданные" FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center" />
+                        </StackPanel>
+
+                        <!-- Telemetry Key-Value Card -->
+                        <Border
+                            Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                            BorderThickness="1"
+                            CornerRadius="8"
+                            Padding="14">
+                            <StackPanel Spacing="10">
+                                <!-- Control Type -->
+                                <Grid>
+                                    <TextBlock Text="Тип контрола:" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                    <TextBlock Text="{x:Bind ViewModel.TargetControlType, Mode=OneWay}" FontSize="12" FontWeight="SemiBold" HorizontalAlignment="Right" />
+                                </Grid>
+
+                                <!-- Element Name -->
+                                <Grid>
+                                    <TextBlock Text="Имя элемента:" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                    <TextBlock Text="{x:Bind ViewModel.TargetElementName, Mode=OneWay}" FontSize="12" FontWeight="SemiBold" HorizontalAlignment="Right" TextTrimming="CharacterEllipsis" MaxWidth="190" />
+                                </Grid>
+
+                                <!-- AutomationId -->
+                                <Grid>
+                                    <TextBlock Text="Automation ID:" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                    <TextBlock Text="{x:Bind ViewModel.TargetAutomationId, Mode=OneWay}" FontSize="12" FontFamily="Consolas" HorizontalAlignment="Right" TextTrimming="CharacterEllipsis" MaxWidth="190" />
+                                </Grid>
+
+                                <!-- Class Name -->
+                                <Grid>
+                                    <TextBlock Text="Class Name:" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                    <TextBlock Text="{x:Bind ViewModel.TargetClassName, Mode=OneWay}" FontSize="11" FontFamily="Consolas" HorizontalAlignment="Right" TextTrimming="CharacterEllipsis" MaxWidth="190" />
+                                </Grid>
+
+                                <!-- Process Name & PID -->
+                                <Grid>
+                                    <TextBlock Text="Процесс:" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                    <TextBlock Text="{x:Bind ViewModel.ProcessInfoText, Mode=OneWay}" FontSize="12" HorizontalAlignment="Right" TextTrimming="CharacterEllipsis" MaxWidth="190" />
+                                </Grid>
+
+                                <!-- Window Title -->
+                                <Grid>
+                                    <TextBlock Text="Заголовок окна:" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                    <TextBlock Text="{x:Bind ViewModel.TargetWindowTitle, Mode=OneWay}" FontSize="12" HorizontalAlignment="Right" TextTrimming="CharacterEllipsis" MaxWidth="190" />
+                                </Grid>
+
+                                <!-- Window Handle -->
+                                <Grid>
+                                    <TextBlock Text="HWND:" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                    <TextBlock Text="{x:Bind ViewModel.WindowHandleText, Mode=OneWay}" FontSize="11" FontFamily="Consolas" HorizontalAlignment="Right" />
+                                </Grid>
+
+                                <!-- Coordinates & Bounding Box -->
+                                <Grid>
+                                    <TextBlock Text="Bounding Box:" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                    <TextBlock Text="{x:Bind ViewModel.BoundingBoxText, Mode=OneWay}" FontSize="11" FontFamily="Consolas" HorizontalAlignment="Right" />
+                                </Grid>
+
+                                <!-- Click Point -->
+                                <Grid>
+                                    <TextBlock Text="Точка клика:" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                    <TextBlock Text="{x:Bind ViewModel.ClickPointText, Mode=OneWay}" FontSize="11" FontFamily="Consolas" HorizontalAlignment="Right" />
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </StackPanel>
+            </ScrollViewer>
+        </Border>
+    </Grid>
+</Page>

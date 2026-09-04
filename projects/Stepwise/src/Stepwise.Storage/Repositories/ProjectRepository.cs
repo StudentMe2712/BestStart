@@ -231,6 +231,29 @@ public sealed class ProjectRepository : IProjectRepository
         }
     }
 
+    public void UpdateStepDetails(Guid stepId, string? title, string? description)
+    {
+        ObjectDisposedException.ThrowIf(_isDisposed, this);
+
+        lock (_syncLock)
+        {
+            const string sql = @"
+                UPDATE Steps 
+                SET Title = $title, 
+                    Description = $description 
+                WHERE Id = $id;
+            ";
+
+            using var cmd = _connection.CreateCommand();
+            cmd.CommandText = sql;
+            cmd.Parameters.AddWithValue("$id", stepId.ToString());
+            cmd.Parameters.AddWithValue("$title", (object?)title ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("$description", (object?)description ?? DBNull.Value);
+
+            cmd.ExecuteNonQuery();
+        }
+    }
+
     private List<Step> LoadStepsInternal()
     {
         const string sql = "SELECT * FROM Steps ORDER BY SequenceIndex ASC;";

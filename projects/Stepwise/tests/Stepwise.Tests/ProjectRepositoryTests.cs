@@ -152,6 +152,80 @@ public class ProjectRepositoryTests : IDisposable
         Assert.Equal(step.Id, project.Steps[0].Id);
     }
 
+    [Fact]
+    public void UpdateStepDetails_ShouldUpdateOnlyTitleAndDescription()
+    {
+        // Arrange
+        using var repository = new ProjectRepository(_connection, projectRootPath: @"C:\TestProject");
+        repository.CreateProject("Update Details Test");
+
+        var originalTimestamp = new DateTime(2026, 9, 4, 12, 0, 0, DateTimeKind.Utc);
+        var originalElement = new ElementInfo(
+            Name: "SubmitButton",
+            ControlType: "Button",
+            AutomationId: "btn_submit",
+            ClassName: "WpfButton",
+            ProcessName: "notepad",
+            ProcessId: 1234,
+            WindowTitle: "Untitled - Notepad",
+            WindowHandle: 0x12345,
+            BoundingRectangle: new BoundingBox(100, 200, 50, 25)
+        );
+
+        var originalStep = new Step(
+            Id: Guid.NewGuid(),
+            SequenceIndex: 1,
+            Timestamp: originalTimestamp,
+            Action: ActionType.LeftClick,
+            ClickX: 125.0,
+            ClickY: 212.5,
+            TargetElement: originalElement,
+            ScreenshotPath: "assets/step_1.png",
+            Title: "Original Title",
+            Description: "Original Description",
+            Metadata: new Dictionary<string, string> { ["Key"] = "Val" }
+        );
+
+        repository.SaveStep(originalStep);
+
+        const string newTitle = "Updated Title";
+        const string newDescription = "Updated Description";
+
+        // Act
+        repository.UpdateStepDetails(originalStep.Id, newTitle, newDescription);
+
+        // Assert
+        var steps = repository.LoadSteps();
+        Assert.Single(steps);
+
+        var updatedStep = steps[0];
+        Assert.Equal(originalStep.Id, updatedStep.Id);
+        Assert.Equal(originalStep.SequenceIndex, updatedStep.SequenceIndex);
+        Assert.Equal(originalStep.Timestamp.ToUniversalTime(), updatedStep.Timestamp.ToUniversalTime());
+        Assert.Equal(originalStep.Action, updatedStep.Action);
+        Assert.Equal(originalStep.ClickX, updatedStep.ClickX);
+        Assert.Equal(originalStep.ClickY, updatedStep.ClickY);
+        Assert.Equal(originalStep.ScreenshotPath, updatedStep.ScreenshotPath);
+
+        // TargetElement details
+        Assert.Equal(originalElement.Name, updatedStep.TargetElement.Name);
+        Assert.Equal(originalElement.ControlType, updatedStep.TargetElement.ControlType);
+        Assert.Equal(originalElement.AutomationId, updatedStep.TargetElement.AutomationId);
+        Assert.Equal(originalElement.ClassName, updatedStep.TargetElement.ClassName);
+        Assert.Equal(originalElement.ProcessName, updatedStep.TargetElement.ProcessName);
+        Assert.Equal(originalElement.ProcessId, updatedStep.TargetElement.ProcessId);
+        Assert.Equal(originalElement.WindowTitle, updatedStep.TargetElement.WindowTitle);
+        Assert.Equal(originalElement.WindowHandle, updatedStep.TargetElement.WindowHandle);
+        Assert.Equal(originalElement.BoundingRectangle.X, updatedStep.TargetElement.BoundingRectangle.X);
+        Assert.Equal(originalElement.BoundingRectangle.Y, updatedStep.TargetElement.BoundingRectangle.Y);
+        Assert.Equal(originalElement.BoundingRectangle.Width, updatedStep.TargetElement.BoundingRectangle.Width);
+        Assert.Equal(originalElement.BoundingRectangle.Height, updatedStep.TargetElement.BoundingRectangle.Height);
+
+        // Title and Description updated
+        Assert.Equal(newTitle, updatedStep.Title);
+        Assert.Equal(newDescription, updatedStep.Description);
+    }
+
     public void Dispose()
     {
         _connection.Dispose();
