@@ -1,3 +1,4 @@
+using System.IO;
 using Stepwise.Core.Models;
 using Stepwise.WindowsIntegration.Capture;
 using Xunit;

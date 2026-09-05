@@ -13,14 +13,22 @@ public sealed class RecordingPipelineEngine : IRecordingEngine
     private readonly IUIAutomationService _uiaService;
     private readonly IScreenCaptureService? _captureService;
     private readonly IProjectRepository? _repository;
+    private readonly RecordingSessionStateMachine _stateMachine = new();
 
     private int _sequenceIndex;
-    private bool _isRecording;
     private bool _isDisposed;
 
+    /// <inheritdoc />
     public event EventHandler<Step>? StepRecorded;
 
-    public bool IsRecording => _isRecording;
+    /// <inheritdoc />
+    public event EventHandler<RecordingSessionState>? StateChanged;
+
+    /// <inheritdoc />
+    public RecordingSessionState State => _stateMachine.CurrentState;
+
+    /// <inheritdoc />
+    public bool IsRecording => State == RecordingSessionState.Recording;
 
     public RecordingPipelineEngine(
         IMouseHookService mouseHookService,
@@ -32,13 +40,21 @@ public sealed class RecordingPipelineEngine : IRecordingEngine
         _uiaService = uiaService ?? throw new ArgumentNullException(nameof(uiaService));
         _captureService = captureService;
         _repository = repository;
+
+        _stateMachine.StateChanged += (_, newState) => StateChanged?.Invoke(this, newState);
     }
 
+    /// <inheritdoc />
     public void StartRecording()
     {
         ObjectDisposedException.ThrowIf(_isDisposed, this);
 
-        if (_isRecording)
+        if (_stateMachine.CurrentState == RecordingSessionState.Completed || _stateMachine.CurrentState == RecordingSessionState.Failed)
+        {
+            _stateMachine.ResetToIdle();
+        }
+
+        if (_stateMachine.CurrentState == RecordingSessionState.Recording)
         {
             return;
         }
@@ -46,24 +62,56 @@ public sealed class RecordingPipelineEngine : IRecordingEngine
         _sequenceIndex = 0;
         _mouseHookService.MouseClicked += OnMouseClicked;
         _mouseHookService.Start();
-        _isRecording = true;
+        _stateMachine.Transition(RecordingSessionState.Recording);
     }
 
+    /// <inheritdoc />
+    public void PauseRecording()
+    {
+        ObjectDisposedException.ThrowIf(_isDisposed, this);
+
+        if (_stateMachine.CurrentState == RecordingSessionState.Recording)
+        {
+            _stateMachine.Transition(RecordingSessionState.Paused);
+        }
+    }
+
+    /// <inheritdoc />
+    public void ResumeRecording()
+    {
+        ObjectDisposedException.ThrowIf(_isDisposed, this);
+
+        if (_stateMachine.CurrentState == RecordingSessionState.Paused)
+        {
+            _stateMachine.Transition(RecordingSessionState.Recording);
+        }
+    }
+
+    /// <inheritdoc />
     public void StopRecording()
     {
-        if (!_isRecording)
+        if (_stateMachine.CurrentState != RecordingSessionState.Recording && _stateMachine.CurrentState != RecordingSessionState.Paused)
         {
             return;
         }
 
+        _stateMachine.Transition(RecordingSessionState.Stopping);
         _mouseHookService.MouseClicked -= OnMouseClicked;
         _mouseHookService.Stop();
-        _isRecording = false;
+        _stateMachine.Transition(RecordingSessionState.Completed);
+    }
+
+    /// <inheritdoc />
+    public Task StopRecordingAsync(CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        StopRecording();
+        return Task.CompletedTask;
     }
 
     private void OnMouseClicked(object? sender, MouseClickEvent e)
     {
-        if (!_isRecording)
+        if (State != RecordingSessionState.Recording)
         {
             return;
         }

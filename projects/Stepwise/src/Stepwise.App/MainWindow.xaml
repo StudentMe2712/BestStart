@@ -35,11 +35,80 @@
                 </Border>
             </StackPanel>
 
-            <!-- Status Indicator -->
-            <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center" Margin="0,0,140,0">
-                <Ellipse Width="8" Height="8" Fill="#10B981" VerticalAlignment="Center" />
-                <TextBlock Text="{x:Bind ViewModel.StatusMessage, Mode=OneWay}" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" VerticalAlignment="Center" />
+            <!-- Recording Controls Toolbar -->
+            <StackPanel Grid.Column="1"
+                        Orientation="Horizontal"
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Center"
+                        Spacing="8">
+
+                <!-- Start Recording Button -->
+                <Button Command="{x:Bind ViewModel.StartRecordingCommand, Mode=OneWay}"
+                        ToolTipService.ToolTip="Начать запись действий"
+                        Padding="12,5"
+                        CornerRadius="6"
+                        Background="{ThemeResource SubtleFillColorSecondaryBrush}">
+                    <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                        <Ellipse Width="10" Height="10" Fill="#EF4444" VerticalAlignment="Center" />
+                        <TextBlock Text="Запись" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center" />
+                    </StackPanel>
+                </Button>
+
+                <!-- Pause Recording Button -->
+                <Button Command="{x:Bind ViewModel.PauseRecordingCommand, Mode=OneWay}"
+                        ToolTipService.ToolTip="Приостановить запись"
+                        Padding="10,5"
+                        CornerRadius="6"
+                        Background="{ThemeResource SubtleFillColorSecondaryBrush}">
+                    <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                        <FontIcon Glyph="&#xE769;" FontSize="12" VerticalAlignment="Center" />
+                        <TextBlock Text="Пауза" FontSize="12" VerticalAlignment="Center" />
+                    </StackPanel>
+                </Button>
+
+                <!-- Resume Recording Button -->
+                <Button Command="{x:Bind ViewModel.ResumeRecordingCommand, Mode=OneWay}"
+                        ToolTipService.ToolTip="Продолжить запись"
+                        Padding="10,5"
+                        CornerRadius="6"
+                        Background="{ThemeResource SubtleFillColorSecondaryBrush}">
+                    <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                        <FontIcon Glyph="&#xE768;" FontSize="12" VerticalAlignment="Center" />
+                        <TextBlock Text="Продолжить" FontSize="12" VerticalAlignment="Center" />
+                    </StackPanel>
+                </Button>
+
+                <!-- Stop Recording Button -->
+                <Button Command="{x:Bind ViewModel.StopRecordingCommand, Mode=OneWay}"
+                        ToolTipService.ToolTip="Остановить и завершить запись"
+                        Padding="10,5"
+                        CornerRadius="6"
+                        Background="{ThemeResource SubtleFillColorSecondaryBrush}">
+                    <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                        <FontIcon Glyph="&#xE71A;" FontSize="12" Foreground="#EF4444" VerticalAlignment="Center" />
+                        <TextBlock Text="Стоп" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center" />
+                    </StackPanel>
+                </Button>
             </StackPanel>
+
+            <!-- Status Badge -->
+            <Border Grid.Column="2"
+                    VerticalAlignment="Center"
+                    Margin="0,0,140,0"
+                    Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                    BorderThickness="1"
+                    CornerRadius="12"
+                    Padding="10,4">
+                <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                    <Ellipse Width="8" Height="8" Fill="{x:Bind ViewModel.RecordingStateBrush, Mode=OneWay}" VerticalAlignment="Center" />
+                    <TextBlock Text="{x:Bind ViewModel.RecordingStatusText, Mode=OneWay}"
+                               FontSize="12"
+                               FontWeight="SemiBold"
+                               Foreground="{ThemeResource TextFillColorPrimaryBrush}"
+                               VerticalAlignment="Center" />
+                </StackPanel>
+            </Border>
         </Grid>
 
         <!-- Shell Navigation View -->

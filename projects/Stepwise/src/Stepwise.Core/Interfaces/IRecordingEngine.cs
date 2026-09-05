@@ -8,6 +8,16 @@ namespace Stepwise.Core.Interfaces;
 public interface IRecordingEngine : IDisposable
 {
     /// <summary>
+    /// Текущее состояние жизненного цикла сессии записи.
+    /// </summary>
+    RecordingSessionState State { get; }
+
+    /// <summary>
+    /// Событие изменения состояния сессии записи.
+    /// </summary>
+    event EventHandler<RecordingSessionState>? StateChanged;
+
+    /// <summary>
     /// Событие формирования нового шага инструкции.
     /// </summary>
     event EventHandler<Step>? StepRecorded;
@@ -18,12 +28,28 @@ public interface IRecordingEngine : IDisposable
     void StartRecording();
 
     /// <summary>
-    /// Останавливает запись действий.
+    /// Приостанавливает запись действий.
+    /// </summary>
+    void PauseRecording();
+
+    /// <summary>
+    /// Возобновляет запись действий после паузы.
+    /// </summary>
+    void ResumeRecording();
+
+    /// <summary>
+    /// Синхронно останавливает запись действий.
     /// </summary>
     void StopRecording();
 
     /// <summary>
-    /// Признак активного процесса записи.
+    /// Асинхронно останавливает запись действий с поддержкой токена отмены.
+    /// </summary>
+    /// <param name="cancellationToken">Токен отмены операции.</param>
+    Task StopRecordingAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Признак активного процесса записи (эквивалентно <c>State == RecordingSessionState.Recording</c>).
     /// </summary>
     bool IsRecording { get; }
 }

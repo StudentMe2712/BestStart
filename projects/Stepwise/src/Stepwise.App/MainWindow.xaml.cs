@@ -25,6 +25,8 @@ public sealed partial class MainWindow : Window
         ExtendsContentIntoTitleBar = true;
         SetTitleBar(AppTitleBar);
 
+        Closed += (s, e) => (ViewModel as IDisposable)?.Dispose();
+
         if (NavView.MenuItems.Count > 0)
         {
             NavView.SelectedItem = NavView.MenuItems[0];

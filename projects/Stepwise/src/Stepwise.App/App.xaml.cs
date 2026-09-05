@@ -4,8 +4,13 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI.Xaml;
 using Stepwise.App.Services;
 using Stepwise.App.ViewModels;
+using Stepwise.Core.Engine;
 using Stepwise.Core.Interfaces;
+using Stepwise.Core.Policy;
 using Stepwise.Storage.Repositories;
+using Stepwise.WindowsIntegration.Automation;
+using Stepwise.WindowsIntegration.Capture;
+using Stepwise.WindowsIntegration.Services;
 
 namespace Stepwise.App;
 
@@ -23,9 +28,9 @@ public partial class App : Application
         Services = ConfigureServices();
     }
 
-    private static IServiceProvider ConfigureServices()
+    internal static IServiceProvider ConfigureServices(IServiceCollection? services = null)
     {
-        var services = new ServiceCollection();
+        services ??= new ServiceCollection();
 
         // Сервисы загрузки изображений (Разделы 12-13 specs/spec.md)
         services.AddSingleton<IImageLoaderService, ImageLoaderService>();
@@ -38,9 +43,24 @@ public partial class App : Application
         );
         services.AddSingleton<IProjectRepository>(sp => new ProjectRepository(defaultProjectRoot));
 
+        // Системные службы Windows Integration
+        services.AddSingleton<IInputMonitoringService, InputMonitoringService>();
+        services.AddSingleton<IActiveWindowTracker, ActiveWindowTracker>();
+        services.AddSingleton<ISystemMetricsProvider, WindowsSystemMetricsProvider>();
+        services.AddSingleton<IUIAutomationService, UIAutomationService>();
+        services.AddSingleton<ITargetResolver, UIATargetResolver>();
+        services.AddSingleton<IScreenCaptureService, ScreenCaptureService>();
+        services.AddSingleton<ICaptureCoordinator, CaptureCoordinator>();
+
+        // Ядро записи и политики Core (Stage 2 Recording Engine)
+        services.AddSingleton<IEventCorrelator, EventCorrelator>();
+        services.AddSingleton<IRecordingPolicy, DefaultRecordingPolicy>();
+        services.AddSingleton<IStepDetector, StepDetector>();
+        services.AddSingleton<IRecordingEngine, RecordingEngine>();
+
         // ViewModels
-        services.AddSingleton<MainViewModel>();
         services.AddSingleton<EditorViewModel>();
+        services.AddSingleton<MainViewModel>();
 
         // Views
         services.AddTransient<MainWindow>();

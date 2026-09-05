@@ -1,0 +1,42 @@
+{
+  "TotalLiveMouseEvents": 0,
+  "TotalLiveKeyboardEvents": 0,
+  "ProcessedEvents": {
+    "KeyDown": {
+      "EventType": 0,
+      "VirtualKey": 65,
+      "ScanCode": 30,
+      "Character": "\u0444",
+      "IsTextInput": true,
+      "IsShortcut": false
+    },
+    "KeyUp": {
+      "EventType": 1,
+      "VirtualKey": 65,
+      "ScanCode": 30,
+      "Character": null,
+      "IsTextInput": false
+    },
+    "Shortcut": {
+      "EventType": 0,
+      "VirtualKey": 83,
+      "Modifiers": "Alt",
+      "IsShortcut": true,
+      "IsAltGr": false
+    },
+    "MouseDown": {
+      "EventType": 0,
+      "Button": 1,
+      "X": 241,
+      "Y": 288
+    },
+    "MouseUp": {
+      "EventType": 1,
+      "Button": 1,
+      "X": 241,
+      "Y": 288
+    }
+  },
+  "LiveMouseEvents": [],
+  "LiveKeyboardEvents": []
+}

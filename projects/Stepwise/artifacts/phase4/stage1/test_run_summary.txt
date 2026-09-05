@@ -1,0 +1,7 @@
+Тестовый запуск для C:\Users\Mila\Desktop\BestStart\projects\Stepwise\tests\Stepwise.Tests\bin\Debug\net9.0-windows10.0.19041.0\Stepwise.Tests.dll (.NETCoreApp,Version=v9.0)
+Версия VSTest 17.14.1 (x64)
+
+Запуск выполнения тестов; подождите...
+Общее количество тестовых файлов (1), соответствующих указанному шаблону.
+
+Пройден!   : не пройдено     0, пройдено    49, пропущено     0, всего    49, длительность 774 ms. - Stepwise.Tests.dll (net9.0)

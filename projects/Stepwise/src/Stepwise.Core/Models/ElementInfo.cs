@@ -12,7 +12,9 @@ public sealed record ElementInfo(
     int ProcessId,
     string WindowTitle,
     long WindowHandle,
-    BoundingBox BoundingRectangle
+    BoundingBox BoundingRectangle,
+    string FrameworkId = "Unknown",
+    bool IsPassword = false
 )
 {
     public static ElementInfo Unknown => new(
@@ -24,6 +26,8 @@ public sealed record ElementInfo(
         ProcessId: 0,
         WindowTitle: string.Empty,
         WindowHandle: 0,
-        BoundingRectangle: BoundingBox.Empty
+        BoundingRectangle: BoundingBox.Empty,
+        FrameworkId: "Unknown",
+        IsPassword: false
     );
 }

@@ -36,7 +36,11 @@ public sealed class UIAutomationService : IUIAutomationService
         return FallbackWin32Inspection(x, y);
     }
 
-    private ElementInfo ExtractElementInfoFromUia(AutomationElement element, int x, int y)
+    internal static ElementInfo ExtractElementInfoFromUia(
+        AutomationElement element,
+        int x = 0,
+        int y = 0,
+        WindowContext? fallbackContext = null)
     {
         string name = string.Empty;
         string controlType = "Unknown";
@@ -57,25 +61,78 @@ public sealed class UIAutomationService : IUIAutomationService
             {
                 boundingBox = new BoundingBox(rect.X, rect.Y, rect.Width, rect.Height);
             }
+            else if (fallbackContext != null && !fallbackContext.Bounds.IsEmpty)
+            {
+                boundingBox = fallbackContext.Bounds;
+            }
         }
-        catch { }
+        catch
+        {
+            if (fallbackContext != null && !fallbackContext.Bounds.IsEmpty)
+            {
+                boundingBox = fallbackContext.Bounds;
+            }
+        }
+
+        bool isPassword = false;
+        try
+        {
+            isPassword = element.Current.IsPassword;
+        }
+        catch
+        {
+            try
+            {
+                var val = element.GetCurrentPropertyValue(AutomationElement.IsPasswordProperty);
+                if (val is bool b)
+                {
+                    isPassword = b;
+                }
+            }
+            catch { }
+        }
+
+        string frameworkId = "Unknown";
+        try { frameworkId = element.Current.FrameworkId ?? "Unknown"; } catch { }
 
         // Извлекаем имя процесса
         string processName = GetProcessNameById(processId);
 
         // Извлекаем дескриптор и заголовок окна верхнего уровня
         nint windowHandle = nint.Zero;
-        try { windowHandle = (nint)element.Current.NativeWindowHandle; } catch { }
+        try { windowHandle = (nint)(uint)element.Current.NativeWindowHandle; } catch { }
 
         if (windowHandle == nint.Zero || !NativeMethods.IsWindow(windowHandle))
         {
-            var pt = new NativeMethods.POINT { X = x, Y = y };
-            windowHandle = NativeMethods.WindowFromPoint(pt);
+            if (x != 0 || y != 0)
+            {
+                var pt = new NativeMethods.POINT { X = x, Y = y };
+                windowHandle = NativeMethods.WindowFromPoint(pt);
+            }
+            else if (fallbackContext != null && fallbackContext.WindowHandle != 0)
+            {
+                windowHandle = (nint)fallbackContext.WindowHandle;
+            }
         }
 
         var rootWindowHandle = GetRootWindowHandle(windowHandle);
         var effectiveHandle = rootWindowHandle != nint.Zero ? rootWindowHandle : windowHandle;
         string windowTitle = GetWindowTitle(effectiveHandle);
+        if (string.IsNullOrEmpty(windowTitle) && fallbackContext != null && !string.IsNullOrEmpty(fallbackContext.WindowTitle))
+        {
+            windowTitle = fallbackContext.WindowTitle;
+        }
+
+        if (processId <= 0 && fallbackContext != null && fallbackContext.ProcessId > 0)
+        {
+            processId = fallbackContext.ProcessId;
+        }
+
+        if ((processName == "Unknown" || string.IsNullOrEmpty(processName)) &&
+            fallbackContext != null && !string.IsNullOrEmpty(fallbackContext.ProcessName))
+        {
+            processName = fallbackContext.ProcessName;
+        }
 
         return new ElementInfo(
             Name: name,
@@ -86,7 +143,9 @@ public sealed class UIAutomationService : IUIAutomationService
             ProcessId: processId,
             WindowTitle: windowTitle,
             WindowHandle: (long)effectiveHandle,
-            BoundingRectangle: boundingBox
+            BoundingRectangle: boundingBox,
+            FrameworkId: frameworkId,
+            IsPassword: isPassword
         );
     }
 
@@ -118,7 +177,9 @@ public sealed class UIAutomationService : IUIAutomationService
             ProcessId: processId,
             WindowTitle: windowTitle,
             WindowHandle: (long)effectiveHwnd,
-            BoundingRectangle: BoundingBox.Empty
+            BoundingRectangle: BoundingBox.Empty,
+            FrameworkId: "Win32",
+            IsPassword: false
         );
     }
 

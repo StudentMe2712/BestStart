@@ -144,6 +144,11 @@ public sealed partial class EditorViewModel : ObservableObject, IDisposable
     {
         _imageLoader = imageLoader ?? throw new ArgumentNullException(nameof(imageLoader));
         _repository = repository;
+        if (_repository != null && !string.IsNullOrWhiteSpace(_repository.ProjectRootPath))
+        {
+            _projectPath = _repository.ProjectRootPath;
+            _projectName = Path.GetFileName(_repository.ProjectRootPath);
+        }
     }
 
     partial void OnSelectedStepChanged(StepItemViewModel? oldValue, StepItemViewModel? newValue)
@@ -380,6 +385,26 @@ public sealed partial class EditorViewModel : ObservableObject, IDisposable
                 // Игнорируем ошибку единичной миниатюры
             }
         }
+    }
+
+    /// <summary>
+    /// Добавляет вновь записанный шаг в сессию редактора (вызывается из UI-потока при получении события от IRecordingEngine).
+    /// </summary>
+    public void AddStep(Step step)
+    {
+        ArgumentNullException.ThrowIfNull(step);
+
+        var vm = new StepItemViewModel(step, ProjectPath, _repository);
+        Steps.Add(vm);
+        StepCount = Steps.Count;
+        HasSteps = Steps.Count > 0;
+
+        if (SelectedStep == null)
+        {
+            SelectedStep = vm;
+        }
+
+        _ = vm.LoadThumbnailAsync(_imageLoader);
     }
 
     [RelayCommand]

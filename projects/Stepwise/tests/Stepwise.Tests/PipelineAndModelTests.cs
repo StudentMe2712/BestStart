@@ -188,7 +188,10 @@ public class PipelineAndModelTests
 
     private sealed class TestMouseHookService : IMouseHookService
     {
+#pragma warning disable CS0067
         public event EventHandler<MouseClickEvent>? MouseClicked;
+        public event EventHandler<RawMouseEvent>? RawMouseEventReceived;
+#pragma warning restore CS0067
         public bool IsRunning { get; private set; }
 
         public void Start() => IsRunning = true;

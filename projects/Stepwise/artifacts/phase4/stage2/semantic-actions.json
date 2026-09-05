@@ -1,0 +1,62 @@
+[
+  {
+    "ActionType": "LeftClick",
+    "X": 265,
+    "Y": 296,
+    "Key": null,
+    "Text": null,
+    "DurationMs": 0,
+    "SequenceIndex": 1,
+    "ProcessName": "",
+    "WindowTitle": "",
+    "Timestamp": "2026-09-05T06:49:16.6948977Z"
+  },
+  {
+    "ActionType": "TextInput",
+    "X": null,
+    "Y": null,
+    "Key": null,
+    "Text": "Stepwise",
+    "DurationMs": 140,
+    "SequenceIndex": 2,
+    "ProcessName": "",
+    "WindowTitle": "",
+    "Timestamp": "2026-09-05T06:49:16.8548977Z"
+  },
+  {
+    "ActionType": "LeftClick",
+    "X": 265,
+    "Y": 361,
+    "Key": null,
+    "Text": null,
+    "DurationMs": 0,
+    "SequenceIndex": 3,
+    "ProcessName": "",
+    "WindowTitle": "",
+    "Timestamp": "2026-09-05T06:49:17.1294158Z"
+  },
+  {
+    "ActionType": "TextInput",
+    "X": null,
+    "Y": null,
+    "Key": null,
+    "Text": "********",
+    "DurationMs": 420,
+    "SequenceIndex": 4,
+    "ProcessName": "",
+    "WindowTitle": "",
+    "Timestamp": "2026-09-05T06:49:17.5694158Z"
+  },
+  {
+    "ActionType": "LeftClick",
+    "X": 290,
+    "Y": 431,
+    "Key": null,
+    "Text": null,
+    "DurationMs": 0,
+    "SequenceIndex": 5,
+    "ProcessName": "",
+    "WindowTitle": "",
+    "Timestamp": "2026-09-05T06:49:17.3836543Z"
+  }
+]

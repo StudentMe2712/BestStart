@@ -1,7 +1,7 @@
 # Stepwise — Главная архитектурная спецификация и Центр Проекта (Brain Specification)
 
-> **Статус:** В активной разработке (Срез: Шаги 1–8 завершены — Фаза 3: WinUI 3 Shell + 3-Panel Editor сдана на 100%)  
-> **Версия спецификации:** 2.0.0 (Объединена с Master Engineering Prompt / ultraprompt.md)  
+> **Статус:** В активной разработке (Срез: Шаги 1–8 сданы на 100% — Фаза 4 Этап 2: Core Event Correlation & Recording Engine сдан на 100%, 190/190 тестов PASS, Live Windows Validation PASS)  
+> **Версия спецификации:** 2.1.0 (Объединена с Master Engineering Prompt / ultraprompt.md)  
 > **Платформа:** Windows 10/11 (x64 / ARM64)  
 > **Технологический стек:** C# 13, .NET 9+, WinUI 3, Windows App SDK, Microsoft UI Automation (UIA), Win32 API (CsWin32 / PInvoke), Windows.Graphics.Capture, SQLite, CommunityToolkit.Mvvm, System.Text.Json.
 
@@ -182,7 +182,7 @@ public sealed record Step(
 ### Фаза 0: Инструментарий и Лаборатория валидации
 - [x] Создание Solution `Stepwise.sln` и проектов.
 - [x] Инициализация нативных тестов (xUnit).
-- [ ] Настройка набора PowerShell-скиллов (`skills/*.ps1`) для исследования Windows UI.
+- [x] Настройка набора PowerShell-скиллов (`skills/*.ps1`) для исследования Windows UI.
 - [ ] Создание детерминированного тестового приложения `Stepwise.TestTarget`.
 
 ### Фаза 1: Фундамент и Технический срез (MVP 0.1)
@@ -196,10 +196,10 @@ public sealed record Step(
 - [x] **Шаг 6: Проектирование локального хранилища (SQLite + File System для ассетов).**
 
 ### Фаза 3: Интерактивный интерфейс и Редактор руководств
-- [ ] **Шаг 7: WinUI 3 Shell & MVVM (CommunityToolkit.Mvvm).**
+- [x] **Шаг 7: WinUI 3 Shell & MVVM (CommunityToolkit.Mvvm).**
   - Главное окно: список проектов, кнопка "Новая запись", индикатор статуса.
   - Состояния: Готов к записи (Idle), Запись активна (Recording ●), Пауза (Paused).
-- [ ] **Шаг 8: Визуальный 3-панельный редактор шагов (Editor View).**
+- [x] **Шаг 8: Визуальный 3-панельный редактор шагов (Editor View).**
   - Слева: Вертикальный список карточек шагов с номерами, типами действий и миниатюрами.
   - По центру: Большой просмотрщик скриншота с интерактивной рамкой подсветки активного элемента.
   - Справа: Панель свойств — редактирование заголовка, описания, подсказок, ручная корректировка региона.
@@ -219,7 +219,7 @@ public sealed record Step(
 - [ ] **Шаг 11: Системный трей и глобальные горячие клавиши.**
   - Иконка в системном трее Windows с контекстным меню управления.
   - Хоткеи: `Start/Stop Recording`, `Pause/Resume`, `Manual Step`.
-- [ ] **Шаг 12: Event Correlation & Текстовый ввод.**
+- [x] **Шаг 12: Event Correlation & Текстовый ввод (Stage 2 Core Recording Engine).**
   - Захват `TextInput` с фильтрацией паролей и сжатием серии нажатий клавиш в один осмысленный шаг.
 
 ### Фаза 6: Экспорт и Опциональный AI
@@ -434,4 +434,214 @@ Repository (SQLite Storage / File System)
    ```
 9. Проверка вывода `git push` и кода выхода.
 10. Итоговый структурированный отчет пользователю (файлы, тесты, валидация, оставшиеся ограничения).
+
+---
+
+## 18. Протокол сквозного GUI-тестирования (Live GUI E2E Testing Protocol)
+
+Stepwise must be tested at multiple levels.
+
+Unit tests and integration tests are necessary but insufficient.
+
+For every major user-facing feature, the project should eventually include a real Windows GUI end-to-end scenario.
+
+### 18.1. Testing Layers (Уровни тестирования)
+The project uses:
+- **Unit tests**
+- **Integration tests**
+- **Windows UI Automation tests**
+- **Live end-to-end tests**
+- **Visual regression tests** where appropriate
+
+> **Ключевой принцип:** No single layer is considered sufficient by itself.
+
+### 18.2. Native Windows UI Automation
+For native WinUI 3 / Win32 UI:
+- **Prefer Windows UI Automation.**
+- **FlaUI** may be used in the test infrastructure as a .NET automation layer.
+- **Playwright is NOT the primary UI automation framework** for native WinUI.
+- Playwright is reserved for WebView2 / web content if such content is introduced later.
+
+### 18.3. Production / Test Separation
+The production application must not contain test-specific automation logic merely to make testing easier.
+
+Test infrastructure must interact with Stepwise strictly through externally observable behavior:
+- Window;
+- UI Automation;
+- Keyboard;
+- Mouse;
+- Files;
+- Database;
+- Screenshots.
+
+### 18.4. Stepwise.TestTarget
+Maintain a deterministic internal Windows application:
+- `Stepwise.TestTarget`
+- The application must expose stable UI Automation properties (`AutomationId`, control types, names).
+- It exists exclusively to provide a controlled environment for recording and playback scenarios.
+
+### 18.5. E2E Scenario Principle
+Prefer testing complete user workflows instead of isolated button clicks.
+- ❌ **Bad:** *"Click Settings button."*
+- ✅ **Good:** *"Launch application → create recording → interact with another application → stop recording → edit guide → play guide → verify result."*
+
+### 18.6. Real Application Launch
+- E2E tests must launch the actual Stepwise executable (`Stepwise.App.exe`).
+- Do not test only ViewModels or mocks.
+
+### 18.7. Real Interaction
+Where practical, the automation system must:
+- Launch;
+- Click;
+- Type;
+- Select;
+- Navigate;
+- Open dialogs;
+- Switch windows;
+- Create real projects;
+- Create real recordings;
+- Edit real guides;
+- Play real guides.
+
+### 18.8. First Complete E2E Scenario: Create Guide From Real Interaction
+The first mandatory scenario: **Create Guide From Real Interaction**
+
+**Flow:**
+```text
+Launch Stepwise
+      ↓
+Create Project
+      ↓
+Start Recording
+      ↓
+Launch Stepwise.TestTarget
+      ↓
+Click UI element
+      ↓
+Type text
+      ↓
+Click another UI element
+      ↓
+Stop Recording
+      ↓
+Return to Stepwise
+      ↓
+Verify generated Steps
+      ↓
+Verify screenshots
+      ↓
+Verify UIA metadata
+      ↓
+Open Editor
+      ↓
+Select Step
+      ↓
+Edit Title
+      ↓
+Edit Description
+      ↓
+Save
+      ↓
+Reload project
+      ↓
+Verify persistence
+```
+
+### 18.9. Player E2E: Second Scenario
+**Flow:**
+```text
+Open Guide
+      ↓
+Play Guide
+      ↓
+Verify overlay
+      ↓
+Verify highlighted region
+      ↓
+Next
+      ↓
+Verify next step
+      ↓
+Previous
+      ↓
+Verify previous step
+```
+
+### 18.10. Failure E2E (Отказоустойчивость)
+**Scenarios to test:**
+- Missing screenshot;
+- Corrupt screenshot;
+- Closed target application;
+- UI Automation unavailable;
+- Database unavailable.
+
+**Expected behavior:**
+- Graceful failure;
+- No crash (zero unhandled exceptions);
+- Clear user-facing state and notifications.
+
+### 18.11. Rapid Interaction (Race Condition Resistance)
+Test rapid selection and navigation.
+- **Example:** Rapidly switching `Step 1 → 2 → 3 → 4 → 5` with very small intervals.
+- **Requirement:** The final displayed state must correspond strictly to the final selection without state corruption or race conditions.
+
+### 18.12. Screenshots as Evidence
+Important E2E scenarios should produce screenshots as validation artifacts.
+- **Example structure:**
+```text
+artifacts/e2e/
+├── launch.png
+├── recording.png
+├── editor.png
+├── player.png
+└── failure-state.png
+```
+
+### 18.13. Visual Regression
+- For stable UI screens, maintain optional baseline screenshots.
+- **Compare:** Current screenshot against baseline.
+- **Rule:** Do not fail tests on harmless rendering differences unless the comparison method is designed to tolerate them.
+
+### 18.14. Test Independence
+- Each E2E test should create or reset its own test data.
+- Do not rely on the user's personal project database.
+- Use isolated test project directories (e.g., temporary folders created and cleaned per test run).
+
+### 18.15. Cleanup
+After every E2E test:
+1. Terminate test processes;
+2. Close Stepwise;
+3. Close TestTarget;
+4. Release UIA resources;
+5. Clean temporary project data.
+
+> **Critical Rule:** A failed test must not leave the environment unusable for the next test.
+
+### 18.16. Agent Verification Requirement
+When implementing a major GUI feature, the orchestrator must:
+1. Build application.
+2. Launch actual executable.
+3. Inspect UI Automation tree.
+4. Execute relevant E2E workflow.
+5. Capture evidence.
+6. Inspect failure output if any.
+7. Fix problems.
+8. Repeat until successful.
+
+> **A feature must not be considered fully verified merely because `dotnet build` and `dotnet test` pass.**
+
+### 18.17. E2E Acceptance (Target Definition of Done)
+For user-facing functionality:
+```text
+  CODE PASS
++ UNIT PASS
++ INTEGRATION PASS
++ LIVE GUI PASS
+```
+should be treated as the target definition of done.
+
+### 18.18. Agent Honesty
+- **Never claim a live GUI scenario passed unless the executable was actually launched and the scenario was actually executed.**
+- **Never infer GUI behavior from successful compilation alone.**
+
 

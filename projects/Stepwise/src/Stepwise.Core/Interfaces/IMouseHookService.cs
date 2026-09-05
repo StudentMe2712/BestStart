@@ -13,6 +13,11 @@ public interface IMouseHookService : IDisposable
     event EventHandler<MouseClickEvent>? MouseClicked;
 
     /// <summary>
+    /// Событие сырого ввода мыши (нажатие, отпускание, колесо, перемещение).
+    /// </summary>
+    event EventHandler<RawMouseEvent>? RawMouseEventReceived;
+
+    /// <summary>
     /// Запускает перехват событий мыши.
     /// </summary>
     void Start();
