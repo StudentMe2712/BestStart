@@ -145,6 +145,186 @@ public class Stage2CorrelatorAndTargetResolverTests
         Assert.Equal(777, result.WindowHandle);
     }
 
+    [Fact]
+    public async Task UIATargetResolver_DragAndDrop_ResolvesTargetAtStartCoordinates()
+    {
+        var mockUia = new Mock<IUIAutomationService>();
+        var expectedElement = new ElementInfo(
+            Name: "Source Item",
+            ControlType: "ListItem",
+            AutomationId: "itemSrc",
+            ClassName: "ListViewItem",
+            ProcessName: "explorer",
+            ProcessId: 1001,
+            WindowTitle: "Documents",
+            WindowHandle: 4444,
+            BoundingRectangle: new BoundingBox(100, 200, 150, 40)
+        );
+
+        mockUia
+            .Setup(u => u.InspectElementAt(100, 200))
+            .Returns(expectedElement);
+
+        var resolver = new UIATargetResolver(mockUia.Object);
+        var context = new WindowContext(4444, 1001, "explorer", "Documents", new BoundingBox(0, 0, 1024, 768), DateTime.UtcNow);
+        var action = SemanticAction.CreateDragAndDrop(
+            startX: 100,
+            startY: 200,
+            endX: 450,
+            endY: 550,
+            button: RawMouseButton.Left,
+            context: context,
+            timestamp: DateTime.UtcNow
+        );
+
+        var result = await resolver.ResolveTargetAsync(action);
+
+        Assert.NotNull(result);
+        Assert.Equal("Source Item", result.Name);
+        Assert.Equal("ListItem", result.ControlType);
+        Assert.Equal("itemSrc", result.AutomationId);
+        mockUia.Verify(u => u.InspectElementAt(100, 200), Times.Once);
+    }
+
+    [Fact]
+    public async Task UIATargetResolver_Scroll_ResolvesTargetAtScrollCoordinates()
+    {
+        var mockUia = new Mock<IUIAutomationService>();
+        var expectedElement = new ElementInfo(
+            Name: "Content Viewer",
+            ControlType: "Pane",
+            AutomationId: "scrollPane",
+            ClassName: "ScrollViewer",
+            ProcessName: "browser",
+            ProcessId: 2002,
+            WindowTitle: "Web Page",
+            WindowHandle: 6666,
+            BoundingRectangle: new BoundingBox(250, 350, 600, 800)
+        );
+
+        mockUia
+            .Setup(u => u.InspectElementAt(250, 350))
+            .Returns(expectedElement);
+
+        var resolver = new UIATargetResolver(mockUia.Object);
+        var context = new WindowContext(6666, 2002, "browser", "Web Page", new BoundingBox(0, 0, 1200, 900), DateTime.UtcNow);
+        var action = SemanticAction.CreateScroll(
+            x: 250,
+            y: 350,
+            delta: -120,
+            context: context,
+            timestamp: DateTime.UtcNow
+        );
+
+        var result = await resolver.ResolveTargetAsync(action);
+
+        Assert.NotNull(result);
+        Assert.Equal("Content Viewer", result.Name);
+        Assert.Equal("Pane", result.ControlType);
+        Assert.Equal(-120, action.Delta);
+        mockUia.Verify(u => u.InspectElementAt(250, 350), Times.Once);
+    }
+
+    [Fact]
+    public async Task UIATargetResolver_WindowActivated_ResolvesFromContextDirectlyWithoutUiaCall()
+    {
+        var mockUia = new Mock<IUIAutomationService>();
+        var resolver = new UIATargetResolver(mockUia.Object);
+
+        var context = new WindowContext(7788, 3003, "notepad", "Notes - Notepad", new BoundingBox(50, 50, 800, 600), DateTime.UtcNow);
+        var action = SemanticAction.CreateWindowActivated(context, DateTime.UtcNow);
+
+        var result = await resolver.ResolveTargetAsync(action);
+
+        Assert.NotNull(result);
+        Assert.Equal("WindowControl", result.ControlType);
+        Assert.Equal(3003, result.ProcessId);
+        Assert.Equal("notepad", result.ProcessName);
+        Assert.Equal("Notes - Notepad", result.WindowTitle);
+        Assert.Equal(7788, result.WindowHandle);
+        Assert.Equal(new BoundingBox(50, 50, 800, 600), result.BoundingRectangle);
+
+        mockUia.Verify(u => u.InspectElementAt(It.IsAny<int>(), It.IsAny<int>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task UIATargetResolver_WindowClosed_ResolvesFromContextAndResetsLastElement()
+    {
+        var mockUia = new Mock<IUIAutomationService>();
+        var clickedElement = new ElementInfo(
+            Name: "Submit",
+            ControlType: "Button",
+            AutomationId: "btnSub",
+            ClassName: "Button",
+            ProcessName: "oldApp",
+            ProcessId: 4004,
+            WindowTitle: "Old App",
+            WindowHandle: 8899,
+            BoundingRectangle: new BoundingBox(10, 10, 50, 20)
+        );
+
+        mockUia.Setup(u => u.InspectElementAt(10, 10)).Returns(clickedElement);
+        var resolver = new UIATargetResolver(mockUia.Object);
+
+        var clickContext = new WindowContext(8899, 4004, "oldApp", "Old App", new BoundingBox(0, 0, 500, 500), DateTime.UtcNow);
+        var clickAction = SemanticAction.CreateMouseClick(SemanticActionType.LeftClick, 10, 10, clickContext, DateTime.UtcNow);
+        await resolver.ResolveTargetAsync(clickAction);
+
+        // WindowClosed for the window
+        var closeAction = SemanticAction.CreateWindowClosed(clickContext, DateTime.UtcNow);
+        var closeResult = await resolver.ResolveTargetAsync(closeAction);
+
+        Assert.NotNull(closeResult);
+        Assert.Equal("WindowControl", closeResult.ControlType);
+        Assert.Equal(4004, closeResult.ProcessId);
+        Assert.Equal("oldApp", closeResult.ProcessName);
+
+        // Subsequent keyboard action in new window should NOT reuse the old closed window's element
+        var newContext = new WindowContext(9900, 5005, "newApp", "New App", new BoundingBox(0, 0, 600, 600), DateTime.UtcNow);
+        var keyAction = SemanticAction.CreateKeyPress(13, "Enter", KeyboardModifiers.None, newContext, DateTime.UtcNow);
+        var keyResult = await resolver.ResolveTargetAsync(keyAction);
+
+        Assert.Equal(5005, keyResult.ProcessId);
+        Assert.Equal("newApp", keyResult.ProcessName);
+        Assert.NotEqual("Submit", keyResult.Name);
+    }
+
+    [Fact]
+    public async Task UIATargetResolver_PartialElementInfo_DoesNotFabricateFakeIdsOrNames()
+    {
+        var mockUia = new Mock<IUIAutomationService>();
+        var partialElement = new ElementInfo(
+            Name: string.Empty,
+            ControlType: "Edit",
+            AutomationId: string.Empty,
+            ClassName: "Edit",
+            ProcessName: "notepad",
+            ProcessId: 1234,
+            WindowTitle: "Untitled - Notepad",
+            WindowHandle: 5555,
+            BoundingRectangle: new BoundingBox(10, 20, 100, 30),
+            FrameworkId: "Win32",
+            IsPassword: false
+        );
+
+        mockUia
+            .Setup(u => u.InspectElementAt(50, 50))
+            .Returns(partialElement);
+
+        var resolver = new UIATargetResolver(mockUia.Object);
+        var context = new WindowContext(5555, 1234, "notepad", "Untitled - Notepad", new BoundingBox(0, 0, 800, 600), DateTime.UtcNow);
+        var action = SemanticAction.CreateMouseClick(SemanticActionType.LeftClick, 50, 50, context, DateTime.UtcNow);
+
+        var result = await resolver.ResolveTargetAsync(action);
+
+        Assert.NotNull(result);
+        Assert.Equal(string.Empty, result.Name);
+        Assert.Equal(string.Empty, result.AutomationId);
+        Assert.Equal("Edit", result.ControlType);
+        Assert.Equal("Edit", result.ClassName);
+        Assert.Equal("Win32", result.FrameworkId);
+    }
+
     #endregion
 
     #region 3. EventCorrelator Mouse Tests
@@ -279,7 +459,13 @@ public class Stage2CorrelatorAndTargetResolverTests
         // MouseUp at 150, 200 (delta 50, 100 > 8)
         correlator.ProcessMouseEvent(new RawMouseEvent(RawMouseEventType.MouseUp, RawMouseButton.Left, 150, 200, 0, now.AddMilliseconds(200)));
 
-        Assert.Empty(emitted);
+        Assert.DoesNotContain(emitted, a => a.ActionType == SemanticActionType.LeftClick);
+        Assert.Single(emitted);
+        Assert.Equal(SemanticActionType.DragAndDrop, emitted[0].ActionType);
+        Assert.Equal(100, emitted[0].X);
+        Assert.Equal(100, emitted[0].Y);
+        Assert.Equal(150, emitted[0].EndX);
+        Assert.Equal(200, emitted[0].EndY);
     }
 
     #endregion
@@ -550,6 +736,128 @@ public class Stage2CorrelatorAndTargetResolverTests
 
         Assert.Single(emitted);
         Assert.Equal("Z", emitted[0].Text);
+    }
+
+    #endregion
+
+    #region 5. UIAutomationService Robustness & Fallback Tests
+
+    [Fact]
+    public void UIAutomationService_GetProcessNameById_WhenPidIsZeroOrNegative_ReturnsUnknownOrFallback()
+    {
+        var resultZero = UIAutomationService.GetProcessNameById(0);
+        Assert.Equal("Unknown", resultZero);
+
+        var resultNegative = UIAutomationService.GetProcessNameById(-1);
+        Assert.Equal("Unknown", resultNegative);
+
+        var fallbackContext = new WindowContext(123, 0, "fallbackProc", "Title", new BoundingBox(0, 0, 100, 100), DateTime.UtcNow);
+        var resultWithFallback = UIAutomationService.GetProcessNameById(0, fallbackContext);
+        Assert.Equal("fallbackProc", resultWithFallback);
+    }
+
+    [Fact]
+    public void UIAutomationService_GetProcessNameById_WhenProcessTerminated_ReturnsUnknownOrFallbackWithoutCrashing()
+    {
+        int nonExistentPid = 99999999;
+
+        var resultWithoutFallback = UIAutomationService.GetProcessNameById(nonExistentPid);
+        Assert.Equal("Unknown", resultWithoutFallback);
+
+        var fallbackContext = new WindowContext(123, nonExistentPid, "cachedApp", "Title", new BoundingBox(0, 0, 100, 100), DateTime.UtcNow);
+        var resultWithFallback = UIAutomationService.GetProcessNameById(nonExistentPid, fallbackContext);
+        Assert.Equal("cachedApp", resultWithFallback);
+    }
+
+    [Fact]
+    public void UIAutomationService_NativeHelpers_WhenHwndZero_ReturnSafeDefaults()
+    {
+        Assert.Equal(nint.Zero, UIAutomationService.GetRootWindowHandle(nint.Zero));
+        Assert.Equal(string.Empty, UIAutomationService.GetWindowTitle(nint.Zero));
+        Assert.Equal(string.Empty, UIAutomationService.GetWindowClassName(nint.Zero));
+        Assert.Equal(BoundingBox.Empty, UIAutomationService.GetWindowBounds(nint.Zero));
+    }
+
+    [Fact]
+    public void UIAutomationService_FallbackWin32Inspection_WhenCoordinatesInvalid_ReturnsUnknownOrContextFallback()
+    {
+        var resultWithoutContext = UIAutomationService.FallbackWin32Inspection(-999999, -999999);
+        Assert.Equal(ElementInfo.Unknown, resultWithoutContext);
+
+        var context = new WindowContext(555, 666, "myProc", "My Window", new BoundingBox(10, 20, 300, 200), DateTime.UtcNow);
+        var resultWithContext = UIAutomationService.FallbackWin32Inspection(-999999, -999999, context);
+
+        Assert.NotNull(resultWithContext);
+        Assert.Equal("WindowControl", resultWithContext.ControlType);
+        Assert.Equal("myProc", resultWithContext.ProcessName);
+        Assert.Equal(666, resultWithContext.ProcessId);
+        Assert.Equal("My Window", resultWithContext.WindowTitle);
+        Assert.Equal(555, resultWithContext.WindowHandle);
+        Assert.Equal(new BoundingBox(10, 20, 300, 200), resultWithContext.BoundingRectangle);
+        Assert.Equal(string.Empty, resultWithContext.Name);
+        Assert.Equal(string.Empty, resultWithContext.AutomationId);
+    }
+
+    [Fact]
+    public void UIAutomationService_InspectElementAt_InvalidCoordinates_ReturnsSafeUnknown()
+    {
+        var service = new UIAutomationService();
+        var element = service.InspectElementAt(-50000, -50000);
+
+        Assert.NotNull(element);
+        Assert.Equal(string.Empty, element.Name);
+        Assert.Equal(string.Empty, element.AutomationId);
+        Assert.False(element.IsPassword);
+    }
+
+    [Fact]
+    public void UIATargetResolver_CreateFallbackFromContext_EmptyContext_ReturnsUnknown()
+    {
+        var nullResult = UIATargetResolver.CreateFallbackFromContext(null);
+        Assert.Equal(ElementInfo.Unknown, nullResult);
+
+        var emptyResult = UIATargetResolver.CreateFallbackFromContext(WindowContext.Empty);
+        Assert.Equal(ElementInfo.Unknown, emptyResult);
+    }
+
+    [Fact]
+    public void UIATargetResolver_CreateFallbackFromContext_ValidContext_PopulatesAll11Properties()
+    {
+        var context = new WindowContext(
+            WindowHandle: 123456,
+            ProcessId: 7890,
+            ProcessName: "testHost",
+            WindowTitle: "Test Application",
+            Bounds: new BoundingBox(100, 100, 800, 600),
+            Timestamp: DateTime.UtcNow
+        );
+
+        var element = UIATargetResolver.CreateFallbackFromContext(context);
+
+        Assert.NotNull(element);
+        Assert.Equal(string.Empty, element.Name);
+        Assert.Equal("WindowControl", element.ControlType);
+        Assert.Equal(string.Empty, element.AutomationId);
+        Assert.Equal("testHost", element.ProcessName);
+        Assert.Equal(7890, element.ProcessId);
+        Assert.Equal("Test Application", element.WindowTitle);
+        Assert.Equal(123456, element.WindowHandle);
+        Assert.Equal(new BoundingBox(100, 100, 800, 600), element.BoundingRectangle);
+        Assert.Equal("Win32", element.FrameworkId);
+        Assert.False(element.IsPassword);
+    }
+
+    [Fact]
+    public void UIAutomationService_DoesNotFabricateFakeAutomationIdOrName()
+    {
+        var context = new WindowContext(999, 111, "app", "App", new BoundingBox(0, 0, 100, 100), DateTime.UtcNow);
+        var element = UIAutomationService.FallbackWin32Inspection(-100000, -100000, context);
+
+        Assert.Equal(string.Empty, element.Name);
+        Assert.Equal(string.Empty, element.AutomationId);
+        Assert.DoesNotContain("Unknown", element.AutomationId);
+        Assert.DoesNotContain("fake", element.AutomationId, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("auto", element.AutomationId, StringComparison.OrdinalIgnoreCase);
     }
 
     #endregion

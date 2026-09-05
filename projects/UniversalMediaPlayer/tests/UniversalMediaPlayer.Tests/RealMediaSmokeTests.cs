@@ -8,6 +8,7 @@ using Xunit.Abstractions;
 
 namespace UniversalMediaPlayer.Tests;
 
+[Collection("MpvPlayback")]
 public class RealMediaSmokeTests
 {
     private readonly ITestOutputHelper _output;

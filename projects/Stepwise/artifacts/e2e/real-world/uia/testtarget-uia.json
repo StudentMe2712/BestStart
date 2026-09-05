@@ -1,0 +1,359 @@
+﻿{
+  "Name": "Stepwise Test Target Application",
+  "ControlType": "Window",
+  "AutomationId": "",
+  "ClassName": "Window",
+  "FrameworkId": "Wpf",
+  "BoundingRectangle": [
+    648,
+    229,
+    625,
+    563
+  ],
+  "Children": [
+    {
+      "Name": "Stepwise Test Target Application",
+      "ControlType": "TitleBar",
+      "AutomationId": "TitleBar",
+      "ClassName": "",
+      "FrameworkId": "Win32",
+      "BoundingRectangle": [
+        657,
+        238,
+        607,
+        29
+      ],
+      "Children": [
+        {
+          "Name": "\u0421\u0438\u0441\u0442\u0435\u043C\u043D\u043E\u0435 \u043C\u0435\u043D\u044E",
+          "ControlType": "MenuBar",
+          "AutomationId": "SystemMenuBar",
+          "ClassName": "",
+          "FrameworkId": "Win32",
+          "BoundingRectangle": [
+            657,
+            238,
+            28,
+            28
+          ],
+          "Children": [
+            {
+              "Name": "\u0421\u0438\u0441\u0442\u0435\u043C\u0430",
+              "ControlType": "MenuItem",
+              "AutomationId": "Item 1",
+              "ClassName": "",
+              "FrameworkId": "Win32",
+              "BoundingRectangle": [
+                657,
+                238,
+                28,
+                28
+              ],
+              "Children": []
+            }
+          ]
+        },
+        {
+          "Name": "\u0421\u0432\u0435\u0440\u043D\u0443\u0442\u044C",
+          "ControlType": "Button",
+          "AutomationId": "Minimize",
+          "ClassName": "",
+          "FrameworkId": "Win32",
+          "BoundingRectangle": [
+            1086,
+            230,
+            60,
+            37
+          ],
+          "Children": []
+        },
+        {
+          "Name": "\u0420\u0430\u0437\u0432\u0435\u0440\u043D\u0443\u0442\u044C",
+          "ControlType": "Button",
+          "AutomationId": "Maximize",
+          "ClassName": "",
+          "FrameworkId": "Win32",
+          "BoundingRectangle": [
+            1146,
+            230,
+            59,
+            37
+          ],
+          "Children": []
+        },
+        {
+          "Name": "\u0417\u0430\u043A\u0440\u044B\u0442\u044C",
+          "ControlType": "Button",
+          "AutomationId": "Close",
+          "ClassName": "",
+          "FrameworkId": "Win32",
+          "BoundingRectangle": [
+            1205,
+            230,
+            60,
+            37
+          ],
+          "Children": []
+        }
+      ]
+    },
+    {
+      "Name": "Target Standard Input:",
+      "ControlType": "Text",
+      "AutomationId": "",
+      "ClassName": "TextBlock",
+      "FrameworkId": "Wpf",
+      "BoundingRectangle": [
+        682,
+        292,
+        557,
+        20
+      ],
+      "Children": []
+    },
+    {
+      "Name": "Standard Input",
+      "ControlType": "Edit",
+      "AutomationId": "txtStandard",
+      "ClassName": "TextBox",
+      "FrameworkId": "Wpf",
+      "BoundingRectangle": [
+        682,
+        314,
+        557,
+        35
+      ],
+      "Children": []
+    },
+    {
+      "Name": "Target Password Input:",
+      "ControlType": "Text",
+      "AutomationId": "",
+      "ClassName": "TextBlock",
+      "FrameworkId": "Wpf",
+      "BoundingRectangle": [
+        682,
+        364,
+        557,
+        20
+      ],
+      "Children": []
+    },
+    {
+      "Name": "Secure Password Input",
+      "ControlType": "Edit",
+      "AutomationId": "pwdSecure",
+      "ClassName": "PasswordBox",
+      "FrameworkId": "Wpf",
+      "BoundingRectangle": [
+        682,
+        387,
+        557,
+        35
+      ],
+      "Children": []
+    },
+    {
+      "Name": "Submit Action",
+      "ControlType": "Button",
+      "AutomationId": "btnAction",
+      "ClassName": "Button",
+      "FrameworkId": "Wpf",
+      "BoundingRectangle": [
+        682,
+        437,
+        126,
+        37
+      ],
+      "Children": [
+        {
+          "Name": "Submit Action",
+          "ControlType": "Text",
+          "AutomationId": "",
+          "ClassName": "TextBlock",
+          "FrameworkId": "Wpf",
+          "BoundingRectangle": [
+            698,
+            446,
+            94,
+            20
+          ],
+          "Children": []
+        }
+      ]
+    },
+    {
+      "Name": "Secondary Action",
+      "ControlType": "Button",
+      "AutomationId": "btnSecondary",
+      "ClassName": "Button",
+      "FrameworkId": "Wpf",
+      "BoundingRectangle": [
+        818,
+        437,
+        148,
+        37
+      ],
+      "Children": [
+        {
+          "Name": "Secondary Action",
+          "ControlType": "Text",
+          "AutomationId": "",
+          "ClassName": "TextBlock",
+          "FrameworkId": "Wpf",
+          "BoundingRectangle": [
+            834,
+            446,
+            116,
+            20
+          ],
+          "Children": []
+        }
+      ]
+    },
+    {
+      "Name": "Target Item List:",
+      "ControlType": "Text",
+      "AutomationId": "",
+      "ClassName": "TextBlock",
+      "FrameworkId": "Wpf",
+      "BoundingRectangle": [
+        682,
+        489,
+        557,
+        20
+      ],
+      "Children": []
+    },
+    {
+      "Name": "Items List",
+      "ControlType": "List",
+      "AutomationId": "lstItems",
+      "ClassName": "ListBox",
+      "FrameworkId": "Wpf",
+      "BoundingRectangle": [
+        682,
+        512,
+        557,
+        150
+      ],
+      "Children": [
+        {
+          "Name": "Target Item Alpha",
+          "ControlType": "ListItem",
+          "AutomationId": "",
+          "ClassName": "ListBoxItem",
+          "FrameworkId": "Wpf",
+          "BoundingRectangle": [
+            685,
+            514,
+            552,
+            25
+          ],
+          "Children": [
+            {
+              "Name": "Target Item Alpha",
+              "ControlType": "Text",
+              "AutomationId": "",
+              "ClassName": "TextBlock",
+              "FrameworkId": "Wpf",
+              "BoundingRectangle": [
+                691,
+                517,
+                117,
+                20
+              ],
+              "Children": []
+            }
+          ]
+        },
+        {
+          "Name": "Target Item Beta",
+          "ControlType": "ListItem",
+          "AutomationId": "",
+          "ClassName": "ListBoxItem",
+          "FrameworkId": "Wpf",
+          "BoundingRectangle": [
+            685,
+            539,
+            552,
+            25
+          ],
+          "Children": [
+            {
+              "Name": "Target Item Beta",
+              "ControlType": "Text",
+              "AutomationId": "",
+              "ClassName": "TextBlock",
+              "FrameworkId": "Wpf",
+              "BoundingRectangle": [
+                691,
+                542,
+                108,
+                20
+              ],
+              "Children": []
+            }
+          ]
+        },
+        {
+          "Name": "Target Item Gamma",
+          "ControlType": "ListItem",
+          "AutomationId": "",
+          "ClassName": "ListBoxItem",
+          "FrameworkId": "Wpf",
+          "BoundingRectangle": [
+            685,
+            564,
+            552,
+            25
+          ],
+          "Children": [
+            {
+              "Name": "Target Item Gamma",
+              "ControlType": "Text",
+              "AutomationId": "",
+              "ClassName": "TextBlock",
+              "FrameworkId": "Wpf",
+              "BoundingRectangle": [
+                691,
+                567,
+                130,
+                20
+              ],
+              "Children": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "Name": "Status: ",
+      "ControlType": "Text",
+      "AutomationId": "",
+      "ClassName": "TextBlock",
+      "FrameworkId": "Wpf",
+      "BoundingRectangle": [
+        682,
+        687,
+        49,
+        20
+      ],
+      "Children": []
+    },
+    {
+      "Name": "Ready",
+      "ControlType": "Text",
+      "AutomationId": "statusText",
+      "ClassName": "TextBlock",
+      "FrameworkId": "Wpf",
+      "BoundingRectangle": [
+        731,
+        687,
+        43,
+        20
+      ],
+      "Children": []
+    }
+  ]
+}

@@ -11,7 +11,14 @@ public enum SemanticActionType
     MiddleClick,
     TextInput,
     KeyPress,
-    Shortcut
+    Shortcut,
+    DragAndDrop,
+    Scroll,
+    MouseDown,
+    MouseUp,
+    WindowActivated,
+    WindowClosed,
+    ManualStep
 }
 
 /// <summary>
@@ -69,7 +76,10 @@ public sealed record SemanticAction(
     int CharacterCount = 0,
     DateTime StartedAt = default,
     DateTime CompletedAt = default,
-    bool IsSensitive = false
+    bool IsSensitive = false,
+    int? EndX = null,
+    int? EndY = null,
+    int? Delta = null
 )
 {
     /// <summary>
@@ -172,12 +182,126 @@ public sealed record SemanticAction(
     }
 
     /// <summary>
-    /// Определяет, является ли действие кликом мыши.
+    /// Фабричный метод для создания действия перетаскивания (Drag and Drop).
+    /// </summary>
+    public static SemanticAction CreateDragAndDrop(
+        int startX,
+        int startY,
+        int endX,
+        int endY,
+        RawMouseButton button,
+        WindowContext context,
+        DateTime timestamp,
+        int sequenceIndex = 0)
+    {
+        return new SemanticAction(
+            Id: Guid.NewGuid(),
+            SequenceIndex: sequenceIndex,
+            ActionType: SemanticActionType.DragAndDrop,
+            Timestamp: timestamp,
+            Context: context,
+            X: startX,
+            Y: startY,
+            EndX: endX,
+            EndY: endY,
+            StartedAt: timestamp,
+            CompletedAt: timestamp
+        );
+    }
+
+    /// <summary>
+    /// Фабричный метод для создания действия прокрутки колесика мыши (Scroll).
+    /// </summary>
+    public static SemanticAction CreateScroll(
+        int x,
+        int y,
+        int delta,
+        WindowContext context,
+        DateTime timestamp,
+        int sequenceIndex = 0)
+    {
+        return new SemanticAction(
+            Id: Guid.NewGuid(),
+            SequenceIndex: sequenceIndex,
+            ActionType: SemanticActionType.Scroll,
+            Timestamp: timestamp,
+            Context: context,
+            X: x,
+            Y: y,
+            Delta: delta,
+            StartedAt: timestamp,
+            CompletedAt: timestamp
+        );
+    }
+
+    /// <summary>
+    /// Фабричный метод для создания ручного шага инструкции.
+    /// </summary>
+    public static SemanticAction CreateManualStep(
+        WindowContext context,
+        DateTime timestamp,
+        int sequenceIndex = 0)
+    {
+        return new SemanticAction(
+            Id: Guid.NewGuid(),
+            SequenceIndex: sequenceIndex,
+            ActionType: SemanticActionType.ManualStep,
+            Timestamp: timestamp,
+            Context: context,
+            StartedAt: timestamp,
+            CompletedAt: timestamp
+        );
+    }
+
+    /// <summary>
+    /// Фабричный метод для создания действия активации (переключения на) окна.
+    /// </summary>
+    public static SemanticAction CreateWindowActivated(
+        WindowContext context,
+        DateTime timestamp,
+        int sequenceIndex = 0)
+    {
+        return new SemanticAction(
+            Id: Guid.NewGuid(),
+            SequenceIndex: sequenceIndex,
+            ActionType: SemanticActionType.WindowActivated,
+            Timestamp: timestamp,
+            Context: context,
+            StartedAt: timestamp,
+            CompletedAt: timestamp
+        );
+    }
+
+    /// <summary>
+    /// Фабричный метод для создания действия закрытия окна.
+    /// </summary>
+    public static SemanticAction CreateWindowClosed(
+        WindowContext context,
+        DateTime timestamp,
+        int sequenceIndex = 0)
+    {
+        return new SemanticAction(
+            Id: Guid.NewGuid(),
+            SequenceIndex: sequenceIndex,
+            ActionType: SemanticActionType.WindowClosed,
+            Timestamp: timestamp,
+            Context: context,
+            StartedAt: timestamp,
+            CompletedAt: timestamp
+        );
+    }
+
+    /// <summary>
+    /// Определяет, является ли действие кликом мыши или манипуляцией мышью.
     /// </summary>
     public bool IsMouseAction => ActionType is SemanticActionType.LeftClick
         or SemanticActionType.RightClick
         or SemanticActionType.DoubleLeftClick
-        or SemanticActionType.MiddleClick;
+        or SemanticActionType.MiddleClick
+        or SemanticActionType.DragAndDrop
+        or SemanticActionType.Scroll
+        or SemanticActionType.MouseDown
+        or SemanticActionType.MouseUp;
 
     /// <summary>
     /// Определяет, является ли действие клавиатурным событием.
@@ -198,6 +322,13 @@ public sealed record SemanticAction(
         SemanticActionType.TextInput => Stepwise.Core.Models.ActionType.TextInput,
         SemanticActionType.KeyPress => Stepwise.Core.Models.ActionType.KeyPress,
         SemanticActionType.Shortcut => Stepwise.Core.Models.ActionType.KeyPress,
+        SemanticActionType.DragAndDrop => Stepwise.Core.Models.ActionType.DragAndDrop,
+        SemanticActionType.Scroll => Stepwise.Core.Models.ActionType.Scroll,
+        SemanticActionType.MouseDown => Stepwise.Core.Models.ActionType.MouseDown,
+        SemanticActionType.MouseUp => Stepwise.Core.Models.ActionType.MouseUp,
+        SemanticActionType.WindowActivated => Stepwise.Core.Models.ActionType.WindowActivated,
+        SemanticActionType.WindowClosed => Stepwise.Core.Models.ActionType.WindowClosed,
+        SemanticActionType.ManualStep => Stepwise.Core.Models.ActionType.ManualStep,
         _ => Stepwise.Core.Models.ActionType.LeftClick
     };
 }

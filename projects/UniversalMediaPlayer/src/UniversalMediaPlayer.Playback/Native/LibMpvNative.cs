@@ -38,4 +38,9 @@ public static unsafe class LibMpvNative
 
     [DllImport(LibName, CallingConvention = CallingConvention.Cdecl)]
     public static extern nint mpv_wait_event(nint handle, double timeout);
+
+    public const int MPV_FORMAT_STRING = 1;
+
+    [DllImport(LibName, CallingConvention = CallingConvention.Cdecl)]
+    public static extern int mpv_observe_property(nint handle, ulong reply_userdata, byte* name, int format);
 }

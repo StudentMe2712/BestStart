@@ -1,6 +1,7 @@
 using UniversalMediaPlayer.Core.Models;
 using UniversalMediaPlayer.Discovery;
 using Xunit;
+using MatchConfidence = UniversalMediaPlayer.Discovery.MatchConfidence;
 
 namespace UniversalMediaPlayer.Tests;
 

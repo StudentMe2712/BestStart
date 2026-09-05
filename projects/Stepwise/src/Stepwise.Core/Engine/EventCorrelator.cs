@@ -19,12 +19,15 @@ namespace Stepwise.Core.Engine;
 public sealed class EventCorrelator : IEventCorrelator
 {
     public const int DefaultTextFlushTimeoutMs = 600;
+    public const int DefaultScrollFlushTimeoutMs = 300;
 
     private readonly ISystemMetricsProvider _metricsProvider;
     private readonly int _flushTimeoutMs;
+    private readonly int _scrollTimeoutMs;
     private readonly object _syncLock = new();
     private readonly StringBuilder _textBuffer = new();
     private readonly Timer _textFlushTimer;
+    private readonly Timer _scrollFlushTimer;
 
     private int _sequenceIndex;
     private bool _isDisposed;
@@ -47,6 +50,13 @@ public sealed class EventCorrelator : IEventCorrelator
     private DateTime _textCompletedAt;
     private int _textCharacterCount;
 
+    // Метаданные буфера прокрутки (Scroll)
+    private int _scrollTotalDelta;
+    private int _scrollX;
+    private int _scrollY;
+    private DateTime _scrollTimestamp;
+    private WindowContext _scrollContext = WindowContext.Empty;
+
     /// <summary>
     /// Событие формирования скоррелированного семантического действия.
     /// </summary>
@@ -57,19 +67,24 @@ public sealed class EventCorrelator : IEventCorrelator
     /// </summary>
     /// <param name="metricsProvider">Провайдер системных метрик (по умолчанию <see cref="DefaultSystemMetricsProvider"/>).</param>
     /// <param name="flushTimeoutMs">Таймаут неактивности для сброса текста в мс (по умолчанию 600 мс).</param>
+    /// <param name="scrollTimeoutMs">Таймаут неактивности для сброса скролла в мс (по умолчанию 300 мс).</param>
     public EventCorrelator(
         ISystemMetricsProvider? metricsProvider = null,
-        int flushTimeoutMs = DefaultTextFlushTimeoutMs)
+        int flushTimeoutMs = DefaultTextFlushTimeoutMs,
+        int scrollTimeoutMs = DefaultScrollFlushTimeoutMs)
     {
         _metricsProvider = metricsProvider ?? new DefaultSystemMetricsProvider();
         _flushTimeoutMs = flushTimeoutMs > 0 ? flushTimeoutMs : DefaultTextFlushTimeoutMs;
+        _scrollTimeoutMs = scrollTimeoutMs > 0 ? scrollTimeoutMs : DefaultScrollFlushTimeoutMs;
         _textFlushTimer = new Timer(OnTextFlushTimerElapsed, null, Timeout.Infinite, Timeout.Infinite);
+        _scrollFlushTimer = new Timer(OnScrollFlushTimerElapsed, null, Timeout.Infinite, Timeout.Infinite);
     }
 
     /// <inheritdoc />
     public void ProcessMouseEvent(RawMouseEvent mouseEvent, WindowContext? context = null)
     {
         SemanticAction? pendingTextAction = null;
+        SemanticAction? pendingScrollAction = null;
         SemanticAction? mouseAction = null;
 
         lock (_syncLock)
@@ -79,29 +94,94 @@ public sealed class EventCorrelator : IEventCorrelator
                 return;
             }
 
-            if (context != null && context != WindowContext.Empty)
-            {
-                _cachedContext = context;
-            }
             var effectiveContext = (context != null && context != WindowContext.Empty)
                 ? context
                 : _cachedContext;
 
+            // Сброс буферов при смене контекста окна
+            if (_cachedContext != WindowContext.Empty &&
+                _cachedContext.WindowHandle != 0 &&
+                effectiveContext.WindowHandle != 0 &&
+                effectiveContext.WindowHandle != _cachedContext.WindowHandle)
+            {
+                pendingTextAction = FlushPendingInternalLocked();
+                pendingScrollAction = FlushPendingScrollInternalLocked();
+                _lastLeftClick = null;
+                _isMouseDown = false;
+            }
+
+            if (context != null && context != WindowContext.Empty)
+            {
+                _cachedContext = context;
+            }
+
+            if (mouseEvent.EventType == RawMouseEventType.Wheel)
+            {
+                _lastLeftClick = null;
+                var textFlush = FlushPendingInternalLocked();
+                if (textFlush != null)
+                {
+                    pendingTextAction ??= textFlush;
+                }
+
+                if (mouseEvent.Delta != 0)
+                {
+                    bool signChanged = (_scrollTotalDelta > 0 && mouseEvent.Delta < 0) ||
+                                       (_scrollTotalDelta < 0 && mouseEvent.Delta > 0);
+
+                    if (signChanged)
+                    {
+                        var scrollFlush = FlushPendingScrollInternalLocked();
+                        if (scrollFlush != null)
+                        {
+                            pendingScrollAction ??= scrollFlush;
+                        }
+                    }
+
+                    if (_scrollTotalDelta == 0)
+                    {
+                        _scrollTotalDelta = mouseEvent.Delta;
+                        _scrollX = mouseEvent.X;
+                        _scrollY = mouseEvent.Y;
+                        _scrollTimestamp = mouseEvent.Timestamp;
+                        _scrollContext = effectiveContext;
+                    }
+                    else
+                    {
+                        _scrollTotalDelta += mouseEvent.Delta;
+                        _scrollX = mouseEvent.X;
+                        _scrollY = mouseEvent.Y;
+                        _scrollTimestamp = mouseEvent.Timestamp;
+                        _scrollContext = effectiveContext;
+                    }
+
+                    _scrollFlushTimer.Change(_scrollTimeoutMs, Timeout.Infinite);
+                }
+
+                goto EmitActions;
+            }
+
             if (mouseEvent.EventType == RawMouseEventType.MouseDown)
             {
+                var scrollFlush = FlushPendingScrollInternalLocked();
+                if (scrollFlush != null)
+                {
+                    pendingScrollAction ??= scrollFlush;
+                }
+
                 _isMouseDown = true;
                 _mouseDownButton = mouseEvent.Button;
                 _mouseDownX = mouseEvent.X;
                 _mouseDownY = mouseEvent.Y;
                 _mouseDownTimestamp = mouseEvent.Timestamp;
-                return;
+                goto EmitActions;
             }
 
             if (mouseEvent.EventType == RawMouseEventType.MouseUp)
             {
                 if (!_isMouseDown || _mouseDownButton != mouseEvent.Button)
                 {
-                    return;
+                    goto EmitActions;
                 }
 
                 _isMouseDown = false;
@@ -115,38 +195,87 @@ public sealed class EventCorrelator : IEventCorrelator
                 {
                     // Перемещение превысило допуск — это drag-and-drop, а не одиночный клик
                     _lastLeftClick = null;
-                    return;
-                }
-
-                // Сбрасываем накопленный текст перед испусканием действия мыши
-                pendingTextAction = FlushPendingInternalLocked();
-
-                if (mouseEvent.Button == RawMouseButton.Left)
-                {
-                    bool isDoubleClick = false;
-                    if (_lastLeftClick.HasValue)
+                    var textFlush = FlushPendingInternalLocked();
+                    if (textFlush != null)
                     {
-                        var (lastTime, lastX, lastY) = _lastLeftClick.Value;
-                        var elapsed = (mouseEvent.Timestamp - lastTime).TotalMilliseconds;
-                        var clickDx = Math.Abs(mouseEvent.X - lastX);
-                        var clickDy = Math.Abs(mouseEvent.Y - lastY);
-
-                        if (elapsed >= 0 &&
-                            elapsed <= _metricsProvider.DoubleClickTimeMs &&
-                            clickDx <= _metricsProvider.DoubleClickWidth &&
-                            clickDy <= _metricsProvider.DoubleClickHeight)
-                        {
-                            isDoubleClick = true;
-                        }
+                        pendingTextAction ??= textFlush;
                     }
 
-                    if (isDoubleClick)
+                    int seq = Interlocked.Increment(ref _sequenceIndex);
+                    mouseAction = SemanticAction.CreateDragAndDrop(
+                        startX: _mouseDownX,
+                        startY: _mouseDownY,
+                        endX: mouseEvent.X,
+                        endY: mouseEvent.Y,
+                        button: _mouseDownButton,
+                        context: effectiveContext,
+                        timestamp: mouseEvent.Timestamp,
+                        sequenceIndex: seq
+                    );
+                }
+                else
+                {
+                    // Сбрасываем накопленный текст перед испусканием действия мыши
+                    var textFlush = FlushPendingInternalLocked();
+                    if (textFlush != null)
                     {
-                        // Двойной клик распознан — сбрасываем трекер (следующий клик будет одиночным)
+                        pendingTextAction ??= textFlush;
+                    }
+
+                    if (mouseEvent.Button == RawMouseButton.Left)
+                    {
+                        bool isDoubleClick = false;
+                        if (_lastLeftClick.HasValue)
+                        {
+                            var (lastTime, lastX, lastY) = _lastLeftClick.Value;
+                            var elapsed = (mouseEvent.Timestamp - lastTime).TotalMilliseconds;
+                            var clickDx = Math.Abs(mouseEvent.X - lastX);
+                            var clickDy = Math.Abs(mouseEvent.Y - lastY);
+
+                            if (elapsed >= 0 &&
+                                elapsed <= _metricsProvider.DoubleClickTimeMs &&
+                                clickDx <= _metricsProvider.DoubleClickWidth &&
+                                clickDy <= _metricsProvider.DoubleClickHeight)
+                            {
+                                isDoubleClick = true;
+                            }
+                        }
+
+                        if (isDoubleClick)
+                        {
+                            // Двойной клик распознан — сбрасываем трекер (следующий клик будет одиночным)
+                            _lastLeftClick = null;
+                            int seq = Interlocked.Increment(ref _sequenceIndex);
+                            mouseAction = SemanticAction.CreateMouseClick(
+                                SemanticActionType.DoubleLeftClick,
+                                mouseEvent.X,
+                                mouseEvent.Y,
+                                effectiveContext,
+                                mouseEvent.Timestamp,
+                                seq
+                            );
+                        }
+                        else
+                        {
+                            // Одиночный левый клик — фиксируем как кандидата на двойной клик
+                            _lastLeftClick = (mouseEvent.Timestamp, mouseEvent.X, mouseEvent.Y);
+                            int seq = Interlocked.Increment(ref _sequenceIndex);
+                            mouseAction = SemanticAction.CreateMouseClick(
+                                SemanticActionType.LeftClick,
+                                mouseEvent.X,
+                                mouseEvent.Y,
+                                effectiveContext,
+                                mouseEvent.Timestamp,
+                                seq
+                            );
+                        }
+                    }
+                    else if (mouseEvent.Button == RawMouseButton.Right)
+                    {
                         _lastLeftClick = null;
                         int seq = Interlocked.Increment(ref _sequenceIndex);
                         mouseAction = SemanticAction.CreateMouseClick(
-                            SemanticActionType.DoubleLeftClick,
+                            SemanticActionType.RightClick,
                             mouseEvent.X,
                             mouseEvent.Y,
                             effectiveContext,
@@ -154,13 +283,12 @@ public sealed class EventCorrelator : IEventCorrelator
                             seq
                         );
                     }
-                    else
+                    else if (mouseEvent.Button == RawMouseButton.Middle)
                     {
-                        // Одиночный левый клик — фиксируем как кандидата на двойной клик
-                        _lastLeftClick = (mouseEvent.Timestamp, mouseEvent.X, mouseEvent.Y);
+                        _lastLeftClick = null;
                         int seq = Interlocked.Increment(ref _sequenceIndex);
                         mouseAction = SemanticAction.CreateMouseClick(
-                            SemanticActionType.LeftClick,
+                            SemanticActionType.MiddleClick,
                             mouseEvent.X,
                             mouseEvent.Y,
                             effectiveContext,
@@ -169,38 +297,19 @@ public sealed class EventCorrelator : IEventCorrelator
                         );
                     }
                 }
-                else if (mouseEvent.Button == RawMouseButton.Right)
-                {
-                    _lastLeftClick = null;
-                    int seq = Interlocked.Increment(ref _sequenceIndex);
-                    mouseAction = SemanticAction.CreateMouseClick(
-                        SemanticActionType.RightClick,
-                        mouseEvent.X,
-                        mouseEvent.Y,
-                        effectiveContext,
-                        mouseEvent.Timestamp,
-                        seq
-                    );
-                }
-                else if (mouseEvent.Button == RawMouseButton.Middle)
-                {
-                    _lastLeftClick = null;
-                    int seq = Interlocked.Increment(ref _sequenceIndex);
-                    mouseAction = SemanticAction.CreateMouseClick(
-                        SemanticActionType.MiddleClick,
-                        mouseEvent.X,
-                        mouseEvent.Y,
-                        effectiveContext,
-                        mouseEvent.Timestamp,
-                        seq
-                    );
-                }
             }
+
+        EmitActions:;
         }
 
         if (pendingTextAction != null)
         {
             EmitAction(pendingTextAction);
+        }
+
+        if (pendingScrollAction != null)
+        {
+            EmitAction(pendingScrollAction);
         }
 
         if (mouseAction != null)
@@ -225,6 +334,7 @@ public sealed class EventCorrelator : IEventCorrelator
         }
 
         SemanticAction? pendingTextAction = null;
+        SemanticAction? pendingScrollAction = null;
         SemanticAction? keyAction = null;
 
         lock (_syncLock)
@@ -234,20 +344,39 @@ public sealed class EventCorrelator : IEventCorrelator
                 return;
             }
 
-            if (context != null && context != WindowContext.Empty)
-            {
-                _cachedContext = context;
-            }
             var effectiveContext = (context != null && context != WindowContext.Empty)
                 ? context
                 : _cachedContext;
 
-            // Любое клавиатурное действие сбрасывает ожидание двойного клика мыши
+            // Сброс буферов при смене контекста окна
+            if (_cachedContext != WindowContext.Empty &&
+                _cachedContext.WindowHandle != 0 &&
+                effectiveContext.WindowHandle != 0 &&
+                effectiveContext.WindowHandle != _cachedContext.WindowHandle)
+            {
+                pendingTextAction = FlushPendingInternalLocked();
+                pendingScrollAction = FlushPendingScrollInternalLocked();
+                _lastLeftClick = null;
+                _isMouseDown = false;
+            }
+
+            if (context != null && context != WindowContext.Empty)
+            {
+                _cachedContext = context;
+            }
+
+            // Любое клавиатурное действие сбрасывает ожидание двойного клика мыши и накопленный скролл
             _lastLeftClick = null;
+            var scrollFlush = FlushPendingScrollInternalLocked();
+            if (scrollFlush != null)
+            {
+                pendingScrollAction ??= scrollFlush;
+            }
 
             if (keyboardEvent.IsShortcut)
             {
-                pendingTextAction = FlushPendingInternalLocked();
+                var textFlush = FlushPendingInternalLocked();
+                if (textFlush != null) pendingTextAction ??= textFlush;
                 string keyName = GetKeyName(keyboardEvent.VirtualKey);
                 int seq = Interlocked.Increment(ref _sequenceIndex);
                 keyAction = SemanticAction.CreateShortcut(
@@ -261,7 +390,8 @@ public sealed class EventCorrelator : IEventCorrelator
             }
             else if (keyboardEvent.VirtualKey is 13 or 27 or 9)
             {
-                pendingTextAction = FlushPendingInternalLocked();
+                var textFlush = FlushPendingInternalLocked();
+                if (textFlush != null) pendingTextAction ??= textFlush;
                 string keyName = keyboardEvent.VirtualKey switch
                 {
                     13 => "Enter",
@@ -295,11 +425,12 @@ public sealed class EventCorrelator : IEventCorrelator
             {
                 if (keyboardEvent.IsDeadKey)
                 {
-                    return;
+                    goto EmitActions;
                 }
 
                 // Навигационные и редактирующие клавиши (Backspace, Delete, стрелки, Home, End и т.д.)
-                pendingTextAction = FlushPendingInternalLocked();
+                var textFlush = FlushPendingInternalLocked();
+                if (textFlush != null) pendingTextAction ??= textFlush;
                 string keyName = GetKeyName(keyboardEvent.VirtualKey);
                 int seq = Interlocked.Increment(ref _sequenceIndex);
                 keyAction = SemanticAction.CreateKeyPress(
@@ -311,11 +442,18 @@ public sealed class EventCorrelator : IEventCorrelator
                     sequenceIndex: seq
                 );
             }
+
+        EmitActions:;
         }
 
         if (pendingTextAction != null)
         {
             EmitAction(pendingTextAction);
+        }
+
+        if (pendingScrollAction != null)
+        {
+            EmitAction(pendingScrollAction);
         }
 
         if (keyAction != null)
@@ -327,7 +465,8 @@ public sealed class EventCorrelator : IEventCorrelator
     /// <inheritdoc />
     public void FlushPending()
     {
-        SemanticAction? actionToEmit = null;
+        SemanticAction? textAction = null;
+        SemanticAction? scrollAction = null;
 
         lock (_syncLock)
         {
@@ -336,12 +475,18 @@ public sealed class EventCorrelator : IEventCorrelator
                 return;
             }
 
-            actionToEmit = FlushPendingInternalLocked();
+            textAction = FlushPendingInternalLocked();
+            scrollAction = FlushPendingScrollInternalLocked();
         }
 
-        if (actionToEmit != null)
+        if (textAction != null)
         {
-            EmitAction(actionToEmit);
+            EmitAction(textAction);
+        }
+
+        if (scrollAction != null)
+        {
+            EmitAction(scrollAction);
         }
     }
 
@@ -355,6 +500,14 @@ public sealed class EventCorrelator : IEventCorrelator
             _textCharacterCount = 0;
             _textStartedAt = default;
             _textCompletedAt = default;
+
+            _scrollFlushTimer.Change(Timeout.Infinite, Timeout.Infinite);
+            _scrollTotalDelta = 0;
+            _scrollX = 0;
+            _scrollY = 0;
+            _scrollTimestamp = default;
+            _scrollContext = WindowContext.Empty;
+
             _isMouseDown = false;
             _mouseDownButton = RawMouseButton.None;
             _mouseDownX = 0;
@@ -367,7 +520,8 @@ public sealed class EventCorrelator : IEventCorrelator
     /// <inheritdoc />
     public void Dispose()
     {
-        SemanticAction? remainingAction = null;
+        SemanticAction? remainingTextAction = null;
+        SemanticAction? remainingScrollAction = null;
 
         lock (_syncLock)
         {
@@ -377,13 +531,81 @@ public sealed class EventCorrelator : IEventCorrelator
             }
 
             _isDisposed = true;
-            remainingAction = FlushPendingInternalLocked();
+            remainingTextAction = FlushPendingInternalLocked();
+            remainingScrollAction = FlushPendingScrollInternalLocked();
             _textFlushTimer.Dispose();
+            _scrollFlushTimer.Dispose();
         }
 
-        if (remainingAction != null)
+        if (remainingTextAction != null)
         {
-            EmitAction(remainingAction);
+            EmitAction(remainingTextAction);
+        }
+
+        if (remainingScrollAction != null)
+        {
+            EmitAction(remainingScrollAction);
+        }
+    }
+
+    private SemanticAction? FlushPendingScrollInternalLocked()
+    {
+        _scrollFlushTimer.Change(Timeout.Infinite, Timeout.Infinite);
+
+        if (_scrollTotalDelta == 0)
+        {
+            return null;
+        }
+
+        int totalDelta = _scrollTotalDelta;
+        int x = _scrollX;
+        int y = _scrollY;
+        DateTime timestamp = _scrollTimestamp;
+        WindowContext context = (_scrollContext != WindowContext.Empty && _scrollContext.WindowHandle != 0)
+            ? _scrollContext
+            : _cachedContext;
+
+        _scrollTotalDelta = 0;
+        _scrollX = 0;
+        _scrollY = 0;
+        _scrollTimestamp = default;
+        _scrollContext = WindowContext.Empty;
+
+        int seq = Interlocked.Increment(ref _sequenceIndex);
+        return SemanticAction.CreateScroll(
+            x: x,
+            y: y,
+            delta: totalDelta,
+            context: context,
+            timestamp: timestamp,
+            sequenceIndex: seq
+        );
+    }
+
+    private void OnScrollFlushTimerElapsed(object? state)
+    {
+        try
+        {
+            SemanticAction? scrollAction = null;
+
+            lock (_syncLock)
+            {
+                if (_isDisposed)
+                {
+                    return;
+                }
+
+                scrollAction = FlushPendingScrollInternalLocked();
+            }
+
+            if (scrollAction != null)
+            {
+                EmitAction(scrollAction);
+            }
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"[EventCorrelator] Ошибка при сбросе скролла по таймеру: {ex.Message}");
         }
     }
 

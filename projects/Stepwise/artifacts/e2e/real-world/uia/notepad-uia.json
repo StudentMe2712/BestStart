@@ -1,0 +1,331 @@
+﻿{
+  "Name": "Notepad",
+  "ControlType": "Window",
+  "AutomationId": "",
+  "ClassName": "Notepad",
+  "FrameworkId": "Win32",
+  "BoundingRectangle": [
+    40,
+    40,
+    1800,
+    763
+  ],
+  "Children": [
+    {
+      "Name": "",
+      "ControlType": "Pane",
+      "AutomationId": "",
+      "ClassName": "Microsoft.UI.Content.DesktopChildSiteBridge",
+      "FrameworkId": "Win32",
+      "BoundingRectangle": [
+        98,
+        52,
+        359,
+        40
+      ],
+      "Children": [
+        {
+          "Name": "",
+          "ControlType": "Pane",
+          "AutomationId": "",
+          "ClassName": "InputSiteWindowClass",
+          "FrameworkId": "Xaml",
+          "BoundingRectangle": [
+            98,
+            52,
+            359,
+            40
+          ],
+          "Children": [
+            {
+              "Name": "",
+              "ControlType": "Tab",
+              "AutomationId": "Tabs",
+              "ClassName": "Microsoft.UI.Xaml.Controls.TabView",
+              "FrameworkId": "Xaml",
+              "BoundingRectangle": [
+                98,
+                52,
+                359,
+                40
+              ],
+              "Children": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "Name": "",
+      "ControlType": "Pane",
+      "AutomationId": "",
+      "ClassName": "Microsoft.UI.Content.DesktopChildSiteBridge",
+      "FrameworkId": "Win32",
+      "BoundingRectangle": [
+        48,
+        92,
+        1784,
+        41
+      ],
+      "Children": [
+        {
+          "Name": "",
+          "ControlType": "Pane",
+          "AutomationId": "",
+          "ClassName": "InputSiteWindowClass",
+          "FrameworkId": "Xaml",
+          "BoundingRectangle": [
+            48,
+            92,
+            1784,
+            41
+          ],
+          "Children": [
+            {
+              "Name": "",
+              "ControlType": "MenuBar",
+              "AutomationId": "MenuBar",
+              "ClassName": "",
+              "FrameworkId": "Xaml",
+              "BoundingRectangle": [
+                48,
+                92,
+                199,
+                40
+              ],
+              "Children": []
+            },
+            {
+              "Name": "What\u0027s new",
+              "ControlType": "Button",
+              "AutomationId": "FREButton",
+              "ClassName": "Button",
+              "FrameworkId": "Xaml",
+              "BoundingRectangle": [
+                1741,
+                93,
+                38,
+                38
+              ],
+              "Children": []
+            },
+            {
+              "Name": "Settings",
+              "ControlType": "Button",
+              "AutomationId": "SettingsButton",
+              "ClassName": "Button",
+              "FrameworkId": "Xaml",
+              "BoundingRectangle": [
+                1784,
+                92,
+                38,
+                40
+              ],
+              "Children": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "Name": "",
+      "ControlType": "Pane",
+      "AutomationId": "",
+      "ClassName": "Microsoft.UI.Content.DesktopChildSiteBridge",
+      "FrameworkId": "Win32",
+      "BoundingRectangle": [
+        48,
+        755,
+        1784,
+        40
+      ],
+      "Children": [
+        {
+          "Name": "",
+          "ControlType": "Pane",
+          "AutomationId": "",
+          "ClassName": "InputSiteWindowClass",
+          "FrameworkId": "Xaml",
+          "BoundingRectangle": [
+            48,
+            755,
+            1784,
+            40
+          ],
+          "Children": [
+            {
+              "Name": "Line 1,\nColumn 1",
+              "ControlType": "Text",
+              "AutomationId": "ContentTextBlock",
+              "ClassName": "TextBlock",
+              "FrameworkId": "Xaml",
+              "BoundingRectangle": [
+                68,
+                765,
+                74,
+                20
+              ],
+              "Children": []
+            },
+            {
+              "Name": "0 characters",
+              "ControlType": "Text",
+              "AutomationId": "ContentTextBlock",
+              "ClassName": "TextBlock",
+              "FrameworkId": "Xaml",
+              "BoundingRectangle": [
+                179,
+                765,
+                82,
+                20
+              ],
+              "Children": []
+            },
+            {
+              "Name": "Plain text",
+              "ControlType": "Text",
+              "AutomationId": "ContentTextBlock",
+              "ClassName": "TextBlock",
+              "FrameworkId": "Xaml",
+              "BoundingRectangle": [
+                432,
+                755,
+                78,
+                40
+              ],
+              "Children": []
+            },
+            {
+              "Name": "Zoom",
+              "ControlType": "Text",
+              "AutomationId": "ContentTextBlock",
+              "ClassName": "TextBlock",
+              "FrameworkId": "Xaml",
+              "BoundingRectangle": [
+                1368,
+                765,
+                39,
+                20
+              ],
+              "Children": []
+            },
+            {
+              "Name": " Windows (CRLF)",
+              "ControlType": "Text",
+              "AutomationId": "ContentTextBlock",
+              "ClassName": "TextBlock",
+              "FrameworkId": "Xaml",
+              "BoundingRectangle": [
+                1453,
+                765,
+                114,
+                20
+              ],
+              "Children": []
+            },
+            {
+              "Name": " UTF-8",
+              "ControlType": "Text",
+              "AutomationId": "ContentTextBlock",
+              "ClassName": "TextBlock",
+              "FrameworkId": "Xaml",
+              "BoundingRectangle": [
+                1663,
+                765,
+                45,
+                20
+              ],
+              "Children": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "Name": "Untitled - Notepad",
+      "ControlType": "TitleBar",
+      "AutomationId": "TitleBar",
+      "ClassName": "",
+      "FrameworkId": "Win32",
+      "BoundingRectangle": [
+        49,
+        49,
+        1782,
+        29
+      ],
+      "Children": [
+        {
+          "Name": "\u0421\u0438\u0441\u0442\u0435\u043C\u043D\u043E\u0435 \u043C\u0435\u043D\u044E",
+          "ControlType": "MenuBar",
+          "AutomationId": "SystemMenuBar",
+          "ClassName": "",
+          "FrameworkId": "Win32",
+          "BoundingRectangle": [
+            49,
+            49,
+            28,
+            28
+          ],
+          "Children": [
+            {
+              "Name": "\u0421\u0438\u0441\u0442\u0435\u043C\u0430",
+              "ControlType": "MenuItem",
+              "AutomationId": "Item 1",
+              "ClassName": "",
+              "FrameworkId": "Win32",
+              "BoundingRectangle": [
+                49,
+                49,
+                28,
+                28
+              ],
+              "Children": []
+            }
+          ]
+        },
+        {
+          "Name": "\u0421\u0432\u0435\u0440\u043D\u0443\u0442\u044C",
+          "ControlType": "Button",
+          "AutomationId": "Minimize",
+          "ClassName": "",
+          "FrameworkId": "Win32",
+          "BoundingRectangle": [
+            1654,
+            41,
+            60,
+            37
+          ],
+          "Children": []
+        },
+        {
+          "Name": "\u0420\u0430\u0437\u0432\u0435\u0440\u043D\u0443\u0442\u044C",
+          "ControlType": "Button",
+          "AutomationId": "Maximize",
+          "ClassName": "",
+          "FrameworkId": "Win32",
+          "BoundingRectangle": [
+            1714,
+            41,
+            59,
+            37
+          ],
+          "Children": []
+        },
+        {
+          "Name": "\u0417\u0430\u043A\u0440\u044B\u0442\u044C",
+          "ControlType": "Button",
+          "AutomationId": "Close",
+          "ClassName": "",
+          "FrameworkId": "Win32",
+          "BoundingRectangle": [
+            1773,
+            41,
+            60,
+            37
+          ],
+          "Children": []
+        }
+      ]
+    }
+  ]
+}

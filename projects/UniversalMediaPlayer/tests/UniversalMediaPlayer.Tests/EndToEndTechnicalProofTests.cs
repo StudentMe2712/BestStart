@@ -6,6 +6,7 @@ using Xunit;
 
 namespace UniversalMediaPlayer.Tests;
 
+[Collection("MpvPlayback")]
 public class EndToEndTechnicalProofTests
 {
     [Fact]

@@ -1,34 +1,18 @@
 [
   {
-    "Handle": 595806,
-    "ProcessId": 16024,
+    "Handle": 1968400,
+    "ProcessId": 9128,
     "ProcessName": "testhost",
     "Title": "Stepwise Live Validation Target",
     "Bounds": "150,150 [420x320]",
-    "Timestamp": "2026-09-05T12:19:33.4597891Z"
+    "Timestamp": "2026-09-05T17:12:42.7863181Z"
   },
   {
-    "Handle": 4330450,
-    "ProcessId": 16024,
+    "Handle": 3148162,
+    "ProcessId": 9128,
     "ProcessName": "testhost",
     "Title": "Stepwise Live Stage 2 Target",
     "Bounds": "150,150 [460x360]",
-    "Timestamp": "2026-09-05T12:19:33.4623769Z"
-  },
-  {
-    "Handle": 5052130,
-    "ProcessId": 8168,
-    "ProcessName": "Notepad",
-    "Title": "Notepad",
-    "Bounds": "32,32 [1440x610]",
-    "Timestamp": "2026-09-05T12:19:36.2575645Z"
-  },
-  {
-    "Handle": 202670,
-    "ProcessId": 8168,
-    "ProcessName": "Notepad",
-    "Title": "Notepad",
-    "Bounds": "64,64 [1440x610]",
-    "Timestamp": "2026-09-05T12:19:36.4857945Z"
+    "Timestamp": "2026-09-05T17:12:42.7877848Z"
   }
 ]

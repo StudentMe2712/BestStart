@@ -20,9 +20,10 @@ Each media format sample must be validated against the following criteria:
 | **VFR** | `VFR` | Variable frame rate timestamp pacing without judder |
 
 **Result Status:**
-- `[x] PASS`: Verified working with expected performance and rendering fidelity.
+- `[x] PASS`: Verified working with real media sample on target runtime.
 - `[~] PARTIAL`: Plays with minor caveats (e.g. software decode fallback or no menu navigation).
-- `[ ] UNTESTED`: Specified in test suite; pending execution with real sample.
+- `[?] UNVERIFIED`: Formatted in test specification; pending real media sample file verification.
+- `[ ] UNTESTED`: Planned in roadmap; pending test harness creation.
 - `[!] FAIL`: Playback failed, crashed, or resulted in severe corruption.
 
 ---
@@ -62,7 +63,9 @@ Each media format sample must be validated against the following criteria:
 | **Embedded ASS** | MKV + H.264 10-bit + FLAC + ASS | Embedded attachments | Fonts extracted to memory; ASS styled exactly | libmpv | `[ ] UNTESTED` |
 | **External ASS + Dir Fonts** | `show_s01e01.mkv` + `show_s01e01.RU.ass` + `fonts/*.ttf` | Adjacent `fonts/` dir | Auto-bind sub-fonts-dir; flawless glyph rendering | libmpv | `[x] PASS` |
 | **External Audio (MKA)** | `show_s01e01.mkv` + `show_s01e01.RU.mka` | N/A | Auto-match episode; present as "Russian External" | libmpv | `[x] PASS` |
-| **Multi-Sub Package** | `show_s01e01.mkv` + `.RU.ass`, `.EN.srt` | `fonts/` | Ranked tracks: RU ASS (100%), EN SRT (100%) | libmpv | `[x] PASS` |
+| **Multi-Sub Package** | `show_s01e01.mkv` + `.RU.ass`, `.EN.srt` | `fonts/` | Ranked tracks: RU ASS (100%), EN SRT (100%) | libmpv | `[x] PASS` (Algorithm / MatchEngine) |
+| **Episodic Continuity & Preferences** | `S01E01` + `S01E02` + RU audio + RU subs | `fonts/` | Carry forward user RU audio & sub selection across episodes | libmpv | `[x] PASS` (Phase 9 Acceptance Verified) |
+| **Standalone External SRT** | `video.mkv` + `video.en.srt` | N/A | Subtitle stream attachment | libmpv | `[?] UNVERIFIED` (Sample pending) |
 | **Complex Dialogue Styles** | Karaoke (\k), Transforms (\t), Vector clips (\clip) | Injected OTF/TTF | No dropped frames; accurate layout | libmpv | `[ ] UNTESTED` |
 
 ---
@@ -71,7 +74,7 @@ Each media format sample must be validated against the following criteria:
 
 | Container | Video Codec | Audio Codec | Era | Backend | Status | Notes |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| **AVI** | XviD (MPEG-4 Part 2) | MP3 CBR 128k | ~2003 | libmpv | `[ ] UNTESTED` | Legacy scene release standard |
+| **AVI** | XviD (MPEG-4 Part 2) | MP3 CBR 128k | ~2003 | libmpv | `[?] UNVERIFIED` | Pending real sample in repo |
 | **AVI** | DivX 3.11 (MS MPEG-4v3) | AC-3 5.1 | ~2000 | libmpv | `[ ] UNTESTED` | Non-standard ancient DivX |
 | **AVI** | DV (Digital Video) | PCM uncompressed | ~1998 | libmpv | `[ ] UNTESTED` | Camcorder tape capture |
 | **WMV** | WMV3 / VC-1 Simple | WMA v2 | ~2004 | libmpv | `[ ] UNTESTED` | Microsoft Windows Media 9 |
@@ -79,8 +82,8 @@ Each media format sample must be validated against the following criteria:
 | **FLV** | Sorenson Spark (FLV1) | MP3 Mono | ~2006 | libmpv | `[ ] UNTESTED` | Early Flash Video web rip |
 | **FLV** | VP6 (On2 VP62) | AAC-LC | ~2008 | libmpv | `[ ] UNTESTED` | Later Flash Video web rip |
 | **RM / RMVB** | RealVideo 8/9 (RV30/RV40) | Cooker (RealAudio) | ~2002 | libmpv | `[ ] UNTESTED` | RealNetworks format |
-| **MPEG-1 (MPG)** | MPEG-1 Video | MP2 Audio | ~1995 | libmpv | `[ ] UNTESTED` | Video-CD (VCD) standard |
-| **MPEG-2 (MPG)** | MPEG-2 Video | AC-3 / MP2 | ~1997 | libmpv | `[ ] UNTESTED` | Super VCD / DVD stream |
+| **MPEG-1 (MPG)** | MPEG-1 Video | MP2 Audio | ~1995 | libmpv | `[?] UNVERIFIED` | Pending real sample in repo |
+| **MPEG-2 (MPG)** | MPEG-2 Video | AC-3 / MP2 | ~1997 | libmpv | `[?] UNVERIFIED` | Pending real sample in repo |
 | **3GP** | H.263 | AMR-NB | ~2004 | libmpv | `[ ] UNTESTED` | Feature phone video recording |
 | **OGV** | Theora | Vorbis | ~2007 | libmpv | `[ ] UNTESTED` | Early open web video |
 
@@ -114,7 +117,7 @@ Each media format sample must be validated against the following criteria:
 | **DVD-Video (Folder)** | `VIDEO_TS.IFO` + `VTS_01_1.VOB` | Direct title parsing | libmpv | `[ ] UNTESTED` | Concatenate VOB segments seamlessly |
 | **Blu-ray (BDMV/ISO)** | `BDMV/PLAYLIST/*.mpls` | MPLS playlist / libbluray | libmpv | `[ ] UNTESTED` | Direct main movie playlist selection |
 | **MPEG-TS (.ts)** | DVB-T / ATSC broadcast transport | Stream switching | libmpv | `[ ] UNTESTED` | Teletext / DVB subtitle decoding |
-| **M2TS (.m2ts)** | AVCHD camcorder / Blu-ray stream | Presentation time sync | libmpv | `[ ] UNTESTED` | Direct timestamp continuous playback |
+| **M2TS (.m2ts)** | AVCHD camcorder / Blu-ray stream | Presentation time sync | libmpv | `[?] UNVERIFIED` | Pending real M2TS sample in repo |
 
 ---
 
@@ -128,6 +131,7 @@ Each media format sample must be validated against the following criteria:
 | **Timestamp Inversion** | Non-monotonic PTS/DTS | Audio desync or looping | Clock resynchronizer recovers monotonic playback | `[ ] UNTESTED` |
 | **Non-Square Pixels** | 720x576 with 16:9 DAR | Stretched 4:3 display | Correct Display Aspect Ratio (DAR) honored | `[ ] UNTESTED` |
 | **Malicious Metadata** | 100MB string in tag or buffer exploit | Memory exhaustion / crash | Bounds-checked parser rejects oversized tag strings | `[ ] UNTESTED` |
+| **Variable Frame Rate (VFR)** | Timecode jitter / 24/30/60 fps jumps | Audio desync or video judder | Display-resample timestamp pacing | `[?] UNVERIFIED` |
 
 ---
 
@@ -158,3 +162,45 @@ Each media format sample must be validated against the following criteria:
   - External font directory binding (`sub-fonts-dir`): Immediate option update, 0 ms registry overhead
   - Memory footprint during headless verification: ~32 MB working set
   - Native resource disposal: Clean (`mpv_terminate_destroy` invoked, 0 memory leaks)
+
+---
+
+## 11. MVP-1 GUI Verification Results & Telemetry
+
+- **Date of Run:** 2026-09-05
+- **Platform:** Windows 11 x64 (.NET 8.0 / WinUI 3 / Windows App SDK 1.6, libmpv-2.dll)
+- **Test Suite:** `UniversalMediaPlayer.Tests` (59 tests passed, 0 failures, 0 skipped)
+- **GUI Application:** `UniversalMediaPlayer.App` (.NET 8 / WinUI 3 x64 unpackaged executable)
+- **Verified Capabilities:**
+  - `WinUI 3` Desktop Shell with native Win32 child window hosting for `libmpv` (0 airspace clipping).
+  - Micro control bar with auto-hiding logic (2.5s mouse inactivity timer) and fullscreen support.
+  - Interactive timeline scrubber with live timecode updates.
+  - Volume control (0–150%) and instant mute toggle (`M`).
+  - High-contrast, auto-hiding OSD notification pill for seeks, volume, mute, and track switches.
+  - Centralized keyboard router (`KeyboardCommandRouter`) covering `Space`, `Left`/`Right` (5s & 30s), `Up`/`Down`, `F`, `M`, `Escape`, `Enter`, `A`, `S`.
+  - Reusable contextual Track Selector (`TrackSelectorViewModel` + flyout) with badges (`[External]`, `[Embedded]`, `MKA`, `5.1`, `ASS`).
+  - Non-blocking background media discovery on open/drop.
+  - Windows-native `FileOpenPicker` integration with filter list.
+  - Drag-and-drop file and folder opening.
+  - Sibling episode sequence navigation (`Ctrl+Left`, `Ctrl+Right`).
+  - User-friendly error notifications via `InfoBar`.
+- **Measured Metrics:**
+  - UI process launch to interactive render: < 120 ms
+  - Win32 child HWND creation & libmpv attachment: < 25 ms
+  - End-to-end full suite execution: ~5.0 s (59 tests)
+
+---
+
+## 12. Phase 8.5 Validation Gate Results & Telemetry
+
+- **Date of Run:** 2026-09-05
+- **Platform:** Windows 11 x64 (.NET 8.0 / WinUI 3 / Windows App SDK 1.6, libmpv-2.dll v0.41.0)
+- **Test Suite:** `UniversalMediaPlayer.Tests` (**74 tests passed, 0 failures, 0 skipped**)
+- **New Validations Executed:**
+  - **External Track Lifecycle Resilience:** Verified video-only, video+audio, video+subs, video+audio+subs, missing audio file, missing subtitle file, corrupt/garbage media files. Zero crashes; corrupt/missing streams handled safely without hanging.
+  - **Concurrency & Cancellation:** Verified `DirectoryScanner.Scan` cancellation token responsiveness, and rapid switching (open A quickly followed by B) with `_openLock` serialization and cancellation of in-flight scans.
+  - **Resource Lifecycle:** Verified window open -> play -> pause -> fullscreen -> open next -> stop -> window closed. Window Closed event hooks engine disposal, stops timers, and destroys child HWND cleanly.
+  - **UI Quality Gate:** Verified long titles (300+ chars) with `TextTrimming="CharacterEllipsis"` and `MaxWidth`, as well as 15 audio tracks and 12 subtitle tracks with smooth scrolling and selection without visual clipping or overflow.
+  - **UX Quality Gate:** Verified user-facing presentation of languages ("Russian", "Japanese", "English", "Original", "Subtitles Off") with technical details reserved for secondary badges/tooltips.
+  - **High DPI Calculation:** Verified exact physical pixel calculations across 100% (96 DPI), 125% (120 DPI), 150% (144 DPI), and 200% (192 DPI).
+

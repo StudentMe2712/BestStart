@@ -57,12 +57,13 @@ Universal Media Player follows a clean layered architecture with strict decoupli
 
 ```
 src/
-├── UniversalMediaPlayer.App/         # WinUI 3 (Windows App SDK) Presentation Layer (MVVM)
+├── UniversalMediaPlayer.App/         # WinUI 3 (Windows App SDK) Presentation Shell & Windowing
+├── UniversalMediaPlayer.UI/          # Decoupled UI Layer (ViewModels, Formatting, Shortcut Router)
 ├── UniversalMediaPlayer.Core/        # Pure Domain Models (MediaPackage, MediaItem, Tracks, Episode)
 ├── UniversalMediaPlayer.Discovery/   # DirectoryScanner, FilenameParser, EpisodeParser, MatchEngine
 ├── UniversalMediaPlayer.Playback/    # IPlaybackEngine interface and LibMpvPlaybackEngine adapter
 ├── UniversalMediaPlayer.Persistence/ # Multi-tier storage (JSON settings + SQLite history)
-└── UniversalMediaPlayer.Tests/       # Comprehensive unit and integration test suite
+└── UniversalMediaPlayer.Tests/       # Comprehensive unit, integration, and UI workflow test suite
 ```
 
 ### Architectural Guarantees:
@@ -117,6 +118,8 @@ dotnet test
 
 - [Master Specification (`media_player_spec.md`)](media_player_spec.md) — Single Source of Truth
 - [Compatibility Test Matrix (`docs/test-matrix.md`)](docs/test-matrix.md)
+- [Performance Benchmarks (`docs/performance.md`)](docs/performance.md) — Measured startup, discovery, and playback metrics
+- [Phase 8.5 Validation Gate Report (`docs/validation/phase-8-validation.md`)](docs/validation/phase-8-validation.md) — Architectural & empirical audit (74/74 tests)
 - **Research Reports (`docs/research/`):**
   - [Playback Backend Analysis](docs/research/backend-analysis.md)
   - [Light Alloy Analysis](docs/research/light-alloy-analysis.md)
@@ -133,6 +136,8 @@ dotnet test
   - [ADR 0005: Deterministic Matching Engine](docs/adr/0005-matching-engine.md)
   - [ADR 0006: Persistence Architecture](docs/adr/0006-persistence.md)
   - [ADR 0007: Legacy Backend Policy (MPC-BE)](docs/adr/0007-legacy-backend.md)
+  - [ADR 0008: UI Rendering Integration & Track Selector UX](docs/adr/0008-ui-rendering-and-track-selector.md)
+  - [ADR 0009: Show Preferences & Watch History](docs/adr/0009-show-preferences-and-watch-history.md)
 
 ---
 

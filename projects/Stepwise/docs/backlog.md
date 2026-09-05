@@ -91,4 +91,17 @@
 - **Сложность реализации:** High.
 - **Зависимости:** WinRT `Windows.Graphics.Capture`, Direct3D11 Interop.
 
+### [FEATURE-013] Углубленная интеграция с Chromium AXTree (Chrome / Edge / Electron)
+- **Причина появления:** Ленивая инициализация дерева доступности в движках Chromium (warm-up latency 50–200 мс при первом обращении к AXTree).
+- **Потенциальная ценность:** Еще более глубокое извлечение структуры веб-страниц и веб-компонентов внутри Electron-приложений (VS Code, Slack, Teams).
+- **Сложность реализации:** Medium.
+- **Зависимости:** Chromium accessibility flags, `IUIAutomationService` расширение.
+
+### [FEATURE-014] Продвинутый эвристический анализ виртуализированных списков Windows Explorer (ItemsView)
+- **Причина появления:** В Windows 11 Explorer использует виртуализированный XAML/DirectUI ItemsView с динамическими Shell-хэшами элементов вместо стабильных AutomationId.
+- **Потенциальная ценность:** Повышенная устойчивость воспроизведения действий над файлами при переименовании и сортировке каталогов.
+- **Сложность реализации:** Medium.
+- **Зависимости:** Shell API / IShellFolder COM Interop.
+
+
 

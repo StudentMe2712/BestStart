@@ -156,7 +156,7 @@ public sealed class Phase3AcceptanceTests : IDisposable
     [Theory]
     [InlineData(0, 0, 100.0, 200.0, 50.0, 30.0, 120.0, 215.0, 100.0, 200.0, 111.0, 206.0)]
     [InlineData(-1920, 0, -500.0, 300.0, 100.0, 80.0, -450.0, 320.0, 1420.0, 300.0, 1461.0, 311.0)]
-    [InlineData(-1920, -1080, -100.0, -50.0, 60.0, 40.0, -80.0, -40.0, 1820.0, 1030.0, 1831.0, 1021.0)]
+    [InlineData(-1920, -1080, -100.0, -50.0, 60.0, 40.0, -80.0, -40.0, 1820.0, 1030.0, 1831.0, 1031.0)]
     public void AcceptanceTest_VirtualScreenOriginOffset_CalculatesBitmapRelativeCoordinates(
         int originX, int originY,
         double boxX, double boxY, double boxW, double boxH,

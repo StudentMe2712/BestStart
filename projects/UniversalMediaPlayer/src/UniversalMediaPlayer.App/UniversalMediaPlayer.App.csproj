@@ -1,0 +1,43 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
+    <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
+    <RootNamespace>UniversalMediaPlayer.App</RootNamespace>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <Platforms>x64;AnyCPU</Platforms>
+    <Platform>x64</Platform>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWinUI>true</UseWinUI>
+    <EnableMsixTooling>true</EnableMsixTooling>
+    <WindowsPackageType>None</WindowsPackageType>
+    <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <VCInstallPath32>none</VCInstallPath32>
+    <VCInstallPath64>none</VCInstallPath64>
+    <AppendPlatformToOutputPath>false</AppendPlatformToOutputPath>
+    <DefineConstants>$(DefineConstants);DISABLE_XAML_GENERATED_MAIN</DefineConstants>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.6.241114003" />
+    <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.26100.1742" />
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.3.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\UniversalMediaPlayer.Core\UniversalMediaPlayer.Core.csproj" />
+    <ProjectReference Include="..\UniversalMediaPlayer.Discovery\UniversalMediaPlayer.Discovery.csproj" />
+    <ProjectReference Include="..\UniversalMediaPlayer.Persistence\UniversalMediaPlayer.Persistence.csproj" />
+    <ProjectReference Include="..\UniversalMediaPlayer.Playback\UniversalMediaPlayer.Playback.csproj" />
+    <ProjectReference Include="..\UniversalMediaPlayer.UI\UniversalMediaPlayer.UI.csproj" />
+  </ItemGroup>
+
+  <Target Name="CopyLocalFilesOutputGroup" Returns="@(CopyLocalFilesOutputGroupOutput)">
+    <ItemGroup>
+      <CopyLocalFilesOutputGroupOutput Include="@(ReferenceCopyLocalPaths)" />
+    </ItemGroup>
+  </Target>
+</Project>

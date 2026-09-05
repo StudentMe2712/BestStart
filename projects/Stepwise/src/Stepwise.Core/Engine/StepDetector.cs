@@ -46,6 +46,22 @@ public sealed class StepDetector : IStepDetector
             metadata["CharacterCount"] = action.CharacterCount.ToString();
         }
 
+        if (action.ActionType == SemanticActionType.DragAndDrop)
+        {
+            metadata["DragStartX"] = (action.X ?? 0).ToString();
+            metadata["DragStartY"] = (action.Y ?? 0).ToString();
+            metadata["DragEndX"] = (action.EndX ?? 0).ToString();
+            metadata["DragEndY"] = (action.EndY ?? 0).ToString();
+        }
+
+        if (action.ActionType == SemanticActionType.Scroll)
+        {
+            int delta = action.Delta ?? 0;
+            metadata["ScrollDelta"] = delta.ToString();
+            metadata["TotalDelta"] = delta.ToString();
+            metadata["Direction"] = delta > 0 ? "Up" : "Down";
+        }
+
         if (policyDecision == RecordingPolicyDecision.Mask)
         {
             metadata["IsMasked"] = "true";
@@ -155,6 +171,72 @@ public sealed class StepDetector : IStepDetector
             {
                 string title = $"Press {action.KeyName}";
                 string description = $"Press {action.KeyName} key in {target.ProcessName}.";
+                return (title, description);
+            }
+
+            case SemanticActionType.DragAndDrop:
+            {
+                string title = hasTargetName ? $"Drag and drop in \"{target.Name}\"" : $"Drag and drop {target.ControlType}";
+                string description = $"Drag from ({action.X ?? 0}, {action.Y ?? 0}) to ({action.EndX ?? 0}, {action.EndY ?? 0}) in {target.ProcessName}.";
+                return (title, description);
+            }
+
+            case SemanticActionType.Scroll:
+            {
+                string direction = (action.Delta ?? 0) > 0 ? "up" : "down";
+                string title = hasTargetName
+                    ? (action.Delta > 0 ? $"Scroll up in \"{target.Name}\"" : $"Scroll down in \"{target.Name}\"")
+                    : $"Scroll {direction} {target.ControlType}";
+                string description = $"Scroll {direction} by {Math.Abs(action.Delta ?? 0)} in {target.ProcessName}.";
+                return (title, description);
+            }
+
+            case SemanticActionType.MouseDown:
+            {
+                string title = hasTargetName ? $"Mouse down on \"{target.Name}\"" : $"Mouse down on {target.ControlType}";
+                string description = hasTargetName
+                    ? $"Press mouse button down on {target.Name} ({target.ControlType}) in {target.ProcessName}."
+                    : $"Press mouse button down on {target.ControlType} in {target.ProcessName}.";
+                return (title, description);
+            }
+
+            case SemanticActionType.MouseUp:
+            {
+                string title = hasTargetName ? $"Mouse up on \"{target.Name}\"" : $"Mouse up on {target.ControlType}";
+                string description = hasTargetName
+                    ? $"Release mouse button on {target.Name} ({target.ControlType}) in {target.ProcessName}."
+                    : $"Release mouse button on {target.ControlType} in {target.ProcessName}.";
+                return (title, description);
+            }
+
+            case SemanticActionType.WindowActivated:
+            {
+                string windowName = hasTargetName
+                    ? target.Name
+                    : (!string.IsNullOrWhiteSpace(target.WindowTitle) ? target.WindowTitle : target.ProcessName);
+                string title = !string.IsNullOrWhiteSpace(windowName)
+                    ? $"Activate \"{windowName}\""
+                    : "Activate window";
+                string description = $"Activate window {(!string.IsNullOrWhiteSpace(target.WindowTitle) ? target.WindowTitle : windowName)}.";
+                return (title, description);
+            }
+
+            case SemanticActionType.WindowClosed:
+            {
+                string windowName = hasTargetName
+                    ? target.Name
+                    : (!string.IsNullOrWhiteSpace(target.WindowTitle) ? target.WindowTitle : target.ProcessName);
+                string title = !string.IsNullOrWhiteSpace(windowName)
+                    ? $"Close \"{windowName}\""
+                    : "Close window";
+                string description = $"Close window {(!string.IsNullOrWhiteSpace(target.WindowTitle) ? target.WindowTitle : windowName)}.";
+                return (title, description);
+            }
+
+            case SemanticActionType.ManualStep:
+            {
+                string title = hasTargetName ? $"Manual step: {target.Name}" : "Manual step";
+                string description = $"Perform manual step in {target.ProcessName}.";
                 return (title, description);
             }
 

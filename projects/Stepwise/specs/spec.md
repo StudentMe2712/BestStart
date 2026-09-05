@@ -1,7 +1,7 @@
 # Stepwise — Главная архитектурная спецификация и Центр Проекта (Brain Specification)
 
-> **Статус:** В активной разработке (Срез: Шаги 1–8 и 12 сданы на 100% — Фаза 4 Этап 3: Recording Integration & Golden GUI E2E сдан на 100%, 211/211 тестов PASS, Live GUI E2E PASS, Zero Password Leaks Verified)  
-> **Версия спецификации:** 2.2.0 (Объединена с Master Engineering Prompt / ultraprompt.md)  
+> **Статус:** В активной разработке (Срез: Шаги 1–8 и 12 сданы на 100% — Фаза 4 Этап 4: Real-World Recording Engine сдан на 100%, 277/277 тестов PASS, Live Win32 Notepad E2E PASS, Zero Password Leaks Verified, 8 Target Types Matrix Covered)  
+> **Версия спецификации:** 2.3.0 (Объединена с Master Engineering Prompt / docs/real-world-target-matrix.md)  
 > **Платформа:** Windows 10/11 (x64 / ARM64)  
 > **Технологический стек:** C# 13, .NET 9+, WinUI 3, Windows App SDK, Microsoft UI Automation (UIA), Win32 API (CsWin32 / PInvoke), Windows.Graphics.Capture, SQLite, CommunityToolkit.Mvvm, System.Text.Json.
 
@@ -219,8 +219,11 @@ public sealed record Step(
 - [ ] **Шаг 11: Системный трей и глобальные горячие клавиши.**
   - Иконка в системном трее Windows с контекстным меню управления.
   - Хоткеи: `Start/Stop Recording`, `Pause/Resume`, `Manual Step`.
-- [x] **Шаг 12: Event Correlation & Текстовый ввод (Stage 2 Core Recording Engine).**
+- [x] **Шаг 12: Event Correlation & Текстовый ввод (Stage 2) & Real-World Recording Engine (Stage 4).**
   - Захват `TextInput` с фильтрацией паролей и сжатием серии нажатий клавиш в один осмысленный шаг.
+  - Поддержка `DragAndDrop`, агрегация/троттлинг `Scroll`, детекция `DoubleClick`, `RightClick`, `MiddleClick`, `Shortcuts` (Ctrl+A, Ctrl+C и др.).
+  - Устойчивость к переключению окон (`WindowActivated`, `WindowClosed`), закрытию целевых приложений и частичным UIA-метаданным без фабрикации фейковых ID.
+  - Сквозная Live Win32 E2E валидация с реальным Блокнотом (`notepad.exe`), стресс-тест 10+ циклов Start/Stop и подтверждение Zero Plaintext Password Leaks.
 
 ### Фаза 6: Экспорт и Опциональный AI
 - [ ] **Шаг 13: Модуль экспорта руководств (HTML, Markdown, JSON, PDF).**

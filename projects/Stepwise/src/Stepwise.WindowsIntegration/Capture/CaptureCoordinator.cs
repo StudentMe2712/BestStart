@@ -44,7 +44,16 @@ public sealed class CaptureCoordinator : ICaptureCoordinator
         ElementInfo target,
         CancellationToken cancellationToken = default)
     {
-        ArgumentNullException.ThrowIfNull(target);
+        if (target == null)
+        {
+            return new CaptureResult(
+                Success: false,
+                RelativePath: null,
+                Width: 0,
+                Height: 0,
+                HighlightBounds: BoundingBox.Empty,
+                ErrorMessage: "Target element is null.");
+        }
 
         if (_captureService == null || _repository == null)
         {
@@ -81,6 +90,17 @@ public sealed class CaptureCoordinator : ICaptureCoordinator
                     target.WindowHandle
                 );
 
+                if (cancellationToken.IsCancellationRequested)
+                {
+                    return new CaptureResult(
+                        Success: false,
+                        RelativePath: null,
+                        Width: 0,
+                        Height: 0,
+                        HighlightBounds: target.BoundingRectangle,
+                        ErrorMessage: "Operation cancelled.");
+                }
+
                 if (relativePath == null)
                 {
                     return new CaptureResult(
@@ -99,7 +119,8 @@ public sealed class CaptureCoordinator : ICaptureCoordinator
                     var fullPath = Path.Combine(_repository.ProjectRootPath, relativePath);
                     if (File.Exists(fullPath))
                     {
-                        using var img = System.Drawing.Image.FromFile(fullPath);
+                        using var stream = new FileStream(fullPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+                        using var img = System.Drawing.Image.FromStream(stream, useEmbeddedColorManagement: false, validateImageData: false);
                         width = img.Width;
                         height = img.Height;
                     }
@@ -125,6 +146,16 @@ public sealed class CaptureCoordinator : ICaptureCoordinator
             }, cancellationToken).ConfigureAwait(false);
         }
         catch (OperationCanceledException)
+        {
+            return new CaptureResult(
+                Success: false,
+                RelativePath: null,
+                Width: 0,
+                Height: 0,
+                HighlightBounds: target.BoundingRectangle,
+                ErrorMessage: "Operation cancelled.");
+        }
+        catch (Exception ex) when (ex.InnerException is OperationCanceledException)
         {
             return new CaptureResult(
                 Success: false,

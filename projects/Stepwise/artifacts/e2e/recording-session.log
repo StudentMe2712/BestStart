@@ -1,24 +1,24 @@
-﻿2026-09-05 12:19:37.279 [GOLDEN-E2E] Starting Golden Path E2E Workflow test run...
-2026-09-05 12:19:37.531 [GOLDEN-E2E] Launching Stepwise.App.exe with isolated project: C:\Users\Mila\Desktop\BestStart\projects\Stepwise\artifacts\e2e\test_project
-2026-09-05 12:19:38.891 [GOLDEN-E2E] Stepwise.App MainWindow ready: HWND=0x726738, Title='Stepwise — Interactive Walkthrough Engine'
-2026-09-05 12:19:38.891 [GOLDEN-E2E] Launching Stepwise.TestTarget.exe from: C:\Users\Mila\Desktop\BestStart\projects\Stepwise\tests\Stepwise.TestTarget\bin\Debug\net9.0-windows\Stepwise.TestTarget.exe
-2026-09-05 12:19:39.710 [GOLDEN-E2E] Stepwise.TestTarget ready: HWND=0x137108, Title='Stepwise Test Target Application'
-2026-09-05 12:19:39.753 [GOLDEN-E2E] Captured launch evidence: C:\Users\Mila\Desktop\BestStart\projects\Stepwise\artifacts\e2e\launch.png
-2026-09-05 12:19:41.816 [GOLDEN-E2E] Clicked BtnStartRecording. Awaiting Recording state transition...
-2026-09-05 12:19:42.832 [GOLDEN-E2E] Recording state verified: 'Запись активна...'
-2026-09-05 12:19:42.865 [GOLDEN-E2E] Captured recording evidence: C:\Users\Mila\Desktop\BestStart\projects\Stepwise\artifacts\e2e\recording.png
-2026-09-05 12:19:47.270 [GOLDEN-E2E] Entered text 'Stepwise E2E Test' into txtStandard.
-2026-09-05 12:19:49.690 [GOLDEN-E2E] Focused pwdSecure password field. Plaintext password must be suppressed/masked.
-2026-09-05 12:19:52.219 [GOLDEN-E2E] Invoked btnAction on target application.
-2026-09-05 12:19:52.742 [GOLDEN-E2E] Target status updated: 'Action Submitted: Stepwise E2E Test'
-2026-09-05 12:19:52.884 [GOLDEN-E2E] Target telemetry and screenshots updated: scr1='assets/screenshots/step_000.png', scr2='assets/screenshots/step_001.png', scr3='assets/screenshots/step_002.png'
-2026-09-05 12:19:54.920 [GOLDEN-E2E] Clicked BtnStopRecording. Awaiting completion...
-2026-09-05 12:19:55.922 [GOLDEN-E2E] Recording session finished. State=Completed.
-2026-09-05 12:19:56.498 [GOLDEN-E2E] Verifying Editor and SQLite persistence in Stepwise.App...
-2026-09-05 12:19:57.080 [GOLDEN-E2E] Editor TxtStepTitle loaded: 'Type "Stepwise E2E Test" into Standard Input'
-2026-09-05 12:19:57.111 [GOLDEN-E2E] Editor TxtStepDescription loaded: 'Enter the test input value into txtStandard of Stepwise.TestTarget.'
-2026-09-05 12:19:57.134 [GOLDEN-E2E] Captured editor evidence: C:\Users\Mila\Desktop\BestStart\projects\Stepwise\artifacts\e2e\editor.png
-2026-09-05 12:19:57.134 [GOLDEN-E2E] Editing step details in Editor...
-2026-09-05 12:20:01.988 [GOLDEN-E2E] Captured persistence evidence: C:\Users\Mila\Desktop\BestStart\projects\Stepwise\artifacts\e2e\persistence.png
-2026-09-05 12:20:03.000 [GOLDEN-E2E] Persisted Title and Description verified in SQLite: Title='Edited Golden Step', Description='Verified by E2E'
-2026-09-05 12:20:03.001 [GOLDEN-E2E] Screenshots on disk verified.
+﻿2026-09-05 17:15:36.975 [GOLDEN-E2E] Starting Golden Path E2E Workflow test run...
+2026-09-05 17:15:37.213 [GOLDEN-E2E] Launching Stepwise.App.exe with isolated project: C:\Users\Mila\Desktop\BestStart\projects\Stepwise\artifacts\e2e\test_project
+2026-09-05 17:15:40.745 [GOLDEN-E2E] Stepwise.App MainWindow ready: HWND=0x3086032, Title='Stepwise — Interactive Walkthrough Engine'
+2026-09-05 17:15:40.745 [GOLDEN-E2E] Launching Stepwise.TestTarget.exe from: C:\Users\Mila\Desktop\BestStart\projects\Stepwise\tests\Stepwise.TestTarget\bin\Debug\net9.0-windows\Stepwise.TestTarget.exe
+2026-09-05 17:15:42.088 [GOLDEN-E2E] Stepwise.TestTarget ready: HWND=0x1769772, Title='Stepwise Test Target Application'
+2026-09-05 17:15:42.142 [GOLDEN-E2E] Captured launch evidence: C:\Users\Mila\Desktop\BestStart\projects\Stepwise\artifacts\e2e\launch.png
+2026-09-05 17:15:44.261 [GOLDEN-E2E] Clicked BtnStartRecording. Awaiting Recording state transition...
+2026-09-05 17:15:45.278 [GOLDEN-E2E] Recording state verified: 'Запись активна...'
+2026-09-05 17:15:45.317 [GOLDEN-E2E] Captured recording evidence: C:\Users\Mila\Desktop\BestStart\projects\Stepwise\artifacts\e2e\recording.png
+2026-09-05 17:15:49.749 [GOLDEN-E2E] Entered text 'Stepwise E2E Test' into txtStandard.
+2026-09-05 17:15:52.178 [GOLDEN-E2E] Focused pwdSecure password field. Plaintext password must be suppressed/masked.
+2026-09-05 17:15:54.720 [GOLDEN-E2E] Invoked btnAction on target application.
+2026-09-05 17:15:55.257 [GOLDEN-E2E] Target status updated: 'Action Submitted: Stepwise E2E Test'
+2026-09-05 17:15:55.457 [GOLDEN-E2E] Target telemetry and screenshots updated: scr1='assets/screenshots/step_000.png', scr2='assets/screenshots/step_001.png', scr3='assets/screenshots/step_002.png'
+2026-09-05 17:15:57.504 [GOLDEN-E2E] Clicked BtnStopRecording. Awaiting completion...
+2026-09-05 17:15:58.506 [GOLDEN-E2E] Recording session finished. State=Completed.
+2026-09-05 17:15:59.104 [GOLDEN-E2E] Verifying Editor and SQLite persistence in Stepwise.App...
+2026-09-05 17:15:59.716 [GOLDEN-E2E] Editor TxtStepTitle loaded: 'Type "Stepwise E2E Test" into Standard Input'
+2026-09-05 17:15:59.758 [GOLDEN-E2E] Editor TxtStepDescription loaded: 'Enter the test input value into txtStandard of Stepwise.TestTarget.'
+2026-09-05 17:15:59.791 [GOLDEN-E2E] Captured editor evidence: C:\Users\Mila\Desktop\BestStart\projects\Stepwise\artifacts\e2e\editor.png
+2026-09-05 17:15:59.791 [GOLDEN-E2E] Editing step details in Editor...
+2026-09-05 17:16:04.665 [GOLDEN-E2E] Captured persistence evidence: C:\Users\Mila\Desktop\BestStart\projects\Stepwise\artifacts\e2e\persistence.png
+2026-09-05 17:16:05.796 [GOLDEN-E2E] Persisted Title and Description verified in SQLite: Title='Edited Golden Step', Description='Verified by E2E'
+2026-09-05 17:16:05.796 [GOLDEN-E2E] Screenshots on disk verified.

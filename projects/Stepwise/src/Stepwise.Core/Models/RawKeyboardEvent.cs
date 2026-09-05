@@ -53,7 +53,7 @@ public readonly record struct RawKeyboardEvent(
     /// <summary>
     /// Является ли событие клавиатурным сочетанием (хоткеем), а не простым вводом символа.
     /// </summary>
-    public bool IsShortcut => (HasControl || HasAlt || HasWindows) && !IsAltGr;
+    public bool IsShortcut => ((HasControl || HasAlt || HasWindows) || (HasShift && VirtualKey is >= 112 and <= 135)) && !IsAltGr;
 
     /// <summary>
     /// Является ли событие вводом печатного текста (нажатие KeyDown, не шорткат, не дедкей, присутствует символ).

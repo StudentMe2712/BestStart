@@ -513,10 +513,10 @@ The live status of all media format test cases is tracked in:
 - [x] End-to-end automated test harness with real media files in `tests/TestData/Anime/`.
 
 ### MVP-1: Modern Minimalist GUI
-- [ ] WinUI 3 desktop shell with borderless window.
-- [ ] Auto-hiding micro playback controls overlay (timeline scrubber, timecodes, play/pause, volume).
-- [ ] Keyboard shortcut router (`Space`, arrows, `F`, `M`).
-- [ ] Drag-and-drop file opening support.
+- [x] WinUI 3 desktop shell with borderless window.
+- [x] Auto-hiding micro playback controls overlay (timeline scrubber, timecodes, play/pause, volume).
+- [x] Keyboard shortcut router (`Space`, arrows, `F`, `M`).
+- [x] Drag-and-drop file opening support.
 
 ### MVP-2: Media Discovery Engine
 - [x] Implement `DirectoryScanner` with background cancellation support.
@@ -531,14 +531,14 @@ The live status of all media format test cases is tracked in:
 - [x] Test verification with Anime release scenario: `S01E01.mkv` + `S01E01.RU.mka` + `S01E01.RU.ass` + `fonts/`.
 
 ### MVP-4: Track Selection UI & Font Injection
-- [ ] Sleek contextual Track Selector flyout with audio and subtitle categorization.
-- [ ] Visual badges: `[Embedded]`, `[External]`, channel count, language flags.
+- [x] Sleek contextual Track Selector flyout with audio and subtitle categorization.
+- [x] Visual badges: `[Embedded]`, `[External]`, channel count, language flags.
 - [x] Dynamic font directory binding via `sub-fonts-dir` for ASS subtitle rendering.
 
 ### MVP-5: Show Preferences & Episodic Continuity
-- [ ] Persistent show preferences (`show_preferences.json`).
-- [ ] Automatically apply audio/subtitle language choices to consecutive episodes.
-- [ ] Next Episode auto-detection and transition prompt (`Ctrl+Right`).
+- [x] Persistent show preferences (`show_preferences.json`).
+- [x] Automatically apply audio/subtitle language choices to consecutive episodes.
+- [x] Next Episode auto-detection and transition prompt (`PageDown` / Auto-Next countdown).
 
 ### MVP-6: Continue Watching & Watch History
 - [ ] SQLite local history database (`history.db`).
@@ -591,6 +591,8 @@ All core architectural decisions are formalized in `docs/adr/`:
 | [ADR 0005](file:///C:/Users/Mila/Desktop/BestStart/projects/UniversalMediaPlayer/docs/adr/0005-matching-engine.md) | Matching Engine | Deterministic score-based matching with fatal season/episode mismatch gating. | Accepted |
 | [ADR 0006](file:///C:/Users/Mila/Desktop/BestStart/projects/UniversalMediaPlayer/docs/adr/0006-persistence.md) | Persistence Architecture | Two-tier model: atomic JSON for config/preferences; SQLite WAL for history. | Accepted |
 | [ADR 0007](file:///C:/Users/Mila/Desktop/BestStart/projects/UniversalMediaPlayer/docs/adr/0007-legacy-backend.md) | Legacy Backend Policy | MPC-BE/DirectShow relegated strictly to an empirical, out-of-process fallback. | Accepted |
+| [ADR 0008](file:///C:/Users/Mila/Desktop/BestStart/projects/UniversalMediaPlayer/docs/adr/0008-ui-rendering-and-track-selector.md) | UI Rendering Integration & Track Selector UX | Win32 child window hosting for libmpv, airspace elimination, portable UI layer, and contextual track selector. | Accepted |
+| [ADR 0009](file:///C:/Users/Mila/Desktop/BestStart/projects/UniversalMediaPlayer/docs/adr/0009-show-preferences-and-watch-history.md) | Show Preferences and Watch History | Two-tier atomic JSON show preferences and WAL-mode SQLite watch history with continuity resolution and throttled state persistence. | Accepted |
 
 ---
 
@@ -623,6 +625,27 @@ A task or feature is marked completed (`[x]`) only when:
 ---
 
 ## 42. Changelog
+
+### Version 1.2.0 (2026-09-05)
+- Completed Phase 9 (MVP-5: Show Preferences & Episodic Continuity).
+- Implemented `ShowPreferences`, `TrackPreference`, and `WatchHistoryItem` domain models in `UniversalMediaPlayer.Core`.
+- Established `UniversalMediaPlayer.Persistence` class library with atomic `JsonShowPreferencesStore` and WAL-mode `SqliteWatchHistoryStore`.
+- Implemented `ShowIdentityResolver` for folder-independent show matching across drive and folder relocations.
+- Implemented `PreferredTrackResolver` with multi-tier track resolution (exact track match, language match, subtitle OFF state, fallbacks).
+- Implemented `EpisodeNavigator` providing episodic graph navigation and boundary detection across sibling video files.
+- Implemented `EpisodicContinuityService` and `PlaybackHistoryTracker` providing throttled SQLite position tracking, 90% completion rules, and Open A -> Open B race condition isolation.
+- Integrated UI features: Continue Watching card on empty state, floating Resume Prompt ("Resume from XX:XX"), Auto-Next Episode countdown ("Playing in 5... [Play Now] [Cancel]"), (Preferred) track badges, and PageUp/PageDown navigation hotkeys.
+- Verified 146/146 automated tests passing with 0 failures and 0 regressions, including all 18 Section 34 test cases and the complete Section 35 real anime multi-file release scenario.
+- Formalized ADR 0009 (`0009-show-preferences-and-watch-history.md`).
+
+### Version 1.1.0 (2026-09-05)
+- Completed Phase 8.5 Validation Gate with status **PASS WITH WARNINGS**.
+- Verified 74/74 tests passing (0 failures, 0 skipped) across Core, Discovery, Playback, UI, Concurrency, and Lifecycle.
+- Audited WinUI 3 + child Win32 HWND + libmpv surface behavior, high DPI scaling, and airspace integrity.
+- Audited external track lifecycle, rapid switching concurrency, and window disposal resource cleanup.
+- Published empirical benchmark measurements in `docs/performance.md`.
+- Published formal validation gate report in `docs/validation/phase-8-validation.md`.
+- Cleared execution path for Phase 9 / MVP-5 (Show Preferences & Episodic Continuity).
 
 ### Version 1.0.0 (2026-09-05)
 - Initial release of the Master Specification for Universal Media Player.

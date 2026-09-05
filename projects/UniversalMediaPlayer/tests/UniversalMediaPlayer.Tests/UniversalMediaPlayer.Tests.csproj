@@ -25,6 +25,8 @@
     <ProjectReference Include="..\..\src\UniversalMediaPlayer.Core\UniversalMediaPlayer.Core.csproj" />
     <ProjectReference Include="..\..\src\UniversalMediaPlayer.Discovery\UniversalMediaPlayer.Discovery.csproj" />
     <ProjectReference Include="..\..\src\UniversalMediaPlayer.Playback\UniversalMediaPlayer.Playback.csproj" />
+    <ProjectReference Include="..\..\src\UniversalMediaPlayer.Persistence\UniversalMediaPlayer.Persistence.csproj" />
+    <ProjectReference Include="..\..\src\UniversalMediaPlayer.UI\UniversalMediaPlayer.UI.csproj" />
   </ItemGroup>
 
 </Project>

@@ -29,7 +29,7 @@ public sealed class RecordingEngine : IRecordingEngine
     private CancellationTokenSource? _cts;
     private Task? _processingTask;
     private Task? _actionProcessingTask;
-    private WindowContext _currentWindowContext = WindowContext.Empty;
+    private volatile WindowContext _currentWindowContext = WindowContext.Empty;
     private int _sequenceIndex;
     private bool _isDisposed;
 
@@ -115,6 +115,15 @@ public sealed class RecordingEngine : IRecordingEngine
                 });
 
             _correlator.Reset();
+
+            // Гарантируем отсутствие дублирующих подписок при повторных циклах записи
+            _correlator.ActionCorrelated -= OnActionCorrelated;
+            _inputMonitor.MouseEventReceived -= OnRawMouseEvent;
+            _inputMonitor.KeyboardEventReceived -= OnRawKeyboardEvent;
+            if (_windowTracker != null)
+            {
+                _windowTracker.ActiveWindowChanged -= OnActiveWindowChanged;
+            }
 
             // Подписываемся на события коррелятора и монитора ввода
             _correlator.ActionCorrelated += OnActionCorrelated;
@@ -264,6 +273,7 @@ public sealed class RecordingEngine : IRecordingEngine
         }
         finally
         {
+            _correlator.ActionCorrelated -= OnActionCorrelated;
             CleanupSessionResources();
         }
     }
@@ -290,6 +300,20 @@ public sealed class RecordingEngine : IRecordingEngine
 
     private void OnActiveWindowChanged(object? sender, ActiveWindowInfo e)
     {
+        if (e == null)
+        {
+            return;
+        }
+
+        try
+        {
+            _correlator.FlushPending();
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"[RecordingEngine] Error flushing correlator on active window changed: {ex.Message}");
+        }
+
         _currentWindowContext = WindowContext.FromActiveWindowInfo(e);
     }
 
@@ -429,6 +453,7 @@ public sealed class RecordingEngine : IRecordingEngine
             _actionChannel = null;
             _processingTask = null;
             _actionProcessingTask = null;
+            _currentWindowContext = WindowContext.Empty;
         }
     }
 
@@ -450,6 +475,14 @@ public sealed class RecordingEngine : IRecordingEngine
         {
             // Подавляем исключения при Dispose
         }
+
+        _inputMonitor.MouseEventReceived -= OnRawMouseEvent;
+        _inputMonitor.KeyboardEventReceived -= OnRawKeyboardEvent;
+        if (_windowTracker != null)
+        {
+            _windowTracker.ActiveWindowChanged -= OnActiveWindowChanged;
+        }
+        _correlator.ActionCorrelated -= OnActionCorrelated;
 
         CleanupSessionResources();
         _correlator.Dispose();

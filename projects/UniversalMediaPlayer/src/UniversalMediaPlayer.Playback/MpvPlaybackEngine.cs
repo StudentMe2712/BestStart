@@ -11,6 +11,7 @@ public sealed class MpvPlaybackEngine : IPlaybackEngine
 {
     private nint _handle;
     private readonly object _lock = new();
+    private readonly SemaphoreSlim _openLock = new(1, 1);
     private CancellationTokenSource? _cts;
     private Task? _eventLoopTask;
 
@@ -62,6 +63,9 @@ public sealed class MpvPlaybackEngine : IPlaybackEngine
                 throw new InvalidOperationException($"Failed to initialize mpv: {errMsg} (code {err})");
             }
 
+            // Observe "pause" property to receive property change events
+            ObservePropertyUnsafe(1, "pause");
+
             _cts = new CancellationTokenSource();
             _eventLoopTask = Task.Run(() => EventLoop(_cts.Token));
         }
@@ -72,74 +76,115 @@ public sealed class MpvPlaybackEngine : IPlaybackEngine
     public async Task OpenAsync(MediaPackage package, CancellationToken ct = default)
     {
         EnsureInitialized();
-        CurrentPackage = package;
-
-        // 1. If package contains a fonts directory, bind sub-fonts-dir
-        if (package.Fonts is { HasFonts: true })
+        await _openLock.WaitAsync(ct);
+        try
         {
-            await SetPropertyAsync("sub-fonts-dir", package.Fonts.FontsDirectory);
-        }
+            ct.ThrowIfCancellationRequested();
+            CurrentPackage = package;
 
-        // 2. Load primary video file
-        var normalizedVideo = package.PrimaryVideo.FilePath.Replace('\\', '/');
-        await SendCommandAsync("loadfile", normalizedVideo, "replace");
+            // Ensure playback does not race to EOF before attaching external tracks
+            await PauseAsync();
 
-        // Wait for the primary video file to be loaded in mpv demuxer
-        var timeout = DateTime.UtcNow.AddSeconds(2.0);
-        while (DateTime.UtcNow < timeout && !ct.IsCancellationRequested)
-        {
-            var idle = await GetPropertyAsync("idle-active");
-            var duration = await GetPropertyAsync("duration");
-            if (idle == "no" || !string.IsNullOrEmpty(duration))
+            // 1. If package contains a fonts directory, bind sub-fonts-dir; otherwise clear it
+            if (package.Fonts is { HasFonts: true } && Directory.Exists(package.Fonts.FontsDirectory))
             {
-                break;
+                await SetPropertyAsync("sub-fonts-dir", package.Fonts.FontsDirectory);
             }
-            await Task.Delay(25, ct);
-        }
-
-        // 3. Attach external audio tracks
-        foreach (var audio in package.AudioTracks.Where(a => a.IsExternal && !string.IsNullOrEmpty(a.ExternalFilePath)))
-        {
-            var normAudio = audio.ExternalFilePath!.Replace('\\', '/');
-            await SendCommandAsync("audio-add", normAudio);
-        }
-
-        // 4. Attach external subtitle tracks
-        foreach (var sub in package.SubtitleTracks.Where(s => s.IsExternal && !string.IsNullOrEmpty(s.ExternalFilePath)))
-        {
-            var normSub = sub.ExternalFilePath!.Replace('\\', '/');
-            await SendCommandAsync("sub-add", normSub);
-        }
-
-        // 5. Wait for asynchronous track registration to complete
-        var trackWaitTimeout = DateTime.UtcNow.AddSeconds(1.0);
-        while (DateTime.UtcNow < trackWaitTimeout && !ct.IsCancellationRequested)
-        {
-            await RefreshTrackListAsync();
-            if (ActiveTracks.Any(t => t.Origin == TrackOrigin.External))
+            else
             {
-                break;
+                await SetPropertyAsync("sub-fonts-dir", "");
             }
-            await Task.Delay(50, ct);
+
+            ct.ThrowIfCancellationRequested();
+
+            // 2. Load primary video file
+            var normalizedVideo = package.PrimaryVideo.FilePath.Replace('\\', '/');
+            await SendCommandAsync("loadfile", normalizedVideo, "replace");
+
+            // Wait for the primary video file to be loaded in mpv demuxer
+            var timeout = DateTime.UtcNow.AddSeconds(2.0);
+            while (DateTime.UtcNow < timeout && !ct.IsCancellationRequested)
+            {
+                var duration = await GetPropertyAsync("duration");
+                if (!string.IsNullOrEmpty(duration))
+                {
+                    break;
+                }
+                await Task.Delay(25, ct);
+            }
+
+            ct.ThrowIfCancellationRequested();
+
+            // 3. Attach external audio tracks (only if file actually exists on disk)
+            foreach (var audio in package.AudioTracks.Where(a => a.IsExternal && !string.IsNullOrEmpty(a.ExternalFilePath) && File.Exists(a.ExternalFilePath)))
+            {
+                ct.ThrowIfCancellationRequested();
+                var normAudio = audio.ExternalFilePath!.Replace('\\', '/');
+                await SendCommandAsync("audio-add", normAudio);
+            }
+
+            // 4. Attach external subtitle tracks (only if file actually exists on disk)
+            foreach (var sub in package.SubtitleTracks.Where(s => s.IsExternal && !string.IsNullOrEmpty(s.ExternalFilePath) && File.Exists(s.ExternalFilePath)))
+            {
+                ct.ThrowIfCancellationRequested();
+                var normSub = sub.ExternalFilePath!.Replace('\\', '/');
+                await SendCommandAsync("sub-add", normSub);
+            }
+
+            // 5. Wait for asynchronous track registration to complete
+            var hasExternalAudio = package.AudioTracks.Any(a => a.IsExternal && File.Exists(a.ExternalFilePath));
+            var hasExternalSub = package.SubtitleTracks.Any(s => s.IsExternal && File.Exists(s.ExternalFilePath));
+
+            var trackWaitTimeout = DateTime.UtcNow.AddSeconds(1.5);
+            while (DateTime.UtcNow < trackWaitTimeout && !ct.IsCancellationRequested)
+            {
+                await RefreshTrackListAsync();
+                var audioLoaded = !hasExternalAudio || ActiveTracks.Any(t => t is AudioTrack && t.Origin == TrackOrigin.External);
+                var subLoaded = !hasExternalSub || ActiveTracks.Any(t => t is SubtitleTrack && t.Origin == TrackOrigin.External);
+                if (audioLoaded && subLoaded)
+                {
+                    break;
+                }
+                await Task.Delay(25, ct);
+            }
+        }
+        finally
+        {
+            _openLock.Release();
         }
     }
 
-    public Task PlayAsync()
+    public async Task PlayAsync()
     {
         EnsureInitialized();
-        return SetPropertyAsync("pause", "no");
+        await SetPropertyAsync("pause", "no");
+        if (!IsPlaying)
+        {
+            IsPlaying = true;
+            PlaybackStateChanged?.Invoke(true);
+        }
     }
 
-    public Task PauseAsync()
+    public async Task PauseAsync()
     {
         EnsureInitialized();
-        return SetPropertyAsync("pause", "yes");
+        await SetPropertyAsync("pause", "yes");
+        if (IsPlaying)
+        {
+            IsPlaying = false;
+            PlaybackStateChanged?.Invoke(false);
+        }
     }
 
-    public Task StopAsync()
+    public async Task StopAsync()
     {
         EnsureInitialized();
-        return SendCommandAsync("stop");
+        await SendCommandAsync("stop");
+        if (IsPlaying)
+        {
+            IsPlaying = false;
+            PlaybackStateChanged?.Invoke(false);
+        }
     }
 
     public Task SeekAsync(double seconds, bool relative = true)
@@ -297,12 +342,25 @@ public sealed class MpvPlaybackEngine : IPlaybackEngine
             var eventId = Marshal.ReadInt32(eventPtr);
             if (eventId == 0) continue; // MPV_EVENT_NONE
 
-            // Update basic playback telemetry
-            if (eventId is 6 or 7) // MPV_EVENT_PAUSE or MPV_EVENT_UNPAUSE
+            // Synchronize real playback state from backend
+            var pausedStr = GetPropertySync("pause");
+            if (pausedStr != null)
             {
-                var pausedStr = GetPropertySync("pause");
-                IsPlaying = pausedStr == "no";
-                PlaybackStateChanged?.Invoke(IsPlaying);
+                var isCurrentlyPlaying = pausedStr == "no";
+                if (isCurrentlyPlaying != IsPlaying)
+                {
+                    IsPlaying = isCurrentlyPlaying;
+                    PlaybackStateChanged?.Invoke(IsPlaying);
+                }
+            }
+
+            if (eventId == 7) // MPV_EVENT_END_FILE
+            {
+                if (IsPlaying)
+                {
+                    IsPlaying = false;
+                    PlaybackStateChanged?.Invoke(false);
+                }
             }
 
             var posStr = GetPropertySync("playback-time");
@@ -354,6 +412,14 @@ public sealed class MpvPlaybackEngine : IPlaybackEngine
         }
     }
 
+    private unsafe void ObservePropertyUnsafe(ulong replyUserdata, string name)
+    {
+        fixed (byte* pName = Encoding.UTF8.GetBytes(name + '\0'))
+        {
+            LibMpvNative.mpv_observe_property(_handle, replyUserdata, pName, LibMpvNative.MPV_FORMAT_STRING);
+        }
+    }
+
     private unsafe void SendCommandUnsafe(string[] args)
     {
         var utf8Bytes = new byte*[args.Length + 1];
@@ -377,7 +443,7 @@ public sealed class MpvPlaybackEngine : IPlaybackEngine
                 if (err < 0)
                 {
                     var msg = GetErrorString(err);
-                    Console.WriteLine($"[mpv error] Command '{string.Join(" ", args)}' failed: {msg} (code {err})");
+                    Console.Error.WriteLine($"[mpv error] Command '{string.Join(" ", args)}' failed: {msg} (code {err})");
                 }
             }
         }
@@ -422,6 +488,7 @@ public sealed class MpvPlaybackEngine : IPlaybackEngine
         }
 
         _cts?.Dispose();
+        _openLock.Dispose();
         GC.SuppressFinalize(this);
     }
 }

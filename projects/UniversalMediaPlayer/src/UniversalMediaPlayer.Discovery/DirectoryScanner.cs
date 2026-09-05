@@ -25,8 +25,9 @@ public static class DirectoryScanner
         "ttf", "otf", "woff2", "ttc"
     };
 
-    public static MediaPackage Scan(string videoFilePath)
+    public static MediaPackage Scan(string videoFilePath, CancellationToken ct = default)
     {
+        ct.ThrowIfCancellationRequested();
         var primaryVideo = MediaItem.FromFilePath(videoFilePath);
         var videoDir = Path.GetDirectoryName(primaryVideo.FilePath) ?? Environment.CurrentDirectory;
         var episode = EpisodeParser.Parse(primaryVideo.FileName, new DirectoryInfo(videoDir).Name);
@@ -47,31 +48,32 @@ public static class DirectoryScanner
 
         // 1. Scan immediate parent directory
         var allFiles = Directory.GetFiles(videoDir);
-        ScanFileList(allFiles, primaryVideo, episode, true, audioTracks, subtitleTracks, siblingVideos);
+        ScanFileList(allFiles, primaryVideo, episode, true, audioTracks, subtitleTracks, siblingVideos, ct);
 
         // 2. Scan standard subfolders (Subs/, Subtitles/, Audio/, Fonts/)
         var subDirs = Directory.GetDirectories(videoDir);
         foreach (var dir in subDirs)
         {
+            ct.ThrowIfCancellationRequested();
             var dirName = Path.GetFileName(dir).ToLowerInvariant();
             if (dirName is "subs" or "subtitles" or "sub")
             {
                 var subFiles = Directory.GetFiles(dir);
-                ScanFileList(subFiles, primaryVideo, episode, false, audioTracks, subtitleTracks, siblingVideos);
+                ScanFileList(subFiles, primaryVideo, episode, false, audioTracks, subtitleTracks, siblingVideos, ct);
             }
             else if (dirName is "audio" or "sound")
             {
                 var audioFiles = Directory.GetFiles(dir);
-                ScanFileList(audioFiles, primaryVideo, episode, false, audioTracks, subtitleTracks, siblingVideos);
+                ScanFileList(audioFiles, primaryVideo, episode, false, audioTracks, subtitleTracks, siblingVideos, ct);
             }
             else if (dirName is "fonts" or "font" or "attachments")
             {
-                fontPackage = DiscoverFonts(dir);
+                fontPackage = DiscoverFonts(dir, ct);
             }
         }
 
         // Check if fonts are in parent directory fonts/ if not found in subfolder
-        fontPackage ??= DiscoverFonts(Path.Combine(videoDir, "fonts"));
+        fontPackage ??= DiscoverFonts(Path.Combine(videoDir, "fonts"), ct);
 
         return new MediaPackage
         {
@@ -91,13 +93,16 @@ public static class DirectoryScanner
         bool isSameDirectory,
         List<AudioTrack> audioTracks,
         List<SubtitleTrack> subtitleTracks,
-        List<MediaItem> siblingVideos)
+        List<MediaItem> siblingVideos,
+        CancellationToken ct)
     {
         int audioIdCounter = 100;
         int subIdCounter = 100;
 
         foreach (var file in files)
         {
+            ct.ThrowIfCancellationRequested();
+
             // Skip the primary video itself
             if (string.Equals(file, primaryVideo.FilePath, StringComparison.OrdinalIgnoreCase))
             {
@@ -162,12 +167,16 @@ public static class DirectoryScanner
         }
     }
 
-    private static FontPackage? DiscoverFonts(string fontsDir)
+    private static FontPackage? DiscoverFonts(string fontsDir, CancellationToken ct = default)
     {
         if (!Directory.Exists(fontsDir)) return null;
 
         var fontFiles = Directory.GetFiles(fontsDir)
-            .Where(f => FontExtensions.Contains(Path.GetExtension(f).TrimStart('.').ToLowerInvariant()))
+            .Where(f =>
+            {
+                ct.ThrowIfCancellationRequested();
+                return FontExtensions.Contains(Path.GetExtension(f).TrimStart('.').ToLowerInvariant());
+            })
             .Select(Path.GetFileName)
             .Where(f => !string.IsNullOrEmpty(f))
             .ToList();
