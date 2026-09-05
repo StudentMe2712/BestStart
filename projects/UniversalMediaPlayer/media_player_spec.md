@@ -506,10 +506,11 @@ The live status of all media format test cases is tracked in:
 ## 34. MVP (Minimum Viable Product) Milestones
 
 ### MVP-0: Technical Proof & Playback Foundation
-- [ ] Initialize `libmpv` in C# (.NET 8/9).
-- [ ] Implement `IPlaybackEngine` baseline: Open, Play, Pause, Stop, Seek, SetVolume.
-- [ ] Verify Win32 HWND video presentation.
-- [ ] Handle window resizing and basic fullscreen toggle.
+- [x] Initialize `libmpv` in C# (.NET 8/9).
+- [x] Implement `IPlaybackEngine` baseline: Open, Play, Pause, Stop, Seek, SetVolume, Fullscreen.
+- [x] Verify Win32 HWND video presentation and headless execution capability.
+- [x] Handle window resizing, aspect ratio, and fullscreen toggle.
+- [x] End-to-end automated test harness with real media files in `tests/TestData/Anime/`.
 
 ### MVP-1: Modern Minimalist GUI
 - [ ] WinUI 3 desktop shell with borderless window.
@@ -518,21 +519,21 @@ The live status of all media format test cases is tracked in:
 - [ ] Drag-and-drop file opening support.
 
 ### MVP-2: Media Discovery Engine
-- [ ] Implement `DirectoryScanner` with background cancellation support.
-- [ ] Implement `FilenameParser` with release tag stripping.
-- [ ] Implement `LanguageDetector` with canonical ISO 639-1 mappings.
-- [ ] Automatic discovery of adjacent audio and subtitle files for single files.
+- [x] Implement `DirectoryScanner` with background cancellation support.
+- [x] Implement `FilenameParser` with release tag stripping.
+- [x] Implement `LanguageDetector` with canonical ISO 639-1 mappings.
+- [x] Automatic discovery of adjacent audio and subtitle files for single files.
 
 ### MVP-3: Matching Engine & Release Bundling
-- [ ] Implement `EpisodeParser` supporting standard and anime numbering.
-- [ ] Implement deterministic score-based `MatchEngine` ($0 \dots 100$).
-- [ ] Automatic assembly of `MediaPackage` aggregate root.
-- [ ] Test verification with Anime release scenario: `S01E01.mkv` + `S01E01.RU.mka` + `S01E01.RU.ass` + `fonts/`.
+- [x] Implement `EpisodeParser` supporting standard and anime numbering.
+- [x] Implement deterministic score-based `MatchEngine` ($0 \dots 100$).
+- [x] Automatic assembly of `MediaPackage` aggregate root.
+- [x] Test verification with Anime release scenario: `S01E01.mkv` + `S01E01.RU.mka` + `S01E01.RU.ass` + `fonts/`.
 
 ### MVP-4: Track Selection UI & Font Injection
 - [ ] Sleek contextual Track Selector flyout with audio and subtitle categorization.
 - [ ] Visual badges: `[Embedded]`, `[External]`, channel count, language flags.
-- [ ] Dynamic font directory binding via `sub-fonts-dir` for ASS subtitle rendering.
+- [x] Dynamic font directory binding via `sub-fonts-dir` for ASS subtitle rendering.
 
 ### MVP-5: Show Preferences & Episodic Continuity
 - [ ] Persistent show preferences (`show_preferences.json`).

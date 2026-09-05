@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\UniversalMediaPlayer.Core\UniversalMediaPlayer.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Endpne.LibMPV.Windows" Version="0.41.0" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="$(NuGetPackageRoot)endpne.libmpv.windows\0.41.0\build\x64\libmpv-2.dll" Condition="Exists('$(NuGetPackageRoot)endpne.libmpv.windows\0.41.0\build\x64\libmpv-2.dll')">
+      <Link>libmpv-2.dll</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Visible>false</Visible>
+    </None>
+  </ItemGroup>
+
+</Project>
