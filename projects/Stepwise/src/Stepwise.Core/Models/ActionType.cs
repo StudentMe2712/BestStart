@@ -9,7 +9,16 @@ public enum ActionType
     RightClick,
     DoubleLeftClick,
     MiddleClick,
+    MouseDown,
+    MouseUp,
     DragAndDrop,
+    Scroll,
     KeyPress,
-    TextInput
+    TextInput,
+    Shortcut,
+    WindowActivated,
+    WindowClosed,
+    ManualStep,
+    Unknown
 }
+

@@ -1,0 +1,62 @@
+<Window x:Class="Stepwise.TestTarget.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Stepwise Test Target Application"
+        Height="450"
+        Width="500"
+        WindowStartupLocation="CenterScreen">
+    <Grid Margin="20">
+        <StackPanel Orientation="Vertical">
+            <TextBlock Text="Target Standard Input:" FontWeight="SemiBold" Margin="0,0,0,2"/>
+            <TextBox x:Name="txtStandard"
+                     AutomationProperties.AutomationId="txtStandard"
+                     AutomationProperties.Name="Standard Input"
+                     Height="28"
+                     Margin="0,0,0,12"/>
+
+            <TextBlock Text="Target Password Input:" FontWeight="SemiBold" Margin="0,0,0,2"/>
+            <PasswordBox x:Name="pwdSecure"
+                         AutomationProperties.AutomationId="pwdSecure"
+                         AutomationProperties.Name="Secure Password Input"
+                         Height="28"
+                         Margin="0,0,0,12"/>
+
+            <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                <Button x:Name="btnAction"
+                        AutomationProperties.AutomationId="btnAction"
+                        AutomationProperties.Name="Submit Action"
+                        Content="Submit Action"
+                        Padding="12,6"
+                        Margin="0,0,8,0"
+                        Click="BtnAction_Click"/>
+
+                <Button x:Name="btnSecondary"
+                        AutomationProperties.AutomationId="btnSecondary"
+                        AutomationProperties.Name="Secondary Action"
+                        Content="Secondary Action"
+                        Padding="12,6"
+                        Click="BtnSecondary_Click"/>
+            </StackPanel>
+
+            <TextBlock Text="Target Item List:" FontWeight="SemiBold" Margin="0,0,0,2"/>
+            <ListBox x:Name="lstItems"
+                     AutomationProperties.AutomationId="lstItems"
+                     AutomationProperties.Name="Items List"
+                     Height="120"
+                     Margin="0,0,0,12"
+                     SelectionChanged="LstItems_SelectionChanged">
+                <ListBoxItem Content="Target Item Alpha" />
+                <ListBoxItem Content="Target Item Beta" />
+                <ListBoxItem Content="Target Item Gamma" />
+            </ListBox>
+
+            <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                <TextBlock Text="Status: " FontWeight="SemiBold"/>
+                <TextBlock x:Name="statusText"
+                           AutomationProperties.AutomationId="statusText"
+                           Text="Ready"
+                           FontWeight="Bold"/>
+            </StackPanel>
+        </StackPanel>
+    </Grid>
+</Window>

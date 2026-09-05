@@ -6,7 +6,7 @@
       "EventType": 0,
       "VirtualKey": 65,
       "ScanCode": 30,
-      "Character": "\u0444",
+      "Character": "a",
       "IsTextInput": true,
       "IsShortcut": false
     },

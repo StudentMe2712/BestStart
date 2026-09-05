@@ -1,7 +1,7 @@
 # Stepwise — Главная архитектурная спецификация и Центр Проекта (Brain Specification)
 
-> **Статус:** В активной разработке (Срез: Шаги 1–8 сданы на 100% — Фаза 4 Этап 2: Core Event Correlation & Recording Engine сдан на 100%, 190/190 тестов PASS, Live Windows Validation PASS)  
-> **Версия спецификации:** 2.1.0 (Объединена с Master Engineering Prompt / ultraprompt.md)  
+> **Статус:** В активной разработке (Срез: Шаги 1–8 и 12 сданы на 100% — Фаза 4 Этап 3: Recording Integration & Golden GUI E2E сдан на 100%, 211/211 тестов PASS, Live GUI E2E PASS, Zero Password Leaks Verified)  
+> **Версия спецификации:** 2.2.0 (Объединена с Master Engineering Prompt / ultraprompt.md)  
 > **Платформа:** Windows 10/11 (x64 / ARM64)  
 > **Технологический стек:** C# 13, .NET 9+, WinUI 3, Windows App SDK, Microsoft UI Automation (UIA), Win32 API (CsWin32 / PInvoke), Windows.Graphics.Capture, SQLite, CommunityToolkit.Mvvm, System.Text.Json.
 
@@ -183,7 +183,7 @@ public sealed record Step(
 - [x] Создание Solution `Stepwise.sln` и проектов.
 - [x] Инициализация нативных тестов (xUnit).
 - [x] Настройка набора PowerShell-скиллов (`skills/*.ps1`) для исследования Windows UI.
-- [ ] Создание детерминированного тестового приложения `Stepwise.TestTarget`.
+- [x] Создание детерминированного тестового приложения `Stepwise.TestTarget`.
 
 ### Фаза 1: Фундамент и Технический срез (MVP 0.1)
 - [x] **Шаг 1: Архитектура Solution, базовые модели (Step, ActionType) и интерфейсы.**

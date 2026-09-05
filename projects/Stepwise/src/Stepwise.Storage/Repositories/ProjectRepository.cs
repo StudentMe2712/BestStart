@@ -31,7 +31,8 @@ public sealed class ProjectRepository : IProjectRepository
         var connectionString = new SqliteConnectionStringBuilder
         {
             DataSource = dbPath,
-            Mode = SqliteOpenMode.ReadWriteCreate
+            Mode = SqliteOpenMode.ReadWriteCreate,
+            Pooling = false
         }.ToString();
 
         _connection = new SqliteConnection(connectionString);
@@ -58,7 +59,9 @@ public sealed class ProjectRepository : IProjectRepository
         InitializeSchema();
     }
 
-    private void InitializeSchema()
+    private void InitializeSchema() => InitializeDatabase();
+
+    private void InitializeDatabase()
     {
         const string sql = @"
             CREATE TABLE IF NOT EXISTS Projects (
@@ -89,6 +92,8 @@ public sealed class ProjectRepository : IProjectRepository
                 TargetBoundingBoxY REAL,
                 TargetBoundingBoxWidth REAL,
                 TargetBoundingBoxHeight REAL,
+                TargetIsPassword INTEGER,
+                TargetFrameworkId TEXT,
                 ScreenshotRelativePath TEXT,
                 Title TEXT,
                 Description TEXT,
@@ -101,6 +106,28 @@ public sealed class ProjectRepository : IProjectRepository
         using var cmd = _connection.CreateCommand();
         cmd.CommandText = sql;
         cmd.ExecuteNonQuery();
+
+        try
+        {
+            using var alterCmd = _connection.CreateCommand();
+            alterCmd.CommandText = "ALTER TABLE Steps ADD COLUMN TargetIsPassword INTEGER;";
+            alterCmd.ExecuteNonQuery();
+        }
+        catch (SqliteException)
+        {
+            // Колонка уже существует
+        }
+
+        try
+        {
+            using var alterCmd = _connection.CreateCommand();
+            alterCmd.CommandText = "ALTER TABLE Steps ADD COLUMN TargetFrameworkId TEXT;";
+            alterCmd.ExecuteNonQuery();
+        }
+        catch (SqliteException)
+        {
+            // Колонка уже существует
+        }
     }
 
     public Project CreateProject(string projectName, string? description = null)
@@ -144,6 +171,7 @@ public sealed class ProjectRepository : IProjectRepository
                     TargetName, TargetControlType, TargetAutomationId, TargetClassName,
                     TargetProcessName, TargetProcessId, TargetWindowTitle, TargetWindowHandle,
                     TargetBoundingBoxX, TargetBoundingBoxY, TargetBoundingBoxWidth, TargetBoundingBoxHeight,
+                    TargetIsPassword, TargetFrameworkId,
                     ScreenshotRelativePath, Title, Description, MetadataJson
                 )
                 VALUES (
@@ -151,6 +179,7 @@ public sealed class ProjectRepository : IProjectRepository
                     $targetName, $targetControlType, $targetAutomationId, $targetClassName,
                     $targetProcessName, $targetProcessId, $targetWindowTitle, $targetWindowHandle,
                     $targetBbX, $targetBbY, $targetBbW, $targetBbH,
+                    $targetIsPassword, $targetFrameworkId,
                     $screenshotPath, $title, $description, $metadataJson
                 );
             ";
@@ -179,6 +208,9 @@ public sealed class ProjectRepository : IProjectRepository
             cmd.Parameters.AddWithValue("$targetBbY", bb.Y);
             cmd.Parameters.AddWithValue("$targetBbW", bb.Width);
             cmd.Parameters.AddWithValue("$targetBbH", bb.Height);
+
+            cmd.Parameters.AddWithValue("$targetIsPassword", el.IsPassword ? 1 : 0);
+            cmd.Parameters.AddWithValue("$targetFrameworkId", (object?)el.FrameworkId ?? DBNull.Value);
 
             cmd.Parameters.AddWithValue("$screenshotPath", (object?)step.ScreenshotPath ?? DBNull.Value);
             cmd.Parameters.AddWithValue("$title", (object?)step.Title ?? DBNull.Value);
@@ -286,6 +318,22 @@ public sealed class ProjectRepository : IProjectRepository
             var bbW = reader.GetDouble(reader.GetOrdinal("TargetBoundingBoxWidth"));
             var bbH = reader.GetDouble(reader.GetOrdinal("TargetBoundingBoxHeight"));
 
+            bool isPassword = false;
+            try
+            {
+                var isPasswordOrdinal = reader.GetOrdinal("TargetIsPassword");
+                isPassword = !reader.IsDBNull(isPasswordOrdinal) && reader.GetInt32(isPasswordOrdinal) == 1;
+            }
+            catch (IndexOutOfRangeException) { }
+
+            string frameworkId = "Unknown";
+            try
+            {
+                var frameworkIdOrdinal = reader.GetOrdinal("TargetFrameworkId");
+                frameworkId = reader.IsDBNull(frameworkIdOrdinal) ? "Unknown" : reader.GetString(frameworkIdOrdinal);
+            }
+            catch (IndexOutOfRangeException) { }
+
             var screenshotPath = reader.IsDBNull(reader.GetOrdinal("ScreenshotRelativePath")) ? null : reader.GetString(reader.GetOrdinal("ScreenshotRelativePath"));
             var title = reader.IsDBNull(reader.GetOrdinal("Title")) ? null : reader.GetString(reader.GetOrdinal("Title"));
             var description = reader.IsDBNull(reader.GetOrdinal("Description")) ? null : reader.GetString(reader.GetOrdinal("Description"));
@@ -306,7 +354,9 @@ public sealed class ProjectRepository : IProjectRepository
                 ProcessId: targetProcessId,
                 WindowTitle: targetWindowTitle,
                 WindowHandle: targetWindowHandle,
-                BoundingRectangle: new BoundingBox(bbX, bbY, bbW, bbH)
+                BoundingRectangle: new BoundingBox(bbX, bbY, bbW, bbH),
+                FrameworkId: frameworkId,
+                IsPassword: isPassword
             );
 
             var step = new Step(
@@ -341,6 +391,7 @@ public sealed class ProjectRepository : IProjectRepository
         if (_ownsConnection)
         {
             _connection.Dispose();
+            SqliteConnection.ClearPool(_connection);
         }
     }
 }

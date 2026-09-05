@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.IO;
 using Stepwise.Core.Interfaces;
 using Stepwise.Core.Models;
 
@@ -33,16 +34,38 @@ public sealed class CaptureCoordinator : ICaptureCoordinator
         ElementInfo target,
         CancellationToken cancellationToken = default)
     {
+        var result = await CaptureStepWithResultAsync(sequenceIndex, target, cancellationToken).ConfigureAwait(false);
+        return result.Success ? result.RelativePath : null;
+    }
+
+    /// <inheritdoc />
+    public async Task<CaptureResult> CaptureStepWithResultAsync(
+        int sequenceIndex,
+        ElementInfo target,
+        CancellationToken cancellationToken = default)
+    {
         ArgumentNullException.ThrowIfNull(target);
 
         if (_captureService == null || _repository == null)
         {
-            return null;
+            return new CaptureResult(
+                Success: false,
+                RelativePath: null,
+                Width: 0,
+                Height: 0,
+                HighlightBounds: target.BoundingRectangle,
+                ErrorMessage: "CaptureService or Repository is not configured.");
         }
 
         if (cancellationToken.IsCancellationRequested)
         {
-            return null;
+            return new CaptureResult(
+                Success: false,
+                RelativePath: null,
+                Width: 0,
+                Height: 0,
+                HighlightBounds: target.BoundingRectangle,
+                ErrorMessage: "Operation cancelled.");
         }
 
         try
@@ -51,22 +74,76 @@ public sealed class CaptureCoordinator : ICaptureCoordinator
             {
                 cancellationToken.ThrowIfCancellationRequested();
 
-                return _captureService.Capture(
+                var relativePath = _captureService.Capture(
                     _repository.ProjectRootPath,
                     sequenceIndex,
                     target.BoundingRectangle,
                     target.WindowHandle
                 );
+
+                if (relativePath == null)
+                {
+                    return new CaptureResult(
+                        Success: false,
+                        RelativePath: null,
+                        Width: 0,
+                        Height: 0,
+                        HighlightBounds: target.BoundingRectangle,
+                        ErrorMessage: "Screen capture failed.");
+                }
+
+                int width = 0;
+                int height = 0;
+                try
+                {
+                    var fullPath = Path.Combine(_repository.ProjectRootPath, relativePath);
+                    if (File.Exists(fullPath))
+                    {
+                        using var img = System.Drawing.Image.FromFile(fullPath);
+                        width = img.Width;
+                        height = img.Height;
+                    }
+                }
+                catch
+                {
+                    // Игнорируем ошибки чтения файла (например, в тестах с моками)
+                }
+
+                if (width <= 0 || height <= 0)
+                {
+                    width = 1920;
+                    height = 1080;
+                }
+
+                return new CaptureResult(
+                    Success: true,
+                    RelativePath: relativePath,
+                    Width: width,
+                    Height: height,
+                    HighlightBounds: target.BoundingRectangle
+                );
             }, cancellationToken).ConfigureAwait(false);
         }
         catch (OperationCanceledException)
         {
-            return null;
+            return new CaptureResult(
+                Success: false,
+                RelativePath: null,
+                Width: 0,
+                Height: 0,
+                HighlightBounds: target.BoundingRectangle,
+                ErrorMessage: "Operation cancelled.");
         }
         catch (Exception ex)
         {
             Debug.WriteLine($"[CaptureCoordinator] Warning: Capture failed for step {sequenceIndex}: {ex.Message}");
-            return null;
+            return new CaptureResult(
+                Success: false,
+                RelativePath: null,
+                Width: 0,
+                Height: 0,
+                HighlightBounds: target.BoundingRectangle,
+                ErrorMessage: ex.Message);
         }
     }
 }

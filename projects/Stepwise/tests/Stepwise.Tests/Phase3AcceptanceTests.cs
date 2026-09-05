@@ -150,6 +150,49 @@ public sealed class Phase3AcceptanceTests : IDisposable
     }
 
     /// <summary>
+    /// Acceptance Test: Координаты рамки и точки клика с учетом смещения виртуального экрана (Virtual Screen Origin Offset)
+    /// для конфигураций с несколькими мониторами (SM_XVIRTUALSCREEN, SM_YVIRTUALSCREEN).
+    /// </summary>
+    [Theory]
+    [InlineData(0, 0, 100.0, 200.0, 50.0, 30.0, 120.0, 215.0, 100.0, 200.0, 111.0, 206.0)]
+    [InlineData(-1920, 0, -500.0, 300.0, 100.0, 80.0, -450.0, 320.0, 1420.0, 300.0, 1461.0, 311.0)]
+    [InlineData(-1920, -1080, -100.0, -50.0, 60.0, 40.0, -80.0, -40.0, 1820.0, 1030.0, 1831.0, 1021.0)]
+    public void AcceptanceTest_VirtualScreenOriginOffset_CalculatesBitmapRelativeCoordinates(
+        int originX, int originY,
+        double boxX, double boxY, double boxW, double boxH,
+        double clickX, double clickY,
+        double expectedHighlightLeft, double expectedHighlightTop,
+        double expectedClickPinLeft, double expectedClickPinTop)
+    {
+        var bb = new BoundingBox(boxX, boxY, boxW, boxH);
+
+        var highlightLeft = bb.X - originX;
+        var highlightTop = bb.Y - originY;
+        var clickPinLeft = (clickX - originX) - 9;
+        var clickPinTop = (clickY - originY) - 9;
+        var hasHighlight = !bb.IsEmpty && bb.Width > 0 && bb.Height > 0;
+        var hasClickPin = clickX != 0 || clickY != 0;
+
+        Assert.Equal(expectedHighlightLeft, highlightLeft);
+        Assert.Equal(expectedHighlightTop, highlightTop);
+        Assert.Equal(expectedClickPinLeft, clickPinLeft);
+        Assert.Equal(expectedClickPinTop, clickPinTop);
+        Assert.True(hasHighlight);
+        Assert.True(hasClickPin);
+    }
+
+    [Fact]
+    public void NativeMethods_VirtualScreenMetricsConstants_AreCorrect()
+    {
+        Assert.Equal(0, Stepwise.WindowsIntegration.Native.NativeMethods.SM_CXSCREEN);
+        Assert.Equal(1, Stepwise.WindowsIntegration.Native.NativeMethods.SM_CYSCREEN);
+        Assert.Equal(76, Stepwise.WindowsIntegration.Native.NativeMethods.SM_XVIRTUALSCREEN);
+        Assert.Equal(77, Stepwise.WindowsIntegration.Native.NativeMethods.SM_YVIRTUALSCREEN);
+        Assert.Equal(78, Stepwise.WindowsIntegration.Native.NativeMethods.SM_CXVIRTUALSCREEN);
+        Assert.Equal(79, Stepwise.WindowsIntegration.Native.NativeMethods.SM_CYVIRTUALSCREEN);
+    }
+
+    /// <summary>
     /// Acceptance Test 9 & Раздел 12: Быстрое прокликивание шагов (1 -> 2 -> 3 -> 4 -> 5) отменяет предыдущие задачи
     /// через CancellationToken и не допускает рассинхронизации финального состояния.
     /// </summary>

@@ -344,6 +344,17 @@ public sealed class RecordingEngine : IRecordingEngine
 
                     // 2. Применение политики записи и фильтрации
                     var decision = _policy.Evaluate(action, target);
+
+                    // 2.1 Маскирование чувствительных данных (паролей) в памяти перед любой дальнейшей обработкой
+                    if (target.IsPassword || decision == RecordingPolicyDecision.Mask || decision == RecordingPolicyDecision.Suppress)
+                    {
+                        action = action with
+                        {
+                            Text = "••••••••",
+                            IsSensitive = true
+                        };
+                    }
+
                     if (decision == RecordingPolicyDecision.Suppress)
                     {
                         continue;

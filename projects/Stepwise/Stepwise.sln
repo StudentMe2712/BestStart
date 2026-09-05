@@ -17,6 +17,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Stepwise.Tests", "tests\Ste
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Stepwise.Storage", "src\Stepwise.Storage\Stepwise.Storage.csproj", "{0E5C7535-7705-4035-AF3D-D7B7643E81DA}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Stepwise.TestTarget", "tests\Stepwise.TestTarget\Stepwise.TestTarget.csproj", "{770830B9-4C16-4D38-8631-437E90C6B130}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -87,6 +89,18 @@ Global
 		{0E5C7535-7705-4035-AF3D-D7B7643E81DA}.Release|x64.Build.0 = Release|Any CPU
 		{0E5C7535-7705-4035-AF3D-D7B7643E81DA}.Release|x86.ActiveCfg = Release|Any CPU
 		{0E5C7535-7705-4035-AF3D-D7B7643E81DA}.Release|x86.Build.0 = Release|Any CPU
+		{770830B9-4C16-4D38-8631-437E90C6B130}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{770830B9-4C16-4D38-8631-437E90C6B130}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{770830B9-4C16-4D38-8631-437E90C6B130}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{770830B9-4C16-4D38-8631-437E90C6B130}.Debug|x64.Build.0 = Debug|Any CPU
+		{770830B9-4C16-4D38-8631-437E90C6B130}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{770830B9-4C16-4D38-8631-437E90C6B130}.Debug|x86.Build.0 = Debug|Any CPU
+		{770830B9-4C16-4D38-8631-437E90C6B130}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{770830B9-4C16-4D38-8631-437E90C6B130}.Release|Any CPU.Build.0 = Release|Any CPU
+		{770830B9-4C16-4D38-8631-437E90C6B130}.Release|x64.ActiveCfg = Release|Any CPU
+		{770830B9-4C16-4D38-8631-437E90C6B130}.Release|x64.Build.0 = Release|Any CPU
+		{770830B9-4C16-4D38-8631-437E90C6B130}.Release|x86.ActiveCfg = Release|Any CPU
+		{770830B9-4C16-4D38-8631-437E90C6B130}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -97,5 +111,6 @@ Global
 		{76C02CCD-52F1-4123-9DB7-83365E1F2A8F} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 		{5C5135F6-9651-4C70-9D28-6D04E8719521} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
 		{0E5C7535-7705-4035-AF3D-D7B7643E81DA} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
+		{770830B9-4C16-4D38-8631-437E90C6B130} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
 	EndGlobalSection
 EndGlobal

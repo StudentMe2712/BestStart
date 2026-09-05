@@ -40,7 +40,11 @@
                     </StackPanel>
 
                     <CommandBar Grid.Column="1" DefaultLabelPosition="Collapsed" Background="Transparent">
-                        <AppBarButton Label="Удалить шаг" Command="{x:Bind ViewModel.DeleteStepCommand}" ToolTipService.ToolTip="Удалить выбранный шаг (Del)">
+                        <AppBarButton
+                            AutomationProperties.AutomationId="BtnDeleteStep"
+                            Label="Удалить шаг"
+                            Command="{x:Bind ViewModel.DeleteStepCommand}"
+                            ToolTipService.ToolTip="Удалить выбранный шаг (Del)">
                             <AppBarButton.Icon>
                                 <SymbolIcon Symbol="Delete" />
                             </AppBarButton.Icon>
@@ -51,6 +55,8 @@
                 <!-- Steps ListView -->
                 <ListView
                     x:Name="StepsListView"
+                    AutomationProperties.AutomationId="StepsListView"
+                    AutomationProperties.Name="Steps List"
                     Grid.Row="1"
                     Padding="12,8"
                     ItemsSource="{x:Bind ViewModel.Steps}"
@@ -150,9 +156,21 @@
                     </StackPanel>
 
                     <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                        <ToggleButton Content="Подсветка" IsChecked="{x:Bind ViewModel.ShowHighlightOverlay, Mode=TwoWay}" ToolTipService.ToolTip="Переключить рамку целевого элемента" />
-                        <Button Content="Назад" Command="{x:Bind ViewModel.SelectPreviousStepCommand}" ToolTipService.ToolTip="Предыдущий шаг" />
-                        <Button Content="Вперед" Command="{x:Bind ViewModel.SelectNextStepCommand}" ToolTipService.ToolTip="Следующий шаг" />
+                        <ToggleButton
+                            AutomationProperties.AutomationId="BtnToggleHighlight"
+                            Content="Подсветка"
+                            IsChecked="{x:Bind ViewModel.ShowHighlightOverlay, Mode=TwoWay}"
+                            ToolTipService.ToolTip="Переключить рамку целевого элемента" />
+                        <Button
+                            AutomationProperties.AutomationId="BtnPreviousStep"
+                            Content="Назад"
+                            Command="{x:Bind ViewModel.SelectPreviousStepCommand}"
+                            ToolTipService.ToolTip="Предыдущий шаг" />
+                        <Button
+                            AutomationProperties.AutomationId="BtnNextStep"
+                            Content="Вперед"
+                            Command="{x:Bind ViewModel.SelectNextStepCommand}"
+                            ToolTipService.ToolTip="Следующий шаг" />
                     </StackPanel>
                 </Grid>
             </Border>
@@ -195,7 +213,11 @@
                         <FontIcon Glyph="&#xEB9F;" FontSize="40" Foreground="#EF4444" HorizontalAlignment="Center" />
                         <TextBlock Text="Скриншот недоступен" FontSize="16" FontWeight="SemiBold" HorizontalAlignment="Center" />
                         <TextBlock Text="{x:Bind ViewModel.PreviewErrorMessage, Mode=OneWay}" FontSize="13" Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextWrapping="Wrap" HorizontalAlignment="Center" TextAlignment="Center" />
-                        <Button Content="Повторить" Command="{x:Bind ViewModel.RetryLoadPreviewCommand}" HorizontalAlignment="Center" />
+                        <Button
+                            AutomationProperties.AutomationId="BtnRetryPreview"
+                            Content="Повторить"
+                            Command="{x:Bind ViewModel.RetryLoadPreviewCommand}"
+                            HorizontalAlignment="Center" />
                     </StackPanel>
                 </Border>
 
@@ -253,13 +275,19 @@
                     <!-- Title Field -->
                     <StackPanel Spacing="6">
                         <TextBlock Text="Заголовок шага" FontSize="12" FontWeight="SemiBold" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                        <TextBox Text="{x:Bind ViewModel.CurrentStepTitle, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" PlaceholderText="Введите заголовок шага..." />
+                        <TextBox
+                            AutomationProperties.AutomationId="TxtStepTitle"
+                            AutomationProperties.Name="Step Title"
+                            Text="{x:Bind ViewModel.CurrentStepTitle, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                            PlaceholderText="Введите заголовок шага..." />
                     </StackPanel>
 
                     <!-- Description Field -->
                     <StackPanel Spacing="6">
                         <TextBlock Text="Описание / Инструкции" FontSize="12" FontWeight="SemiBold" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                         <TextBox
+                            AutomationProperties.AutomationId="TxtStepDescription"
+                            AutomationProperties.Name="Step Description"
                             Text="{x:Bind ViewModel.CurrentStepDescription, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                             AcceptsReturn="True"
                             TextWrapping="Wrap"
@@ -287,55 +315,108 @@
                                 <!-- Control Type -->
                                 <Grid>
                                     <TextBlock Text="Тип контрола:" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                                    <TextBlock Text="{x:Bind ViewModel.TargetControlType, Mode=OneWay}" FontSize="12" FontWeight="SemiBold" HorizontalAlignment="Right" />
+                                    <TextBlock
+                                        AutomationProperties.AutomationId="TxtTargetControlType"
+                                        Text="{x:Bind ViewModel.TargetControlType, Mode=OneWay}"
+                                        FontSize="12"
+                                        FontWeight="SemiBold"
+                                        HorizontalAlignment="Right" />
                                 </Grid>
 
                                 <!-- Element Name -->
                                 <Grid>
                                     <TextBlock Text="Имя элемента:" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                                    <TextBlock Text="{x:Bind ViewModel.TargetElementName, Mode=OneWay}" FontSize="12" FontWeight="SemiBold" HorizontalAlignment="Right" TextTrimming="CharacterEllipsis" MaxWidth="190" />
+                                    <TextBlock
+                                        AutomationProperties.AutomationId="TxtTargetElementName"
+                                        Text="{x:Bind ViewModel.TargetElementName, Mode=OneWay}"
+                                        FontSize="12"
+                                        FontWeight="SemiBold"
+                                        HorizontalAlignment="Right"
+                                        TextTrimming="CharacterEllipsis"
+                                        MaxWidth="190" />
                                 </Grid>
 
                                 <!-- AutomationId -->
                                 <Grid>
                                     <TextBlock Text="Automation ID:" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                                    <TextBlock Text="{x:Bind ViewModel.TargetAutomationId, Mode=OneWay}" FontSize="12" FontFamily="Consolas" HorizontalAlignment="Right" TextTrimming="CharacterEllipsis" MaxWidth="190" />
+                                    <TextBlock
+                                        AutomationProperties.AutomationId="TxtTargetAutomationId"
+                                        Text="{x:Bind ViewModel.TargetAutomationId, Mode=OneWay}"
+                                        FontSize="12"
+                                        FontFamily="Consolas"
+                                        HorizontalAlignment="Right"
+                                        TextTrimming="CharacterEllipsis"
+                                        MaxWidth="190" />
                                 </Grid>
 
                                 <!-- Class Name -->
                                 <Grid>
                                     <TextBlock Text="Class Name:" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                                    <TextBlock Text="{x:Bind ViewModel.TargetClassName, Mode=OneWay}" FontSize="11" FontFamily="Consolas" HorizontalAlignment="Right" TextTrimming="CharacterEllipsis" MaxWidth="190" />
+                                    <TextBlock
+                                        AutomationProperties.AutomationId="TxtTargetClassName"
+                                        Text="{x:Bind ViewModel.TargetClassName, Mode=OneWay}"
+                                        FontSize="11"
+                                        FontFamily="Consolas"
+                                        HorizontalAlignment="Right"
+                                        TextTrimming="CharacterEllipsis"
+                                        MaxWidth="190" />
                                 </Grid>
 
                                 <!-- Process Name & PID -->
                                 <Grid>
                                     <TextBlock Text="Процесс:" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                                    <TextBlock Text="{x:Bind ViewModel.ProcessInfoText, Mode=OneWay}" FontSize="12" HorizontalAlignment="Right" TextTrimming="CharacterEllipsis" MaxWidth="190" />
+                                    <TextBlock
+                                        AutomationProperties.AutomationId="TxtProcessInfo"
+                                        Text="{x:Bind ViewModel.ProcessInfoText, Mode=OneWay}"
+                                        FontSize="12"
+                                        HorizontalAlignment="Right"
+                                        TextTrimming="CharacterEllipsis"
+                                        MaxWidth="190" />
                                 </Grid>
 
                                 <!-- Window Title -->
                                 <Grid>
                                     <TextBlock Text="Заголовок окна:" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                                    <TextBlock Text="{x:Bind ViewModel.TargetWindowTitle, Mode=OneWay}" FontSize="12" HorizontalAlignment="Right" TextTrimming="CharacterEllipsis" MaxWidth="190" />
+                                    <TextBlock
+                                        AutomationProperties.AutomationId="TxtTargetWindowTitle"
+                                        Text="{x:Bind ViewModel.TargetWindowTitle, Mode=OneWay}"
+                                        FontSize="12"
+                                        HorizontalAlignment="Right"
+                                        TextTrimming="CharacterEllipsis"
+                                        MaxWidth="190" />
                                 </Grid>
 
                                 <!-- Window Handle -->
                                 <Grid>
                                     <TextBlock Text="HWND:" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                                    <TextBlock Text="{x:Bind ViewModel.WindowHandleText, Mode=OneWay}" FontSize="11" FontFamily="Consolas" HorizontalAlignment="Right" />
+                                    <TextBlock
+                                        AutomationProperties.AutomationId="TxtWindowHandle"
+                                        Text="{x:Bind ViewModel.WindowHandleText, Mode=OneWay}"
+                                        FontSize="11"
+                                        FontFamily="Consolas"
+                                        HorizontalAlignment="Right" />
                                 </Grid>
 
                                 <!-- Coordinates & Bounding Box -->
                                 <Grid>
                                     <TextBlock Text="Bounding Box:" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                                    <TextBlock Text="{x:Bind ViewModel.BoundingBoxText, Mode=OneWay}" FontSize="11" FontFamily="Consolas" HorizontalAlignment="Right" />
+                                    <TextBlock
+                                        AutomationProperties.AutomationId="TxtBoundingBox"
+                                        Text="{x:Bind ViewModel.BoundingBoxText, Mode=OneWay}"
+                                        FontSize="11"
+                                        FontFamily="Consolas"
+                                        HorizontalAlignment="Right" />
                                 </Grid>
 
                                 <!-- Click Point -->
                                 <Grid>
                                     <TextBlock Text="Точка клика:" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                                    <TextBlock Text="{x:Bind ViewModel.ClickPointText, Mode=OneWay}" FontSize="11" FontFamily="Consolas" HorizontalAlignment="Right" />
+                                    <TextBlock
+                                        AutomationProperties.AutomationId="TxtClickPoint"
+                                        Text="{x:Bind ViewModel.ClickPointText, Mode=OneWay}"
+                                        FontSize="11"
+                                        FontFamily="Consolas"
+                                        HorizontalAlignment="Right" />
                                 </Grid>
                             </StackPanel>
                         </Border>

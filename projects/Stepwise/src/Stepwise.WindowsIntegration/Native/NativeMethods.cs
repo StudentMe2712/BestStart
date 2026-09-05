@@ -25,8 +25,14 @@ internal static class NativeMethods
     public const int WM_MOUSEHWHEEL = 0x020E;
     public const int WM_QUIT = 0x0012;
 
+    public const int SM_CXSCREEN = 0;
+    public const int SM_CYSCREEN = 1;
     public const int SM_CXDOUBLECLK = 36;
     public const int SM_CYDOUBLECLK = 37;
+    public const int SM_XVIRTUALSCREEN = 76;
+    public const int SM_YVIRTUALSCREEN = 77;
+    public const int SM_CXVIRTUALSCREEN = 78;
+    public const int SM_CYVIRTUALSCREEN = 79;
 
     public const uint GA_PARENT = 1;
     public const uint GA_ROOT = 2;

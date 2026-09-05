@@ -2,6 +2,7 @@ using System;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -67,6 +68,30 @@ public sealed partial class EditorViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     private double _screenshotNaturalHeight = 1080;
 
+    private const int SM_XVIRTUALSCREEN = 76;
+    private const int SM_YVIRTUALSCREEN = 77;
+
+    [DllImport("user32.dll")]
+    private static extern int GetSystemMetrics(int nIndex);
+
+    private static int TryGetSystemMetric(int nIndex)
+    {
+        try
+        {
+            return GetSystemMetrics(nIndex);
+        }
+        catch
+        {
+            return 0;
+        }
+    }
+
+    [ObservableProperty]
+    private int _virtualScreenOriginX = TryGetSystemMetric(SM_XVIRTUALSCREEN);
+
+    [ObservableProperty]
+    private int _virtualScreenOriginY = TryGetSystemMetric(SM_YVIRTUALSCREEN);
+
     // UI Visibilities
     public Visibility EmptyStateVisibility => (!HasSelectedStep || !HasSteps) ? Visibility.Visible : Visibility.Collapsed;
     public Visibility PreviewLoadingVisibility => IsPreviewLoading ? Visibility.Visible : Visibility.Collapsed;
@@ -76,16 +101,16 @@ public sealed partial class EditorViewModel : ObservableObject, IDisposable
     public Visibility HighlightVisibility => HasHighlight ? Visibility.Visible : Visibility.Collapsed;
     public Visibility ClickPinVisibility => HasClickPin ? Visibility.Visible : Visibility.Collapsed;
 
-    // Overlay Coordinates
-    public double HighlightLeft => SelectedStep?.BoundingRectangle.X ?? 0;
-    public double HighlightTop => SelectedStep?.BoundingRectangle.Y ?? 0;
+    // Overlay Coordinates (offset by VirtualScreenOrigin for multi-monitor alignment)
+    public double HighlightLeft => SelectedStep != null ? (SelectedStep.BoundingRectangle.X - VirtualScreenOriginX) : 0;
+    public double HighlightTop => SelectedStep != null ? (SelectedStep.BoundingRectangle.Y - VirtualScreenOriginY) : 0;
     public double HighlightWidth => SelectedStep?.BoundingRectangle.Width ?? 0;
     public double HighlightHeight => SelectedStep?.BoundingRectangle.Height ?? 0;
     public bool HasHighlight => (ShowHighlightOverlay == true) && SelectedStep != null && SelectedStep.BoundingRectangle.Width > 0 && SelectedStep.BoundingRectangle.Height > 0;
 
-    public double ClickPinLeft => (SelectedStep?.ClickX ?? 0) - 9;
-    public double ClickPinTop => (SelectedStep?.ClickY ?? 0) - 9;
-    public bool HasClickPin => (ShowHighlightOverlay == true) && SelectedStep != null && (SelectedStep.ClickX > 0 || SelectedStep.ClickY > 0);
+    public double ClickPinLeft => SelectedStep != null ? (SelectedStep.ClickX - VirtualScreenOriginX) - 9 : -9;
+    public double ClickPinTop => SelectedStep != null ? (SelectedStep.ClickY - VirtualScreenOriginY) - 9 : -9;
+    public bool HasClickPin => (ShowHighlightOverlay == true) && SelectedStep != null && (SelectedStep.ClickX != 0 || SelectedStep.ClickY != 0);
 
     // Selected Step Binding Properties
     public string SelectedStepTitle => SelectedStep?.Title ?? "Шаг не выбран";
@@ -215,6 +240,22 @@ public sealed partial class EditorViewModel : ObservableObject, IDisposable
         NotifyOverlayChanged();
     }
 
+    partial void OnVirtualScreenOriginXChanged(int value)
+    {
+        NotifyOverlayChanged();
+    }
+
+    partial void OnVirtualScreenOriginYChanged(int value)
+    {
+        NotifyOverlayChanged();
+    }
+
+    public void RefreshVirtualScreenOrigin()
+    {
+        VirtualScreenOriginX = TryGetSystemMetric(SM_XVIRTUALSCREEN);
+        VirtualScreenOriginY = TryGetSystemMetric(SM_YVIRTUALSCREEN);
+    }
+
     private void NotifyOverlayChanged()
     {
         OnPropertyChanged(nameof(HighlightLeft));
@@ -306,8 +347,13 @@ public sealed partial class EditorViewModel : ObservableObject, IDisposable
 
     public async Task InitializeDefaultProjectAsync()
     {
-        var appDataDir = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-        var defaultPath = Path.Combine(appDataDir, "Stepwise", "DefaultProject");
+        var defaultPath = !string.IsNullOrWhiteSpace(_repository?.ProjectRootPath)
+            ? _repository.ProjectRootPath
+            : Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "Stepwise",
+                "DefaultProject"
+            );
 
         await LoadProjectAsync(defaultPath);
     }

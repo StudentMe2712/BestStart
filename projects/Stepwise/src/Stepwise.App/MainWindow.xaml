@@ -37,6 +37,7 @@
 
             <!-- Recording Controls Toolbar -->
             <StackPanel Grid.Column="1"
+                        AutomationProperties.AutomationId="RecordingToolbar"
                         Orientation="Horizontal"
                         HorizontalAlignment="Center"
                         VerticalAlignment="Center"
@@ -44,6 +45,8 @@
 
                 <!-- Start Recording Button -->
                 <Button Command="{x:Bind ViewModel.StartRecordingCommand, Mode=OneWay}"
+                        AutomationProperties.AutomationId="BtnStartRecording"
+                        AutomationProperties.Name="Start Recording"
                         ToolTipService.ToolTip="Начать запись действий"
                         Padding="12,5"
                         CornerRadius="6"
@@ -56,6 +59,8 @@
 
                 <!-- Pause Recording Button -->
                 <Button Command="{x:Bind ViewModel.PauseRecordingCommand, Mode=OneWay}"
+                        AutomationProperties.AutomationId="BtnPauseRecording"
+                        AutomationProperties.Name="Pause Recording"
                         ToolTipService.ToolTip="Приостановить запись"
                         Padding="10,5"
                         CornerRadius="6"
@@ -68,6 +73,8 @@
 
                 <!-- Resume Recording Button -->
                 <Button Command="{x:Bind ViewModel.ResumeRecordingCommand, Mode=OneWay}"
+                        AutomationProperties.AutomationId="BtnResumeRecording"
+                        AutomationProperties.Name="Resume Recording"
                         ToolTipService.ToolTip="Продолжить запись"
                         Padding="10,5"
                         CornerRadius="6"
@@ -80,6 +87,8 @@
 
                 <!-- Stop Recording Button -->
                 <Button Command="{x:Bind ViewModel.StopRecordingCommand, Mode=OneWay}"
+                        AutomationProperties.AutomationId="BtnStopRecording"
+                        AutomationProperties.Name="Stop Recording"
                         ToolTipService.ToolTip="Остановить и завершить запись"
                         Padding="10,5"
                         CornerRadius="6"
@@ -102,7 +111,8 @@
                     Padding="10,4">
                 <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
                     <Ellipse Width="8" Height="8" Fill="{x:Bind ViewModel.RecordingStateBrush, Mode=OneWay}" VerticalAlignment="Center" />
-                    <TextBlock Text="{x:Bind ViewModel.RecordingStatusText, Mode=OneWay}"
+                    <TextBlock AutomationProperties.AutomationId="BadgeRecordingStatus"
+                               Text="{x:Bind ViewModel.RecordingStatusText, Mode=OneWay}"
                                FontSize="12"
                                FontWeight="SemiBold"
                                Foreground="{ThemeResource TextFillColorPrimaryBrush}"
@@ -114,25 +124,26 @@
         <!-- Shell Navigation View -->
         <NavigationView
             x:Name="NavView"
+            AutomationProperties.AutomationId="ShellNavView"
             Grid.Row="1"
             PaneDisplayMode="LeftCompact"
             IsBackButtonVisible="Collapsed"
             IsSettingsVisible="False"
             SelectionChanged="NavView_SelectionChanged">
             <NavigationView.MenuItems>
-                <NavigationViewItem Content="Редактор" Tag="Editor">
+                <NavigationViewItem Content="Редактор" Tag="Editor" AutomationProperties.AutomationId="NavEditor">
                     <NavigationViewItem.Icon>
                         <SymbolIcon Symbol="Edit" />
                     </NavigationViewItem.Icon>
                 </NavigationViewItem>
-                <NavigationViewItem Content="Запись" Tag="Record">
+                <NavigationViewItem Content="Запись" Tag="Record" AutomationProperties.AutomationId="NavRecord">
                     <NavigationViewItem.Icon>
                         <SymbolIcon Symbol="Video" />
                     </NavigationViewItem.Icon>
                 </NavigationViewItem>
             </NavigationView.MenuItems>
 
-            <Frame x:Name="ContentFrame" />
+            <Frame x:Name="ContentFrame" AutomationProperties.AutomationId="MainContentFrame" />
         </NavigationView>
     </Grid>
 </Window>

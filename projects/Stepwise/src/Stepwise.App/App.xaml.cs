@@ -35,12 +35,30 @@ public partial class App : Application
         // Сервисы загрузки изображений (Разделы 12-13 specs/spec.md)
         services.AddSingleton<IImageLoaderService, ImageLoaderService>();
 
-        // Локальное SQLite хранилище
-        var defaultProjectRoot = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "Stepwise",
-            "DefaultProject"
-        );
+        // Локальное SQLite хранилище с поддержкой изоляции проекта (Раздел 18.14 specs/spec.md)
+        string? projectDir = Environment.GetEnvironmentVariable("STEPWISE_PROJECT_DIR");
+        var args = Environment.GetCommandLineArgs();
+        for (int i = 0; i < args.Length; i++)
+        {
+            if (string.Equals(args[i], "--project", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length)
+            {
+                projectDir = args[i + 1];
+                break;
+            }
+            if (args[i].StartsWith("--project=", StringComparison.OrdinalIgnoreCase))
+            {
+                projectDir = args[i].Substring("--project=".Length);
+                break;
+            }
+        }
+
+        var defaultProjectRoot = !string.IsNullOrWhiteSpace(projectDir)
+            ? Path.GetFullPath(projectDir)
+            : Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "Stepwise",
+                "DefaultProject"
+            );
         services.AddSingleton<IProjectRepository>(sp => new ProjectRepository(defaultProjectRoot));
 
         // Системные службы Windows Integration
