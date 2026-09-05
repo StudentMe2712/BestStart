@@ -1,0 +1,143 @@
+# Universal Media Player — Media Compatibility Test Matrix
+
+This test matrix defines the format verification standards, target playback engines, validation metrics, and current validation status for Universal Media Player across modern, legacy, exotic, and problematic media samples.
+
+---
+
+## 1. Validation Criteria
+
+Each media format sample must be validated against the following criteria:
+
+| Criterion | Code | Description |
+| :--- | :--- | :--- |
+| **Open** | `OPN` | Container parsed and stream info discovered in < 150 ms |
+| **Playback** | `PLY` | Real-time decoding without frame drops or audio desync |
+| **Seeking** | `SEK` | Fast seeking (< 100 ms keyframe seek; accurate frame seek) |
+| **Audio** | `AUD` | Multi-channel downmixing / bitstreaming / dynamic range control |
+| **Subtitle** | `SUB` | Proper styling, fonts, positioning, and script tags |
+| **HW Decode** | `HWD` | Direct3D 11 VA / NVDEC / Intel QSV acceleration active |
+| **Fullscreen** | `FSC` | Flawless transition without mode switch stutter or tearing |
+| **VFR** | `VFR` | Variable frame rate timestamp pacing without judder |
+
+**Result Status:**
+- `[x] PASS`: Verified working with expected performance and rendering fidelity.
+- `[~] PARTIAL`: Plays with minor caveats (e.g. software decode fallback or no menu navigation).
+- `[ ] UNTESTED`: Specified in test suite; pending execution with real sample.
+- `[!] FAIL`: Playback failed, crashed, or resulted in severe corruption.
+
+---
+
+## 2. Modern Video & Container Matrix
+
+| Container | Video Codec | Audio Codec | Subtitles | Target Backend | HW Accel | Target Sample Path | Status | Notes |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **MKV** | H.264 / AVC High@L4.1 | AAC-LC 2.0 | SRT | libmpv | D3D11VA | `tests/media/modern/avc_aac.mkv` | `[ ] UNTESTED` | Baseline modern release |
+| **MKV** | H.265 / HEVC Main10 | FLAC 5.1 | ASS | libmpv | D3D11VA | `tests/media/modern/hevc_10bit_flac.mkv` | `[ ] UNTESTED` | Standard anime BDRip |
+| **MKV** | AV1 Main@L5.1 10-bit | Opus 2.0 | None | libmpv | D3D11VA | `tests/media/modern/av1_opus.mkv` | `[ ] UNTESTED` | Next-gen streaming codec |
+| **MKV** | VP9 Profile 2 10-bit | Opus 5.1 | WebVTT | libmpv | D3D11VA | `tests/media/modern/vp9_opus.mkv` | `[ ] UNTESTED` | YouTube 4K/HDR rip |
+| **MP4** | H.264 High@L4.0 | AAC-LC 2.0 | tx3g | libmpv | D3D11VA | `tests/media/modern/h264_aac.mp4` | `[ ] UNTESTED` | Universal MP4 web format |
+| **MP4** | HEVC Main | E-AC-3 5.1 | None | libmpv | D3D11VA | `tests/media/modern/hevc_eac3.mp4` | `[ ] UNTESTED` | Streaming WEB-DL format |
+| **WebM** | VP9 Profile 0 | Vorbis 2.0 | WebVTT | libmpv | D3D11VA | `tests/media/modern/vp9_vorbis.webm` | `[ ] UNTESTED` | Open web standard |
+| **MOV** | ProRes 422 HQ | PCM 24-bit 2.0 | None | libmpv | CPU | `tests/media/modern/prores_pcm.mov` | `[ ] UNTESTED` | Professional editing capture |
+
+---
+
+## 3. High Dynamic Range (HDR) Matrix
+
+| Format | Color Primaries | Transfer | Matrix | Metadata | Backend | Status | Target Behavior |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **HDR10** | BT.2020 | PQ (SMPTE ST 2084) | BT.2020nc | Static (Mastering / MaxCLL) | libmpv | `[ ] UNTESTED` | Direct passthrough or tone-map to SDR |
+| **HDR10+** | BT.2020 | PQ | BT.2020nc | Dynamic SEI | libmpv | `[ ] UNTESTED` | Parse dynamic JSON metadata or fallback to HDR10 |
+| **HLG** | BT.2020 | ARIB STD-B67 | BT.2020nc | None | libmpv | `[ ] UNTESTED` | Broadcast HDR tone curve |
+| **Dolby Vision (P5)** | DCI-P3 | Proprietary | IPT | Dynamic RPU | libmpv | `[ ] UNTESTED` | libplacebo DV-to-SDR/HDR mapping |
+| **Dolby Vision (P7)** | BT.2020 | PQ | BT.2020nc | Dynamic RPU + HDR10 base | libmpv | `[ ] UNTESTED` | UHD Blu-ray dual layer fallback |
+| **Dolby Vision (P8)** | BT.2020 | PQ | BT.2020nc | Dynamic RPU + HDR10 base | libmpv | `[ ] UNTESTED` | WEB-DL single layer fallback |
+
+---
+
+## 4. Anime & Complex Subtitle Release Matrix (Core Acceptance)
+
+| Test Case | Components | Font Source | Expected Behavior | Backend | Status |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **Embedded ASS** | MKV + H.264 10-bit + FLAC + ASS | Embedded attachments | Fonts extracted to memory; ASS styled exactly | libmpv | `[ ] UNTESTED` |
+| **External ASS + Dir Fonts** | `show_s01e01.mkv` + `show_s01e01.RU.ass` + `fonts/*.ttf` | Adjacent `fonts/` dir | Auto-bind sub-fonts-dir; flawless glyph rendering | libmpv | `[ ] UNTESTED` |
+| **External Audio (MKA)** | `show_s01e01.mkv` + `show_s01e01.RU.mka` | N/A | Auto-match episode; present as "Russian External" | libmpv | `[ ] UNTESTED` |
+| **Multi-Sub Package** | `show_s01e01.mkv` + `.RU.ass`, `.EN.srt` | `fonts/` | Ranked tracks: RU ASS (100%), EN SRT (100%) | libmpv | `[ ] UNTESTED` |
+| **Complex Dialogue Styles** | Karaoke (\k), Transforms (\t), Vector clips (\clip) | Injected OTF/TTF | No dropped frames; accurate layout | libmpv | `[ ] UNTESTED` |
+
+---
+
+## 5. Legacy & Ancient Formats Matrix
+
+| Container | Video Codec | Audio Codec | Era | Backend | Status | Notes |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **AVI** | XviD (MPEG-4 Part 2) | MP3 CBR 128k | ~2003 | libmpv | `[ ] UNTESTED` | Legacy scene release standard |
+| **AVI** | DivX 3.11 (MS MPEG-4v3) | AC-3 5.1 | ~2000 | libmpv | `[ ] UNTESTED` | Non-standard ancient DivX |
+| **AVI** | DV (Digital Video) | PCM uncompressed | ~1998 | libmpv | `[ ] UNTESTED` | Camcorder tape capture |
+| **WMV** | WMV3 / VC-1 Simple | WMA v2 | ~2004 | libmpv | `[ ] UNTESTED` | Microsoft Windows Media 9 |
+| **ASF** | WMV2 | WMA v1 | ~2001 | libmpv | `[ ] UNTESTED` | Early Microsoft streaming |
+| **FLV** | Sorenson Spark (FLV1) | MP3 Mono | ~2006 | libmpv | `[ ] UNTESTED` | Early Flash Video web rip |
+| **FLV** | VP6 (On2 VP62) | AAC-LC | ~2008 | libmpv | `[ ] UNTESTED` | Later Flash Video web rip |
+| **RM / RMVB** | RealVideo 8/9 (RV30/RV40) | Cooker (RealAudio) | ~2002 | libmpv | `[ ] UNTESTED` | RealNetworks format |
+| **MPEG-1 (MPG)** | MPEG-1 Video | MP2 Audio | ~1995 | libmpv | `[ ] UNTESTED` | Video-CD (VCD) standard |
+| **MPEG-2 (MPG)** | MPEG-2 Video | AC-3 / MP2 | ~1997 | libmpv | `[ ] UNTESTED` | Super VCD / DVD stream |
+| **3GP** | H.263 | AMR-NB | ~2004 | libmpv | `[ ] UNTESTED` | Feature phone video recording |
+| **OGV** | Theora | Vorbis | ~2007 | libmpv | `[ ] UNTESTED` | Early open web video |
+
+---
+
+## 6. Audio Containers & Dedicated Audio Formats
+
+| Container / Ext | Audio Codec | Channels | Sample Rate | Backend | Status | Notes |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **.mka** | FLAC 24-bit | 5.1 Surround | 96 kHz | libmpv | `[ ] UNTESTED` | Matroska Audiophile external track |
+| **.flac** | FLAC Lossless | 2.0 Stereo | 44.1 kHz | libmpv | `[ ] UNTESTED` | Red Book standard CD rip |
+| **.ac3** | AC-3 (Dolby Digital) | 5.1 Surround | 48 kHz | libmpv | `[ ] UNTESTED` | External DVD/broadcast audio |
+| **.eac3** | E-AC-3 (Dolby Digital Plus) | 7.1 Atmos | 48 kHz | libmpv | `[ ] UNTESTED` | Streaming rip external audio |
+| **.dts** | DTS Digital Surround | 5.1 Surround | 48 kHz | libmpv | `[ ] UNTESTED` | Laserdisc / DVD audio rip |
+| **.dtshd** | DTS-HD Master Audio | 7.1 Surround | 96 kHz | libmpv | `[ ] UNTESTED` | Blu-ray lossless audio stream |
+| **.opus** | Opus | 2.0 Stereo | 48 kHz | libmpv | `[ ] UNTESTED` | Low-bitrate modern audio |
+| **.ogg** | Vorbis | 2.0 Stereo | 44.1 kHz | libmpv | `[ ] UNTESTED` | Ogg Vorbis stream |
+| **.mp3** | MPEG-1 Layer III | 2.0 Stereo | 44.1 kHz | libmpv | `[ ] UNTESTED` | Standard VBR/CBR MP3 |
+| **.aac / .m4a** | AAC-LC / HE-AAC | 2.0 / 5.1 | 48 kHz | libmpv | `[ ] UNTESTED` | Apple / MPEG-4 audio track |
+| **.wav** | PCM Signed 16/24-bit | 2.0 Stereo | 44.1/96 kHz | libmpv | `[ ] UNTESTED` | Standard RIFF WAVE container |
+| **.ape** | Monkey's Audio | 2.0 Stereo | 44.1 kHz | libmpv | `[ ] UNTESTED` | Legacy lossless format |
+| **.wv** | WavPack | 2.0 Stereo | 44.1 kHz | libmpv | `[ ] UNTESTED` | Hybrid lossless/lossy codec |
+
+---
+
+## 7. Optical Disc & Broadcast Formats
+
+| Format | Structure | Navigation | Backend | Status | Fallback Strategy |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **DVD-Video (ISO)** | `VIDEO_TS/` (IFO, BUP, VOB) | DVD Menus (libdvdnav) | libmpv | `[ ] UNTESTED` | Direct main title playback if menu fails |
+| **DVD-Video (Folder)** | `VIDEO_TS.IFO` + `VTS_01_1.VOB` | Direct title parsing | libmpv | `[ ] UNTESTED` | Concatenate VOB segments seamlessly |
+| **Blu-ray (BDMV/ISO)** | `BDMV/PLAYLIST/*.mpls` | MPLS playlist / libbluray | libmpv | `[ ] UNTESTED` | Direct main movie playlist selection |
+| **MPEG-TS (.ts)** | DVB-T / ATSC broadcast transport | Stream switching | libmpv | `[ ] UNTESTED` | Teletext / DVB subtitle decoding |
+| **M2TS (.m2ts)** | AVCHD camcorder / Blu-ray stream | Presentation time sync | libmpv | `[ ] UNTESTED` | Direct timestamp continuous playback |
+
+---
+
+## 8. Problematic & Broken Media Resilience Matrix
+
+| Test Category | Description | Failure Mode to Prevent | Acceptance Criteria | Status |
+| :--- | :--- | :--- | :--- | :--- |
+| **Truncated File** | Download interrupted mid-file (missing EOF) | Crash or hang | Seek bar bounds clamped to available index; plays until last valid frame | `[ ] UNTESTED` |
+| **Missing AVI Index** | AVI file missing `idx1` chunk | Infinite loop / player freeze | Auto-generate index in memory on fly; allow playback and seeking | `[ ] UNTESTED` |
+| **Corrupted Frame Data** | Broken macroblocks / packet drop | Video pipeline lockup | Decoder drops corrupted slice; resumes at next IDR keyframe | `[ ] UNTESTED` |
+| **Timestamp Inversion** | Non-monotonic PTS/DTS | Audio desync or looping | Clock resynchronizer recovers monotonic playback | `[ ] UNTESTED` |
+| **Non-Square Pixels** | 720x576 with 16:9 DAR | Stretched 4:3 display | Correct Display Aspect Ratio (DAR) honored | `[ ] UNTESTED` |
+| **Malicious Metadata** | 100MB string in tag or buffer exploit | Memory exhaustion / crash | Bounds-checked parser rejects oversized tag strings | `[ ] UNTESTED` |
+
+---
+
+## 9. Verification Procedure
+
+1. **Automated Test Run**:
+   - Automated test runner executes each test sample via `UniversalMediaPlayer.Tests.Media`.
+   - Engine initializes, loads sample, verifies duration and track count, seeks to 25%, 50%, 75%, and checks audio sync clock.
+2. **Quality Audit**:
+   - Visual inspection for subtitle layout and font rendering accuracy.
+   - GPU engine validation (`dxgi` debug layer & GPU utilization monitor).
+3. **Matrix Log**:
+   - Every run records date, CPU/GPU spec, driver version, and detailed telemetry to `docs/test-matrix.md`.
