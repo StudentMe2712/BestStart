@@ -156,6 +156,55 @@
                     </StackPanel>
 
                     <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                        <!-- Export Menu Button -->
+                        <DropDownButton
+                            AutomationProperties.AutomationId="BtnExportMenu"
+                            ToolTipService.ToolTip="Экспортировать руководство в Word, PDF или HTML">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <FontIcon Glyph="&#xEDE1;" FontSize="13" />
+                                <TextBlock Text="Экспорт" FontSize="12" />
+                            </StackPanel>
+                            <DropDownButton.Flyout>
+                                <MenuFlyout Placement="Bottom">
+                                    <MenuFlyoutItem
+                                        AutomationProperties.AutomationId="MenuExportDocx"
+                                        Text="Документ Word (.docx)"
+                                        Command="{x:Bind ViewModel.ExportDocxCommand}">
+                                        <MenuFlyoutItem.Icon>
+                                            <FontIcon Glyph="&#xE8A5;" />
+                                        </MenuFlyoutItem.Icon>
+                                    </MenuFlyoutItem>
+                                    <MenuFlyoutItem
+                                        AutomationProperties.AutomationId="MenuExportPdf"
+                                        Text="Документ PDF (.pdf)"
+                                        Command="{x:Bind ViewModel.ExportPdfCommand}">
+                                        <MenuFlyoutItem.Icon>
+                                            <FontIcon Glyph="&#xEA90;" />
+                                        </MenuFlyoutItem.Icon>
+                                    </MenuFlyoutItem>
+                                    <MenuFlyoutItem
+                                        AutomationProperties.AutomationId="MenuExportHtml"
+                                        Text="Печать / Веб-документ (.html)"
+                                        Command="{x:Bind ViewModel.ExportHtmlCommand}">
+                                        <MenuFlyoutItem.Icon>
+                                            <FontIcon Glyph="&#xE774;" />
+                                        </MenuFlyoutItem.Icon>
+                                    </MenuFlyoutItem>
+                                </MenuFlyout>
+                            </DropDownButton.Flyout>
+                        </DropDownButton>
+
+                        <!-- Enhance All Steps Button -->
+                        <Button
+                            AutomationProperties.AutomationId="BtnEnhanceAllSteps"
+                            Command="{x:Bind ViewModel.EnhanceAllStepsAiCommand}"
+                            ToolTipService.ToolTip="Автоматически сгенерировать понятные заголовки и описания для всех шагов через Groq AI">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <FontIcon Glyph="&#xE946;" FontSize="13" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
+                                <TextBlock Text="AI Улучшить всё" FontSize="12" />
+                            </StackPanel>
+                        </Button>
+
                         <ToggleButton
                             AutomationProperties.AutomationId="BtnToggleHighlight"
                             Content="Подсветка"
@@ -266,15 +315,82 @@
         <Border Grid.Column="2" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1,0,0,0" Background="{ThemeResource SolidBackgroundFillColorBaseBrush}">
             <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="20">
                 <StackPanel Spacing="20" Visibility="{x:Bind ViewModel.PropertiesVisibility, Mode=OneWay}">
-                    <!-- Properties Header -->
-                    <StackPanel Spacing="4">
-                        <TextBlock Text="Свойства шага" FontSize="18" FontWeight="SemiBold" />
-                        <TextBlock Text="Редактирование описания и UIA-телеметрия Windows" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                    </StackPanel>
+                    <!-- Properties Header with AI Settings -->
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0" Spacing="4">
+                            <TextBlock Text="Свойства шага" FontSize="18" FontWeight="SemiBold" />
+                            <TextBlock Text="Редактирование описания и UIA-телеметрия Windows" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                        </StackPanel>
+                        <!-- AI Settings Flyout Button -->
+                        <Button Grid.Column="1"
+                                AutomationProperties.AutomationId="BtnAiSettings"
+                                ToolTipService.ToolTip="Настройки нейросети Groq Cloud"
+                                Padding="8,5"
+                                CornerRadius="6"
+                                VerticalAlignment="Top">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <FontIcon Glyph="&#xE713;" FontSize="13" />
+                                <TextBlock Text="AI Настройки" FontSize="12" />
+                            </StackPanel>
+                            <Button.Flyout>
+                                <Flyout Placement="BottomEdgeAlignedRight">
+                                    <StackPanel Spacing="12" Width="280">
+                                        <TextBlock Text="Настройки Groq AI" FontWeight="SemiBold" FontSize="14" />
+                                        <TextBlock Text="Используется бесплатный облачный API Groq для синтеза понятных заголовков и инструкций." FontSize="11" TextWrapping="Wrap" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                        <PasswordBox
+                                            Header="API-ключ Groq"
+                                            Password="{x:Bind ViewModel.GroqApiKey, Mode=TwoWay}"
+                                            PlaceholderText="gsk_..." />
+                                        <ComboBox
+                                            Header="Модель нейросети"
+                                            HorizontalAlignment="Stretch"
+                                            ItemsSource="{x:Bind ViewModel.AvailableAiModels}"
+                                            SelectedItem="{x:Bind ViewModel.SelectedAiModel, Mode=TwoWay}" />
+                                    </StackPanel>
+                                </Flyout>
+                            </Button.Flyout>
+                        </Button>
+                    </Grid>
 
-                    <!-- Title Field -->
+                    <!-- AI / Export Status Notification -->
+                    <InfoBar
+                        IsOpen="{x:Bind ViewModel.IsAiBusy, Mode=OneWay}"
+                        Severity="Informational"
+                        Title="Нейросеть"
+                        Message="{x:Bind ViewModel.AiStatusMessage, Mode=OneWay}"
+                        IsClosable="False" />
+
+                    <InfoBar
+                        IsOpen="{x:Bind ViewModel.IsExporting, Mode=OneWay}"
+                        Severity="Informational"
+                        Title="Экспорт"
+                        Message="{x:Bind ViewModel.ExportStatusMessage, Mode=OneWay}"
+                        IsClosable="False" />
+
+                    <!-- Title Field with AI Step Button -->
                     <StackPanel Spacing="6">
-                        <TextBlock Text="Заголовок шага" FontSize="12" FontWeight="SemiBold" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Text="Заголовок шага" FontSize="12" FontWeight="SemiBold" Foreground="{ThemeResource TextFillColorSecondaryBrush}" VerticalAlignment="Center" />
+                            <Button Grid.Column="1"
+                                    AutomationProperties.AutomationId="BtnEnhanceCurrentStep"
+                                    Command="{x:Bind ViewModel.EnhanceStepAiCommand}"
+                                    ToolTipService.ToolTip="Сгенерировать заголовок и описание для этого шага через Groq AI"
+                                    Padding="6,2"
+                                    CornerRadius="4">
+                                <StackPanel Orientation="Horizontal" Spacing="4">
+                                    <FontIcon Glyph="&#xE946;" FontSize="11" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
+                                    <TextBlock Text="AI Заполнить" FontSize="11" />
+                                </StackPanel>
+                            </Button>
+                        </Grid>
                         <TextBox
                             AutomationProperties.AutomationId="TxtStepTitle"
                             AutomationProperties.Name="Step Title"

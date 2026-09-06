@@ -5,7 +5,7 @@
     "Button": "Left",
     "X": 265,
     "Y": 296,
-    "Timestamp": "2026-09-06T13:45:24.2862893Z"
+    "Timestamp": "2026-09-06T15:50:45.6910182Z"
   },
   {
     "Type": "Mouse",
@@ -13,7 +13,7 @@
     "Button": "Left",
     "X": 265,
     "Y": 296,
-    "Timestamp": "2026-09-06T13:45:24.3162893Z"
+    "Timestamp": "2026-09-06T15:50:45.7210182Z"
   },
   {
     "Type": "Keyboard",
@@ -24,7 +24,7 @@
     "Character": "*",
     "IsTextInput": true,
     "IsShortcut": false,
-    "Timestamp": "2026-09-06T13:45:24.3362893Z"
+    "Timestamp": "2026-09-06T15:50:45.7410182Z"
   },
   {
     "Type": "Keyboard",
@@ -35,7 +35,7 @@
     "Character": "*",
     "IsTextInput": false,
     "IsShortcut": false,
-    "Timestamp": "2026-09-06T13:45:24.3462893Z"
+    "Timestamp": "2026-09-06T15:50:45.7510182Z"
   },
   {
     "Type": "Keyboard",
@@ -46,7 +46,7 @@
     "Character": "*",
     "IsTextInput": true,
     "IsShortcut": false,
-    "Timestamp": "2026-09-06T13:45:24.3562893Z"
+    "Timestamp": "2026-09-06T15:50:45.7610182Z"
   },
   {
     "Type": "Keyboard",
@@ -57,7 +57,7 @@
     "Character": "*",
     "IsTextInput": false,
     "IsShortcut": false,
-    "Timestamp": "2026-09-06T13:45:24.3662893Z"
+    "Timestamp": "2026-09-06T15:50:45.7710182Z"
   },
   {
     "Type": "Keyboard",
@@ -68,7 +68,7 @@
     "Character": "*",
     "IsTextInput": true,
     "IsShortcut": false,
-    "Timestamp": "2026-09-06T13:45:24.3762893Z"
+    "Timestamp": "2026-09-06T15:50:45.7810182Z"
   },
   {
     "Type": "Keyboard",
@@ -79,7 +79,7 @@
     "Character": "*",
     "IsTextInput": false,
     "IsShortcut": false,
-    "Timestamp": "2026-09-06T13:45:24.3862893Z"
+    "Timestamp": "2026-09-06T15:50:45.7910182Z"
   },
   {
     "Type": "Keyboard",
@@ -90,7 +90,7 @@
     "Character": "*",
     "IsTextInput": true,
     "IsShortcut": false,
-    "Timestamp": "2026-09-06T13:45:24.3962893Z"
+    "Timestamp": "2026-09-06T15:50:45.8010182Z"
   },
   {
     "Type": "Keyboard",
@@ -101,7 +101,7 @@
     "Character": "*",
     "IsTextInput": false,
     "IsShortcut": false,
-    "Timestamp": "2026-09-06T13:45:24.4062893Z"
+    "Timestamp": "2026-09-06T15:50:45.8110182Z"
   },
   {
     "Type": "Keyboard",
@@ -112,7 +112,7 @@
     "Character": "*",
     "IsTextInput": true,
     "IsShortcut": false,
-    "Timestamp": "2026-09-06T13:45:24.4162893Z"
+    "Timestamp": "2026-09-06T15:50:45.8210182Z"
   },
   {
     "Type": "Keyboard",
@@ -123,7 +123,7 @@
     "Character": "*",
     "IsTextInput": false,
     "IsShortcut": false,
-    "Timestamp": "2026-09-06T13:45:24.4262893Z"
+    "Timestamp": "2026-09-06T15:50:45.8310182Z"
   },
   {
     "Type": "Keyboard",
@@ -134,7 +134,7 @@
     "Character": "i",
     "IsTextInput": true,
     "IsShortcut": false,
-    "Timestamp": "2026-09-06T13:45:24.4362893Z"
+    "Timestamp": "2026-09-06T15:50:45.8410182Z"
   },
   {
     "Type": "Keyboard",
@@ -145,7 +145,7 @@
     "Character": "i",
     "IsTextInput": false,
     "IsShortcut": false,
-    "Timestamp": "2026-09-06T13:45:24.4462893Z"
+    "Timestamp": "2026-09-06T15:50:45.8510182Z"
   },
   {
     "Type": "Keyboard",
@@ -156,7 +156,7 @@
     "Character": "*",
     "IsTextInput": true,
     "IsShortcut": false,
-    "Timestamp": "2026-09-06T13:45:24.4562893Z"
+    "Timestamp": "2026-09-06T15:50:45.8610182Z"
   },
   {
     "Type": "Keyboard",
@@ -167,7 +167,7 @@
     "Character": "*",
     "IsTextInput": false,
     "IsShortcut": false,
-    "Timestamp": "2026-09-06T13:45:24.4662893Z"
+    "Timestamp": "2026-09-06T15:50:45.8710182Z"
   },
   {
     "Type": "Keyboard",
@@ -178,7 +178,7 @@
     "Character": "*",
     "IsTextInput": true,
     "IsShortcut": false,
-    "Timestamp": "2026-09-06T13:45:24.4762893Z"
+    "Timestamp": "2026-09-06T15:50:45.8810182Z"
   },
   {
     "Type": "Keyboard",
@@ -189,7 +189,7 @@
     "Character": "*",
     "IsTextInput": false,
     "IsShortcut": false,
-    "Timestamp": "2026-09-06T13:45:24.4862893Z"
+    "Timestamp": "2026-09-06T15:50:45.8910182Z"
   },
   {
     "Type": "Mouse",
@@ -197,7 +197,7 @@
     "Button": "Left",
     "X": 265,
     "Y": 361,
-    "Timestamp": "2026-09-06T13:45:24.6472767Z"
+    "Timestamp": "2026-09-06T15:50:46.0478852Z"
   },
   {
     "Type": "Mouse",
@@ -205,7 +205,7 @@
     "Button": "Left",
     "X": 265,
     "Y": 361,
-    "Timestamp": "2026-09-06T13:45:24.6772767Z"
+    "Timestamp": "2026-09-06T15:50:46.0778852Z"
   },
   {
     "Type": "Keyboard",
@@ -216,7 +216,7 @@
     "Character": "*",
     "IsTextInput": true,
     "IsShortcut": false,
-    "Timestamp": "2026-09-06T13:45:24.6972767Z"
+    "Timestamp": "2026-09-06T15:50:46.0978852Z"
   },
   {
     "Type": "Keyboard",
@@ -227,7 +227,7 @@
     "Character": "*",
     "IsTextInput": false,
     "IsShortcut": false,
-    "Timestamp": "2026-09-06T13:45:24.7072767Z"
+    "Timestamp": "2026-09-06T15:50:46.1078852Z"
   },
   {
     "Type": "Keyboard",
@@ -238,7 +238,7 @@
     "Character": "*",
     "IsTextInput": true,
     "IsShortcut": false,
-    "Timestamp": "2026-09-06T13:45:24.7172767Z"
+    "Timestamp": "2026-09-06T15:50:46.1178852Z"
   },
   {
     "Type": "Keyboard",
@@ -249,7 +249,7 @@
     "Character": "*",
     "IsTextInput": false,
     "IsShortcut": false,
-    "Timestamp": "2026-09-06T13:45:24.7272767Z"
+    "Timestamp": "2026-09-06T15:50:46.1278852Z"
   },
   {
     "Type": "Keyboard",
@@ -260,7 +260,7 @@
     "Character": "*",
     "IsTextInput": true,
     "IsShortcut": false,
-    "Timestamp": "2026-09-06T13:45:24.7372767Z"
+    "Timestamp": "2026-09-06T15:50:46.1378852Z"
   },
   {
     "Type": "Keyboard",
@@ -271,7 +271,7 @@
     "Character": "*",
     "IsTextInput": false,
     "IsShortcut": false,
-    "Timestamp": "2026-09-06T13:45:24.7472767Z"
+    "Timestamp": "2026-09-06T15:50:46.1478852Z"
   },
   {
     "Type": "Keyboard",
@@ -282,7 +282,7 @@
     "Character": "*",
     "IsTextInput": true,
     "IsShortcut": false,
-    "Timestamp": "2026-09-06T13:45:24.7572767Z"
+    "Timestamp": "2026-09-06T15:50:46.1578852Z"
   },
   {
     "Type": "Keyboard",
@@ -293,7 +293,7 @@
     "Character": "*",
     "IsTextInput": false,
     "IsShortcut": false,
-    "Timestamp": "2026-09-06T13:45:24.7672767Z"
+    "Timestamp": "2026-09-06T15:50:46.1678852Z"
   },
   {
     "Type": "Keyboard",
@@ -304,7 +304,7 @@
     "Character": "*",
     "IsTextInput": true,
     "IsShortcut": false,
-    "Timestamp": "2026-09-06T13:45:24.7772767Z"
+    "Timestamp": "2026-09-06T15:50:46.1778852Z"
   },
   {
     "Type": "Keyboard",
@@ -315,7 +315,7 @@
     "Character": "*",
     "IsTextInput": false,
     "IsShortcut": false,
-    "Timestamp": "2026-09-06T13:45:24.7872767Z"
+    "Timestamp": "2026-09-06T15:50:46.1878852Z"
   },
   {
     "Type": "Keyboard",
@@ -326,7 +326,7 @@
     "Character": "*",
     "IsTextInput": true,
     "IsShortcut": false,
-    "Timestamp": "2026-09-06T13:45:24.7972767Z"
+    "Timestamp": "2026-09-06T15:50:46.1978852Z"
   },
   {
     "Type": "Keyboard",
@@ -337,7 +337,7 @@
     "Character": "*",
     "IsTextInput": false,
     "IsShortcut": false,
-    "Timestamp": "2026-09-06T13:45:24.8072767Z"
+    "Timestamp": "2026-09-06T15:50:46.2078852Z"
   },
   {
     "Type": "Keyboard",
@@ -348,7 +348,7 @@
     "Character": "*",
     "IsTextInput": true,
     "IsShortcut": false,
-    "Timestamp": "2026-09-06T13:45:24.8172767Z"
+    "Timestamp": "2026-09-06T15:50:46.2178852Z"
   },
   {
     "Type": "Keyboard",
@@ -359,7 +359,7 @@
     "Character": "*",
     "IsTextInput": false,
     "IsShortcut": false,
-    "Timestamp": "2026-09-06T13:45:24.8272767Z"
+    "Timestamp": "2026-09-06T15:50:46.2278852Z"
   },
   {
     "Type": "Keyboard",
@@ -370,7 +370,7 @@
     "Character": "*",
     "IsTextInput": true,
     "IsShortcut": false,
-    "Timestamp": "2026-09-06T13:45:24.8372767Z"
+    "Timestamp": "2026-09-06T15:50:46.2378852Z"
   },
   {
     "Type": "Keyboard",
@@ -381,7 +381,7 @@
     "Character": "*",
     "IsTextInput": false,
     "IsShortcut": false,
-    "Timestamp": "2026-09-06T13:45:24.8472767Z"
+    "Timestamp": "2026-09-06T15:50:46.2478852Z"
   },
   {
     "Type": "Keyboard",
@@ -392,7 +392,7 @@
     "Character": "*",
     "IsTextInput": true,
     "IsShortcut": false,
-    "Timestamp": "2026-09-06T13:45:24.8572767Z"
+    "Timestamp": "2026-09-06T15:50:46.2578852Z"
   },
   {
     "Type": "Keyboard",
@@ -403,7 +403,7 @@
     "Character": "*",
     "IsTextInput": false,
     "IsShortcut": false,
-    "Timestamp": "2026-09-06T13:45:24.8672767Z"
+    "Timestamp": "2026-09-06T15:50:46.2678852Z"
   },
   {
     "Type": "Keyboard",
@@ -414,7 +414,7 @@
     "Character": "*",
     "IsTextInput": true,
     "IsShortcut": false,
-    "Timestamp": "2026-09-06T13:45:24.8772767Z"
+    "Timestamp": "2026-09-06T15:50:46.2778852Z"
   },
   {
     "Type": "Keyboard",
@@ -425,7 +425,7 @@
     "Character": "*",
     "IsTextInput": false,
     "IsShortcut": false,
-    "Timestamp": "2026-09-06T13:45:24.8872767Z"
+    "Timestamp": "2026-09-06T15:50:46.2878852Z"
   },
   {
     "Type": "Keyboard",
@@ -436,7 +436,7 @@
     "Character": "*",
     "IsTextInput": true,
     "IsShortcut": false,
-    "Timestamp": "2026-09-06T13:45:24.8972767Z"
+    "Timestamp": "2026-09-06T15:50:46.2978852Z"
   },
   {
     "Type": "Keyboard",
@@ -447,7 +447,7 @@
     "Character": "*",
     "IsTextInput": false,
     "IsShortcut": false,
-    "Timestamp": "2026-09-06T13:45:24.9072767Z"
+    "Timestamp": "2026-09-06T15:50:46.3078852Z"
   },
   {
     "Type": "Keyboard",
@@ -458,7 +458,7 @@
     "Character": "*",
     "IsTextInput": true,
     "IsShortcut": false,
-    "Timestamp": "2026-09-06T13:45:24.9172767Z"
+    "Timestamp": "2026-09-06T15:50:46.3178852Z"
   },
   {
     "Type": "Keyboard",
@@ -469,7 +469,7 @@
     "Character": "*",
     "IsTextInput": false,
     "IsShortcut": false,
-    "Timestamp": "2026-09-06T13:45:24.9272767Z"
+    "Timestamp": "2026-09-06T15:50:46.3278852Z"
   },
   {
     "Type": "Keyboard",
@@ -480,7 +480,7 @@
     "Character": "*",
     "IsTextInput": true,
     "IsShortcut": false,
-    "Timestamp": "2026-09-06T13:45:24.9372767Z"
+    "Timestamp": "2026-09-06T15:50:46.3378852Z"
   },
   {
     "Type": "Keyboard",
@@ -491,7 +491,7 @@
     "Character": "*",
     "IsTextInput": false,
     "IsShortcut": false,
-    "Timestamp": "2026-09-06T13:45:24.9472767Z"
+    "Timestamp": "2026-09-06T15:50:46.3478852Z"
   },
   {
     "Type": "Keyboard",
@@ -502,7 +502,7 @@
     "Character": "*",
     "IsTextInput": true,
     "IsShortcut": false,
-    "Timestamp": "2026-09-06T13:45:24.9572767Z"
+    "Timestamp": "2026-09-06T15:50:46.3578852Z"
   },
   {
     "Type": "Keyboard",
@@ -513,7 +513,7 @@
     "Character": "*",
     "IsTextInput": false,
     "IsShortcut": false,
-    "Timestamp": "2026-09-06T13:45:24.9672767Z"
+    "Timestamp": "2026-09-06T15:50:46.3678852Z"
   },
   {
     "Type": "Keyboard",
@@ -524,7 +524,7 @@
     "Character": "*",
     "IsTextInput": true,
     "IsShortcut": false,
-    "Timestamp": "2026-09-06T13:45:24.9772767Z"
+    "Timestamp": "2026-09-06T15:50:46.3778852Z"
   },
   {
     "Type": "Keyboard",
@@ -535,7 +535,7 @@
     "Character": "*",
     "IsTextInput": false,
     "IsShortcut": false,
-    "Timestamp": "2026-09-06T13:45:24.9872767Z"
+    "Timestamp": "2026-09-06T15:50:46.3878852Z"
   },
   {
     "Type": "Keyboard",
@@ -546,7 +546,7 @@
     "Character": "*",
     "IsTextInput": true,
     "IsShortcut": false,
-    "Timestamp": "2026-09-06T13:45:24.9972767Z"
+    "Timestamp": "2026-09-06T15:50:46.3978852Z"
   },
   {
     "Type": "Keyboard",
@@ -557,7 +557,7 @@
     "Character": "*",
     "IsTextInput": false,
     "IsShortcut": false,
-    "Timestamp": "2026-09-06T13:45:25.0072767Z"
+    "Timestamp": "2026-09-06T15:50:46.4078852Z"
   },
   {
     "Type": "Keyboard",
@@ -568,7 +568,7 @@
     "Character": "*",
     "IsTextInput": true,
     "IsShortcut": false,
-    "Timestamp": "2026-09-06T13:45:25.0172767Z"
+    "Timestamp": "2026-09-06T15:50:46.4178852Z"
   },
   {
     "Type": "Keyboard",
@@ -579,7 +579,7 @@
     "Character": "*",
     "IsTextInput": false,
     "IsShortcut": false,
-    "Timestamp": "2026-09-06T13:45:25.0272767Z"
+    "Timestamp": "2026-09-06T15:50:46.4278852Z"
   },
   {
     "Type": "Keyboard",
@@ -590,7 +590,7 @@
     "Character": "*",
     "IsTextInput": true,
     "IsShortcut": false,
-    "Timestamp": "2026-09-06T13:45:25.0372767Z"
+    "Timestamp": "2026-09-06T15:50:46.4378852Z"
   },
   {
     "Type": "Keyboard",
@@ -601,7 +601,7 @@
     "Character": "*",
     "IsTextInput": false,
     "IsShortcut": false,
-    "Timestamp": "2026-09-06T13:45:25.0472767Z"
+    "Timestamp": "2026-09-06T15:50:46.4478852Z"
   },
   {
     "Type": "Keyboard",
@@ -612,7 +612,7 @@
     "Character": "*",
     "IsTextInput": true,
     "IsShortcut": false,
-    "Timestamp": "2026-09-06T13:45:25.0572767Z"
+    "Timestamp": "2026-09-06T15:50:46.4578852Z"
   },
   {
     "Type": "Keyboard",
@@ -623,7 +623,7 @@
     "Character": "*",
     "IsTextInput": false,
     "IsShortcut": false,
-    "Timestamp": "2026-09-06T13:45:25.0672767Z"
+    "Timestamp": "2026-09-06T15:50:46.4678852Z"
   },
   {
     "Type": "Keyboard",
@@ -634,7 +634,7 @@
     "Character": "*",
     "IsTextInput": true,
     "IsShortcut": false,
-    "Timestamp": "2026-09-06T13:45:25.0772767Z"
+    "Timestamp": "2026-09-06T15:50:46.4778852Z"
   },
   {
     "Type": "Keyboard",
@@ -645,7 +645,7 @@
     "Character": "*",
     "IsTextInput": false,
     "IsShortcut": false,
-    "Timestamp": "2026-09-06T13:45:25.0872767Z"
+    "Timestamp": "2026-09-06T15:50:46.4878852Z"
   },
   {
     "Type": "Keyboard",
@@ -656,7 +656,7 @@
     "Character": "*",
     "IsTextInput": true,
     "IsShortcut": false,
-    "Timestamp": "2026-09-06T13:45:25.0972767Z"
+    "Timestamp": "2026-09-06T15:50:46.4978852Z"
   },
   {
     "Type": "Keyboard",
@@ -667,7 +667,7 @@
     "Character": "*",
     "IsTextInput": false,
     "IsShortcut": false,
-    "Timestamp": "2026-09-06T13:45:25.1072767Z"
+    "Timestamp": "2026-09-06T15:50:46.5078852Z"
   },
   {
     "Type": "Keyboard",
@@ -678,7 +678,7 @@
     "Character": "*",
     "IsTextInput": true,
     "IsShortcut": false,
-    "Timestamp": "2026-09-06T13:45:25.1172767Z"
+    "Timestamp": "2026-09-06T15:50:46.5178852Z"
   },
   {
     "Type": "Keyboard",
@@ -689,7 +689,7 @@
     "Character": "*",
     "IsTextInput": false,
     "IsShortcut": false,
-    "Timestamp": "2026-09-06T13:45:25.1272767Z"
+    "Timestamp": "2026-09-06T15:50:46.5278852Z"
   },
   {
     "Type": "Mouse",
@@ -697,7 +697,7 @@
     "Button": "Left",
     "X": 290,
     "Y": 431,
-    "Timestamp": "2026-09-06T13:45:24.8979129Z"
+    "Timestamp": "2026-09-06T15:50:46.2983138Z"
   },
   {
     "Type": "Mouse",
@@ -705,7 +705,7 @@
     "Button": "Left",
     "X": 290,
     "Y": 431,
-    "Timestamp": "2026-09-06T13:45:24.9279129Z"
+    "Timestamp": "2026-09-06T15:50:46.3283138Z"
   },
   {
     "Type": "Mouse",
@@ -713,7 +713,7 @@
     "Button": "Left",
     "X": 10,
     "Y": 10,
-    "Timestamp": "2026-09-06T13:45:26.0271761Z"
+    "Timestamp": "2026-09-06T15:50:47.4424330Z"
   },
   {
     "Type": "Mouse",
@@ -721,6 +721,6 @@
     "Button": "Left",
     "X": 10,
     "Y": 10,
-    "Timestamp": "2026-09-06T13:45:26.0471879Z"
+    "Timestamp": "2026-09-06T15:50:47.4624751Z"
   }
 ]

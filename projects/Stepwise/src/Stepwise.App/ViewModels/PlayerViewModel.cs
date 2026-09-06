@@ -27,6 +27,8 @@ public sealed partial class PlayerViewModel : ObservableObject, IDisposable
     private readonly IImageLoaderService _imageLoader;
     private readonly DispatcherQueue? _dispatcherQueue;
     private readonly IOverlayService? _overlayService;
+    private readonly IGuideExportService? _exportService;
+    private readonly IFileDialogService? _fileDialogService;
     private IProjectRepository? _repository;
     private string? _projectRootPath;
     private CancellationTokenSource? _previewCts;
@@ -274,12 +276,16 @@ public sealed partial class PlayerViewModel : ObservableObject, IDisposable
         IImageLoaderService imageLoader,
         IProjectRepository? repository = null,
         DispatcherQueue? dispatcherQueue = null,
-        IOverlayService? overlayService = null)
+        IOverlayService? overlayService = null,
+        IGuideExportService? exportService = null,
+        IFileDialogService? fileDialogService = null)
     {
         _playerEngine = playerEngine ?? throw new ArgumentNullException(nameof(playerEngine));
         _imageLoader = imageLoader ?? throw new ArgumentNullException(nameof(imageLoader));
         _repository = repository;
         _overlayService = overlayService;
+        _exportService = exportService;
+        _fileDialogService = fileDialogService;
         try
         {
             _dispatcherQueue = dispatcherQueue ?? DispatcherQueue.GetForCurrentThread();
@@ -371,6 +377,82 @@ public sealed partial class PlayerViewModel : ObservableObject, IDisposable
     private void ToggleHighlightOverlay()
     {
         ShowHighlightOverlay = !ShowHighlightOverlay;
+    }
+
+    [RelayCommand]
+    public async Task ExportDocxAsync()
+    {
+        await ExportGuideInternalAsync("docx");
+    }
+
+    [RelayCommand]
+    public async Task ExportPdfAsync()
+    {
+        await ExportGuideInternalAsync("pdf");
+    }
+
+    [RelayCommand]
+    public async Task ExportHtmlAsync()
+    {
+        await ExportGuideInternalAsync("html");
+    }
+
+    private async Task ExportGuideInternalAsync(string format)
+    {
+        if (_playerEngine.Steps.Count == 0 || _exportService == null || _fileDialogService == null)
+        {
+            return;
+        }
+
+        try
+        {
+            var (filter, ext) = format.ToLowerInvariant() switch
+            {
+                "docx" => ("Документ Microsoft Word (*.docx)|*.docx|Все файлы (*.*)|*.*", "docx"),
+                "pdf" => ("Документ PDF (*.pdf)|*.pdf|Все файлы (*.*)|*.*", "pdf"),
+                "html" => ("Веб-документ HTML (*.html)|*.html|Все файлы (*.*)|*.*", "html"),
+                _ => ("Все файлы (*.*)|*.*", format)
+            };
+
+            var defaultName = string.IsNullOrWhiteSpace(GuideTitle) ? "Руководство" : GuideTitle;
+            var savePath = await _fileDialogService.ShowSaveFileDialogAsync(
+                $"Сохранить руководство ({format.ToUpperInvariant()})",
+                defaultName,
+                ext,
+                filter);
+
+            if (string.IsNullOrWhiteSpace(savePath))
+            {
+                return;
+            }
+
+            var project = new Project(
+                Id: _playerEngine.CurrentGuideId ?? Guid.NewGuid(),
+                Name: GuideTitle,
+                RootPath: ProjectRootPath ?? string.Empty,
+                CreatedAt: DateTime.UtcNow,
+                UpdatedAt: DateTime.UtcNow,
+                Description: GuideDescription ?? "Экспортированное руководство Stepwise");
+
+            var stepsList = _playerEngine.Steps;
+
+            switch (format.ToLowerInvariant())
+            {
+                case "docx":
+                    await _exportService.ExportToDocxAsync(project, stepsList, savePath);
+                    break;
+                case "pdf":
+                    await _exportService.ExportToPdfAsync(project, stepsList, savePath);
+                    break;
+                case "html":
+                    await _exportService.ExportToHtmlAsync(project, stepsList, savePath);
+                    break;
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[PlayerViewModel] Export error: {ex.Message}");
+        }
     }
 
     [RelayCommand]

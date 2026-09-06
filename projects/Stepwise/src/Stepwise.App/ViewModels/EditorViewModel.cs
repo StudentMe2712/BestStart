@@ -23,9 +23,37 @@ namespace Stepwise.App.ViewModels;
 public sealed partial class EditorViewModel : ObservableObject, IDisposable
 {
     private readonly IImageLoaderService _imageLoader;
+    private readonly IGuideExportService? _exportService;
+    private readonly IGroqAIService? _groqAiService;
+    private readonly IFileDialogService? _fileDialogService;
     private IProjectRepository? _repository;
     private CancellationTokenSource? _previewCts;
     private CancellationTokenSource? _thumbnailsCts;
+
+    [ObservableProperty]
+    private bool _isAiBusy;
+
+    [ObservableProperty]
+    private string? _aiStatusMessage;
+
+    [ObservableProperty]
+    private bool _isExporting;
+
+    [ObservableProperty]
+    private string? _exportStatusMessage;
+
+    [ObservableProperty]
+    private string _groqApiKey = string.Empty;
+
+    [ObservableProperty]
+    private string _selectedAiModel = "openai/gpt-oss-120b";
+
+    public IReadOnlyList<string> AvailableAiModels { get; } = new[]
+    {
+        "openai/gpt-oss-120b",
+        "qwen/qwen3.8-27b",
+        "llama-3.3-70b-versatile"
+    };
 
     public ObservableCollection<StepItemViewModel> Steps { get; } = new();
 
@@ -165,14 +193,45 @@ public sealed partial class EditorViewModel : ObservableObject, IDisposable
         ? $"X: {SelectedStep.ClickX:F0}, Y: {SelectedStep.ClickY:F0}"
         : string.Empty;
 
-    public EditorViewModel(IImageLoaderService imageLoader, IProjectRepository? repository = null)
+    public EditorViewModel(
+        IImageLoaderService imageLoader,
+        IProjectRepository? repository = null,
+        IGuideExportService? exportService = null,
+        IGroqAIService? groqAiService = null,
+        IFileDialogService? fileDialogService = null)
     {
         _imageLoader = imageLoader ?? throw new ArgumentNullException(nameof(imageLoader));
         _repository = repository;
+        _exportService = exportService;
+        _groqAiService = groqAiService;
+        _fileDialogService = fileDialogService;
+
+        if (_groqAiService != null)
+        {
+            _groqApiKey = _groqAiService.StoredApiKey ?? string.Empty;
+            _selectedAiModel = _groqAiService.SelectedModel ?? "openai/gpt-oss-120b";
+        }
+
         if (_repository != null && !string.IsNullOrWhiteSpace(_repository.ProjectRootPath))
         {
             _projectPath = _repository.ProjectRootPath;
             _projectName = Path.GetFileName(_repository.ProjectRootPath);
+        }
+    }
+
+    partial void OnGroqApiKeyChanged(string value)
+    {
+        if (_groqAiService != null)
+        {
+            _groqAiService.StoredApiKey = value;
+        }
+    }
+
+    partial void OnSelectedAiModelChanged(string value)
+    {
+        if (_groqAiService != null)
+        {
+            _groqAiService.SelectedModel = value;
         }
     }
 
@@ -511,6 +570,176 @@ public sealed partial class EditorViewModel : ObservableObject, IDisposable
     private void ToggleHighlightOverlay()
     {
         ShowHighlightOverlay = !ShowHighlightOverlay;
+    }
+
+    [RelayCommand]
+    public async Task EnhanceStepAiAsync()
+    {
+        if (SelectedStep == null || _groqAiService == null) return;
+
+        try
+        {
+            IsAiBusy = true;
+            AiStatusMessage = "Генерация описания шага через Groq AI...";
+
+            var result = await _groqAiService.EnhanceStepAsync(SelectedStep.Step, GroqApiKey, SelectedAiModel);
+            if (result.Success)
+            {
+                CurrentStepTitle = result.Title;
+                CurrentStepDescription = result.Description;
+                AiStatusMessage = "Шаг успешно улучшен нейросетью!";
+            }
+            else
+            {
+                AiStatusMessage = $"Ошибка AI: {result.ErrorMessage}";
+            }
+        }
+        catch (Exception ex)
+        {
+            AiStatusMessage = $"Ошибка: {ex.Message}";
+        }
+        finally
+        {
+            IsAiBusy = false;
+        }
+    }
+
+    [RelayCommand]
+    public async Task EnhanceAllStepsAiAsync()
+    {
+        if (Steps.Count == 0 || _groqAiService == null) return;
+
+        try
+        {
+            IsAiBusy = true;
+            AiStatusMessage = $"Улучшение {Steps.Count} шагов через Groq AI...";
+
+            var rawSteps = Steps.Select(s => s.Step).ToList();
+            var enhanced = await _groqAiService.EnhanceAllStepsAsync(
+                rawSteps,
+                GroqApiKey,
+                SelectedAiModel,
+                new Progress<(int Current, int Total)>(p =>
+                {
+                    AiStatusMessage = $"Обработка шага {p.Current} из {p.Total}...";
+                }));
+
+            for (int i = 0; i < Math.Min(Steps.Count, enhanced.Count); i++)
+            {
+                var stepVm = Steps[i];
+                if (enhanced[i].Title != null) stepVm.Title = enhanced[i].Title!;
+                if (enhanced[i].Description != null) stepVm.Description = enhanced[i].Description!;
+            }
+
+            if (SelectedStep != null)
+            {
+                OnPropertyChanged(nameof(CurrentStepTitle));
+                OnPropertyChanged(nameof(CurrentStepDescription));
+                OnPropertyChanged(nameof(SelectedStepTitle));
+            }
+
+            AiStatusMessage = "Все шаги успешно улучшены нейросетью!";
+        }
+        catch (Exception ex)
+        {
+            AiStatusMessage = $"Ошибка пакетной обработки: {ex.Message}";
+        }
+        finally
+        {
+            IsAiBusy = false;
+        }
+    }
+
+    [RelayCommand]
+    public async Task ExportDocxAsync()
+    {
+        await ExportGuideInternalAsync("docx");
+    }
+
+    [RelayCommand]
+    public async Task ExportPdfAsync()
+    {
+        await ExportGuideInternalAsync("pdf");
+    }
+
+    [RelayCommand]
+    public async Task ExportHtmlAsync()
+    {
+        await ExportGuideInternalAsync("html");
+    }
+
+    private async Task ExportGuideInternalAsync(string format)
+    {
+        if (Steps.Count == 0)
+        {
+            ExportStatusMessage = "Нет шагов для экспорта.";
+            return;
+        }
+
+        if (_exportService == null || _fileDialogService == null)
+        {
+            ExportStatusMessage = "Сервис экспорта или диалога недоступен.";
+            return;
+        }
+
+        try
+        {
+            IsExporting = true;
+            ExportStatusMessage = $"Подготовка экспорта в {format.ToUpperInvariant()}...";
+
+            var (filter, ext) = format.ToLowerInvariant() switch
+            {
+                "docx" => ("Документ Microsoft Word (*.docx)|*.docx|Все файлы (*.*)|*.*", "docx"),
+                "pdf" => ("Документ PDF (*.pdf)|*.pdf|Все файлы (*.*)|*.*", "pdf"),
+                "html" => ("Веб-документ HTML (*.html)|*.html|Все файлы (*.*)|*.*", "html"),
+                _ => ("Все файлы (*.*)|*.*", format)
+            };
+
+            var defaultName = string.IsNullOrWhiteSpace(ProjectName) ? "Руководство" : ProjectName;
+            var savePath = await _fileDialogService.ShowSaveFileDialogAsync(
+                $"Сохранить руководство ({format.ToUpperInvariant()})",
+                defaultName,
+                ext,
+                filter);
+
+            if (string.IsNullOrWhiteSpace(savePath))
+            {
+                ExportStatusMessage = "Экспорт отменен пользователем.";
+                return;
+            }
+
+            var project = new Project(
+                Id: Guid.NewGuid(),
+                Name: ProjectName,
+                RootPath: ProjectPath,
+                CreatedAt: DateTime.UtcNow,
+                UpdatedAt: DateTime.UtcNow,
+                Description: "Экспортированное руководство Stepwise");
+            var stepsList = Steps.Select(s => s.Step).ToList();
+
+            switch (format.ToLowerInvariant())
+            {
+                case "docx":
+                    await _exportService.ExportToDocxAsync(project, stepsList, savePath);
+                    break;
+                case "pdf":
+                    await _exportService.ExportToPdfAsync(project, stepsList, savePath);
+                    break;
+                case "html":
+                    await _exportService.ExportToHtmlAsync(project, stepsList, savePath);
+                    break;
+            }
+
+            ExportStatusMessage = $"Успешно сохранено: {Path.GetFileName(savePath)}";
+        }
+        catch (Exception ex)
+        {
+            ExportStatusMessage = $"Ошибка экспорта: {ex.Message}";
+        }
+        finally
+        {
+            IsExporting = false;
+        }
     }
 
     private bool _disposed;

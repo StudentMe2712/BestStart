@@ -74,6 +74,19 @@ public sealed class UIATargetResolver : ITargetResolver
             // 2. Мышиные и координатные действия (Clicks, DragAndDrop по startX/Y, Scroll по X/Y)
             if (action.X.HasValue && action.Y.HasValue)
             {
+                // Если элемент был предварительно захвачен в момент MouseDown (до закрытия окна/перехода страницы в 1С),
+                // используем его в приоритете
+                if (action.PreResolvedTarget != null &&
+                    action.PreResolvedTarget != ElementInfo.Unknown &&
+                    !action.PreResolvedTarget.BoundingRectangle.IsEmpty)
+                {
+                    lock (_stateLock)
+                    {
+                        _lastResolvedElement = action.PreResolvedTarget;
+                    }
+                    return Task.FromResult(action.PreResolvedTarget);
+                }
+
                 ElementInfo element;
                 if (_uiaService is UIAutomationService concreteUia)
                 {

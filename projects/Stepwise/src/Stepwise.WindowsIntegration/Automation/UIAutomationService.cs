@@ -37,6 +37,10 @@ public sealed class UIAutomationService : IUIAutomationService
 
             if (element != null)
             {
+                // Для составных интерфейсов (1С, DirectUI, Ribbon) выполняем углубление
+                // к конкретному интерактивному дочернему элементу по координатам клика
+                element = DrillDownToSpecificElement(element, uiaPoint) ?? element;
+
                 var info = ExtractElementInfoFromUia(element, x, y, fallbackContext);
                 if (info != null && info != ElementInfo.Unknown)
                 {
@@ -573,5 +577,119 @@ public sealed class UIAutomationService : IUIAutomationService
         }
 
         return BoundingBox.Empty;
+    }
+
+    /// <summary>
+    /// Для крупных контейнеров (Pane, Custom, Window, Group) выполняет углубленный поиск
+    /// дочернего интерактивного элемента (Button, ListItem, TabItem, Hyperlink, MenuItem и т.д.),
+    /// непосредственно содержащего точку клика. Это предотвращает захват всего раздела 1С вместо нажатой кнопки.
+    /// </summary>
+    internal static AutomationElement? DrillDownToSpecificElement(AutomationElement element, System.Windows.Point pt)
+    {
+        if (element == null)
+        {
+            return null;
+        }
+
+        try
+        {
+            var current = element;
+            int maxDepth = 6;
+
+            while (maxDepth-- > 0)
+            {
+                ControlType? ct = null;
+                System.Windows.Rect bounds = System.Windows.Rect.Empty;
+
+                try
+                {
+                    ct = current.Current.ControlType;
+                    bounds = current.Current.BoundingRectangle;
+                }
+                catch
+                {
+                    break;
+                }
+
+                // Если текущий элемент уже является компактным интерактивным листовым элементом, останавливаемся
+                bool isLeafInteractive = ct == ControlType.Button ||
+                                         ct == ControlType.Hyperlink ||
+                                         ct == ControlType.ListItem ||
+                                         ct == ControlType.TabItem ||
+                                         ct == ControlType.MenuItem ||
+                                         ct == ControlType.TreeItem ||
+                                         ct == ControlType.CheckBox ||
+                                         ct == ControlType.RadioButton ||
+                                         ct == ControlType.Edit;
+
+                if (isLeafInteractive && !bounds.IsEmpty && bounds.Width < 500 && bounds.Height < 300)
+                {
+                    return current;
+                }
+
+                // Ищем среди непосредственных потомков элемент, содержащий точку pt
+                var walker = TreeWalker.ControlViewWalker;
+                AutomationElement? child = null;
+                try
+                {
+                    child = walker.GetFirstChild(current);
+                }
+                catch
+                {
+                    break;
+                }
+
+                AutomationElement? bestChild = null;
+                double currentArea = (!bounds.IsEmpty && bounds.Width > 0 && bounds.Height > 0)
+                    ? bounds.Width * bounds.Height
+                    : double.MaxValue;
+                double bestArea = currentArea;
+
+                while (child != null)
+                {
+                    try
+                    {
+                        var childBounds = child.Current.BoundingRectangle;
+                        if (!childBounds.IsEmpty && childBounds.Contains(pt))
+                        {
+                            double area = childBounds.Width * childBounds.Height;
+                            if (area < bestArea && area > 0)
+                            {
+                                bestArea = area;
+                                bestChild = child;
+                            }
+                        }
+                    }
+                    catch
+                    {
+                        // Игнорируем COM-ошибки отдельных дочерних элементов
+                    }
+
+                    try
+                    {
+                        child = walker.GetNextSibling(child);
+                    }
+                    catch
+                    {
+                        break;
+                    }
+                }
+
+                if (bestChild != null && bestArea < currentArea)
+                {
+                    current = bestChild;
+                }
+                else
+                {
+                    break;
+                }
+            }
+
+            return current;
+        }
+        catch
+        {
+            return element;
+        }
     }
 }

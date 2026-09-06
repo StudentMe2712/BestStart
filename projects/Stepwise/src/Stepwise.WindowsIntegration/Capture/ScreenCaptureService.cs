@@ -159,6 +159,71 @@ public sealed class ScreenCaptureService : IScreenCaptureService
 
     private static Bitmap? CaptureWindowGdi(nint hWnd, int width, int height)
     {
+        // 1. Первичный метод: захват напрямую из контекста рабочего стола (Desktop DC)
+        // В современных Windows (DWM) это копирует готовые аппаратные пиксели из GPU-буфера
+        // с сохранением 100% нативного разрешения, субпиксельного ClearType сглаживания шрифтов
+        // и без принудительного отключения аппаратного ускорения в 1С/браузерах/WPF.
+        if (GetWindowRect(hWnd, out var winRect))
+        {
+            int rectWidth = winRect.Right - winRect.Left;
+            int rectHeight = winRect.Bottom - winRect.Top;
+
+            if (rectWidth > 0 && rectHeight > 0)
+            {
+                nint deskDc = GetDC(nint.Zero);
+                if (deskDc != nint.Zero)
+                {
+                    try
+                    {
+                        nint memDc = CreateCompatibleDC(deskDc);
+                        if (memDc != nint.Zero)
+                        {
+                            try
+                            {
+                                nint hBitmap = CreateCompatibleBitmap(deskDc, rectWidth, rectHeight);
+                                if (hBitmap != nint.Zero)
+                                {
+                                    try
+                                    {
+                                        nint oldBitmap = SelectObject(memDc, hBitmap);
+                                        try
+                                        {
+                                            bool bltSuccess = BitBlt(memDc, 0, 0, rectWidth, rectHeight, deskDc, winRect.Left, winRect.Top, SRCCOPY);
+                                            if (bltSuccess)
+                                            {
+                                                using var tempImage = Image.FromHbitmap(hBitmap);
+                                                return new Bitmap(tempImage);
+                                            }
+                                        }
+                                        finally
+                                        {
+                                            if (oldBitmap != nint.Zero && oldBitmap != (nint)(-1))
+                                            {
+                                                SelectObject(memDc, oldBitmap);
+                                            }
+                                        }
+                                    }
+                                    finally
+                                    {
+                                        DeleteObject(hBitmap);
+                                    }
+                                }
+                            }
+                            finally
+                            {
+                                DeleteDC(memDc);
+                            }
+                        }
+                    }
+                    finally
+                    {
+                        ReleaseDC(nint.Zero, deskDc);
+                    }
+                }
+            }
+        }
+
+        // 2. Fallback: Захват через контекст окна или PrintWindow (если окно свернуто или за пределами видимости)
         nint winDc = GetDC(hWnd);
         if (winDc == nint.Zero)
         {
@@ -186,7 +251,6 @@ public sealed class ScreenCaptureService : IScreenCaptureService
                     nint oldBitmap = SelectObject(memDc, hBitmap);
                     try
                     {
-                        // Для контекста окна источник начинается строго в (0, 0)
                         bool bltSuccess = BitBlt(memDc, 0, 0, width, height, winDc, 0, 0, SRCCOPY);
                         if (!bltSuccess)
                         {
@@ -349,6 +413,9 @@ public sealed class ScreenCaptureService : IScreenCaptureService
         if (width > 0 && height > 0)
         {
             using var graphics = Graphics.FromImage(bitmap);
+            graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+            graphics.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
+            graphics.PixelOffsetMode = System.Drawing.Drawing2D.PixelOffsetMode.HighQuality;
             using var pen = new Pen(Color.FromArgb(239, 68, 68), 3); // Modern Red (#EF4444)
             using var fillBrush = new SolidBrush(Color.FromArgb(40, 239, 68, 68));
             graphics.DrawRectangle(pen, targetX, targetY, width, height);

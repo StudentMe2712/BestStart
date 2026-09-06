@@ -79,7 +79,8 @@ public sealed record SemanticAction(
     bool IsSensitive = false,
     int? EndX = null,
     int? EndY = null,
-    int? Delta = null
+    int? Delta = null,
+    ElementInfo? PreResolvedTarget = null
 )
 {
     /// <summary>
@@ -91,7 +92,8 @@ public sealed record SemanticAction(
         int y,
         WindowContext context,
         DateTime timestamp,
-        int sequenceIndex = 0)
+        int sequenceIndex = 0,
+        ElementInfo? preResolvedTarget = null)
     {
         return new SemanticAction(
             Id: Guid.NewGuid(),
@@ -102,7 +104,8 @@ public sealed record SemanticAction(
             X: x,
             Y: y,
             StartedAt: timestamp,
-            CompletedAt: timestamp
+            CompletedAt: timestamp,
+            PreResolvedTarget: preResolvedTarget
         );
     }
 

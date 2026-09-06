@@ -21,6 +21,7 @@ public sealed class RecordingEngine : IRecordingEngine
     private readonly IStepDetector _stepDetector;
     private readonly ICaptureCoordinator _captureCoordinator;
     private readonly IProjectRepository? _repository;
+    private readonly IScreenRecordingIndicator? _recordingIndicator;
     private readonly RecordingSessionStateMachine _stateMachine = new();
     private readonly object _startStopLock = new();
 
@@ -32,6 +33,10 @@ public sealed class RecordingEngine : IRecordingEngine
     private volatile WindowContext _currentWindowContext = WindowContext.Empty;
     private int _sequenceIndex;
     private bool _isDisposed;
+
+    private readonly object _preResolveLock = new();
+    private ElementInfo? _preResolvedTarget;
+    private (int X, int Y)? _preResolvedCoords;
 
     /// <inheritdoc />
     public RecordingSessionState State => _stateMachine.CurrentState;
@@ -56,7 +61,8 @@ public sealed class RecordingEngine : IRecordingEngine
         IRecordingPolicy policy,
         IStepDetector stepDetector,
         ICaptureCoordinator captureCoordinator,
-        IProjectRepository? repository = null)
+        IProjectRepository? repository = null,
+        IScreenRecordingIndicator? recordingIndicator = null)
     {
         _inputMonitor = inputMonitor ?? throw new ArgumentNullException(nameof(inputMonitor));
         _windowTracker = windowTracker;
@@ -66,6 +72,7 @@ public sealed class RecordingEngine : IRecordingEngine
         _stepDetector = stepDetector ?? throw new ArgumentNullException(nameof(stepDetector));
         _captureCoordinator = captureCoordinator ?? throw new ArgumentNullException(nameof(captureCoordinator));
         _repository = repository;
+        _recordingIndicator = recordingIndicator;
 
         _stateMachine.StateChanged += (_, newState) => StateChanged?.Invoke(this, newState);
     }
@@ -147,6 +154,15 @@ public sealed class RecordingEngine : IRecordingEngine
 
             // Переводим автомат в состояние записи
             _stateMachine.Transition(RecordingSessionState.Recording);
+
+            try
+            {
+                _recordingIndicator?.StartIndicator();
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[RecordingEngine] Failed to start recording indicator: {ex.Message}");
+            }
         }
     }
 
@@ -159,7 +175,10 @@ public sealed class RecordingEngine : IRecordingEngine
         {
             if (_stateMachine.CurrentState == RecordingSessionState.Recording)
             {
+                _inputMonitor.Stop();
+                _windowTracker?.Stop();
                 _stateMachine.Transition(RecordingSessionState.Paused);
+                try { _recordingIndicator?.StopIndicator(); } catch { }
             }
         }
     }
@@ -173,7 +192,10 @@ public sealed class RecordingEngine : IRecordingEngine
         {
             if (_stateMachine.CurrentState == RecordingSessionState.Paused)
             {
+                _inputMonitor.Start();
+                _windowTracker?.Start();
                 _stateMachine.Transition(RecordingSessionState.Recording);
+                try { _recordingIndicator?.StartIndicator(); } catch { }
             }
         }
     }
@@ -285,6 +307,40 @@ public sealed class RecordingEngine : IRecordingEngine
             return;
         }
 
+        if (e.EventType == RawMouseEventType.MouseDown && (e.Button == RawMouseButton.Left || e.Button == RawMouseButton.Right))
+        {
+            lock (_preResolveLock)
+            {
+                _preResolvedCoords = (e.X, e.Y);
+                _preResolvedTarget = null;
+            }
+
+            // Предварительное асинхронное разрешение элемента в момент зажатия кнопки,
+            // пока целевое приложение (например, 1С) еще не переключило раздел или не перестроило визуальное дерево
+            ThreadPool.QueueUserWorkItem(async _ =>
+            {
+                try
+                {
+                    var tempAction = SemanticAction.CreateMouseClick(
+                        e.Button == RawMouseButton.Right ? SemanticActionType.RightClick : SemanticActionType.LeftClick,
+                        e.X, e.Y, _currentWindowContext, e.Timestamp);
+                    var resolved = await _targetResolver.ResolveTargetAsync(tempAction).ConfigureAwait(false);
+
+                    lock (_preResolveLock)
+                    {
+                        if (_preResolvedCoords == (e.X, e.Y))
+                        {
+                            _preResolvedTarget = resolved;
+                        }
+                    }
+                }
+                catch
+                {
+                    // Игнорируем исключения фонового предварительного анализа
+                }
+            });
+        }
+
         _rawInputChannel?.Writer.TryWrite(RawInputQueueItem.Mouse(e, _currentWindowContext));
     }
 
@@ -319,6 +375,26 @@ public sealed class RecordingEngine : IRecordingEngine
 
     private void OnActionCorrelated(object? sender, SemanticAction action)
     {
+        if (action.X.HasValue && action.Y.HasValue &&
+            action.ActionType is SemanticActionType.LeftClick or SemanticActionType.RightClick or SemanticActionType.DoubleLeftClick)
+        {
+            ElementInfo? preTarget = null;
+            lock (_preResolveLock)
+            {
+                if (_preResolvedCoords == (action.X.Value, action.Y.Value) && _preResolvedTarget != null)
+                {
+                    preTarget = _preResolvedTarget;
+                    _preResolvedCoords = null;
+                    _preResolvedTarget = null;
+                }
+            }
+
+            if (preTarget != null && preTarget != ElementInfo.Unknown)
+            {
+                action = action with { PreResolvedTarget = preTarget };
+            }
+        }
+
         _actionChannel?.Writer.TryWrite(action);
     }
 
@@ -412,6 +488,16 @@ public sealed class RecordingEngine : IRecordingEngine
 
                     // 6. Оповещение подписчиков о записи шага
                     StepRecorded?.Invoke(this, step);
+
+                    // 7. Мгновенная визуальная обратная связь на экране (Live Spotlight Ripple / Toast)
+                    try
+                    {
+                        _recordingIndicator?.FlashCapture(step.TargetElement.BoundingRectangle, step.TargetElement.Name, step.SequenceIndex);
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.WriteLine($"[RecordingEngine] Warning: Recording indicator flash failed: {ex.Message}");
+                    }
                 }
             }
         }
@@ -430,6 +516,7 @@ public sealed class RecordingEngine : IRecordingEngine
         Debug.WriteLine($"[RecordingEngine] Fatal error during background processing: {ex}");
         lock (_startStopLock)
         {
+            try { _recordingIndicator?.StopIndicator(); } catch { }
             if (_stateMachine.CurrentState == RecordingSessionState.Recording ||
                 _stateMachine.CurrentState == RecordingSessionState.Paused)
             {
@@ -447,6 +534,7 @@ public sealed class RecordingEngine : IRecordingEngine
     {
         lock (_startStopLock)
         {
+            try { _recordingIndicator?.StopIndicator(); } catch { }
             _cts?.Dispose();
             _cts = null;
             _rawInputChannel = null;

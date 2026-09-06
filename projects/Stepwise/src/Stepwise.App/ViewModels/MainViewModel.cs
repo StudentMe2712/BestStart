@@ -130,6 +130,21 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         }
     }
 
+    /// <summary>
+    /// Переключает запись (Старт / Стоп). Вызывается по глобальной горячей клавише (Ctrl+Shift+R / F9).
+    /// </summary>
+    public async Task ToggleRecordingAsync()
+    {
+        if (RecordingState == RecordingSessionState.Recording || RecordingState == RecordingSessionState.Paused)
+        {
+            await StopRecordingAsync();
+        }
+        else if (CanStart)
+        {
+            StartRecording();
+        }
+    }
+
     private void OnRecordingEngineStateChanged(object? sender, RecordingSessionState newState)
     {
         RunOnUIThread(() =>

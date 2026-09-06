@@ -4,6 +4,7 @@ using Microsoft.UI.Xaml.Controls;
 using Stepwise.App.Services;
 using Stepwise.App.ViewModels;
 using Stepwise.App.Views;
+using Stepwise.Core.Interfaces;
 
 namespace Stepwise.App;
 
@@ -12,6 +13,8 @@ namespace Stepwise.App;
 /// </summary>
 public sealed partial class MainWindow : Window
 {
+    private readonly IGlobalHotkeyService? _hotkeyService;
+
     public MainViewModel ViewModel { get; }
 
     public MainWindow() : this(App.Services.GetRequiredService<MainViewModel>())
@@ -21,18 +24,44 @@ public sealed partial class MainWindow : Window
     public MainWindow(MainViewModel viewModel)
     {
         ViewModel = viewModel;
+        _hotkeyService = App.Services.GetService<IGlobalHotkeyService>();
         InitializeComponent();
 
         ExtendsContentIntoTitleBar = true;
         SetTitleBar(AppTitleBar);
 
-        Closed += (s, e) => (ViewModel as IDisposable)?.Dispose();
+        // Регистрация глобальных горячих клавиш (Ctrl+Shift+R и F9)
+        var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(this);
+        if (hwnd != nint.Zero && _hotkeyService != null)
+        {
+            _hotkeyService.Register(hwnd);
+            _hotkeyService.RecordingHotkeyPressed += OnRecordingHotkeyPressed;
+        }
+
+        Closed += (s, e) =>
+        {
+            if (_hotkeyService != null)
+            {
+                _hotkeyService.RecordingHotkeyPressed -= OnRecordingHotkeyPressed;
+                _hotkeyService.Unregister();
+                _hotkeyService.Dispose();
+            }
+            (ViewModel as IDisposable)?.Dispose();
+        };
 
         if (NavView.MenuItems.Count > 0)
         {
             NavView.SelectedItem = NavView.MenuItems[0];
         }
         ContentFrame.Navigate(typeof(EditorPage));
+    }
+
+    private void OnRecordingHotkeyPressed(object? sender, EventArgs e)
+    {
+        DispatcherQueue.TryEnqueue(async () =>
+        {
+            await ViewModel.ToggleRecordingAsync();
+        });
     }
 
     private void NavView_SelectionChanged(NavigationView sender, NavigationViewSelectionChangedEventArgs args)

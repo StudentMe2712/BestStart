@@ -5,12 +5,15 @@ using Microsoft.UI.Xaml;
 using Stepwise.App.Services;
 using Stepwise.App.ViewModels;
 using Stepwise.App.Views;
+using Stepwise.Core.AI;
 using Stepwise.Core.Engine;
 using Stepwise.Core.Interfaces;
 using Stepwise.Core.Policy;
+using Stepwise.Storage.Export;
 using Stepwise.Storage.Repositories;
 using Stepwise.WindowsIntegration.Automation;
 using Stepwise.WindowsIntegration.Capture;
+using Stepwise.WindowsIntegration.Hotkeys;
 using Stepwise.WindowsIntegration.Overlay;
 using Stepwise.WindowsIntegration.Services;
 
@@ -72,11 +75,38 @@ public partial class App : Application
         services.AddSingleton<IScreenCaptureService, ScreenCaptureService>();
         services.AddSingleton<ICaptureCoordinator, CaptureCoordinator>();
 
+        // Индикатор записи экрана и глобальные горячие клавиши (Ctrl+Shift+R / F9)
+        services.AddSingleton<IScreenRecordingIndicator, ScreenRecordingBorderWindow>();
+        services.AddSingleton<IGlobalHotkeyService, GlobalHotkeyService>();
+
+        // Экспорт руководств (Word .docx, PDF .pdf, HTML .html)
+        services.AddSingleton<IGuideExportService>(sp =>
+        {
+            var repo = sp.GetService<IProjectRepository>();
+            return new GuideExportService(repo?.ProjectRootPath);
+        });
+
+        // Groq AI интеграция (openai/gpt-oss-120b, qwen/qwen3.8-27b)
+        services.AddSingleton<IGroqAIService, GroqAIService>();
+
+        // Диалоги сохранения файлов (Win32)
+        services.AddSingleton<IFileDialogService, NativeFileDialogService>();
+
         // Ядро записи и политики Core (Stage 2 Recording Engine)
         services.AddSingleton<IEventCorrelator, EventCorrelator>();
         services.AddSingleton<IRecordingPolicy, DefaultRecordingPolicy>();
         services.AddSingleton<IStepDetector, StepDetector>();
-        services.AddSingleton<IRecordingEngine, RecordingEngine>();
+        services.AddSingleton<IRecordingEngine>(sp => new RecordingEngine(
+            sp.GetRequiredService<IInputMonitoringService>(),
+            sp.GetService<IActiveWindowTracker>(),
+            sp.GetRequiredService<IEventCorrelator>(),
+            sp.GetRequiredService<ITargetResolver>(),
+            sp.GetRequiredService<IRecordingPolicy>(),
+            sp.GetRequiredService<IStepDetector>(),
+            sp.GetRequiredService<ICaptureCoordinator>(),
+            sp.GetService<IProjectRepository>(),
+            sp.GetService<IScreenRecordingIndicator>()
+        ));
 
         // Движок воспроизведения руководств (Player Engine)
         services.AddSingleton<IPlayerEngine, PlayerEngine>();

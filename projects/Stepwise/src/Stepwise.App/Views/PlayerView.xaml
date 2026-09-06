@@ -64,6 +64,46 @@
                         </StackPanel>
                     </ToggleButton>
 
+                    <!-- Export Menu Button -->
+                    <DropDownButton
+                        AutomationProperties.AutomationId="BtnPlayerExportMenu"
+                        ToolTipService.ToolTip="Экспортировать руководство в Word, PDF или HTML"
+                        Padding="8,5"
+                        CornerRadius="6">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <FontIcon Glyph="&#xEDE1;" FontSize="12" />
+                            <TextBlock Text="Экспорт" FontSize="12" />
+                        </StackPanel>
+                        <DropDownButton.Flyout>
+                            <MenuFlyout Placement="Bottom">
+                                <MenuFlyoutItem
+                                    AutomationProperties.AutomationId="MenuPlayerExportDocx"
+                                    Text="Документ Word (.docx)"
+                                    Command="{x:Bind ViewModel.ExportDocxCommand}">
+                                    <MenuFlyoutItem.Icon>
+                                        <FontIcon Glyph="&#xE8A5;" />
+                                    </MenuFlyoutItem.Icon>
+                                </MenuFlyoutItem>
+                                <MenuFlyoutItem
+                                    AutomationProperties.AutomationId="MenuPlayerExportPdf"
+                                    Text="Документ PDF (.pdf)"
+                                    Command="{x:Bind ViewModel.ExportPdfCommand}">
+                                    <MenuFlyoutItem.Icon>
+                                        <FontIcon Glyph="&#xEA90;" />
+                                    </MenuFlyoutItem.Icon>
+                                </MenuFlyoutItem>
+                                <MenuFlyoutItem
+                                    AutomationProperties.AutomationId="MenuPlayerExportHtml"
+                                    Text="Печать / Веб-документ (.html)"
+                                    Command="{x:Bind ViewModel.ExportHtmlCommand}">
+                                    <MenuFlyoutItem.Icon>
+                                        <FontIcon Glyph="&#xE774;" />
+                                    </MenuFlyoutItem.Icon>
+                                </MenuFlyoutItem>
+                            </MenuFlyout>
+                        </DropDownButton.Flyout>
+                    </DropDownButton>
+
                     <!-- Player Status Badge -->
                     <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                             BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
