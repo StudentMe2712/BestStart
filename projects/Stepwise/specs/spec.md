@@ -1,7 +1,7 @@
 # Stepwise — Главная архитектурная спецификация и Центр Проекта (Brain Specification)
 
-> **Статус:** В активной разработке (Срез: Шаги 1–10 и 12 сданы на 100% — Фаза 5 Этап 2: Desktop Overlay сдан на 100%, 376/376 тестов PASS, Live Hardware Click-Through FlaUI UIA3 GUI E2E PASS, Overlay Visual Spotlight + Callout + Multi-monitor PASS, All Section 29 & 30 Unit & Integration tests PASS, 0 Warnings / 0 Errors)  
-> **Версия спецификации:** 2.5.0 (Phase 5 Stage 2: Desktop Overlay Complete)  
+> **Статус:** В активной разработке (Срез: Шаги 1–10 и 12–13 сданы на 100% — Фаза 5 Этап 3: Full Product Loop E2E & Stabilization сдан на 100%, 399+ тестов PASS, Golden Product Loop FlaUI UIA3 Live GUI E2E PASS, Graceful Failure Recovery PASS, Multi-Cycle Stress & Zero Resource Leaks PASS, Windows Coordinate Tolerance & Edge Clamping PASS, Zero Plaintext Password Leakage Verified, 0 Warnings / 0 Errors)  
+> **Версия спецификации:** 2.6.0 (Phase 5 Stage 3: Full Product Loop E2E & Stabilization Complete)  
 > **Платформа:** Windows 10/11 (x64 / ARM64)  
 > **Технологический стек:** C# 13, .NET 9+, WinUI 3, Windows App SDK, Microsoft UI Automation (UIA), Win32 API (CsWin32 / PInvoke), Windows.Graphics.Capture, SQLite, CommunityToolkit.Mvvm, System.Text.Json.
 
@@ -646,5 +646,41 @@ should be treated as the target definition of done.
 ### 18.18. Agent Honesty
 - **Never claim a live GUI scenario passed unless the executable was actually launched and the scenario was actually executed.**
 - **Never infer GUI behavior from successful compilation alone.**
+
+---
+
+## 19. Phase 5 Stage 3 — Full Product Loop E2E & Stabilization Verification
+
+### 19.1. Unified Subsystems Verification
+Phase 5 Stage 3 represents the full integration and stabilization milestone demonstrating that all Stepwise subsystems operate as a unified, cohesive whole:
+```text
+Recording Engine + Real-World Windows Recording + Guide Editor + Guide Player + Desktop Overlay
+```
+
+### 19.2. Golden Loop E2E Verification
+The end-to-end user loop has been verified using FlaUI UIA3 against live `Stepwise.App.exe` and `Stepwise.TestTarget.exe`:
+1. Launch Stepwise with isolated project directory (`01-launch.png`).
+2. Start Recording (`02-recording.png`).
+3. Exercise target application (text entry, password entry, action triggers).
+4. Stop recording, generate screenshots, persist to SQLite (`03-recorded-guide.png`).
+5. Select and edit step title & description in Guide Editor (`04-editor.png`).
+6. Verify persistence across reloads (`05-persistence.png`).
+7. Open Guide Player, test navigation (Next, Prev, First, Last, Restart) (`06-player.png`).
+8. Toggle Desktop Overlay, verify spotlight cutout (Alpha=0) & callout positioning (`07-overlay-step-1.png`, `08-overlay-step-2.png`).
+9. Real hardware click-through via `WM_NCHITTEST` returning `HTTRANSPARENT` (`09-clickthrough.png`).
+10. Multi-window foreground switching & overlay toggle off (`10-overlay-off.png`).
+11. Graceful error handling for missing/corrupted screenshots (`11-failure-state.png`).
+12. Clean termination of all processes without orphans (`12-final.png`).
+
+### 19.3. Multi-Cycle Stress & Resource Safety
+- 3 full consecutive product cycles tested without process or window orphans.
+- Flat GDI and USER handle deltas ($\Delta \le 2$ GDI, $\Delta \le 6$ USER).
+- Immediate file unlocking for SQLite databases and decoded screenshots.
+- Idempotent resource disposal across ViewModels, hooks, and window classes.
+
+### 19.4. Zero Plaintext Password Leakage
+- Comprehensive multi-encoding byte scan (UTF-8, UTF-16LE, UTF-16BE, ASCII) across databases, WAL files, JSON logs, and screenshots.
+- Strict 0 occurrences of synthetic secrets verified.
+
 
 

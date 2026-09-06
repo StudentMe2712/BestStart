@@ -1,0 +1,10 @@
+﻿[
+  {
+    "ActionType": "TextInput",
+    "Target": "pwdSecure",
+    "Text": "\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022",
+    "IsSensitive": true,
+    "SequenceIndex": 1,
+    "Timestamp": "2026-09-06T13:51:38.0084790Z"
+  }
+]

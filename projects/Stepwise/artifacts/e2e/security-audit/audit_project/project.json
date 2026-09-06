@@ -1,0 +1,11 @@
+﻿{
+  "projectId": "57549bc3-12c3-49f2-8aec-d8f153477508",
+  "projectName": "Full Loop Security Audit Project",
+  "description": "Security audit validating zero secret leakage",
+  "createdAt": "2026-09-06T13:51:37.7589327Z",
+  "updatedAt": "2026-09-06T13:51:37.7589327Z",
+  "schemaVersion": "1.0",
+  "stepCount": 1,
+  "securityPolicy": "MaskSensitiveInputs",
+  "hasSensitiveInputs": true
+}

@@ -513,12 +513,22 @@ public sealed partial class EditorViewModel : ObservableObject, IDisposable
         ShowHighlightOverlay = !ShowHighlightOverlay;
     }
 
+    private bool _disposed;
+
     public void Dispose()
     {
-        _previewCts?.Cancel();
+        if (_disposed) return;
+        _disposed = true;
+
+        try { _previewCts?.Cancel(); } catch (ObjectDisposedException) { }
         _previewCts?.Dispose();
-        _thumbnailsCts?.Cancel();
+        _previewCts = null;
+
+        try { _thumbnailsCts?.Cancel(); } catch (ObjectDisposedException) { }
         _thumbnailsCts?.Dispose();
+        _thumbnailsCts = null;
+
         _repository?.Dispose();
+        _repository = null;
     }
 }

@@ -1,0 +1,77 @@
+﻿================================================================================
+              STEPWISE FULL PRODUCT LOOP LIVE GUI E2E SUMMARY
+================================================================================
+Generated At:     2026-09-06T13:52:51Z
+Specification:    specs/spec.md Phase 5 Stage 3 (Full Product Loop E2E & Stabilization)
+Applications:     Stepwise.App.exe (.NET 9 WinUI 3 Desktop win-x64)
+                  Stepwise.TestTarget.exe (.NET 9 WPF Deterministic Test Target)
+Artifacts Dir:    C:\Users\Mila\Desktop\BestStart\projects\Stepwise\artifacts\e2e\full-loop
+Test Project Dir: C:\Users\Mila\Desktop\BestStart\projects\Stepwise\artifacts\e2e\full-loop\full_loop_project
+Log File:         C:\Users\Mila\Desktop\BestStart\projects\Stepwise\artifacts\e2e\full-loop\full-loop.log
+
+TEST SUITE EXECUTION RESULTS:
+--------------------------------------------------------------------------------
+1. FullProductLoop_FromRecordingToOverlayPlayback_Succeeds: PASSED
+   - Step 1: Launch Stepwise.App with --project:              VERIFIED
+   - Step 2: Start Recording (BtnStartRecording -> Recording): VERIFIED
+   - Step 3: Launch TestTarget & Execute User Interactions:    VERIFIED
+     * TextInput into txtStandard:                             VERIFIED
+     * PasswordInput into pwdSecure (***MASKED***):            VERIFIED (Masked/Suppressed)
+     * Click btnAction ('Submit Action'):                      VERIFIED
+     * Click btnSecondary ('Secondary Action'):                VERIFIED
+   - Step 4: Stop Recording (BtnStopRecording, 4 steps recorded): VERIFIED
+     * Valid screenshots generated and checked as valid PNGs:  VERIFIED
+     * SQLite project.db recorded steps with UIA metadata:     VERIFIED
+   - Step 5: Editor Interaction & In-Place Editing:           VERIFIED
+     * Step 1 Title updated to 'Full Loop Verified':           VERIFIED
+     * Step 1 Description updated to 'Recorded, edited...':    VERIFIED
+   - Step 6: Persistence Verification (SQLite project.db):     VERIFIED
+   - Step 7: Open Player (BtnOpenPlayer):                      VERIFIED
+     * Step 1 displayed with edited title and description:     VERIFIED
+     * Navigation tested: Next, Previous, First, Last, Restart:VERIFIED
+   - Step 8: Desktop Overlay (BtnToggleOverlay):               VERIFIED
+     * NativeOverlayWindow visible (StepwiseDesktopOverlayClass):VERIFIED
+     * Target highlight & callout bubble rendered:             VERIFIED
+     * BtnNext moves overlay to next target:                   VERIFIED
+     * BtnPrevious moves overlay back:                         VERIFIED
+   - Step 9: Real Click-Through through topmost Overlay:       VERIFIED
+     * Real mouse click routed through NativeOverlayWindow:    VERIFIED
+     * TestTarget statusText updated to 'Action Submitted':    VERIFIED
+     * Transparent window did NOT block input:                 VERIFIED
+   - Step 10: Window switching & Overlay OFF:                  VERIFIED
+     * Focus switched between Player & TestTarget without glitch:VERIFIED
+     * BtnToggleOverlay OFF hides overlay:                     VERIFIED
+     * Player remains fully usable:                            VERIFIED
+   - Step 11: Close Player (BtnClosePlayer):                   VERIFIED
+     * Overlay closes/hides immediately:                       VERIFIED
+   - Step 12: Clean shutdown of all processes:                 VERIFIED
+
+2. FullProductLoop_MissingScreenshotFailure_HandlesGracefully: PASSED
+   - Missing/corrupted screenshot guide loaded into Player:    VERIFIED
+   - Zero unhandled exceptions / zero crash:                   VERIFIED
+   - Graceful error state rendered (BtnRetryScreenshot/Text):  VERIFIED
+   - Player remains usable during error state:                 VERIFIED
+
+SECURITY & ZERO PASSWORD LEAK AUDIT (Specs Section 4 & 22):
+--------------------------------------------------------------------------------
+Zero Plaintext Password Leak: PASSED (NO PLAINTEXT PASSWORDS STORED)
+- Sensitive password input was suppressed/masked by DefaultRecordingPolicy.
+- Raw database byte scan of full_loop_project/project.db: 0 occurrences found.
+
+EVIDENCE ARTIFACTS VERIFIED ON DISK:
+--------------------------------------------------------------------------------
+- 01-launch.png           : EXISTS & VALID (  40516 bytes)
+- 02-recording.png        : EXISTS & VALID (  40516 bytes)
+- 03-recorded-guide.png   : EXISTS & VALID (  40516 bytes)
+- 04-editor.png           : EXISTS & VALID (  40516 bytes)
+- 05-persistence.png      : EXISTS & VALID (  40516 bytes)
+- 06-player.png           : EXISTS & VALID (  39040 bytes)
+- 07-overlay-step-1.png   : EXISTS & VALID ( 458634 bytes)
+- 08-overlay-step-2.png   : EXISTS & VALID ( 458634 bytes)
+- 09-clickthrough.png     : EXISTS & VALID ( 458634 bytes)
+- 10-overlay-off.png      : EXISTS & VALID ( 458634 bytes)
+- 11-failure-state.png    : EXISTS & VALID (  40656 bytes)
+- 12-final.png            : EXISTS & VALID (  13233 bytes)
+- full-loop.log           : EXISTS & VALID
+- full-loop-summary.txt   : GENERATED
+================================================================================

@@ -5,8 +5,8 @@
   "ClassName": "Notepad",
   "FrameworkId": "Win32",
   "BoundingRectangle": [
-    80,
-    80,
+    40,
+    40,
     1800,
     763
   ],
@@ -18,8 +18,8 @@
       "ClassName": "Microsoft.UI.Content.DesktopChildSiteBridge",
       "FrameworkId": "Win32",
       "BoundingRectangle": [
-        138,
-        92,
+        98,
+        52,
         359,
         40
       ],
@@ -31,8 +31,8 @@
           "ClassName": "InputSiteWindowClass",
           "FrameworkId": "Xaml",
           "BoundingRectangle": [
-            138,
-            92,
+            98,
+            52,
             359,
             40
           ],
@@ -44,8 +44,8 @@
               "ClassName": "Microsoft.UI.Xaml.Controls.TabView",
               "FrameworkId": "Xaml",
               "BoundingRectangle": [
-                138,
-                92,
+                98,
+                52,
                 359,
                 40
               ],
@@ -62,8 +62,8 @@
       "ClassName": "Microsoft.UI.Content.DesktopChildSiteBridge",
       "FrameworkId": "Win32",
       "BoundingRectangle": [
-        88,
-        132,
+        48,
+        92,
         1784,
         41
       ],
@@ -75,8 +75,8 @@
           "ClassName": "InputSiteWindowClass",
           "FrameworkId": "Xaml",
           "BoundingRectangle": [
-            88,
-            132,
+            48,
+            92,
             1784,
             41
           ],
@@ -88,8 +88,8 @@
               "ClassName": "",
               "FrameworkId": "Xaml",
               "BoundingRectangle": [
-                88,
-                132,
+                48,
+                92,
                 199,
                 40
               ],
@@ -102,8 +102,8 @@
               "ClassName": "Button",
               "FrameworkId": "Xaml",
               "BoundingRectangle": [
-                1781,
-                133,
+                1741,
+                93,
                 38,
                 38
               ],
@@ -116,8 +116,8 @@
               "ClassName": "Button",
               "FrameworkId": "Xaml",
               "BoundingRectangle": [
-                1824,
-                132,
+                1784,
+                92,
                 38,
                 40
               ],
@@ -134,8 +134,8 @@
       "ClassName": "Microsoft.UI.Content.DesktopChildSiteBridge",
       "FrameworkId": "Win32",
       "BoundingRectangle": [
-        88,
-        795,
+        48,
+        755,
         1784,
         40
       ],
@@ -147,8 +147,8 @@
           "ClassName": "InputSiteWindowClass",
           "FrameworkId": "Xaml",
           "BoundingRectangle": [
-            88,
-            795,
+            48,
+            755,
             1784,
             40
           ],
@@ -160,8 +160,8 @@
               "ClassName": "TextBlock",
               "FrameworkId": "Xaml",
               "BoundingRectangle": [
-                108,
-                805,
+                68,
+                765,
                 74,
                 20
               ],
@@ -174,8 +174,8 @@
               "ClassName": "TextBlock",
               "FrameworkId": "Xaml",
               "BoundingRectangle": [
-                219,
-                805,
+                179,
+                765,
                 82,
                 20
               ],
@@ -188,8 +188,8 @@
               "ClassName": "TextBlock",
               "FrameworkId": "Xaml",
               "BoundingRectangle": [
-                472,
-                795,
+                432,
+                755,
                 78,
                 40
               ],
@@ -202,8 +202,8 @@
               "ClassName": "TextBlock",
               "FrameworkId": "Xaml",
               "BoundingRectangle": [
-                1408,
-                805,
+                1368,
+                765,
                 39,
                 20
               ],
@@ -216,8 +216,8 @@
               "ClassName": "TextBlock",
               "FrameworkId": "Xaml",
               "BoundingRectangle": [
-                1493,
-                805,
+                1453,
+                765,
                 114,
                 20
               ],
@@ -230,8 +230,8 @@
               "ClassName": "TextBlock",
               "FrameworkId": "Xaml",
               "BoundingRectangle": [
-                1703,
-                805,
+                1663,
+                765,
                 45,
                 20
               ],
@@ -248,8 +248,8 @@
       "ClassName": "",
       "FrameworkId": "Win32",
       "BoundingRectangle": [
-        89,
-        89,
+        49,
+        49,
         1782,
         29
       ],
@@ -261,8 +261,8 @@
           "ClassName": "",
           "FrameworkId": "Win32",
           "BoundingRectangle": [
-            89,
-            89,
+            49,
+            49,
             28,
             28
           ],
@@ -274,8 +274,8 @@
               "ClassName": "",
               "FrameworkId": "Win32",
               "BoundingRectangle": [
-                89,
-                89,
+                49,
+                49,
                 28,
                 28
               ],
@@ -290,8 +290,8 @@
           "ClassName": "",
           "FrameworkId": "Win32",
           "BoundingRectangle": [
-            1694,
-            81,
+            1654,
+            41,
             60,
             37
           ],
@@ -304,8 +304,8 @@
           "ClassName": "",
           "FrameworkId": "Win32",
           "BoundingRectangle": [
-            1754,
-            81,
+            1714,
+            41,
             59,
             37
           ],
@@ -318,8 +318,8 @@
           "ClassName": "",
           "FrameworkId": "Win32",
           "BoundingRectangle": [
-            1813,
-            81,
+            1773,
+            41,
             60,
             37
           ],

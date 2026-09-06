@@ -116,6 +116,9 @@
 
             <!-- Status Badge -->
             <Border Grid.Column="2"
+                    AutomationProperties.AutomationId="RecordingBadge"
+                    AutomationProperties.Name="Recording Badge"
+                    AutomationProperties.AccessibilityView="Control"
                     VerticalAlignment="Center"
                     Margin="0,0,140,0"
                     Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"

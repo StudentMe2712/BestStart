@@ -1,0 +1,34 @@
+﻿{
+  "TargetWindow": "Stepwise Test Target Application",
+  "Timestamp": "2026-09-06T13:51:38.0234265Z",
+  "Controls": [
+    {
+      "Name": "Standard Input",
+      "ControlType": "Edit",
+      "AutomationId": "txtStandard",
+      "ClassName": "TextBox",
+      "ProcessName": "Stepwise.TestTarget",
+      "IsPassword": false,
+      "Bounds": {
+        "X": 682,
+        "Y": 314,
+        "Width": 557,
+        "Height": 35
+      }
+    },
+    {
+      "Name": "Secure Password Input",
+      "ControlType": "Edit",
+      "AutomationId": "pwdSecure",
+      "ClassName": "PasswordBox",
+      "ProcessName": "Stepwise.TestTarget",
+      "IsPassword": true,
+      "Bounds": {
+        "X": 682,
+        "Y": 387,
+        "Width": 557,
+        "Height": 35
+      }
+    }
+  ]
+}

@@ -354,6 +354,8 @@
                 <!-- Row 2: Target Metadata Panel -->
                 <Border Grid.Row="2"
                         AutomationProperties.AutomationId="TargetMetadataPanel"
+                        AutomationProperties.Name="Target Metadata Panel"
+                        AutomationProperties.AccessibilityView="Control"
                         Visibility="{x:Bind ViewModel.MetadataPanelVisibility, Mode=OneWay}"
                         Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                         BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
