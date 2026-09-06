@@ -1,0 +1,53 @@
+﻿================================================================================
+                 STEPWISE DESKTOP OVERLAY LIVE GUI E2E SUMMARY
+================================================================================
+Generated At:     2026-09-06T12:06:22Z
+Specification:    specs/spec.md Phase 5 Stage 2 (Desktop Overlay Protocol)
+Applications:     Stepwise.App.exe (.NET 9 WinUI 3 Desktop win-x64)
+                  Stepwise.TestTarget.exe (.NET 9 WPF Test Target)
+Artifacts Dir:    C:\Users\Mila\Desktop\BestStart\projects\Stepwise\artifacts\e2e\overlay
+
+TEST SUITE EXECUTION RESULTS:
+--------------------------------------------------------------------------------
+1. Overlay Full E2E Scenario (Section 25):           PASSED
+   - Deterministic 2-step guide targeting real TestTarget: VERIFIED
+   - Launch Stepwise.App.exe & Stepwise.TestTarget.exe: VERIFIED
+   - Open Player & Toggle Overlay ON (BtnToggleOverlay): VERIFIED
+   - NativeOverlayWindow creation (StepwiseDesktopOverlayClass): VERIFIED
+   - Overlay visibility (NativeMethods.IsWindowVisible): VERIFIED
+   - Step 1 highlight on txtStandard & callout placement: VERIFIED
+   - BtnNext navigation to Step 2 (btnAction): VERIFIED
+
+2. Hardware Click-Through Verification (Section 26): PASSED
+   - Transparent WS_EX_LAYERED | WS_EX_TRANSPARENT window: VERIFIED
+   - WM_NCHITTEST returning HTTRANSPARENT: VERIFIED
+   - Real mouse click routed through overlay to btnAction: VERIFIED
+   - TestTarget statusText updated to 'Action Submitted: ': VERIFIED
+   - Overlay did NOT block native mouse input: VERIFIED
+
+3. Window Switching & Lifecycle (Sections 25 & 27): PASSED
+   - Foreground switched to Player, then back to TestTarget: VERIFIED
+   - Overlay stability & geometry preservation: VERIFIED
+   - BtnToggleOverlay OFF hides overlay: VERIFIED
+   - BtnToggleOverlay ON shows overlay: VERIFIED
+   - BtnClosePlayer immediately closes overlay: VERIFIED
+
+EVIDENCE ARTIFACTS VERIFIED ON DISK (Section 28):
+--------------------------------------------------------------------------------
+- overlay-launch.png        : EXISTS & VALID (8674 bytes)
+- overlay-step-1.png        : EXISTS & VALID (8634 bytes)
+- overlay-step-2.png        : EXISTS & VALID (8658 bytes)
+- overlay-clickthrough.png  : EXISTS & VALID (9033 bytes)
+- overlay-window-switch.png : EXISTS & VALID (9126 bytes)
+- overlay-off.png           : EXISTS & VALID (8474 bytes)
+- overlay-summary.txt       : EXISTS & VALID (3120 bytes)
+
+UIA & WIN32 ARTIFACTS VERIFIED:
+--------------------------------------------------------------------------------
+- MainWindow.BtnOpenPlayer:       Button (Opens Player window)
+- PlayerView.BtnToggleOverlay:    ToggleButton (Controls Desktop Overlay visibility)
+- StepwiseDesktopOverlayClass:    Win32 Topmost Layered Click-through Window
+- TestTarget.txtStandard:         TextBox (Step 1 target element)
+- TestTarget.btnAction:           Button (Step 2 target element & click-through)
+- TestTarget.statusText:          TextBlock (Proves real click delivery)
+================================================================================

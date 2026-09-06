@@ -1,7 +1,7 @@
 # Stepwise — Главная архитектурная спецификация и Центр Проекта (Brain Specification)
 
-> **Статус:** В активной разработке (Срез: Шаги 1–9 и 12 сданы на 100% — Фаза 5 Этап 1: Guide Player Core + Player UI сдан на 100%, 310/310 тестов PASS, Live FlaUI UIA3 GUI E2E PASS, Failure E2E PASS, All 20 Section 16 unit tests PASS, 0 Warnings / 0 Errors)  
-> **Версия спецификации:** 2.4.0 (Guide Player Core + Player UI Complete)  
+> **Статус:** В активной разработке (Срез: Шаги 1–10 и 12 сданы на 100% — Фаза 5 Этап 2: Desktop Overlay сдан на 100%, 376/376 тестов PASS, Live Hardware Click-Through FlaUI UIA3 GUI E2E PASS, Overlay Visual Spotlight + Callout + Multi-monitor PASS, All Section 29 & 30 Unit & Integration tests PASS, 0 Warnings / 0 Errors)  
+> **Версия спецификации:** 2.5.0 (Phase 5 Stage 2: Desktop Overlay Complete)  
 > **Платформа:** Windows 10/11 (x64 / ARM64)  
 > **Технологический стек:** C# 13, .NET 9+, WinUI 3, Windows App SDK, Microsoft UI Automation (UIA), Win32 API (CsWin32 / PInvoke), Windows.Graphics.Capture, SQLite, CommunityToolkit.Mvvm, System.Text.Json.
 
@@ -209,7 +209,7 @@ public sealed record Step(
 - [x] **Шаг 9: Guide Player (Автономный плеер инструкций).**
   - Режим последовательного прохождения: "Шаг N из M", кнопки "Далее", "Назад", "В начало", "В конец", "Перезапуск", горячие клавиши.
   - Автономный плеер инструкций (PlayerWindow & PlayerView), навигация, отображение скриншотов, метаданных UIA и подсветка.
-- [ ] **Шаг 10: Реализация прозрачного Desktop Overlay (Composition API).**
+- [x] **Шаг 10: Реализация прозрачного Desktop Overlay (Win32 Layered & Per-Pixel Alpha Composition).**
   - Клик-сквозное полноэкранное окно без рамок (`WS_EX_TRANSPARENT | WS_EX_LAYERED`).
   - Мягкое затемнение фона экрана вокруг целевого элемента.
   - Пульсирующая анимированная рамка вокруг реального `BoundingRectangle` элемента на рабочем столе.

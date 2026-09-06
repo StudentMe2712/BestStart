@@ -26,6 +26,7 @@ public sealed partial class PlayerViewModel : ObservableObject, IDisposable
     private readonly IPlayerEngine _playerEngine;
     private readonly IImageLoaderService _imageLoader;
     private readonly DispatcherQueue? _dispatcherQueue;
+    private readonly IOverlayService? _overlayService;
     private IProjectRepository? _repository;
     private string? _projectRootPath;
     private CancellationTokenSource? _previewCts;
@@ -36,6 +37,8 @@ public sealed partial class PlayerViewModel : ObservableObject, IDisposable
         get => _projectRootPath;
         internal set => _projectRootPath = value;
     }
+
+    public IOverlayService? OverlayService => _overlayService;
 
     internal CancellationTokenSource? ActivePreviewCts => _previewCts;
 
@@ -177,7 +180,27 @@ public sealed partial class PlayerViewModel : ObservableObject, IDisposable
     [NotifyPropertyChangedFor(nameof(HighlightVisibility))]
     [NotifyPropertyChangedFor(nameof(HasClickPin))]
     [NotifyPropertyChangedFor(nameof(ClickPinVisibility))]
-    private bool _showHighlightOverlay = true;
+    private bool _showHighlightOverlay = false;
+
+    partial void OnShowHighlightOverlayChanged(bool value)
+    {
+        try
+        {
+            if (value)
+            {
+                _overlayService?.Show();
+                _overlayService?.UpdateTarget(CurrentStep);
+            }
+            else
+            {
+                _overlayService?.Hide();
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[PlayerViewModel] Overlay toggle sync error: {ex.Message}");
+        }
+    }
 
     public double HighlightLeft => CurrentStep != null ? (CurrentStep.TargetElement.BoundingRectangle.X - VirtualScreenOriginX) : 0;
     public double HighlightTop => CurrentStep != null ? (CurrentStep.TargetElement.BoundingRectangle.Y - VirtualScreenOriginY) : 0;
@@ -250,11 +273,13 @@ public sealed partial class PlayerViewModel : ObservableObject, IDisposable
         IPlayerEngine playerEngine,
         IImageLoaderService imageLoader,
         IProjectRepository? repository = null,
-        DispatcherQueue? dispatcherQueue = null)
+        DispatcherQueue? dispatcherQueue = null,
+        IOverlayService? overlayService = null)
     {
         _playerEngine = playerEngine ?? throw new ArgumentNullException(nameof(playerEngine));
         _imageLoader = imageLoader ?? throw new ArgumentNullException(nameof(imageLoader));
         _repository = repository;
+        _overlayService = overlayService;
         try
         {
             _dispatcherQueue = dispatcherQueue ?? DispatcherQueue.GetForCurrentThread();
@@ -324,6 +349,15 @@ public sealed partial class PlayerViewModel : ObservableObject, IDisposable
     [RelayCommand]
     private void Close()
     {
+        try
+        {
+            _overlayService?.Hide();
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[PlayerViewModel] Overlay hide on Close error: {ex.Message}");
+        }
+
         RequestClose?.Invoke();
     }
 
@@ -412,6 +446,18 @@ public sealed partial class PlayerViewModel : ObservableObject, IDisposable
         {
             PlayerState = newState;
             NotifyCommandsCanExecute();
+
+            if (newState == PlayerState.Failed)
+            {
+                try
+                {
+                    _overlayService?.Hide();
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[PlayerViewModel] Overlay hide on Failed state error: {ex.Message}");
+                }
+            }
         });
     }
 
@@ -426,6 +472,15 @@ public sealed partial class PlayerViewModel : ObservableObject, IDisposable
             NotifyStepProperties();
             NotifyCommandsCanExecute();
             _ = LoadPreviewForStepAsync(newStep);
+
+            try
+            {
+                _overlayService?.UpdateTarget(newStep);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[PlayerViewModel] Overlay step update error: {ex.Message}");
+            }
         });
     }
 
@@ -439,6 +494,15 @@ public sealed partial class PlayerViewModel : ObservableObject, IDisposable
         NotifyStepProperties();
         NotifyCommandsCanExecute();
         _ = LoadPreviewForStepAsync(CurrentStep);
+
+        try
+        {
+            _overlayService?.UpdateTarget(CurrentStep);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[PlayerViewModel] Overlay initial sync error: {ex.Message}");
+        }
     }
 
     private void NotifyStepProperties()
@@ -639,6 +703,15 @@ public sealed partial class PlayerViewModel : ObservableObject, IDisposable
         }
 
         _isDisposed = true;
+
+        try
+        {
+            _overlayService?.Hide();
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[PlayerViewModel] Overlay hide on Dispose error: {ex.Message}");
+        }
 
         _playerEngine.StateChanged -= OnPlayerEngineStateChanged;
         _playerEngine.StepChanged -= OnPlayerEngineStepChanged;

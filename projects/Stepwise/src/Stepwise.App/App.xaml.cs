@@ -11,6 +11,7 @@ using Stepwise.Core.Policy;
 using Stepwise.Storage.Repositories;
 using Stepwise.WindowsIntegration.Automation;
 using Stepwise.WindowsIntegration.Capture;
+using Stepwise.WindowsIntegration.Overlay;
 using Stepwise.WindowsIntegration.Services;
 
 namespace Stepwise.App;
@@ -79,6 +80,11 @@ public partial class App : Application
 
         // Движок воспроизведения руководств (Player Engine)
         services.AddSingleton<IPlayerEngine, PlayerEngine>();
+
+        // Подсистема оверлея рабочего стола (Desktop Overlay)
+        services.AddSingleton<IOverlayRenderer, OverlayRenderer>();
+        services.AddSingleton<IOverlayWindow, NativeOverlayWindow>();
+        services.AddSingleton<IOverlayService, OverlayService>();
 
         // Службы и окна плеера
         services.AddSingleton<IPlayerWindowService, PlayerWindowService>();
