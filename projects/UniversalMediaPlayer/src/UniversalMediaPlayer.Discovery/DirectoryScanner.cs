@@ -17,8 +17,10 @@ public static class DirectoryScanner
 
     private static readonly HashSet<string> VideoExtensions = new(StringComparer.OrdinalIgnoreCase)
     {
-        "mkv", "mp4", "avi", "mov", "webm", "wmv", "flv", "ts", "m2ts", "vob", "ogv", "rmvb"
+        "mkv", "mp4", "avi", "mov", "m4v", "mpeg", "mpg", "ts", "m2ts", "webm", "wmv", "asf", "vob", "flv", "ogv", "rmvb"
     };
+
+    public static IReadOnlySet<string> SupportedVideoExtensions => VideoExtensions;
 
     private static readonly HashSet<string> FontExtensions = new(StringComparer.OrdinalIgnoreCase)
     {

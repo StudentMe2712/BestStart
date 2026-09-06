@@ -69,6 +69,7 @@ public sealed class MpvPlaybackEngine : IPlaybackEngine
                 SetOptionStringUnsafe("input-default-bindings", "no");
                 SetOptionStringUnsafe("osc", "no");
                 SetOptionStringUnsafe("osd-bar", "no");
+                SetOptionStringUnsafe("input-ipc-server", @"\\.\pipe\ump-mpv-pipe");
             }
             else
             {

@@ -139,6 +139,9 @@ public static partial class Win32
     public static extern nint SetFocus(nint hWnd);
 
     [DllImport("user32.dll")]
+    public static extern short GetKeyState(int nVirtKey);
+
+    [DllImport("user32.dll")]
     public static extern uint GetDoubleClickTime();
 
     [DllImport("user32.dll")]
@@ -169,4 +172,10 @@ public static partial class Win32
 
     [DllImport("user32.dll", SetLastError = true)]
     public static extern nint DefWindowProc(nint hWnd, uint uMsg, nint wParam, nint lParam);
+
+    public const int DWMWA_USE_IMMERSIVE_DARK_MODE = 20;
+    public const int DWMWA_USE_IMMERSIVE_DARK_MODE_BEFORE_20H1 = 19;
+
+    [DllImport("dwmapi.dll")]
+    public static extern int DwmSetWindowAttribute(nint hwnd, int attr, ref int attrValue, int attrSize);
 }

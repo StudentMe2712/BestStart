@@ -27,6 +27,7 @@ namespace UniversalMediaPlayer.App;
 public sealed partial class MainWindow : Window
 {
     private static readonly string LogFile = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "UniversalMediaPlayer", "startup.log");
+    private static readonly string StatusFile = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "UniversalMediaPlayer", "status.json");
     public PlayerViewModel ViewModel { get; } = new();
 
     private readonly IPlaybackEngine _engine;
@@ -53,6 +54,7 @@ public sealed partial class MainWindow : Window
     private bool _isPointerOverControls;
     private bool _isFlyoutOpen;
     private volatile bool _isControlsHidden;
+    private bool _isUpdatingSliderFromEngine;
 
     private bool _isMuted;
     private int _currentVolume = 100;
@@ -149,6 +151,14 @@ public sealed partial class MainWindow : Window
             var style = Win32.GetWindowLongPtr(_hwnd, Win32.GWL_STYLE);
             Win32.SetWindowLongPtr(_hwnd, Win32.GWL_STYLE, style | Win32.WS_CLIPCHILDREN);
 
+            // Enable Immersive Dark Mode on Windows title bar and frame
+            int darkMode = 1;
+            int hr = Win32.DwmSetWindowAttribute(_hwnd, Win32.DWMWA_USE_IMMERSIVE_DARK_MODE, ref darkMode, sizeof(int));
+            if (hr != 0)
+            {
+                Win32.DwmSetWindowAttribute(_hwnd, Win32.DWMWA_USE_IMMERSIVE_DARK_MODE_BEFORE_20H1, ref darkMode, sizeof(int));
+            }
+
             var windowId = Win32Interop.GetWindowIdFromWindow(_hwnd);
             File.AppendAllText(LogFile, $"[{DateTime.UtcNow:O}] Win32Interop.GetWindowIdFromWindow: {windowId.Value:X}\n");
             _appWindow = AppWindow.GetFromWindowId(windowId);
@@ -160,6 +170,31 @@ public sealed partial class MainWindow : Window
                 _appWindow.Resize(new Windows.Graphics.SizeInt32(1100, 680));
                 _appWindow.Changed += AppWindow_Changed;
                 SetApplicationIcon();
+
+                // Seamless Dark Theme for Caption Buttons & TitleBar
+                if (AppWindowTitleBar.IsCustomizationSupported())
+                {
+                    var titleBar = _appWindow.TitleBar;
+                    var darkBg = Windows.UI.Color.FromArgb(255, 16, 16, 18);        // #101012 - exact match with TopBarBorder
+                    var inactiveDarkBg = Windows.UI.Color.FromArgb(255, 12, 12, 14);  // #0C0C0E
+                    var darkFg = Windows.UI.Color.FromArgb(255, 237, 237, 237);      // #EDEDED
+                    var inactiveDarkFg = Windows.UI.Color.FromArgb(255, 120, 120, 128);
+
+                    titleBar.BackgroundColor = darkBg;
+                    titleBar.ForegroundColor = darkFg;
+                    titleBar.InactiveBackgroundColor = inactiveDarkBg;
+                    titleBar.InactiveForegroundColor = inactiveDarkFg;
+
+                    titleBar.ButtonBackgroundColor = darkBg;
+                    titleBar.ButtonForegroundColor = darkFg;
+                    titleBar.ButtonHoverBackgroundColor = Windows.UI.Color.FromArgb(255, 34, 34, 40);
+                    titleBar.ButtonHoverForegroundColor = Windows.UI.Color.FromArgb(255, 255, 255, 255);
+                    titleBar.ButtonPressedBackgroundColor = Windows.UI.Color.FromArgb(255, 48, 48, 56);
+                    titleBar.ButtonPressedForegroundColor = Windows.UI.Color.FromArgb(255, 255, 255, 255);
+
+                    titleBar.ButtonInactiveBackgroundColor = inactiveDarkBg;
+                    titleBar.ButtonInactiveForegroundColor = inactiveDarkFg;
+                }
             }
 
             CreateVideoChildWindow();
@@ -177,6 +212,11 @@ public sealed partial class MainWindow : Window
             TracksButton.IsEnabled = false;
             PrevEpisodeButton.IsEnabled = false;
             NextEpisodeButton.IsEnabled = false;
+
+            // Hook pointer events on TimelineSlider with handledEventsToo: true to handle clicks & drags reliably
+            TimelineSlider.AddHandler(UIElement.PointerPressedEvent, new PointerEventHandler(TimelineSlider_PointerPressed), true);
+            TimelineSlider.AddHandler(UIElement.PointerReleasedEvent, new PointerEventHandler(TimelineSlider_PointerReleased), true);
+            TimelineSlider.AddHandler(UIElement.PointerCaptureLostEvent, new PointerEventHandler(TimelineSlider_PointerCaptureLost), true);
 
             // Flyout events for auto-hide tracking
             TracksMenuFlyout.Opened += (s, e) =>
@@ -394,7 +434,10 @@ public sealed partial class MainWindow : Window
 
             case Win32.WM_KEYDOWN:
             case Win32.WM_SYSKEYDOWN:
-                Win32.PostMessage(_hwnd, msg, wParam, lParam);
+                var vk = (Windows.System.VirtualKey)(int)wParam;
+                var ctrl = (Win32.GetKeyState(0x11) & 0x8000) != 0;
+                var alt = (Win32.GetKeyState(0x12) & 0x8000) != 0;
+                DispatcherQueue.TryEnqueue(async () => await ProcessKeyInputAsync(vk, ctrl, alt));
                 return nint.Zero;
         }
 
@@ -769,11 +812,27 @@ public sealed partial class MainWindow : Window
 
             if (!_isDraggingSlider && duration > 0)
             {
-                TimelineSlider.Maximum = duration;
-                TimelineSlider.Value = position;
+                _isUpdatingSliderFromEngine = true;
+                try
+                {
+                    TimelineSlider.Maximum = duration;
+                    TimelineSlider.Value = position;
+                }
+                finally
+                {
+                    _isUpdatingSliderFromEngine = false;
+                }
             }
 
             TimecodeTextBlock.Text = $"{FormatHelper.FormatTimecode(position)} / {FormatHelper.FormatTimecode(duration)}";
+
+            try
+            {
+                var glyph = PlayPauseIcon.Glyph == "\uE768" ? "Play" : "Pause";
+                var json = $"{{\"position\":{position.ToString(System.Globalization.CultureInfo.InvariantCulture)},\"duration\":{duration.ToString(System.Globalization.CultureInfo.InvariantCulture)},\"state\":\"{_engine.State}\",\"glyph\":\"{glyph}\",\"controlsVisible\":{(ControlBarBorder.Visibility == Visibility.Visible ? "true" : "false")}}}\n";
+                File.WriteAllText(StatusFile, json);
+            }
+            catch { }
 
             if (_isResumePromptVisible)
             {
@@ -810,6 +869,14 @@ public sealed partial class MainWindow : Window
             TracksButton.IsEnabled = state == PlaybackState.Playing || state == PlaybackState.Paused;
             PrevEpisodeButton.IsEnabled = _currentPackage?.Episode != null;
             NextEpisodeButton.IsEnabled = _currentPackage?.Episode != null;
+
+            try
+            {
+                var glyph = ViewModel.PlayPauseGlyph == "\uE768" ? "Play" : "Pause";
+                var json = $"{{\"position\":{_currentPositionSeconds.ToString(System.Globalization.CultureInfo.InvariantCulture)},\"duration\":{_durationSeconds.ToString(System.Globalization.CultureInfo.InvariantCulture)},\"state\":\"{state}\",\"glyph\":\"{glyph}\",\"controlsVisible\":{(ControlBarBorder.Visibility == Visibility.Visible ? "true" : "false")}}}\n";
+                File.WriteAllText(StatusFile, json);
+            }
+            catch { }
 
             if (state == PlaybackState.Playing)
             {
@@ -945,27 +1012,78 @@ public sealed partial class MainWindow : Window
         _autoHideTimer.Stop();
     }
 
-    private void TimelineSlider_PointerReleased(object sender, PointerRoutedEventArgs e)
+    private async void TimelineSlider_PointerReleased(object sender, PointerRoutedEventArgs e)
     {
-        _isDraggingSlider = false;
+        if (_isDraggingSlider)
+        {
+            _isDraggingSlider = false;
+            if (_engine != null && _engine.IsInitialized)
+            {
+                await PerformSeekAsync(TimelineSlider.Value, "Timeline Drag");
+            }
+        }
         ResetAutoHideTimer();
     }
 
-    private void TimelineSlider_PointerCaptureLost(object sender, PointerRoutedEventArgs e)
+    private async void TimelineSlider_PointerCaptureLost(object sender, PointerRoutedEventArgs e)
     {
-        _isDraggingSlider = false;
+        if (_isDraggingSlider)
+        {
+            _isDraggingSlider = false;
+            if (_engine != null && _engine.IsInitialized)
+            {
+                await PerformSeekAsync(TimelineSlider.Value, "Timeline Drag");
+            }
+        }
         ResetAutoHideTimer();
     }
 
     private async void TimelineSlider_ValueChanged(object sender, Microsoft.UI.Xaml.Controls.Primitives.RangeBaseValueChangedEventArgs e)
     {
-        if (_isDraggingSlider && _engine != null && _engine.IsInitialized)
+        if (_isUpdatingSliderFromEngine) return;
+
+        TimecodeTextBlock.Text = $"{FormatHelper.FormatTimecode(e.NewValue)} / {FormatHelper.FormatTimecode(_durationSeconds)}";
+
+        if (!_isDraggingSlider && _engine != null && _engine.IsInitialized)
         {
-            await _engine.SeekAsync(e.NewValue, relative: false);
-            _historyTracker.OnSeek(e.NewValue);
-            _currentPositionSeconds = e.NewValue;
-            TimecodeTextBlock.Text = $"{FormatHelper.FormatTimecode(e.NewValue)} / {FormatHelper.FormatTimecode(_durationSeconds)}";
+            await PerformSeekAsync(e.NewValue, "Timeline Click");
         }
+    }
+
+    private async Task<double> PerformSeekAsync(double targetSeconds, string reason)
+    {
+        if (_engine == null || !_engine.IsInitialized) return 0;
+        DismissResumePrompt();
+
+        var duration = _durationSeconds > 0 ? _durationSeconds : double.MaxValue;
+        var clampedTarget = Math.Clamp(targetSeconds, 0, duration);
+        var beforePos = _engine.CurrentPositionSeconds;
+
+        await _engine.SeekAsync(clampedTarget, relative: false);
+        _historyTracker.OnSeek(clampedTarget);
+        _currentPositionSeconds = clampedTarget;
+
+        var afterPos = _engine.CurrentPositionSeconds;
+
+        var logMsg = $"[{DateTime.UtcNow:O}] SEEK_LOG: Action='{reason}' Before={beforePos:F3}s Target={clampedTarget:F3}s After={afterPos:F3}s\n";
+        try { File.AppendAllText(LogFile, logMsg); } catch { }
+
+        if (_durationSeconds > 0)
+        {
+            _isUpdatingSliderFromEngine = true;
+            try
+            {
+                TimelineSlider.Maximum = _durationSeconds;
+                TimelineSlider.Value = clampedTarget;
+            }
+            finally
+            {
+                _isUpdatingSliderFromEngine = false;
+            }
+        }
+        TimecodeTextBlock.Text = $"{FormatHelper.FormatTimecode(clampedTarget)} / {FormatHelper.FormatTimecode(_durationSeconds)}";
+
+        return clampedTarget;
     }
 
     private void VolumeSlider_PointerPressed(object sender, PointerRoutedEventArgs e)
@@ -1030,7 +1148,14 @@ public sealed partial class MainWindow : Window
         picker.FileTypeFilter.Add(".mp4");
         picker.FileTypeFilter.Add(".avi");
         picker.FileTypeFilter.Add(".mov");
+        picker.FileTypeFilter.Add(".m4v");
+        picker.FileTypeFilter.Add(".mpeg");
+        picker.FileTypeFilter.Add(".mpg");
+        picker.FileTypeFilter.Add(".ts");
+        picker.FileTypeFilter.Add(".m2ts");
         picker.FileTypeFilter.Add(".wmv");
+        picker.FileTypeFilter.Add(".asf");
+        picker.FileTypeFilter.Add(".vob");
         picker.FileTypeFilter.Add(".flv");
         picker.FileTypeFilter.Add(".webm");
         picker.FileTypeFilter.Add(".mka");
@@ -1044,6 +1169,23 @@ public sealed partial class MainWindow : Window
         if (file != null)
         {
             await OpenMediaFileAsync(file.Path);
+        }
+    }
+
+    private void SetDefaultAppButton_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = "ms-settings:defaultapps",
+                UseShellExecute = true
+            });
+            ShowOsd("Параметры Windows: приложения по умолчанию");
+        }
+        catch (Exception ex)
+        {
+            File.AppendAllText(LogFile, $"[{DateTime.UtcNow:O}] SetDefaultApp Exception: {ex.Message}\n");
         }
     }
 
@@ -1117,16 +1259,8 @@ public sealed partial class MainWindow : Window
         var duration = _durationSeconds > 0 ? _durationSeconds : double.MaxValue;
         var target = Math.Clamp(current + seconds, 0, duration);
 
-        await _engine.SeekAsync(target, relative: false);
-        _historyTracker.OnSeek(target);
-        _currentPositionSeconds = target;
-
-        if (_durationSeconds > 0)
-        {
-            TimelineSlider.Maximum = _durationSeconds;
-            TimelineSlider.Value = target;
-        }
-        TimecodeTextBlock.Text = $"{FormatHelper.FormatTimecode(target)} / {FormatHelper.FormatTimecode(_durationSeconds)}";
+        var reason = seconds >= 0 ? "Seek Right (+10s)" : "Seek Left (-10s)";
+        await PerformSeekAsync(target, reason);
 
         var sign = seconds >= 0 ? "+" : "−";
         ShowOsd($"{sign}{Math.Abs((int)seconds)} секунд");
@@ -1135,17 +1269,26 @@ public sealed partial class MainWindow : Window
 
     private async void RootGrid_KeyDown(object sender, KeyRoutedEventArgs e)
     {
-        var focused = FocusManager.GetFocusedElement(this.Content.XamlRoot);
-        if (focused is TextBox || focused is PasswordBox || focused is RichEditBox) return;
-
         var ctrl = (Microsoft.UI.Input.InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Control) & Windows.UI.Core.CoreVirtualKeyStates.Down) == Windows.UI.Core.CoreVirtualKeyStates.Down;
         var alt = (Microsoft.UI.Input.InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Menu) & Windows.UI.Core.CoreVirtualKeyStates.Down) == Windows.UI.Core.CoreVirtualKeyStates.Down;
 
-        var keyInput = ToKeyInput(e.Key);
-        var action = KeyboardCommandRouter.Route(keyInput, ctrl, alt);
-        if (action == PlayerAction.None) return;
+        if (await ProcessKeyInputAsync(e.Key, ctrl, alt))
+        {
+            e.Handled = true;
+        }
+    }
 
-        e.Handled = true;
+    private async Task<bool> ProcessKeyInputAsync(VirtualKey key, bool ctrl, bool alt)
+    {
+        if (this.Content?.XamlRoot != null)
+        {
+            var focused = FocusManager.GetFocusedElement(this.Content.XamlRoot);
+            if (focused is TextBox || focused is PasswordBox || focused is RichEditBox) return false;
+        }
+
+        var keyInput = ToKeyInput(key);
+        var action = KeyboardCommandRouter.Route(keyInput, ctrl, alt);
+        if (action == PlayerAction.None) return false;
 
         switch (action)
         {
@@ -1203,6 +1346,8 @@ public sealed partial class MainWindow : Window
                 PrevEpisodeButton_Click(this, new RoutedEventArgs());
                 break;
         }
+
+        return true;
     }
 
     private async Task CycleAudioTrackAsync()

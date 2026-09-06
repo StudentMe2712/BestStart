@@ -63,21 +63,6 @@
                 <Setter Property="HorizontalContentAlignment" Value="Center" />
                 <Setter Property="VerticalContentAlignment" Value="Center" />
             </Style>
-
-            <!-- Top Open File Button Style -->
-            <Style x:Key="PlayerOpenButtonStyle" TargetType="Button">
-                <Setter Property="Height" Value="28" />
-                <Setter Property="MinWidth" Value="0" />
-                <Setter Property="MinHeight" Value="0" />
-                <Setter Property="Padding" Value="10,0" />
-                <Setter Property="Background" Value="#16222F" />
-                <Setter Property="Foreground" Value="#4CC2FF" />
-                <Setter Property="BorderBrush" Value="#204060" />
-                <Setter Property="BorderThickness" Value="1" />
-                <Setter Property="CornerRadius" Value="6" />
-                <Setter Property="HorizontalContentAlignment" Value="Center" />
-                <Setter Property="VerticalContentAlignment" Value="Center" />
-            </Style>
         </Grid.Resources>
         
         <Grid.RowDefinitions>
@@ -101,7 +86,6 @@
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
 
@@ -128,7 +112,7 @@
                                MaxWidth="400" />
                 </StackPanel>
 
-                <!-- Center: Floating / Header OSD Notification Pill -->
+                <!-- Right: Floating / Header OSD Notification Pill -->
                 <Border x:Name="OsdBorder"
                         Grid.Column="1"
                         Margin="12,0"
@@ -146,18 +130,6 @@
                                FontWeight="Medium"
                                TextTrimming="CharacterEllipsis" />
                 </Border>
-
-                <!-- Right: Quick Open File Button -->
-                <Button x:Name="TopOpenFileButton" 
-                        Grid.Column="2" 
-                        Style="{StaticResource PlayerOpenButtonStyle}" 
-                        ToolTipService.ToolTip="Открыть файл (Ctrl+O)" 
-                        Click="OpenFileButton_Click">
-                    <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
-                        <FontIcon FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" Glyph="&#xED25;" FontSize="12" Foreground="#4CC2FF" />
-                        <TextBlock Text="Открыть" FontSize="11" FontWeight="Medium" Foreground="#4CC2FF" VerticalAlignment="Center" />
-                    </StackPanel>
-                </Button>
             </Grid>
         </Border>
 
@@ -186,6 +158,12 @@
                                FontSize="13" 
                                Foreground="#71717A" 
                                HorizontalAlignment="Center" />
+                    <Button Content="Назначить плеером по умолчанию" 
+                            Style="{StaticResource PlayerTextActionButtonStyle}" 
+                            ToolTipService.ToolTip="Открыть параметры Windows для выбора плеера по умолчанию"
+                            Click="SetDefaultAppButton_Click" 
+                            HorizontalAlignment="Center" 
+                            Margin="0,6,0,0" />
                 </StackPanel>
 
                 <!-- Continue Watching Card -->
@@ -341,9 +319,6 @@
                             Margin="0,-2,0,0"
                             VerticalAlignment="Center"
                             ThumbToolTipValueConverter="{StaticResource TimecodeConverter}"
-                            PointerPressed="TimelineSlider_PointerPressed"
-                            PointerReleased="TimelineSlider_PointerReleased"
-                            PointerCaptureLost="TimelineSlider_PointerCaptureLost"
                             ValueChanged="TimelineSlider_ValueChanged" />
 
                     <!-- Transport & Primary Controls Row -->
@@ -435,6 +410,17 @@
                                 <StackPanel Orientation="Horizontal" Spacing="6">
                                     <FontIcon FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" Glyph="&#xED25;" FontSize="12" />
                                     <TextBlock Text="Открыть" FontSize="12" VerticalAlignment="Center" />
+                                </StackPanel>
+                            </Button>
+
+                            <!-- Default App Button -->
+                            <Button x:Name="SetDefaultAppButton" 
+                                    Style="{StaticResource PlayerTextActionButtonStyle}"
+                                    ToolTipService.ToolTip="Назначить плеером по умолчанию (Параметры Windows)" 
+                                    Click="SetDefaultAppButton_Click">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <FontIcon FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" Glyph="&#xE713;" FontSize="12" />
+                                    <TextBlock Text="По умолчанию" FontSize="12" VerticalAlignment="Center" />
                                 </StackPanel>
                             </Button>
 
