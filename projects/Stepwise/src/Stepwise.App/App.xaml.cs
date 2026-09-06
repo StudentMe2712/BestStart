@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI.Xaml;
 using Stepwise.App.Services;
 using Stepwise.App.ViewModels;
+using Stepwise.App.Views;
 using Stepwise.Core.Engine;
 using Stepwise.Core.Interfaces;
 using Stepwise.Core.Policy;
@@ -76,8 +77,16 @@ public partial class App : Application
         services.AddSingleton<IStepDetector, StepDetector>();
         services.AddSingleton<IRecordingEngine, RecordingEngine>();
 
+        // Движок воспроизведения руководств (Player Engine)
+        services.AddSingleton<IPlayerEngine, PlayerEngine>();
+
+        // Службы и окна плеера
+        services.AddSingleton<IPlayerWindowService, PlayerWindowService>();
+        services.AddTransient<PlayerWindow>();
+
         // ViewModels
         services.AddSingleton<EditorViewModel>();
+        services.AddSingleton<PlayerViewModel>();
         services.AddSingleton<MainViewModel>();
 
         // Views

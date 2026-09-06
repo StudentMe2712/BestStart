@@ -77,13 +77,60 @@ public partial class App : Application
             t.Start();
 
             var cmdArgs = Environment.GetCommandLineArgs();
-            if (cmdArgs.Length > 1 && File.Exists(cmdArgs[1]))
+            File.AppendAllText(LogFile, $"[{DateTime.UtcNow:O}] cmdArgs length={cmdArgs.Length}: [{string.Join(", ", cmdArgs)}], args.Arguments='{args.Arguments}'\n");
+
+            string? targetFile = null;
+            if (cmdArgs.Length > 1)
             {
-                await mainWindow.OpenMediaFileAsync(cmdArgs[1]);
+                for (int i = 1; i < cmdArgs.Length; i++)
+                {
+                    var candidate = cmdArgs[i].Trim('"', '\'');
+                    if (File.Exists(candidate))
+                    {
+                        targetFile = candidate;
+                        break;
+                    }
+                }
             }
-            else if (!string.IsNullOrWhiteSpace(args.Arguments) && File.Exists(args.Arguments))
+            if (targetFile == null && !string.IsNullOrWhiteSpace(args.Arguments))
             {
-                await mainWindow.OpenMediaFileAsync(args.Arguments);
+                var candidate = args.Arguments.Trim('"', '\'');
+                if (File.Exists(candidate))
+                {
+                    targetFile = candidate;
+                }
+            }
+
+            if (!string.IsNullOrEmpty(targetFile))
+            {
+                File.AppendAllText(LogFile, $"[{DateTime.UtcNow:O}] Opening media file from arguments: {targetFile}\n");
+                await mainWindow.OpenMediaFileAsync(targetFile);
+            }
+
+            if (cmdArgs.Any(a => a.Equals("--verify-ui", StringComparison.OrdinalIgnoreCase)) ||
+                (!string.IsNullOrEmpty(args.Arguments) && args.Arguments.Contains("--verify-ui", StringComparison.OrdinalIgnoreCase)))
+            {
+                File.AppendAllText(LogFile, $"[{DateTime.UtcNow:O}] --verify-ui detected, launching verification suite task\n");
+                _ = Task.Run(async () =>
+                {
+                    await Task.Delay(1000);
+                    mainWindow.DispatcherQueue.TryEnqueue(async () =>
+                    {
+                        try
+                        {
+                            await mainWindow.RunUiVerificationSuiteAsync();
+                        }
+                        catch (Exception suiteEx)
+                        {
+                            File.AppendAllText(LogFile, $"[{DateTime.UtcNow:O}] UI Verification Suite EXCEPTION: {suiteEx}\n");
+                        }
+                        finally
+                        {
+                            await Task.Delay(1000);
+                            mainWindow.Close();
+                        }
+                    });
+                });
             }
         }
         catch (Exception ex)

@@ -98,6 +98,20 @@
                         <TextBlock Text="Стоп" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center" />
                     </StackPanel>
                 </Button>
+
+                <!-- Open Player Button -->
+                <Button Click="BtnOpenPlayer_Click"
+                        AutomationProperties.AutomationId="BtnOpenPlayer"
+                        AutomationProperties.Name="Open Player"
+                        ToolTipService.ToolTip="Открыть плеер руководства"
+                        Padding="10,5"
+                        CornerRadius="6"
+                        Background="{ThemeResource SubtleFillColorSecondaryBrush}">
+                    <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                        <FontIcon Glyph="&#xE768;" FontSize="12" Foreground="{ThemeResource AccentAAFillColorDefaultBrush}" VerticalAlignment="Center" />
+                        <TextBlock Text="Плеер" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center" />
+                    </StackPanel>
+                </Button>
             </StackPanel>
 
             <!-- Status Badge -->
@@ -134,6 +148,11 @@
                 <NavigationViewItem Content="Редактор" Tag="Editor" AutomationProperties.AutomationId="NavEditor">
                     <NavigationViewItem.Icon>
                         <SymbolIcon Symbol="Edit" />
+                    </NavigationViewItem.Icon>
+                </NavigationViewItem>
+                <NavigationViewItem Content="Плеер" Tag="Player" AutomationProperties.AutomationId="NavPlayer">
+                    <NavigationViewItem.Icon>
+                        <SymbolIcon Symbol="Play" />
                     </NavigationViewItem.Icon>
                 </NavigationViewItem>
                 <NavigationViewItem Content="Запись" Tag="Record" AutomationProperties.AutomationId="NavRecord">

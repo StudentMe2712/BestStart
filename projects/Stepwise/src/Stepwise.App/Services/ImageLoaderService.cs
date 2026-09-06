@@ -22,7 +22,14 @@ public sealed class ImageLoaderService : IImageLoaderService
 
     public ImageLoaderService(DispatcherQueue? dispatcherQueue = null)
     {
-        _dispatcherQueue = dispatcherQueue ?? DispatcherQueue.GetForCurrentThread();
+        try
+        {
+            _dispatcherQueue = dispatcherQueue ?? DispatcherQueue.GetForCurrentThread();
+        }
+        catch
+        {
+            _dispatcherQueue = null;
+        }
     }
 
     public Task<BitmapImage?> LoadThumbnailAsync(string? filePath, int decodePixelWidth = 180, CancellationToken ct = default)

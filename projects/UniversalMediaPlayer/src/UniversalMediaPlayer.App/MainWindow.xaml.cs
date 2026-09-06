@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.IO;
+using System.Runtime.InteropServices;
 using Microsoft.UI;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
@@ -43,7 +44,16 @@ public sealed partial class MainWindow : Window
     private nint _videoHwnd;
     private AppWindow? _appWindow;
 
+    private nint _origVideoWndProc;
+    private Win32.WndProcDelegate? _videoWndProcDelegate;
+    private long _lastClickTick;
+
     private bool _isDraggingSlider;
+    private bool _isDraggingVolume;
+    private bool _isPointerOverControls;
+    private bool _isFlyoutOpen;
+    private volatile bool _isControlsHidden;
+
     private bool _isMuted;
     private int _currentVolume = 100;
     private double _durationSeconds;
@@ -70,7 +80,7 @@ public sealed partial class MainWindow : Window
 
         InitializeComponent();
 
-        _autoHideTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(2.5) };
+        _autoHideTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(5.0) };
         _autoHideTimer.Tick += AutoHideTimer_Tick;
 
         _osdTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1.5) };
@@ -119,6 +129,10 @@ public sealed partial class MainWindow : Window
 
         if (_videoHwnd != 0)
         {
+            if (_origVideoWndProc != 0)
+            {
+                Win32.SetWindowLongPtr(_videoHwnd, Win32.GWLP_WNDPROC, _origVideoWndProc);
+            }
             Win32.DestroyWindow(_videoHwnd);
             _videoHwnd = 0;
         }
@@ -145,6 +159,7 @@ public sealed partial class MainWindow : Window
                 _appWindow.Title = AppStrings.AppTitle;
                 _appWindow.Resize(new Windows.Graphics.SizeInt32(1100, 680));
                 _appWindow.Changed += AppWindow_Changed;
+                SetApplicationIcon();
             }
 
             CreateVideoChildWindow();
@@ -153,7 +168,27 @@ public sealed partial class MainWindow : Window
             // Hook engine events
             _engine.TimeUpdated += OnTimeUpdated;
             _engine.PlaybackStateChanged += OnPlaybackStateChanged;
+            _engine.StateChanged += OnEngineStateChanged;
             _engine.TracksChanged += OnTracksChanged;
+
+            // Initial control states for empty playback
+            PlayPauseButton.IsEnabled = false;
+            TimelineSlider.IsEnabled = false;
+            TracksButton.IsEnabled = false;
+            PrevEpisodeButton.IsEnabled = false;
+            NextEpisodeButton.IsEnabled = false;
+
+            // Flyout events for auto-hide tracking
+            TracksMenuFlyout.Opened += (s, e) =>
+            {
+                _isFlyoutOpen = true;
+                _autoHideTimer.Stop();
+            };
+            TracksMenuFlyout.Closed += (s, e) =>
+            {
+                _isFlyoutOpen = false;
+                ResetAutoHideTimer();
+            };
 
             try
             {
@@ -172,6 +207,36 @@ public sealed partial class MainWindow : Window
         catch (Exception ex)
         {
             File.AppendAllText(LogFile, $"[{DateTime.UtcNow:O}] EXCEPTION in InitializeWindowInterop: {ex}\n");
+        }
+    }
+
+    private void SetApplicationIcon()
+    {
+        try
+        {
+            var iconPath = Path.Combine(AppContext.BaseDirectory, "Assets", "app_icon.ico");
+            if (!File.Exists(iconPath))
+            {
+                var candidate = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "app_icon.ico");
+                if (File.Exists(candidate)) iconPath = candidate;
+            }
+
+            if (File.Exists(iconPath))
+            {
+                _appWindow?.SetIcon(iconPath);
+
+                if (_hwnd != 0)
+                {
+                    var hIconBig = Win32.LoadImage(0, iconPath, Win32.IMAGE_ICON, 32, 32, Win32.LR_LOADFROMFILE);
+                    var hIconSmall = Win32.LoadImage(0, iconPath, Win32.IMAGE_ICON, 16, 16, Win32.LR_LOADFROMFILE);
+                    if (hIconBig != 0) Win32.SendMessage(_hwnd, Win32.WM_SETICON, Win32.ICON_BIG, hIconBig);
+                    if (hIconSmall != 0) Win32.SendMessage(_hwnd, Win32.WM_SETICON, Win32.ICON_SMALL, hIconSmall);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            File.AppendAllText(LogFile, $"[{DateTime.UtcNow:O}] SetApplicationIcon EXCEPTION: {ex.Message}\n");
         }
     }
 
@@ -245,15 +310,117 @@ public sealed partial class MainWindow : Window
             0,
             "static",
             "VideoSurface",
-            Win32.WS_CHILD | Win32.WS_VISIBLE | Win32.WS_CLIPSIBLINGS,
+            Win32.WS_CHILD | Win32.WS_VISIBLE | Win32.WS_CLIPSIBLINGS | Win32.WS_CLIPCHILDREN | Win32.SS_NOTIFY,
             0, 0, width, height,
             _hwnd,
             nint.Zero,
             Win32.GetModuleHandleW(null),
             nint.Zero);
 
+        if (_videoHwnd != 0)
+        {
+            _videoWndProcDelegate = new Win32.WndProcDelegate(VideoHostWndProc);
+            _origVideoWndProc = Win32.SetWindowLongPtr(_videoHwnd, Win32.GWLP_WNDPROC, Marshal.GetFunctionPointerForDelegate(_videoWndProcDelegate));
+        }
+
         // Initially hide video window until media is opened
         Win32.ShowWindow(_videoHwnd, Win32.SW_HIDE);
+    }
+
+    private nint VideoHostWndProc(nint hWnd, uint msg, nint wParam, nint lParam)
+    {
+        switch (msg)
+        {
+            case Win32.WM_ERASEBKGND:
+                return (nint)1;
+
+            case Win32.WM_SETCURSOR:
+                if (_isControlsHidden)
+                {
+                    Win32.SetCursor(nint.Zero);
+                    return (nint)1;
+                }
+                break;
+
+            case Win32.WM_SIZE:
+                int w = (int)(lParam.ToInt64() & 0xFFFF);
+                int h = (int)((lParam.ToInt64() >> 16) & 0xFFFF);
+                if (w > 0 && h > 0)
+                {
+                    Win32.EnumChildWindows(hWnd, (childHwnd, _) =>
+                    {
+                        Win32.MoveWindow(childHwnd, 0, 0, w, h, true);
+                        return false;
+                    }, 0);
+                }
+                break;
+
+            case Win32.WM_LBUTTONDBLCLK:
+                DispatcherQueue.TryEnqueue(() => ToggleFullscreen());
+                return nint.Zero;
+
+            case Win32.WM_LBUTTONDOWN:
+                Win32.SetFocus(_hwnd);
+                var now = Environment.TickCount64;
+                var dblTime = (long)Win32.GetDoubleClickTime();
+                if (now - _lastClickTick <= dblTime)
+                {
+                    _lastClickTick = 0;
+                    DispatcherQueue.TryEnqueue(() => ToggleFullscreen());
+                    return nint.Zero;
+                }
+                _lastClickTick = now;
+                DispatcherQueue.TryEnqueue(() =>
+                {
+                    ShowControls();
+                    ResetAutoHideTimer();
+                });
+                break;
+
+            case Win32.WM_MOUSEMOVE:
+                if (_isControlsHidden)
+                {
+                    _isControlsHidden = false;
+                    Win32.SetCursor(Win32.LoadCursor(nint.Zero, Win32.IDC_ARROW));
+                }
+                int yPixels = (short)((lParam.ToInt64() >> 16) & 0xFFFF);
+                DispatcherQueue.TryEnqueue(() => OnVideoMouseMove(yPixels));
+                break;
+
+            case Win32.WM_MOUSEWHEEL:
+                short wheelDelta = (short)((wParam.ToInt64() >> 16) & 0xFFFF);
+                DispatcherQueue.TryEnqueue(() => HandleMouseWheel(wheelDelta));
+                return nint.Zero;
+
+            case Win32.WM_KEYDOWN:
+            case Win32.WM_SYSKEYDOWN:
+                Win32.PostMessage(_hwnd, msg, wParam, lParam);
+                return nint.Zero;
+        }
+
+        return Win32.CallWindowProc(_origVideoWndProc, hWnd, msg, wParam, lParam);
+    }
+
+    private void OnVideoMouseMove(int yInPixels)
+    {
+        ShowControls();
+        ResetAutoHideTimer();
+    }
+
+    private void HandleMouseWheel(int delta)
+    {
+        if (_engine == null || !_engine.IsInitialized) return;
+        int step = delta > 0 ? 5 : -5;
+        var newVol = Math.Clamp(VolumeSlider.Value + step, 0, 150);
+        VolumeSlider.Value = newVol;
+    }
+
+    private void RootGrid_PointerWheelChanged(object sender, PointerRoutedEventArgs e)
+    {
+        var prop = e.GetCurrentPoint(RootGrid).Properties;
+        var delta = prop.MouseWheelDelta;
+        HandleMouseWheel(delta);
+        e.Handled = true;
     }
 
     private void SyncVideoHostSize()
@@ -273,9 +440,24 @@ public sealed partial class MainWindow : Window
 
             if (width > 0 && height > 0)
             {
-                Win32.SetWindowPos(_videoHwnd, Win32.HWND_TOP, x, y, width, height, Win32.SWP_SHOWWINDOW | Win32.SWP_NOACTIVATE);
-                Win32.InvalidateRect(_videoHwnd, 0, true);
-                Win32.UpdateWindow(_videoHwnd);
+                if (_currentPackage != null)
+                {
+                    Win32.SetWindowPos(_videoHwnd, Win32.HWND_TOP, x, y, width, height, Win32.SWP_SHOWWINDOW | Win32.SWP_NOACTIVATE);
+
+                    Win32.EnumChildWindows(_videoHwnd, (childHwnd, _) =>
+                    {
+                        Win32.MoveWindow(childHwnd, 0, 0, width, height, true);
+                        return false;
+                    }, 0);
+
+                    Win32.InvalidateRect(_videoHwnd, 0, false);
+                    Win32.UpdateWindow(_videoHwnd);
+                }
+                else
+                {
+                    // Media is not loaded: hide Win32 video canvas so XAML empty state is visible
+                    Win32.SetWindowPos(_videoHwnd, Win32.HWND_TOP, x, y, width, height, Win32.SWP_HIDEWINDOW | Win32.SWP_NOACTIVATE);
+                }
             }
         }
         catch
@@ -321,6 +503,12 @@ public sealed partial class MainWindow : Window
             _autoNextPrompted = false;
 
             ErrorNotificationBar.IsOpen = false;
+
+            // Background non-blocking scan with cancellation support
+            MediaPackage package = await Task.Run(() => DirectoryScanner.Scan(filePath, ct), ct);
+            ct.ThrowIfCancellationRequested();
+            _currentPackage = package;
+
             EmptyStatePanel.Visibility = Visibility.Collapsed;
             ContinueWatchingBorder.Visibility = Visibility.Collapsed;
 
@@ -328,30 +516,22 @@ public sealed partial class MainWindow : Window
             Win32.ShowWindow(_videoHwnd, Win32.SW_SHOW);
             SyncVideoHostSize();
 
-            // Background non-blocking scan with cancellation support
-            MediaPackage package = await Task.Run(() => DirectoryScanner.Scan(filePath, ct), ct);
-            ct.ThrowIfCancellationRequested();
-            _currentPackage = package;
-
             // Display series / episodic identity if recognized
+            var audioCount = $"{package.AudioTracks.Count} {AppStrings.Audio.ToLowerInvariant()}";
+            var subCount = $"{package.SubtitleTracks.Count} {AppStrings.Subtitles.ToLowerInvariant()}";
+            var fontsCount = package.Fonts?.HasFonts == true ? $" · {package.Fonts.Count} шрифтов" : "";
+
             if (package.Episode != null)
             {
                 var s = package.Episode.SeasonNumber.HasValue ? $"S{package.Episode.SeasonNumber:D2}" : "";
                 var epStr = $"{package.Episode.ShowTitle} {s}E{package.Episode.EpisodeNumber:D2}".Trim();
                 TitleTextBlock.Text = epStr;
-                var audioCount = $"{package.AudioTracks.Count} {AppStrings.Audio.ToLowerInvariant()}";
-                var subCount = $"{package.SubtitleTracks.Count} {AppStrings.Subtitles.ToLowerInvariant()}";
-                var fontsCount = package.Fonts?.HasFonts == true ? $" · {package.Fonts.Count} шрифтов" : "";
                 TechnicalMetadataTextBlock.Text = $"· 1 видео · {audioCount} · {subCount}{fontsCount}";
-                TopBarBorder.Visibility = Visibility.Visible;
             }
             else
             {
                 TitleTextBlock.Text = FormatHelper.CleanTitle(filePath);
-                var audioCount = $"{package.AudioTracks.Count} {AppStrings.Audio.ToLowerInvariant()}";
-                var subCount = $"{package.SubtitleTracks.Count} {AppStrings.Subtitles.ToLowerInvariant()}";
                 TechnicalMetadataTextBlock.Text = $"· 1 видео · {audioCount} · {subCount}";
-                TopBarBorder.Visibility = Visibility.Visible;
             }
 
             if (_appWindow != null)
@@ -367,6 +547,16 @@ public sealed partial class MainWindow : Window
             // Load into engine
             await _engine.OpenAsync(package, ct);
             ct.ThrowIfCancellationRequested();
+
+            // Update technical metadata with decoded stream resolution and codec
+            var videoW = await _engine.GetPropertyAsync("video-params/w");
+            var videoH = await _engine.GetPropertyAsync("video-params/h");
+            var videoCodec = await _engine.GetPropertyAsync("video-codec");
+            var cleanCodec = !string.IsNullOrEmpty(videoCodec) ? videoCodec.Split('/')[0].Trim() : "";
+            var ext = package.PrimaryVideo.Extension.ToUpperInvariant();
+            var resStr = (!string.IsNullOrEmpty(videoW) && !string.IsNullOrEmpty(videoH)) ? $" · {videoW}×{videoH}" : "";
+            var codecStr = !string.IsNullOrEmpty(cleanCodec) ? $" · {cleanCodec.ToUpperInvariant()}" : "";
+            TechnicalMetadataTextBlock.Text = $"· {ext}{resStr}{codecStr} · {audioCount} · {subCount}{fontsCount}";
 
             // After engine loads file and registers external tracks:
             // 1. Select resolved audio track if different from default
@@ -608,23 +798,39 @@ public sealed partial class MainWindow : Window
         });
     }
 
-    private void OnPlaybackStateChanged(bool isPlaying)
+    private void OnEngineStateChanged(PlaybackState state)
     {
         DispatcherQueue.TryEnqueue(() =>
         {
-            PlayPauseIcon.Glyph = isPlaying ? "\uE769" : "\uE768";
-            ToolTipService.SetToolTip(PlayPauseButton, isPlaying ? $"{AppStrings.Pause} (Space)" : $"{AppStrings.Play} (Space)");
-            if (isPlaying)
+            ViewModel.UpdatePlaybackState(state);
+            PlayPauseIcon.Glyph = ViewModel.PlayPauseGlyph;
+            ToolTipService.SetToolTip(PlayPauseButton, ViewModel.PlayPauseToolTip);
+            PlayPauseButton.IsEnabled = ViewModel.IsPlayPauseEnabled;
+            TimelineSlider.IsEnabled = state == PlaybackState.Playing || state == PlaybackState.Paused;
+            TracksButton.IsEnabled = state == PlaybackState.Playing || state == PlaybackState.Paused;
+            PrevEpisodeButton.IsEnabled = _currentPackage?.Episode != null;
+            NextEpisodeButton.IsEnabled = _currentPackage?.Episode != null;
+
+            if (state == PlaybackState.Playing)
             {
                 _autoHideTimer.Start();
+                SyncVideoHostSize();
             }
             else
             {
                 _autoHideTimer.Stop();
                 ShowControls();
-                _historyTracker.OnPause();
+                if (state == PlaybackState.Paused)
+                {
+                    _historyTracker.OnPause();
+                }
             }
         });
+    }
+
+    private void OnPlaybackStateChanged(bool isPlaying)
+    {
+        // State updates are primarily processed by OnEngineStateChanged
     }
 
     private void OnTracksChanged(IReadOnlyList<MediaTrack> tracks)
@@ -721,16 +927,34 @@ public sealed partial class MainWindow : Window
     private async void PlayPauseButton_Click(object sender, RoutedEventArgs e)
     {
         if (_engine == null || !_engine.IsInitialized) return;
-        if (_engine.IsPlaying)
+        if (_engine.State == PlaybackState.Playing)
         {
             await _engine.PauseAsync();
             ShowOsd(AppStrings.Pause);
         }
-        else
+        else if (_engine.State == PlaybackState.Paused || _engine.State == PlaybackState.Stopped)
         {
             await _engine.PlayAsync();
             ShowOsd(AppStrings.Play);
         }
+    }
+
+    private void TimelineSlider_PointerPressed(object sender, PointerRoutedEventArgs e)
+    {
+        _isDraggingSlider = true;
+        _autoHideTimer.Stop();
+    }
+
+    private void TimelineSlider_PointerReleased(object sender, PointerRoutedEventArgs e)
+    {
+        _isDraggingSlider = false;
+        ResetAutoHideTimer();
+    }
+
+    private void TimelineSlider_PointerCaptureLost(object sender, PointerRoutedEventArgs e)
+    {
+        _isDraggingSlider = false;
+        ResetAutoHideTimer();
     }
 
     private async void TimelineSlider_ValueChanged(object sender, Microsoft.UI.Xaml.Controls.Primitives.RangeBaseValueChangedEventArgs e)
@@ -738,12 +962,28 @@ public sealed partial class MainWindow : Window
         if (_isDraggingSlider && _engine != null && _engine.IsInitialized)
         {
             await _engine.SeekAsync(e.NewValue, relative: false);
+            _historyTracker.OnSeek(e.NewValue);
+            _currentPositionSeconds = e.NewValue;
+            TimecodeTextBlock.Text = $"{FormatHelper.FormatTimecode(e.NewValue)} / {FormatHelper.FormatTimecode(_durationSeconds)}";
         }
     }
 
-    private void TimelineSlider_PointerCaptureLost(object sender, PointerRoutedEventArgs e)
+    private void VolumeSlider_PointerPressed(object sender, PointerRoutedEventArgs e)
     {
-        _isDraggingSlider = false;
+        _isDraggingVolume = true;
+        _autoHideTimer.Stop();
+    }
+
+    private void VolumeSlider_PointerReleased(object sender, PointerRoutedEventArgs e)
+    {
+        _isDraggingVolume = false;
+        ResetAutoHideTimer();
+    }
+
+    private void VolumeSlider_PointerCaptureLost(object sender, PointerRoutedEventArgs e)
+    {
+        _isDraggingVolume = false;
+        ResetAutoHideTimer();
     }
 
     private async void VolumeSlider_ValueChanged(object sender, Microsoft.UI.Xaml.Controls.Primitives.RangeBaseValueChangedEventArgs e)
@@ -756,6 +996,7 @@ public sealed partial class MainWindow : Window
             await _engine.SetVolumeAsync(_currentVolume);
             ShowOsd($"{AppStrings.Volume}: {_currentVolume}%");
         }
+        ResetAutoHideTimer();
     }
 
     private async void MuteButton_Click(object sender, RoutedEventArgs e)
@@ -774,6 +1015,7 @@ public sealed partial class MainWindow : Window
             await _engine.SetVolumeAsync(_currentVolume);
             ShowOsd($"{AppStrings.Volume}: {_currentVolume}%");
         }
+        ResetAutoHideTimer();
     }
 
     private async void OpenFileButton_Click(object sender, RoutedEventArgs e)
@@ -819,8 +1061,7 @@ public sealed partial class MainWindow : Window
             _appWindow.SetPresenter(AppWindowPresenterKind.Default);
             FullscreenIcon.Glyph = "\uE740";
             ToolTipService.SetToolTip(FullscreenButton, AppStrings.FullscreenShortcut);
-            TopBarBorder.Visibility = Visibility.Visible;
-            TopBarRow.Height = GridLength.Auto;
+            ShowControls();
             ShowOsd(AppStrings.Windowed);
         }
         else
@@ -828,8 +1069,6 @@ public sealed partial class MainWindow : Window
             _appWindow.SetPresenter(AppWindowPresenterKind.FullScreen);
             FullscreenIcon.Glyph = "\uE73F";
             ToolTipService.SetToolTip(FullscreenButton, AppStrings.Windowed);
-            TopBarBorder.Visibility = Visibility.Collapsed;
-            TopBarRow.Height = new GridLength(0);
             ShowOsd(AppStrings.Fullscreen);
         }
         SyncVideoHostSize();
@@ -842,8 +1081,7 @@ public sealed partial class MainWindow : Window
             _appWindow.SetPresenter(AppWindowPresenterKind.Default);
             FullscreenIcon.Glyph = "\uE740";
             ToolTipService.SetToolTip(FullscreenButton, AppStrings.FullscreenShortcut);
-            TopBarBorder.Visibility = Visibility.Visible;
-            TopBarRow.Height = GridLength.Auto;
+            ShowControls();
             ShowOsd(AppStrings.Windowed);
             SyncVideoHostSize();
         }
@@ -870,8 +1108,36 @@ public sealed partial class MainWindow : Window
         };
     }
 
+    private async Task SeekRelativeWithBoundsAsync(double seconds)
+    {
+        if (_engine == null || !_engine.IsInitialized) return;
+        DismissResumePrompt();
+
+        var current = _currentPositionSeconds;
+        var duration = _durationSeconds > 0 ? _durationSeconds : double.MaxValue;
+        var target = Math.Clamp(current + seconds, 0, duration);
+
+        await _engine.SeekAsync(target, relative: false);
+        _historyTracker.OnSeek(target);
+        _currentPositionSeconds = target;
+
+        if (_durationSeconds > 0)
+        {
+            TimelineSlider.Maximum = _durationSeconds;
+            TimelineSlider.Value = target;
+        }
+        TimecodeTextBlock.Text = $"{FormatHelper.FormatTimecode(target)} / {FormatHelper.FormatTimecode(_durationSeconds)}";
+
+        var sign = seconds >= 0 ? "+" : "−";
+        ShowOsd($"{sign}{Math.Abs((int)seconds)} секунд");
+        ResetAutoHideTimer();
+    }
+
     private async void RootGrid_KeyDown(object sender, KeyRoutedEventArgs e)
     {
+        var focused = FocusManager.GetFocusedElement(this.Content.XamlRoot);
+        if (focused is TextBox || focused is PasswordBox || focused is RichEditBox) return;
+
         var ctrl = (Microsoft.UI.Input.InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Control) & Windows.UI.Core.CoreVirtualKeyStates.Down) == Windows.UI.Core.CoreVirtualKeyStates.Down;
         var alt = (Microsoft.UI.Input.InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Menu) & Windows.UI.Core.CoreVirtualKeyStates.Down) == Windows.UI.Core.CoreVirtualKeyStates.Down;
 
@@ -887,28 +1153,16 @@ public sealed partial class MainWindow : Window
                 PlayPauseButton_Click(this, new RoutedEventArgs());
                 break;
             case PlayerAction.SeekForwardSmall:
-                DismissResumePrompt();
-                await _engine.SeekAsync(5, relative: true);
-                _historyTracker.OnSeek();
-                ShowOsd("+00:05");
+                await SeekRelativeWithBoundsAsync(10);
                 break;
             case PlayerAction.SeekBackwardSmall:
-                DismissResumePrompt();
-                await _engine.SeekAsync(-5, relative: true);
-                _historyTracker.OnSeek();
-                ShowOsd("-00:05");
+                await SeekRelativeWithBoundsAsync(-10);
                 break;
             case PlayerAction.SeekForwardLarge:
-                DismissResumePrompt();
-                await _engine.SeekAsync(30, relative: true);
-                _historyTracker.OnSeek();
-                ShowOsd("+00:30");
+                await SeekRelativeWithBoundsAsync(30);
                 break;
             case PlayerAction.SeekBackwardLarge:
-                DismissResumePrompt();
-                await _engine.SeekAsync(-30, relative: true);
-                _historyTracker.OnSeek();
-                ShowOsd("-00:30");
+                await SeekRelativeWithBoundsAsync(-30);
                 break;
             case PlayerAction.VolumeUp:
                 VolumeSlider.Value = Math.Min(150, VolumeSlider.Value + 5);
@@ -966,6 +1220,7 @@ public sealed partial class MainWindow : Window
             await _continuityService.SaveAudioPreferenceAsync(_currentPackage, nextTrack);
         }
         ShowOsd($"{AppStrings.Audio}: {AppStrings.GetLanguageNameRu(nextTrack.Language)} ({AppStrings.SavedAsPreference})");
+        ResetAutoHideTimer();
     }
 
     private async Task CycleSubtitleTrackAsync()
@@ -976,7 +1231,6 @@ public sealed partial class MainWindow : Window
         var currentIndex = subs.FindIndex(s => s.IsSelected);
         if (currentIndex == -1)
         {
-            // Currently off, select first
             var first = subs[0];
             await _engine.SelectSubtitleTrackAsync(first.Id);
             await _engine.SetSubtitleVisibilityAsync(true);
@@ -988,7 +1242,6 @@ public sealed partial class MainWindow : Window
         }
         else if (currentIndex == subs.Count - 1)
         {
-            // Turn off
             await _engine.SetSubtitleVisibilityAsync(false);
             if (_currentPackage != null)
             {
@@ -1007,6 +1260,7 @@ public sealed partial class MainWindow : Window
             }
             ShowOsd($"{AppStrings.Subtitles}: {AppStrings.GetLanguageNameRu(nextTrack.Language)} ({AppStrings.SavedAsPreference})");
         }
+        ResetAutoHideTimer();
     }
 
     private void RootGrid_DragOver(object sender, DragEventArgs e)
@@ -1046,17 +1300,51 @@ public sealed partial class MainWindow : Window
 
     private void RootGrid_PointerMoved(object sender, PointerRoutedEventArgs e)
     {
-        ShowControls();
-        if (_engine.IsPlaying)
+        if (_isControlsHidden)
         {
-            _autoHideTimer.Stop();
+            _isControlsHidden = false;
+            Win32.SetCursor(Win32.LoadCursor(nint.Zero, Win32.IDC_ARROW));
+        }
+        ShowControls();
+        ResetAutoHideTimer();
+    }
+
+    private void TopBarBorder_PointerEntered(object sender, PointerRoutedEventArgs e)
+    {
+        _isPointerOverControls = true;
+        _autoHideTimer.Stop();
+    }
+
+    private void TopBarBorder_PointerExited(object sender, PointerRoutedEventArgs e)
+    {
+        _isPointerOverControls = false;
+        ResetAutoHideTimer();
+    }
+
+    private void ControlBarBorder_PointerEntered(object sender, PointerRoutedEventArgs e)
+    {
+        _isPointerOverControls = true;
+        _autoHideTimer.Stop();
+    }
+
+    private void ControlBarBorder_PointerExited(object sender, PointerRoutedEventArgs e)
+    {
+        _isPointerOverControls = false;
+        ResetAutoHideTimer();
+    }
+
+    private void ResetAutoHideTimer()
+    {
+        _autoHideTimer.Stop();
+        if (_engine.IsPlaying && !_isPointerOverControls && !_isDraggingSlider && !_isDraggingVolume && !_isFlyoutOpen)
+        {
             _autoHideTimer.Start();
         }
     }
 
     private void AutoHideTimer_Tick(object? sender, object e)
     {
-        if (_engine.IsPlaying)
+        if (_engine.IsPlaying && !_isPointerOverControls && !_isDraggingSlider && !_isDraggingVolume && !_isFlyoutOpen && !_isResumePromptVisible && !_autoNextPrompted)
         {
             HideControls();
         }
@@ -1064,26 +1352,50 @@ public sealed partial class MainWindow : Window
 
     private void ShowControls()
     {
-        ControlBarBorder.Visibility = Visibility.Visible;
-        ControlsRow.Height = GridLength.Auto;
-        if (_appWindow?.Presenter.Kind != AppWindowPresenterKind.FullScreen && _currentPackage != null)
+        _isControlsHidden = false;
+        Win32.SetCursor(Win32.LoadCursor(nint.Zero, Win32.IDC_ARROW));
+
+        bool changed = false;
+        if (ControlBarBorder.Visibility != Visibility.Visible)
+        {
+            ControlBarBorder.Visibility = Visibility.Visible;
+            ControlsRow.Height = GridLength.Auto;
+            changed = true;
+        }
+        if (TopBarBorder.Visibility != Visibility.Visible)
         {
             TopBarBorder.Visibility = Visibility.Visible;
-            TopBarRow.Height = GridLength.Auto;
+            TopRow.Height = GridLength.Auto;
+            changed = true;
         }
-        SyncVideoHostSize();
+        if (changed)
+        {
+            SyncVideoHostSize();
+        }
     }
 
     private void HideControls()
     {
-        ControlBarBorder.Visibility = Visibility.Collapsed;
-        ControlsRow.Height = new GridLength(0);
-        if (_appWindow?.Presenter.Kind == AppWindowPresenterKind.FullScreen)
+        _isControlsHidden = true;
+        Win32.SetCursor(nint.Zero);
+
+        bool changed = false;
+        if (ControlBarBorder.Visibility != Visibility.Collapsed)
+        {
+            ControlBarBorder.Visibility = Visibility.Collapsed;
+            ControlsRow.Height = new GridLength(0);
+            changed = true;
+        }
+        if (TopBarBorder.Visibility != Visibility.Collapsed)
         {
             TopBarBorder.Visibility = Visibility.Collapsed;
-            TopBarRow.Height = new GridLength(0);
+            TopRow.Height = new GridLength(0);
+            changed = true;
         }
-        SyncVideoHostSize();
+        if (changed)
+        {
+            SyncVideoHostSize();
+        }
     }
 
     private void VideoHostBorder_DoubleTapped(object sender, DoubleTappedRoutedEventArgs e)
@@ -1103,6 +1415,7 @@ public sealed partial class MainWindow : Window
         {
             ShowOsd("Предыдущая серия отсутствует");
         }
+        ResetAutoHideTimer();
     }
 
     private async void NextEpisodeButton_Click(object sender, RoutedEventArgs e)
@@ -1117,6 +1430,7 @@ public sealed partial class MainWindow : Window
         {
             ShowOsd("Следующая серия отсутствует");
         }
+        ResetAutoHideTimer();
     }
 
     private void ShowOsd(string text)
@@ -1132,5 +1446,109 @@ public sealed partial class MainWindow : Window
         ErrorNotificationBar.Title = title;
         ErrorNotificationBar.Message = details;
         ErrorNotificationBar.IsOpen = true;
+    }
+
+    public async Task CaptureUiStateAsync(string filename)
+    {
+        try
+        {
+            var rtb = new Microsoft.UI.Xaml.Media.Imaging.RenderTargetBitmap();
+            await rtb.RenderAsync(RootGrid);
+            var pixelBuffer = await rtb.GetPixelsAsync();
+            var dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "UniversalMediaPlayer", "Screenshots");
+            Directory.CreateDirectory(dir);
+            var localPath = Path.Combine(dir, filename);
+
+            byte[] pixels = new byte[pixelBuffer.Length];
+            using (var reader = Windows.Storage.Streams.DataReader.FromBuffer(pixelBuffer))
+            {
+                reader.ReadBytes(pixels);
+            }
+
+            var localFolder = await Windows.Storage.StorageFolder.GetFolderFromPathAsync(dir);
+            var file = await localFolder.CreateFileAsync(filename, Windows.Storage.CreationCollisionOption.ReplaceExisting);
+            using (var stream = await file.OpenAsync(Windows.Storage.FileAccessMode.ReadWrite))
+            {
+                var encoder = await Windows.Graphics.Imaging.BitmapEncoder.CreateAsync(Windows.Graphics.Imaging.BitmapEncoder.PngEncoderId, stream);
+                encoder.SetPixelData(
+                    Windows.Graphics.Imaging.BitmapPixelFormat.Bgra8,
+                    Windows.Graphics.Imaging.BitmapAlphaMode.Premultiplied,
+                    (uint)rtb.PixelWidth,
+                    (uint)rtb.PixelHeight,
+                    96, 96,
+                    pixels);
+                await encoder.FlushAsync();
+            }
+
+            var artifactDir = @"C:\Users\Mila\.gemini\antigravity-cli\brain\01c6a22d-9ac2-4840-9a37-52e1e8c0e3ca";
+            if (Directory.Exists(artifactDir))
+            {
+                File.Copy(localPath, Path.Combine(artifactDir, filename), true);
+            }
+
+            File.AppendAllText(LogFile, $"[{DateTime.UtcNow:O}] CaptureUiStateAsync saved {filename} ({rtb.PixelWidth}x{rtb.PixelHeight})\n");
+        }
+        catch (Exception ex)
+        {
+            File.AppendAllText(LogFile, $"[{DateTime.UtcNow:O}] CaptureUiStateAsync EXCEPTION: {ex}\n");
+        }
+    }
+
+    public async Task RunUiVerificationSuiteAsync()
+    {
+        File.AppendAllText(LogFile, $"[{DateTime.UtcNow:O}] UI Verification Suite started\n");
+        await Task.Delay(2500);
+
+        // 1. Initial playback state
+        await CaptureUiStateAsync("1_initial_playback.png");
+        File.AppendAllText(LogFile, $"[{DateTime.UtcNow:O}] Step 1: Initial playback captured. Position={_currentPositionSeconds:F2}, Duration={_durationSeconds:F2}, TimecodeText='{TimecodeTextBlock.Text}'\n");
+
+        // 2. Seek forward +10s
+        await SeekRelativeWithBoundsAsync(10);
+        await Task.Delay(300);
+        await CaptureUiStateAsync("2_seek_forward_osd.png");
+        File.AppendAllText(LogFile, $"[{DateTime.UtcNow:O}] Step 2: Seek +10s captured. Position={_currentPositionSeconds:F2}, OsdText='{OsdTextBlock.Text}'\n");
+
+        // 3. Seek backward -10s
+        await SeekRelativeWithBoundsAsync(-10);
+        await Task.Delay(300);
+        await CaptureUiStateAsync("3_seek_backward_osd.png");
+        File.AppendAllText(LogFile, $"[{DateTime.UtcNow:O}] Step 3: Seek -10s captured. Position={_currentPositionSeconds:F2}, OsdText='{OsdTextBlock.Text}'\n");
+
+        // 4. Mouse wheel volume adjustment
+        var preVol = VolumeSlider.Value;
+        HandleMouseWheel(-120);
+        await Task.Delay(200);
+        File.AppendAllText(LogFile, $"[{DateTime.UtcNow:O}] Step 4: Mouse wheel volume adjusted. PreVol={preVol}, PostVol={VolumeSlider.Value}\n");
+
+        // 5. Toggle Fullscreen
+        ToggleFullscreen();
+        await Task.Delay(500);
+        var isFullscreen = _appWindow?.Presenter.Kind == AppWindowPresenterKind.FullScreen;
+        await CaptureUiStateAsync("4_fullscreen.png");
+        File.AppendAllText(LogFile, $"[{DateTime.UtcNow:O}] Step 5: Fullscreen toggled. IsFullscreen={isFullscreen}\n");
+
+        // 6. Return to Windowed
+        ToggleFullscreen();
+        await Task.Delay(500);
+        var isWindowed = _appWindow?.Presenter.Kind == AppWindowPresenterKind.Default;
+        await CaptureUiStateAsync("5_windowed.png");
+        File.AppendAllText(LogFile, $"[{DateTime.UtcNow:O}] Step 6: Returned to windowed. IsWindowed={isWindowed}\n");
+
+        // 7. AutoHide controls test
+        HideControls();
+        await Task.Delay(300);
+        var isControlsHidden = ControlBarBorder.Visibility == Visibility.Collapsed;
+        await CaptureUiStateAsync("6_controls_hidden.png");
+        File.AppendAllText(LogFile, $"[{DateTime.UtcNow:O}] Step 7: Controls hidden. IsHidden={isControlsHidden}\n");
+
+        // 8. Restore controls
+        ShowControls();
+        await Task.Delay(300);
+        var isControlsShown = ControlBarBorder.Visibility == Visibility.Visible;
+        await CaptureUiStateAsync("7_controls_shown.png");
+        File.AppendAllText(LogFile, $"[{DateTime.UtcNow:O}] Step 8: Controls shown. IsShown={isControlsShown}\n");
+
+        File.AppendAllText(LogFile, $"[{DateTime.UtcNow:O}] UI_VERIFICATION_COMPLETE_SUCCESS\n");
     }
 }

@@ -25,6 +25,9 @@
     <ProjectReference Include="..\..\src\Stepwise.Core\Stepwise.Core.csproj" />
     <ProjectReference Include="..\..\src\Stepwise.WindowsIntegration\Stepwise.WindowsIntegration.csproj" />
     <ProjectReference Include="..\..\src\Stepwise.Storage\Stepwise.Storage.csproj" />
+    <ProjectReference Include="..\..\src\Stepwise.App\Stepwise.App.csproj">
+      <ExcludeAssets>build;buildTransitive</ExcludeAssets>
+    </ProjectReference>
   </ItemGroup>
 
 </Project>

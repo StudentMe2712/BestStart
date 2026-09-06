@@ -1,3 +1,4 @@
+using UniversalMediaPlayer.Core.Enums;
 using UniversalMediaPlayer.Core.Models;
 
 namespace UniversalMediaPlayer.Playback;
@@ -6,6 +7,7 @@ public interface IPlaybackEngine : IAsyncDisposable
 {
     bool IsInitialized { get; }
     bool IsPlaying { get; }
+    PlaybackState State { get; }
     double CurrentPositionSeconds { get; }
     double DurationSeconds { get; }
     MediaPackage? CurrentPackage { get; }
@@ -28,6 +30,7 @@ public interface IPlaybackEngine : IAsyncDisposable
     Task SendCommandAsync(params string[] args);
 
     event Action<bool>? PlaybackStateChanged;
+    event Action<PlaybackState>? StateChanged;
     event Action<double, double>? TimeUpdated;
     event Action<IReadOnlyList<MediaTrack>>? TracksChanged;
 }

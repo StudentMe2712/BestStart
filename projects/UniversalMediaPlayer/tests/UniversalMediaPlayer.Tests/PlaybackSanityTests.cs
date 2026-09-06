@@ -43,4 +43,30 @@ public class PlaybackSanityTests
         await engine.DisposeAsync();
         Assert.False(engine.IsInitialized);
     }
+
+    [Fact]
+    public async Task MpvPlaybackEngine_PlayPauseState_FiresEventsAndSyncsIsPlaying()
+    {
+        var engine = new MpvPlaybackEngine();
+        await engine.InitializeAsync(windowHandle: 0);
+
+        var stateChanges = new List<bool>();
+        engine.PlaybackStateChanged += isPlaying => stateChanges.Add(isPlaying);
+
+        await engine.PlayAsync();
+        Assert.True(engine.IsPlaying);
+
+        await engine.PauseAsync();
+        Assert.False(engine.IsPlaying);
+
+        await engine.PlayAsync();
+        Assert.True(engine.IsPlaying);
+
+        await engine.PauseAsync();
+        Assert.False(engine.IsPlaying);
+
+        Assert.Equal([true, false, true, false], stateChanges);
+
+        await engine.DisposeAsync();
+    }
 }

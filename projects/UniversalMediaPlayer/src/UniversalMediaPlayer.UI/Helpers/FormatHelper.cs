@@ -15,7 +15,7 @@ public static class FormatHelper
 
         var ts = TimeSpan.FromSeconds(seconds);
         return ts.TotalHours >= 1
-            ? $"{(int)ts.TotalHours:D2}:{ts.Minutes:D2}:{ts.Seconds:D2}"
+            ? $"{(int)ts.TotalHours}:{ts.Minutes:D2}:{ts.Seconds:D2}"
             : $"{ts.Minutes:D2}:{ts.Seconds:D2}";
     }
 
@@ -93,16 +93,11 @@ public static class FormatHelper
 
         var name = System.IO.Path.GetFileNameWithoutExtension(rawFileName);
 
-        // Remove release group prefixes: [Group] Name or (Group) Name
-        name = System.Text.RegularExpressions.Regex.Replace(name, @"^\s*(\[[^\]]+\]|\([^\)]+\))\s*", "");
+        // Remove bracket tags: [Group], [1080p], (BDRip), etc.
+        var cleaned = System.Text.RegularExpressions.Regex.Replace(name, @"\[[^\]]*\]|\([^\)]*\)", " ");
+        cleaned = System.Text.RegularExpressions.Regex.Replace(cleaned, @"\s+", " ").Trim(' ', '-', '.', '_');
 
-        // Remove trailing bracket tags: Name [1080p BDRip x264...] or Name (1080p...)
-        name = System.Text.RegularExpressions.Regex.Replace(name, @"\s*(\[[^\]]+\]|\([^\)]+\))\s*$", "");
-
-        // Trim dots, underscores, hyphens from edges
-        name = name.Replace('_', ' ').Trim(' ', '-', '.');
-
-        return string.IsNullOrWhiteSpace(name) ? System.IO.Path.GetFileNameWithoutExtension(rawFileName) : name;
+        return string.IsNullOrWhiteSpace(cleaned) ? name : cleaned;
     }
 
     public static string GetLanguageDisplayName(string langCode)

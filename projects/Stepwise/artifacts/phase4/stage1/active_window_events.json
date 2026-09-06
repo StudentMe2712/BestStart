@@ -1,18 +1,18 @@
 [
   {
-    "Handle": 1968400,
-    "ProcessId": 9128,
+    "Handle": 2168210,
+    "ProcessId": 3124,
     "ProcessName": "testhost",
     "Title": "Stepwise Live Validation Target",
-    "Bounds": "150,150 [420x320]",
-    "Timestamp": "2026-09-05T17:12:42.7863181Z"
+    "Bounds": "188,188 [525x400]",
+    "Timestamp": "2026-09-06T06:18:39.1294326Z"
   },
   {
-    "Handle": 3148162,
-    "ProcessId": 9128,
+    "Handle": 1774936,
+    "ProcessId": 3124,
     "ProcessName": "testhost",
     "Title": "Stepwise Live Stage 2 Target",
-    "Bounds": "150,150 [460x360]",
-    "Timestamp": "2026-09-05T17:12:42.7877848Z"
+    "Bounds": "188,188 [575x450]",
+    "Timestamp": "2026-09-06T06:18:39.1305472Z"
   }
 ]

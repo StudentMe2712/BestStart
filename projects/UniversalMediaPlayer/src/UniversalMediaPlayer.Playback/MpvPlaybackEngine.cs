@@ -16,15 +16,32 @@ public sealed class MpvPlaybackEngine : IPlaybackEngine
     private Task? _eventLoopTask;
 
     public bool IsInitialized => _handle != 0;
-    public bool IsPlaying { get; private set; }
+    public bool IsPlaying => State == PlaybackState.Playing;
+    public PlaybackState State { get; private set; } = PlaybackState.Stopped;
     public double CurrentPositionSeconds { get; private set; }
     public double DurationSeconds { get; private set; }
     public MediaPackage? CurrentPackage { get; private set; }
     public IReadOnlyList<MediaTrack> ActiveTracks { get; private set; } = [];
 
     public event Action<bool>? PlaybackStateChanged;
+    public event Action<PlaybackState>? StateChanged;
     public event Action<double, double>? TimeUpdated;
     public event Action<IReadOnlyList<MediaTrack>>? TracksChanged;
+
+    private void SetState(PlaybackState newState)
+    {
+        if (State != newState)
+        {
+            var oldPlaying = IsPlaying;
+            State = newState;
+            StateChanged?.Invoke(newState);
+            var newPlaying = IsPlaying;
+            if (oldPlaying != newPlaying)
+            {
+                PlaybackStateChanged?.Invoke(newPlaying);
+            }
+        }
+    }
 
     public Task InitializeAsync(nint windowHandle = 0, CancellationToken ct = default)
     {
@@ -42,6 +59,16 @@ public sealed class MpvPlaybackEngine : IPlaybackEngine
             if (windowHandle != 0)
             {
                 SetOptionStringUnsafe("wid", windowHandle.ToString());
+                SetOptionStringUnsafe("vo", "gpu-next,gpu");
+                SetOptionStringUnsafe("gpu-context", "d3d11");
+                SetOptionStringUnsafe("hwdec", "d3d11va,auto-safe");
+                SetOptionStringUnsafe("d3d11-exclusive-fs", "no");
+                SetOptionStringUnsafe("force-window", "yes");
+                SetOptionStringUnsafe("hidpi-window-scale", "no");
+                SetOptionStringUnsafe("input-vo-keyboard", "no");
+                SetOptionStringUnsafe("input-default-bindings", "no");
+                SetOptionStringUnsafe("osc", "no");
+                SetOptionStringUnsafe("osd-bar", "no");
             }
             else
             {
@@ -52,7 +79,10 @@ public sealed class MpvPlaybackEngine : IPlaybackEngine
 
             // Keep player alive when file reaches EOF
             SetOptionStringUnsafe("keep-open", "yes");
-            SetOptionStringUnsafe("hwdec", "auto-safe");
+            SetOptionStringUnsafe("hr-seek", "yes");
+            SetOptionStringUnsafe("audio-file-auto", "no");
+            SetOptionStringUnsafe("sub-auto", "no");
+            SetOptionStringUnsafe("pause", "yes");
 
             var err = LibMpvNative.mpv_initialize(_handle);
             if (err < 0)
@@ -63,8 +93,11 @@ public sealed class MpvPlaybackEngine : IPlaybackEngine
                 throw new InvalidOperationException($"Failed to initialize mpv: {errMsg} (code {err})");
             }
 
-            // Observe "pause" property to receive property change events
+            // Observe properties for deterministic state tracking
             ObservePropertyUnsafe(1, "pause");
+            ObservePropertyUnsafe(2, "playback-time");
+            ObservePropertyUnsafe(3, "duration");
+            ObservePropertyUnsafe(4, "eof-reached");
 
             _cts = new CancellationTokenSource();
             _eventLoopTask = Task.Run(() => EventLoop(_cts.Token));
@@ -80,6 +113,7 @@ public sealed class MpvPlaybackEngine : IPlaybackEngine
         try
         {
             ct.ThrowIfCancellationRequested();
+            SetState(PlaybackState.Loading);
             CurrentPackage = package;
 
             // Ensure playback does not race to EOF before attaching external tracks
@@ -158,33 +192,21 @@ public sealed class MpvPlaybackEngine : IPlaybackEngine
     {
         EnsureInitialized();
         await SetPropertyAsync("pause", "no");
-        if (!IsPlaying)
-        {
-            IsPlaying = true;
-            PlaybackStateChanged?.Invoke(true);
-        }
+        SetState(PlaybackState.Playing);
     }
 
     public async Task PauseAsync()
     {
         EnsureInitialized();
         await SetPropertyAsync("pause", "yes");
-        if (IsPlaying)
-        {
-            IsPlaying = false;
-            PlaybackStateChanged?.Invoke(false);
-        }
+        SetState(PlaybackState.Paused);
     }
 
     public async Task StopAsync()
     {
         EnsureInitialized();
         await SendCommandAsync("stop");
-        if (IsPlaying)
-        {
-            IsPlaying = false;
-            PlaybackStateChanged?.Invoke(false);
-        }
+        SetState(PlaybackState.Stopped);
     }
 
     public Task SeekAsync(double seconds, bool relative = true)
@@ -336,48 +358,74 @@ public sealed class MpvPlaybackEngine : IPlaybackEngine
         while (!ct.IsCancellationRequested && _handle != 0)
         {
             var eventPtr = LibMpvNative.mpv_wait_event(_handle, 0.05);
-            if (eventPtr == 0) continue;
-
-            // mpv_event struct: event_id (int at offset 0)
-            var eventId = Marshal.ReadInt32(eventPtr);
-            if (eventId == 0) continue; // MPV_EVENT_NONE
-
-            // Synchronize real playback state from backend
-            var pausedStr = GetPropertySync("pause");
-            if (pausedStr != null)
+            if (eventPtr != 0)
             {
-                var isCurrentlyPlaying = pausedStr == "no";
-                if (isCurrentlyPlaying != IsPlaying)
+                var eventId = Marshal.ReadInt32(eventPtr);
+                if (eventId == 6) // MPV_EVENT_START_FILE
                 {
-                    IsPlaying = isCurrentlyPlaying;
-                    PlaybackStateChanged?.Invoke(IsPlaying);
+                    SetState(PlaybackState.Loading);
+                }
+                else if (eventId == 8) // MPV_EVENT_FILE_LOADED
+                {
+                    var paused = GetPropertySync("pause");
+                    SetState(paused == "no" ? PlaybackState.Playing : PlaybackState.Paused);
+                }
+                else if (eventId == 7) // MPV_EVENT_END_FILE
+                {
+                    SetState(PlaybackState.Stopped);
+                }
+                else if (eventId == 22) // MPV_EVENT_PROPERTY_CHANGE
+                {
+                    var dataPtr = Marshal.ReadIntPtr(eventPtr, 16);
+                    if (dataPtr != 0)
+                    {
+                        var propNamePtr = Marshal.ReadIntPtr(dataPtr, 0);
+                        var propName = propNamePtr != 0 ? Marshal.PtrToStringUTF8(propNamePtr) : null;
+                        var valPtr = Marshal.ReadIntPtr(dataPtr, 16);
+
+                        if (propName == "pause" && valPtr != 0)
+                        {
+                            var pauseVal = Marshal.PtrToStringUTF8(valPtr);
+                            if (pauseVal == "no")
+                            {
+                                SetState(PlaybackState.Playing);
+                            }
+                            else if (pauseVal == "yes" && State != PlaybackState.Stopped && State != PlaybackState.Loading)
+                            {
+                                SetState(PlaybackState.Paused);
+                            }
+                        }
+                        else if (propName == "eof-reached" && valPtr != 0)
+                        {
+                            var eofVal = Marshal.PtrToStringUTF8(valPtr);
+                            if (eofVal == "yes")
+                            {
+                                SetState(PlaybackState.Paused);
+                            }
+                        }
+                    }
                 }
             }
 
-            if (eventId == 7) // MPV_EVENT_END_FILE
+            // Always synchronize playback time and duration smoothly if media is active
+            if (State == PlaybackState.Playing || State == PlaybackState.Paused)
             {
-                if (IsPlaying)
+                var posStr = GetPropertySync("playback-time");
+                var durStr = GetPropertySync("duration");
+
+                if (double.TryParse(posStr, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var pos))
                 {
-                    IsPlaying = false;
-                    PlaybackStateChanged?.Invoke(false);
+                    CurrentPositionSeconds = pos;
                 }
-            }
+                if (double.TryParse(durStr, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var dur))
+                {
+                    DurationSeconds = dur;
+                }
 
-            var posStr = GetPropertySync("playback-time");
-            var durStr = GetPropertySync("duration");
-
-            if (double.TryParse(posStr, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var pos))
-            {
-                CurrentPositionSeconds = pos;
-            }
-            if (double.TryParse(durStr, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var dur))
-            {
-                DurationSeconds = dur;
-            }
-
-            if (posStr != null || durStr != null)
-            {
-                TimeUpdated?.Invoke(CurrentPositionSeconds, DurationSeconds);
+                if (posStr != null || durStr != null)
+                {
+                    TimeUpdated?.Invoke(CurrentPositionSeconds, DurationSeconds);
+                }
             }
         }
     }

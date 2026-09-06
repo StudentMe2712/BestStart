@@ -41,7 +41,11 @@ public class UiWorkflowTests
         Assert.Equal("00:00", FormatHelper.FormatTimecode(0));
         Assert.Equal("00:45", FormatHelper.FormatTimecode(45));
         Assert.Equal("01:15", FormatHelper.FormatTimecode(75));
-        Assert.Equal("01:01:05", FormatHelper.FormatTimecode(3665));
+        Assert.Equal("20:20", FormatHelper.FormatTimecode(1220.3));
+        Assert.Equal("1:00:00", FormatHelper.FormatTimecode(3600));
+        Assert.Equal("1:01:05", FormatHelper.FormatTimecode(3665));
+        Assert.Equal("1:01:05", FormatHelper.FormatTimecode(3665.4));
+        Assert.Equal("2:05:15", FormatHelper.FormatTimecode(7515));
         Assert.Equal("00:00", FormatHelper.FormatTimecode(-10));
         Assert.Equal("00:00", FormatHelper.FormatTimecode(double.NaN));
     }

@@ -1,7 +1,9 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using UniversalMediaPlayer.Core.Enums;
 using UniversalMediaPlayer.Core.Models;
 using UniversalMediaPlayer.UI.Helpers;
+using UniversalMediaPlayer.UI.Resources;
 
 namespace UniversalMediaPlayer.UI.ViewModels;
 
@@ -18,6 +20,22 @@ public sealed partial class PlayerViewModel : ObservableObject
 
     [ObservableProperty]
     private bool _isPlaying;
+
+    [ObservableProperty]
+    private PlaybackState _playbackState = PlaybackState.Stopped;
+
+    public string PlayPauseGlyph => PlaybackState == PlaybackState.Playing ? "\uE769" : "\uE768";
+    public string PlayPauseToolTip => PlaybackState == PlaybackState.Playing ? $"{AppStrings.Pause} (Space)" : $"{AppStrings.Play} (Space)";
+    public bool IsPlayPauseEnabled => PlaybackState != PlaybackState.Loading;
+
+    public void UpdatePlaybackState(PlaybackState state)
+    {
+        PlaybackState = state;
+        IsPlaying = state == PlaybackState.Playing;
+        OnPropertyChanged(nameof(PlayPauseGlyph));
+        OnPropertyChanged(nameof(PlayPauseToolTip));
+        OnPropertyChanged(nameof(IsPlayPauseEnabled));
+    }
 
     [ObservableProperty]
     private int _volume = 100;
@@ -148,12 +166,13 @@ public sealed partial class PlayerViewModel : ObservableObject
         {
             var s = package.Episode.SeasonNumber.HasValue ? $"S{package.Episode.SeasonNumber:D2}" : "";
             EpisodeTitle = $"{package.Episode.ShowTitle} {s}E{package.Episode.EpisodeNumber:D2}".Trim();
-            PackageSummary = $"· 🎬 1 video  🎧 {package.AudioTracks.Count} audio  💬 {package.SubtitleTracks.Count} subs  🔤 {package.Fonts?.Count ?? 0} fonts";
+            var fontsStr = package.Fonts?.HasFonts == true ? $" · {package.Fonts.Count} fonts" : "";
+            PackageSummary = $"· 1 video · {package.AudioTracks.Count} audio · {package.SubtitleTracks.Count} subs{fontsStr}";
         }
         else
         {
-            EpisodeTitle = package.PrimaryVideo.FileName;
-            PackageSummary = $"· 🎧 {package.AudioTracks.Count} audio  💬 {package.SubtitleTracks.Count} subs";
+            EpisodeTitle = FormatHelper.CleanTitle(package.PrimaryVideo.FilePath);
+            PackageSummary = $"· 1 video · {package.AudioTracks.Count} audio · {package.SubtitleTracks.Count} subs";
         }
     }
 

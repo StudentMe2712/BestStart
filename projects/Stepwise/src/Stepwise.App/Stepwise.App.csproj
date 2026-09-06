@@ -25,6 +25,9 @@
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.2" />
   </ItemGroup>
   <ItemGroup>
+    <InternalsVisibleTo Include="Stepwise.Tests" />
+  </ItemGroup>
+  <ItemGroup>
     <ProjectReference Include="..\Stepwise.Core\Stepwise.Core.csproj" />
     <ProjectReference Include="..\Stepwise.Storage\Stepwise.Storage.csproj" />
     <ProjectReference Include="..\Stepwise.WindowsIntegration\Stepwise.WindowsIntegration.csproj" />

@@ -1,6 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Stepwise.App.Services;
 using Stepwise.App.ViewModels;
 using Stepwise.App.Views;
 
@@ -44,10 +45,21 @@ public sealed partial class MainWindow : Window
                 ContentFrame.Navigate(typeof(EditorPage));
                 ViewModel.CurrentView = "Editor";
             }
+            else if (tag == "Player")
+            {
+                ContentFrame.Navigate(typeof(PlayerPage));
+                ViewModel.CurrentView = "Player";
+            }
             else if (tag == "Record")
             {
                 ViewModel.CurrentView = "Record";
             }
         }
+    }
+
+    private void BtnOpenPlayer_Click(object sender, RoutedEventArgs e)
+    {
+        var playerWindowService = App.Services.GetService<IPlayerWindowService>();
+        playerWindowService?.ShowPlayerWindow();
     }
 }

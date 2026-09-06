@@ -1,7 +1,7 @@
 # Stepwise — Главная архитектурная спецификация и Центр Проекта (Brain Specification)
 
-> **Статус:** В активной разработке (Срез: Шаги 1–8 и 12 сданы на 100% — Фаза 4 Этап 4: Real-World Recording Engine сдан на 100%, 277/277 тестов PASS, Live Win32 Notepad E2E PASS, Zero Password Leaks Verified, 8 Target Types Matrix Covered)  
-> **Версия спецификации:** 2.3.0 (Объединена с Master Engineering Prompt / docs/real-world-target-matrix.md)  
+> **Статус:** В активной разработке (Срез: Шаги 1–9 и 12 сданы на 100% — Фаза 5 Этап 1: Guide Player Core + Player UI сдан на 100%, 310/310 тестов PASS, Live FlaUI UIA3 GUI E2E PASS, Failure E2E PASS, All 20 Section 16 unit tests PASS, 0 Warnings / 0 Errors)  
+> **Версия спецификации:** 2.4.0 (Guide Player Core + Player UI Complete)  
 > **Платформа:** Windows 10/11 (x64 / ARM64)  
 > **Технологический стек:** C# 13, .NET 9+, WinUI 3, Windows App SDK, Microsoft UI Automation (UIA), Win32 API (CsWin32 / PInvoke), Windows.Graphics.Capture, SQLite, CommunityToolkit.Mvvm, System.Text.Json.
 
@@ -206,9 +206,9 @@ public sealed record Step(
   - Операции: Переупорядочивание шагов (Drag & Drop), удаление лишних кликов, добавление шага вручную.
 
 ### Фаза 4: Воспроизведение и Прозрачный оверлей (Player & Overlay)
-- [ ] **Шаг 9: Guide Player (Автономный плеер инструкций).**
-  - Режим последовательного прохождения: "Шаг N из M", кнопки "Далее", "Назад", горячие клавиши.
-  - Компактный плавающий виджет поверх всех окон.
+- [x] **Шаг 9: Guide Player (Автономный плеер инструкций).**
+  - Режим последовательного прохождения: "Шаг N из M", кнопки "Далее", "Назад", "В начало", "В конец", "Перезапуск", горячие клавиши.
+  - Автономный плеер инструкций (PlayerWindow & PlayerView), навигация, отображение скриншотов, метаданных UIA и подсветка.
 - [ ] **Шаг 10: Реализация прозрачного Desktop Overlay (Composition API).**
   - Клик-сквозное полноэкранное окно без рамок (`WS_EX_TRANSPARENT | WS_EX_LAYERED`).
   - Мягкое затемнение фона экрана вокруг целевого элемента.

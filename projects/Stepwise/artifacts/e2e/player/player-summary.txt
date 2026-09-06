@@ -1,0 +1,54 @@
+﻿================================================================================
+                    STEPWISE PLAYER GUI E2E TEST SUITE SUMMARY
+================================================================================
+Generated At:     2026-09-06T06:20:37Z
+Specification:    specs/spec.md Sections 17, 18, 19 (Player GUI E2E Protocol)
+Application:      Stepwise.App.exe (.NET 9 WinUI 3 Desktop win-x64)
+Artifacts Dir:    C:\Users\Mila\Desktop\BestStart\projects\Stepwise\artifacts\e2e\player
+Test Project Dir: C:\Users\Mila\Desktop\BestStart\projects\Stepwise\artifacts\e2e\player\deterministic_project
+
+TEST SUITE EXECUTION RESULTS:
+--------------------------------------------------------------------------------
+1. LiveGuiWorkflow_ThreeStepGuide_FullNavigationCycle_GeneratesEvidence: PASSED
+   - Deterministic 3-step guide creation & SQLite storage: VERIFIED
+   - Launch Stepwise.App with --project argument: VERIFIED
+   - Locate MainWindow & invoke BtnOpenPlayer: VERIFIED
+   - PlayerWindow and PlayerRoot detection via FlaUI UIA3: VERIFIED
+   - Step 1 verification (TxtStepPosition='Шаг 1 из 3', TxtStepTitle): VERIFIED
+   - BtnNext forward navigation to Step 2 ('Шаг 2 из 3'): VERIFIED
+   - BtnNext forward navigation to Step 3 ('Шаг 3 из 3'): VERIFIED
+   - BtnPrevious backward navigation to Step 2 ('Шаг 2 из 3'): VERIFIED
+   - BtnLast jump navigation to Step 3 ('Шаг 3 из 3'): VERIFIED
+   - BtnRestart reset navigation back to Step 1 ('Шаг 1 из 3'): VERIFIED
+   - BtnClosePlayer invocation and clean window closure: VERIFIED
+
+2. LiveFailureScenario_MissingAndCorruptedScreenshots_HandlesGracefullyWithoutCrash: PASSED
+   - Guide with missing/corrupted screenshot assets: VERIFIED
+   - Player launch without unhandled exceptions or crashes: VERIFIED
+   - Error state overlay & BtnRetryScreenshot display: VERIFIED
+   - Player remains fully usable (Next/Previous functional in error state): VERIFIED
+   - Clean closure of Player window from error state: VERIFIED
+
+EVIDENCE ARTIFACTS VERIFIED ON DISK (Section 18):
+--------------------------------------------------------------------------------
+- player-launch.png     : EXISTS & VALID (10816 bytes)
+- player-step-1.png     : EXISTS & VALID (10789 bytes)
+- player-step-2.png     : EXISTS & VALID (10803 bytes)
+- player-last.png       : EXISTS & VALID (10751 bytes)
+- player-restart.png    : EXISTS & VALID (10762 bytes)
+- player-summary.txt    : EXISTS & VALID (3500 bytes)
+
+UIA ELEMENTS USED AND VERIFIED:
+--------------------------------------------------------------------------------
+- MainWindow.BtnOpenPlayer:       Button (Invokes player window)
+- PlayerWindow:                   Window / RootGrid (Top-level player window)
+- PlayerRoot:                     Grid (Main container for player view)
+- TxtStepPosition:                TextBlock (Position text, e.g. 'Шаг 1 из 3')
+- TxtStepTitle:                   TextBlock (Current step title)
+- BtnNext:                        Button (Forward step navigation)
+- BtnPrevious:                    Button (Backward step navigation)
+- BtnLast:                        Button (Jump to last step)
+- BtnRestart:                     Button (Restart from step 1)
+- BtnClosePlayer:                 Button (Close player window)
+- BtnRetryScreenshot:             Button (Retry screenshot load in failure state)
+================================================================================
