@@ -1,0 +1,400 @@
+[
+  {
+    "id": "prelude-01",
+    "name": "Pan-Seared Hokkaido Scallops",
+    "course": "Prelude",
+    "price": 34.0,
+    "description": "Wild-caught diver scallops with yuzu kosho emulsion, charred leek oil, and crystalline sea grapes.",
+    "culinaryStory": "Sourced directly from the cold currents of the Okhotsk Sea off Hokkaido. Quickly caramelized over binchotan charcoal to preserve the delicate sea-sweetness, lifted by fermented green yuzu peel.",
+    "dietaryTags": [
+      "Gluten-Free",
+      "Pescatarian",
+      "Nut-Free"
+    ],
+    "flavorProfile": {
+      "umami": 0.85,
+      "acidity": 0.65,
+      "sweetness": 0.4,
+      "spiciness": 0.2,
+      "texture": 0.75
+    },
+    "pairing": {
+      "id": "pair-prelude-01",
+      "name": "Sancerre 'Les Monts Damnés'",
+      "type": "White Wine",
+      "notes": "Crisp flinty minerality and vibrant grapefruit tension that slice through the luscious caramel scallop richness.",
+      "temperature": "9°C",
+      "producer": "Domaine François Cotat",
+      "vintage": "2021"
+    },
+    "heroImageSymbol": "water.waves",
+    "rating": 4.95,
+    "isChefSelection": true,
+    "origin": "Hokkaido, Japan"
+  },
+  {
+    "id": "prelude-02",
+    "name": "A5 Wagyu & Imperial Caviar Tartlet",
+    "course": "Prelude",
+    "price": 42.0,
+    "description": "Hand-cut Miyazaki wagyu beef, Kaluga hybrid sturgeon caviar, bone marrow emulsion, crisp nori pastry.",
+    "culinaryStory": "A high-tension collision between land and sea. Silky marbling from Miyazaki A5 striploin is subtly smoked over cherrywood, nestled inside an ultra-fine brittle nori tart shell.",
+    "dietaryTags": [
+      "Nut-Free",
+      "Halal"
+    ],
+    "flavorProfile": {
+      "umami": 0.95,
+      "acidity": 0.35,
+      "sweetness": 0.25,
+      "spiciness": 0.15,
+      "texture": 0.85
+    },
+    "pairing": {
+      "id": "pair-prelude-02",
+      "name": "Champagne Blanc de Blancs Extra Brut",
+      "type": "Champagne",
+      "notes": "Persistent micro-effervescence and toasted brioche notes harmonize with the salty, nutty caviar beads.",
+      "temperature": "8°C",
+      "producer": "Pierre Péters Cuvée de Réserve",
+      "vintage": "NV"
+    },
+    "heroImageSymbol": "crown.fill",
+    "rating": 5.0,
+    "isChefSelection": true,
+    "origin": "Miyazaki & Qiandao Lake"
+  },
+  {
+    "id": "prelude-03",
+    "name": "Black Truffle & Morels Chawanmushi",
+    "course": "Prelude",
+    "price": 29.0,
+    "description": "Silken dashi egg custard, shaved Périgord black winter truffles, braised wild morel mushrooms, roasted hazelnut drizzle.",
+    "culinaryStory": "Steamed gently at exactly 82°C using aged Rishiri kombu broth. The delicate cloud-like custard dissolves immediately, releasing intoxicating earthy aromas of black truffle.",
+    "dietaryTags": [
+      "Gluten-Free",
+      "Vegetarian"
+    ],
+    "flavorProfile": {
+      "umami": 0.9,
+      "acidity": 0.2,
+      "sweetness": 0.3,
+      "spiciness": 0.05,
+      "texture": 0.6
+    },
+    "pairing": {
+      "id": "pair-prelude-03",
+      "name": "Junmai Daiginjo 'Yukisatsuma'",
+      "type": "Craft Sake",
+      "notes": "Melon undertones, velvety texture, and clean rice polish complement the soft dashi custard without overpowering truffle.",
+      "temperature": "10°C",
+      "producer": "Dassai 23",
+      "vintage": "2023"
+    },
+    "heroImageSymbol": "cup.and.saucer.fill",
+    "rating": 4.88,
+    "isChefSelection": false,
+    "origin": "Périgord, France"
+  },
+  {
+    "id": "main-01",
+    "name": "Dry-Aged Challandais Duck Breast",
+    "course": "Main Courses",
+    "price": 58.0,
+    "description": "28-day dry-aged heritage duck, fermented black plum reduction, charred salsify, Sichuan pepper lavender jus.",
+    "culinaryStory": "Breasted from heritage Challans ducks, aged on salt blocks for concentrated game flavor. Crisp lacquered honey skin cooked over embers, paired with a slow reduction of wild damson plums.",
+    "dietaryTags": [
+      "Gluten-Free",
+      "Nut-Free",
+      "Dairy-Free"
+    ],
+    "flavorProfile": {
+      "umami": 0.92,
+      "acidity": 0.55,
+      "sweetness": 0.45,
+      "spiciness": 0.35,
+      "texture": 0.8
+    },
+    "pairing": {
+      "id": "pair-main-01",
+      "name": "Gevrey-Chambertin 'Clos Saint-Jacques' 1er Cru",
+      "type": "Red Wine",
+      "notes": "Dark cherry, violet perfume, and fine-grained tannins echo the wild game notes and spicy lavender jus.",
+      "temperature": "16°C",
+      "producer": "Domaine Armand Rousseau",
+      "vintage": "2018"
+    },
+    "heroImageSymbol": "flame.fill",
+    "rating": 4.98,
+    "isChefSelection": true,
+    "origin": "Challans, Vendée, France"
+  },
+  {
+    "id": "main-02",
+    "name": "Glacier 51 Toothfish en Papillote",
+    "course": "Main Courses",
+    "price": 64.0,
+    "description": "Sub-Antarctic Patagonian toothfish, lemongrass dashi broth, sea succulents, finger lime pearls, galangal oil.",
+    "culinaryStory": "Sustainably caught in Heard Island's freezing waters at 2,000 meters depth. The naturally high omega-3 fat gives snow-white flakes of incomparable richness, cut through by citric finger lime.",
+    "dietaryTags": [
+      "Gluten-Free",
+      "Pescatarian",
+      "Dairy-Free",
+      "Nut-Free"
+    ],
+    "flavorProfile": {
+      "umami": 0.88,
+      "acidity": 0.7,
+      "sweetness": 0.35,
+      "spiciness": 0.25,
+      "texture": 0.78
+    },
+    "pairing": {
+      "id": "pair-main-02",
+      "name": "Meursault 'Les Narvaux'",
+      "type": "White Wine",
+      "notes": "Rich hazelnut, lemon curd, and saline drive that wrap around the rich, oily texture of deep-sea toothfish.",
+      "temperature": "11°C",
+      "producer": "Domaine Vincent Girardin",
+      "vintage": "2020"
+    },
+    "heroImageSymbol": "fish.fill",
+    "rating": 4.92,
+    "isChefSelection": false,
+    "origin": "Heard Island & McDonald Islands"
+  },
+  {
+    "id": "main-03",
+    "name": "A5 Kagoshima Ribeye & Smoked Bone Marrow",
+    "course": "Main Courses",
+    "price": 85.0,
+    "description": "Kuroge Washu BMS 11 ribeye, charred spring scallion chimichurri, truffled potato pavé, aged balsamic jus.",
+    "culinaryStory": "Prized Japanese Black beef raised in southern Kagoshima sun. Melting point below human body temperature creates an explosion of marbling sweetness, balanced by lively herbal chimichurri acidity.",
+    "dietaryTags": [
+      "Gluten-Free",
+      "Nut-Free"
+    ],
+    "flavorProfile": {
+      "umami": 0.98,
+      "acidity": 0.4,
+      "sweetness": 0.4,
+      "spiciness": 0.2,
+      "texture": 0.9
+    },
+    "pairing": {
+      "id": "pair-main-03",
+      "name": "Barolo Monprivato",
+      "type": "Red Wine",
+      "notes": "Noble tar and crushed roses with aristocratic Nebbiolo acidity effortlessly dissolve the dense marbling fats.",
+      "temperature": "17°C",
+      "producer": "Giuseppe Mascarello",
+      "vintage": "2016"
+    },
+    "heroImageSymbol": "fork.knife",
+    "rating": 5.0,
+    "isChefSelection": true,
+    "origin": "Kagoshima, Japan"
+  },
+  {
+    "id": "garden-01",
+    "name": "Salt-Baked Heirloom Beetroot & Smoked Cashew Labneh",
+    "course": "Garden",
+    "price": 26.0,
+    "description": "Four varieties of heritage baby beets slow-roasted in rosemary sea salt crust, whipped cashew labneh, blackberry vinaigrette.",
+    "culinaryStory": "Cultivated in biodynamic volcanic soil. Salt-baking concentrates the root's natural sugars into ruby gems of earthy sweetness, contrasted by smoked fermented cashew cream.",
+    "dietaryTags": [
+      "Vegan",
+      "Vegetarian",
+      "Gluten-Free",
+      "Dairy-Free"
+    ],
+    "flavorProfile": {
+      "umami": 0.5,
+      "acidity": 0.75,
+      "sweetness": 0.65,
+      "spiciness": 0.1,
+      "texture": 0.7
+    },
+    "pairing": {
+      "id": "pair-garden-01",
+      "name": "Skin-Contact Orange Ribolla Gialla",
+      "type": "Natural Wine",
+      "notes": "Amber hues with tactile grip, apricot skin, and herbal nuances mirroring the earthy, floral beet profile.",
+      "temperature": "12°C",
+      "producer": "Gravner",
+      "vintage": "2015"
+    },
+    "heroImageSymbol": "leaf.fill",
+    "rating": 4.85,
+    "isChefSelection": false,
+    "origin": "Emilia-Romagna, Italy"
+  },
+  {
+    "id": "garden-02",
+    "name": "Braised Lion's Mane & Pine Needle Dashi",
+    "course": "Garden",
+    "price": 32.0,
+    "description": "Organic lion's mane mushroom steak basted in wild thyme kombu butter, pine needle broth, roasted sunflower seed praline.",
+    "culinaryStory": "Wild-foraged forest mushroom poached in mountain cedar dashi, then pan-roasted until deeply crusty. It mimics the density of tender shellfish with an intoxicating forest aroma.",
+    "dietaryTags": [
+      "Vegetarian",
+      "Gluten-Free",
+      "Nut-Free",
+      "Halal"
+    ],
+    "flavorProfile": {
+      "umami": 0.9,
+      "acidity": 0.35,
+      "sweetness": 0.3,
+      "spiciness": 0.15,
+      "texture": 0.85
+    },
+    "pairing": {
+      "id": "pair-garden-02",
+      "name": "Roasted Wild Mountain Hojicha Reserve",
+      "type": "Artisan Tea",
+      "notes": "Charcoal-roasted green tea leaves emitting cedar, dark cacao, and roasted hazelnut nuances.",
+      "temperature": "85°C",
+      "producer": "Ippodo Kyoto",
+      "vintage": "Spring Harvest"
+    },
+    "heroImageSymbol": "tree.fill",
+    "rating": 4.9,
+    "isChefSelection": true,
+    "origin": "Kyoto Forest, Japan"
+  },
+  {
+    "id": "dessert-01",
+    "name": "Valrhona Guanaja Smoked Chocolate Soufflé",
+    "course": "Desserts & Fromage",
+    "price": 24.0,
+    "description": "Warm 70% dark single-origin chocolate soufflé, lapsang souchong smoked salt, Tahitian vanilla bean anglaise.",
+    "culinaryStory": "Baked freshly to order in 14 minutes. Deep, bittersweet chocolate complexity lifted by subtle woodsmoke from pine-smoked tea leaves, folded into airy French meringue.",
+    "dietaryTags": [
+      "Vegetarian",
+      "Nut-Free"
+    ],
+    "flavorProfile": {
+      "umami": 0.3,
+      "acidity": 0.3,
+      "sweetness": 0.88,
+      "spiciness": 0.1,
+      "texture": 0.8
+    },
+    "pairing": {
+      "id": "pair-dessert-01",
+      "name": "Tawny Port 20 Year Old",
+      "type": "Fortified Wine",
+      "notes": "Nutty walnut, dried fig, and burnt orange peel that dance with molten bittersweet dark chocolate.",
+      "temperature": "14°C",
+      "producer": "Quinta do Noval",
+      "vintage": "Aged 20 Years"
+    },
+    "heroImageSymbol": "birthday.cake.fill",
+    "rating": 4.96,
+    "isChefSelection": true,
+    "origin": "Tain-l'Hermitage & Tahiti"
+  },
+  {
+    "id": "dessert-02",
+    "name": "Affineur 36-Month Comté & White Truffle Honey",
+    "course": "Desserts & Fromage",
+    "price": 28.0,
+    "description": "Hand-selected Marcel Petite reserve Comté aged in Fort Saint-Antoine, acacia honeycomb infused with Alba white truffles, toasted rye crisps.",
+    "culinaryStory": "Aged deep in the humid stone vaults of an old military fort. Rich tyrosine crystals deliver crunchy bursts of nutty, browned butter, and roasted pineapple flavor.",
+    "dietaryTags": [
+      "Vegetarian",
+      "Nut-Free"
+    ],
+    "flavorProfile": {
+      "umami": 0.85,
+      "acidity": 0.4,
+      "sweetness": 0.55,
+      "spiciness": 0.05,
+      "texture": 0.9
+    },
+    "pairing": {
+      "id": "pair-dessert-02",
+      "name": "Vin Jaune 'Château Chalon'",
+      "type": "Jura Wine",
+      "notes": "Matured 6 years under flor veil; intense walnut, curry leaf, and rancio notes that mirror aged Comté.",
+      "temperature": "15°C",
+      "producer": "Domaine Macle",
+      "vintage": "2014"
+    },
+    "heroImageSymbol": "shield.fill",
+    "rating": 4.93,
+    "isChefSelection": false,
+    "origin": "Fort Saint-Antoine, Jura, France"
+  },
+  {
+    "id": "cellar-01",
+    "name": "Krug Clos d'Ambonnay Vintage Tasting Pour",
+    "course": "Cellar",
+    "price": 110.0,
+    "description": "100% Pinot Noir single-walled vineyard parcel in Ambonnay, disgorged after 15 years sur latte in chalk cellars.",
+    "culinaryStory": "From a tiny 0.68-hectare walled parcel surrounded by the village of Ambonnay. Regarded by connoisseurs as the zenith of Champagne expression: breathtaking tension, brioche, red currants, and endless finish.",
+    "dietaryTags": [
+      "Vegan",
+      "Vegetarian",
+      "Gluten-Free",
+      "Nut-Free",
+      "Dairy-Free"
+    ],
+    "flavorProfile": {
+      "umami": 0.6,
+      "acidity": 0.9,
+      "sweetness": 0.25,
+      "spiciness": 0.1,
+      "texture": 0.85
+    },
+    "pairing": {
+      "id": "pair-cellar-01",
+      "name": "Siberian Imperial Sturgeon Caviar Spoon",
+      "type": "Couture Amuse",
+      "notes": "Salty mineral pop of dark pearls creates a sensory resonance with the deep acidity and pinot power.",
+      "temperature": "10°C",
+      "producer": "House of Krug",
+      "vintage": "2008"
+    },
+    "heroImageSymbol": "wineglass.fill",
+    "rating": 5.0,
+    "isChefSelection": true,
+    "origin": "Ambonnay, Champagne, France"
+  },
+  {
+    "id": "cellar-02",
+    "name": "Smoked Rosemary Oolong Old Fashioned",
+    "course": "Cellar",
+    "price": 26.0,
+    "description": "Yamazaki 12 Japanese single malt, slow-dripped Da Hong Pao rock oolong reduction, aromatic bitters, smoked with mountain pine.",
+    "culinaryStory": "Infused over 48 hours with legendary Wuyi mountain rock tea. Presented in hand-cut baccarat crystal, trapped under an applewood-smoke cloche.",
+    "dietaryTags": [
+      "Vegan",
+      "Vegetarian",
+      "Gluten-Free",
+      "Nut-Free",
+      "Dairy-Free"
+    ],
+    "flavorProfile": {
+      "umami": 0.4,
+      "acidity": 0.3,
+      "sweetness": 0.5,
+      "spiciness": 0.6,
+      "texture": 0.7
+    },
+    "pairing": {
+      "id": "pair-cellar-02",
+      "name": "Candied Cedar Pine Nuts & 85% Cacao Tile",
+      "type": "Digestif Sweet",
+      "notes": "Earthy cocoa and resinous pine crunch prolong the peaty malt and roasted oolong finish.",
+      "temperature": "6°C",
+      "producer": "Carte Blanche Signature Mixology",
+      "vintage": "Master Craft 2024"
+    },
+    "heroImageSymbol": "sparkles",
+    "rating": 4.95,
+    "isChefSelection": false,
+    "origin": "Kyoto & Mount Wuyi"
+  }
+]
