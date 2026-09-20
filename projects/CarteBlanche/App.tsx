@@ -40,12 +40,14 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     height: '100%',
-    overflow: 'hidden',
+    width: '100%',
+    flexDirection: 'column',
     backgroundColor: '#0A0B0E',
+    overflow: 'hidden',
   },
   screenContainer: {
     flex: 1,
-    height: '100%',
+    width: '100%',
     overflow: 'hidden',
   },
 });

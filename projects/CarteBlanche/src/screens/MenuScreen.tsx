@@ -411,7 +411,7 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingHorizontal: 16,
     paddingTop: 8,
-    paddingBottom: 110,
+    paddingBottom: 32,
   },
   modalOverlay: {
     flex: 1,

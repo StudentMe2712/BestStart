@@ -27,10 +27,10 @@ export const WebPhoneFrame: React.FC<WebPhoneFrameProps> = ({ children }) => {
     return <>{children}</>;
   }
 
-  const { width } = useWindowDimensions();
+  const { width, height } = useWindowDimensions();
 
   // If viewed on mobile web browser or mobile-width viewport, render full screen without chassis
-  if (width < 450) {
+  if (width < 450 || height < 600) {
     return <View style={styles.mobileContainer}>{children}</View>;
   }
 
@@ -88,25 +88,29 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.obsidianCanvas,
   },
   studioContainer: {
-    minHeight: '100vh' as any,
+    height: '100vh' as any,
+    maxHeight: '100vh' as any,
     width: '100%',
     backgroundColor: '#07080A',
     backgroundImage:
       'radial-gradient(ellipse 65% 50% at 50% 35%, rgba(229, 169, 98, 0.08) 0%, rgba(7, 8, 10, 0.7) 65%, #07080A 100%)' as any,
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 24,
-    paddingTop: 32,
-    paddingBottom: 32,
+    padding: 12,
+    paddingTop: 12,
+    paddingBottom: 12,
     boxSizing: 'border-box' as any,
-    overflowY: 'auto' as any,
+    overflow: 'hidden' as any,
   },
   centerStage: {
+    height: '100%' as any,
+    maxHeight: '98vh' as any,
     alignItems: 'center',
+    justifyContent: 'center',
     marginVertical: 'auto' as any,
   },
   labelContainer: {
-    marginBottom: 20,
+    marginBottom: 8,
     alignItems: 'center',
     userSelect: 'none' as any,
   },
@@ -139,8 +143,12 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
   },
   phoneBody: {
-    width: 393,
-    height: 852,
+    width: '100%' as any,
+    maxWidth: 400,
+    height: 'min(852px, 92vh)' as any,
+    maxHeight: '92vh' as any,
+    display: 'flex' as any,
+    flexDirection: 'column' as any,
     borderRadius: 48,
     borderWidth: 4,
     borderColor: '#242831',
@@ -148,12 +156,14 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     position: 'relative',
     boxShadow:
-      '0 30px 90px rgba(0,0,0,0.85), 0 0 0 1px rgba(255,255,255,0.1), 0 0 50px rgba(229, 169, 98, 0.08), inset 0 0 0 1px rgba(255,255,255,0.06)' as any,
+      '0 25px 60px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(255,255,255,0.1), 0 0 40px rgba(229, 169, 98, 0.08)' as any,
   },
   screenWrapper: {
     flex: 1,
     width: '100%',
     height: '100%',
+    display: 'flex' as any,
+    flexDirection: 'column' as any,
     position: 'relative',
     overflow: 'hidden',
   },

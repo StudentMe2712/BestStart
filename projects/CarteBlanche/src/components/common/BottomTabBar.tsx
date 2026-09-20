@@ -81,7 +81,7 @@ export const BottomTabBar: React.FC<BottomTabBarProps> = ({
     prevCountRef.current = itemsCount;
   }, [itemsCount, badgeScale]);
 
-  const bottomPadding = Math.max(insets.bottom, 16);
+  const bottomPadding = Math.max(insets.bottom, Platform.OS === 'web' ? 18 : 12);
 
   return (
     <View style={[styles.container, { paddingBottom: bottomPadding }]}>
@@ -139,29 +139,27 @@ export const BottomTabBar: React.FC<BottomTabBarProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    zIndex: 1000,
+    width: '100%',
+    flexShrink: 0,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-around',
     backgroundColor: '#0D0F15',
     borderTopWidth: 1,
     borderTopColor: 'rgba(255, 255, 255, 0.08)',
-    minHeight: 65,
-    paddingTop: 10,
+    minHeight: 62,
+    paddingTop: 8,
+    paddingBottom: Platform.OS === 'web' ? 18 : 12,
     ...Platform.select({
       web: {
-        boxShadow: '0 -4px 24px rgba(0, 0, 0, 0.45)',
+        boxShadow: '0 -4px 20px rgba(0, 0, 0, 0.5)',
       } as any,
       default: {
         shadowColor: '#000',
         shadowOffset: { width: 0, height: -4 },
         shadowOpacity: 0.35,
-        shadowRadius: 12,
-        elevation: 12,
+        shadowRadius: 10,
+        elevation: 10,
       },
     }),
   },
@@ -180,7 +178,7 @@ const styles = StyleSheet.create({
   },
   activeIndicator: {
     position: 'absolute',
-    top: -10,
+    top: -8,
     width: 32,
     height: 2,
     borderRadius: 1,

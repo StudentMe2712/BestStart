@@ -440,6 +440,21 @@ export interface MenuItem {
   * Плавная загрузка изображений с подложкой скелетона `#13161F` и мягким скруглением углов 20px.
 * **Последствия:** Журнальная эстетика уровня артбука, повышение визуальной привлекательности и эмоционального отклика гостя.
 
+### ADR-020: Responsive Phone Shell & Pure Flexbox BottomTabBar Architecture
+* **Контекст:** При просмотре веб-версии на экранах с невысоким разрешением (напр. небольшие ноутбуки, мониторы с масштабированием 125–150%, или встроенные браузеры VS Code) фиксированная высота шасси iPhone 15 Pro (`height: 852px`) выходила за пределы окна браузера, вызывая двойной скролл студии. Одновременно абсолютное позиционирование `BottomTabBar` (`position: 'absolute'`) приводило к необходимости завышенных искусственных отступов (`paddingBottom: 110`) в содержимом экранов и риску наложения таб-бара на контент при динамическом изменении размеров контейнера.
+* **Решение:**
+  1. **Адаптивный WebPhoneFrame:**
+     * Переход на гибкие габариты шасси: `width: '100%'`, `maxWidth: 400`, `height: 'min(852px, 92vh)'`, `maxHeight: '92vh'`, `display: 'flex'`, `flexDirection: 'column'`.
+     * `studioContainer`: `height: '100vh'`, `maxHeight: '100vh'`, `padding: 12`, `overflow: 'hidden'`.
+     * `centerStage`: `height: '100%'`, `maxHeight: '98vh'`, `justifyContent: 'center'`.
+     * Порог адаптивности: если `width < 450 || height < 600`, шасси скрывается и приложение плавно заполняет 100% окна в `mobileContainer`.
+  2. **Чистая Flexbox-архитектура нижней панели (BottomTabBar):**
+     * `BottomTabBar` переведен с `position: 'absolute'` на нативный `flexShrink: 0`, `width: '100%'` в качестве прямого flex-соседа экранного контейнера.
+     * Корневой контейнер в `App.tsx`: `flex: 1, height: '100%', width: '100%', flexDirection: 'column', overflow: 'hidden'`.
+     * Контейнер экранов `screenContainer`: `flex: 1, width: '100%', overflow: 'hidden'`.
+     * Нормализация `paddingBottom` в скроллах экранов `MenuScreen`, `CartScreen`, `SommelierScreen` со 110 до эргономичных 32.
+* **Последствия:** Идеальная адаптивность шасси на любых экранах и окнах предпросмотра, отсутствие лишних полос прокрутки, чистая flexbox-модель верстки и предсказуемое поведение клавиатуры и навигации.
+
 ---
 
 ## 6. Sprint Roadmap Checklist V2
@@ -492,3 +507,10 @@ export interface MenuItem {
   - [x] Интерактивный сплит счета в `CartScreen.tsx` (селектор на 1–8 персон и динамический расчет «По 4 850 ₸ с персоны»).
   - [x] Компактный BottomSheet диетических фильтров в `MenuScreen.tsx` по кнопке `SlidersHorizontal` без загромождения главного экрана.
   - [x] Микроанимация бейджа корзины на `BottomTabBar.tsx` (пружинный scale 1.35 -> 1.0 при добавлении блюд).
+
+- [x] **Этап 9 (V2.2): Responsive Phone Shell & Pure Flexbox BottomTabBar Sprint**
+  - [x] Адаптивное шасси `src/components/common/WebPhoneFrame.tsx` (`height: 'min(852px, 92vh)'`, `maxWidth: 400`, `overflow: 'hidden'`, порог `width < 450 || height < 600`).
+  - [x] Рефакторинг `src/components/common/BottomTabBar.tsx` в чистый Flexbox (`flexShrink: 0`, отказ от `position: 'absolute'`).
+  - [x] Flexbox-структура в `App.tsx` (`flexDirection: 'column'`, `screenContainer: flex: 1`).
+  - [x] Корректировка отступов `paddingBottom: 32` в `MenuScreen.tsx`, `CartScreen.tsx`, `SommelierScreen.tsx`.
+  - [x] Документирование ADR-020 и верификация экспорта Web и сборки TypeScript.
