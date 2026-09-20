@@ -1,0 +1,22 @@
+# Dependencies
+node_modules/
+
+# Expo and Metro
+.expo/
+dist/
+web-build/
+
+# Native builds
+*.orig.*
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+
+# Debug and Logs
+npm-debug.*
+*.log
+
+# macOS
+.DS_Store
