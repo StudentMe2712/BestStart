@@ -9,7 +9,7 @@ if git diff --staged --quiet; then
     echo "No staged changes to commit."
 else
     echo "Committing staged changes..."
-    git commit -m "feat(CarteBlanche): Full Haute Cuisine Russian Localization & Spec Update"
+    git commit -m "feat(CarteBlanche): Upgrade to Expo SDK 57.0.0, React 19 and React Native 0.86"
 fi
 
 echo "=== Checking remote origin ==="
