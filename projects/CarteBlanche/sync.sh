@@ -9,7 +9,7 @@ if git diff --staged --quiet; then
     echo "No staged changes to commit."
 else
     echo "Committing staged changes..."
-    git commit -m "feat(CarteBlanche): React Native & Expo pivot with Dark Luxe Editorial Live Preview"
+    git commit -m "feat(CarteBlanche): Embedded iPhone 15 Pro Studio Canvas for Web Live Preview"
 fi
 
 echo "=== Checking remote origin ==="
