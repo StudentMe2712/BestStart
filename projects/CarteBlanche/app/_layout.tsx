@@ -3,15 +3,16 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { COLORS } from '../src/constants/theme';
-import { TastingProvider } from '../src/context/TastingContext';
+import { TastingProvider, CartProvider } from '../src/context';
 import { WebPhoneFrame } from '../src/components/common';
 
 export default function RootLayout() {
   return (
     <WebPhoneFrame>
       <SafeAreaProvider>
-        <TastingProvider>
-          <StatusBar style="light" />
+        <CartProvider>
+          <TastingProvider>
+            <StatusBar style="light" />
         <Stack
           screenOptions={{
             headerStyle: {
@@ -47,7 +48,8 @@ export default function RootLayout() {
           />
         </Stack>
       </TastingProvider>
-    </SafeAreaProvider>
-  </WebPhoneFrame>
+    </CartProvider>
+  </SafeAreaProvider>
+</WebPhoneFrame>
 );
 }

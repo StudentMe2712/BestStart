@@ -27,8 +27,15 @@ export const COLORS = {
   burgundyDark: '#56151E',
   surfaceLight: '#1A1E26',
   surfaceDark: '#12151B',
-  blackPure: '#000000',
-  whitePure: '#FFFFFF',
+  // V2 Dark Luxe Design Tokens
+  bgDark: '#0A0B0E',
+  cardSurfaceV2: '#13161F',
+  borderV2: '#1E2330',
+  goldPrimary: '#D4A373',
+  goldSecondary: '#E5A962',
+  statusSuccess: '#2EC4B6',
+  textPrimaryV2: '#F8F9FA',
+  textSecondaryV2: '#8E95A5',
 } as const;
 
 export const FONTS = {
@@ -143,6 +150,7 @@ export const RADIUS = {
   md: 12,
   lg: 16,
   xl: 20,
+  cardV2: 20,
   xxl: 24,
   full: 9999,
 } as const;

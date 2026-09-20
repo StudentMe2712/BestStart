@@ -9,8 +9,9 @@ if git diff --staged --quiet; then
     echo "No staged changes to commit."
 else
     echo "Committing staged changes..."
-    git commit -m "feat(CarteBlanche): Upgrade to Expo SDK 57.0.0, React 19 and React Native 0.86"
+    git commit -m "feat(CarteBlanche): V2 Redesign - KZT currency, BottomTabBar, CartContext, High-Res Dish Cards and Checkout"
 fi
+
 
 echo "=== Checking remote origin ==="
 if git remote get-url origin >/dev/null 2>&1; then

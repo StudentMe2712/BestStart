@@ -26,3 +26,7 @@ npm-debug.*
 
 expo-env.d.ts
 # @end expo-cli
+
+# Unignore project data directory
+!src/data/
+!src/data/**
