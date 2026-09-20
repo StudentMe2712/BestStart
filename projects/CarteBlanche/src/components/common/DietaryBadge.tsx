@@ -47,7 +47,7 @@ export const DIETARY_TAG_LABELS_RU: Record<DietaryTag, string> = {
   'Halal': 'Халяль',
   'Nut-Free': 'Без орехов',
   'Dairy-Free': 'Без лактозы',
-  'Pescatarian': 'Пескетарианское',
+  'Pescatarian': 'Пескетарианство',
 };
 
 const TagIcon: React.FC<{ tag: DietaryTag; color: string; size: number }> = ({
@@ -85,7 +85,7 @@ export const DietaryBadge: React.FC<DietaryBadgeProps> = ({
   isInteractive = false,
   isSelected = false,
   onPress,
-  locale = 'en',
+  locale = 'ru',
   size = 'md',
   style,
 }) => {
@@ -151,7 +151,7 @@ export const DietaryBadge: React.FC<DietaryBadgeProps> = ({
         onPress={onPress}
         accessibilityRole="checkbox"
         accessibilityState={{ checked: isSelected }}
-        accessibilityLabel={`${label} filter`}
+        accessibilityLabel={`Фильтр: ${label}`}
         style={({ pressed }) => [
           styles.pressable,
           pressed && styles.pressed,

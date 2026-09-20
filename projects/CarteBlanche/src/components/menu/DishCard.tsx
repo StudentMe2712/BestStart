@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Crown, Compass, Plus, Check } from 'lucide-react-native';
-import { MenuItem } from '../../types/menu';
+import { MenuItem, COURSE_CATEGORY_SHORT_RU } from '../../types/menu';
 import {
   COLORS,
   FONTS,
@@ -76,13 +76,15 @@ export const DishCard: React.FC<DishCardProps> = ({
       {/* 1. Header: Course label + Chef Selection mark */}
       <View style={styles.headerRow}>
         <View style={styles.courseTagBox}>
-          <Text style={styles.courseText}>{dish.course.toUpperCase()}</Text>
+          <Text style={styles.courseText}>
+            {(COURSE_CATEGORY_SHORT_RU[dish.course] || dish.course).toUpperCase()}
+          </Text>
         </View>
 
         {dish.isChefSelection && (
           <View style={styles.chefBadge}>
             <Crown size={11} color={COLORS.champagneAccent} strokeWidth={2.5} />
-            <Text style={styles.chefBadgeText}>CHEF'S SELECTION</Text>
+            <Text style={styles.chefBadgeText}>ВЫБОР ШЕФА</Text>
           </View>
         )}
       </View>
@@ -92,7 +94,7 @@ export const DishCard: React.FC<DishCardProps> = ({
         <Text style={styles.dishTitle}>{dish.name}</Text>
         {dish.origin ? (
           <View style={styles.originRow}>
-            <Compass size={11} color={COLORS.textSecondary} strokeWidth={2} />
+            <Compass size={11} color={COLORS.champagneAccent} strokeWidth={2} />
             <Text style={styles.originText}>{dish.origin}</Text>
           </View>
         ) : null}
@@ -123,7 +125,7 @@ export const DishCard: React.FC<DishCardProps> = ({
           onPress={handleToggleTastingSet}
           accessibilityRole="button"
           accessibilityLabel={
-            inSet ? `Remove ${dish.name} from tasting set` : `Add ${dish.name} to tasting set`
+            inSet ? `В сете (${dish.name})` : `Добавить в сет (${dish.name})`
           }
           style={({ pressed }) => [
             styles.toggleButton,
@@ -134,9 +136,15 @@ export const DishCard: React.FC<DishCardProps> = ({
           hitSlop={8}
         >
           {inSet ? (
-            <Check size={16} color={COLORS.obsidianCanvas} strokeWidth={3} />
+            <>
+              <Check size={14} color={COLORS.obsidianCanvas} strokeWidth={2.8} />
+              <Text style={styles.toggleButtonTextActive}>В сете</Text>
+            </>
           ) : (
-            <Plus size={16} color={COLORS.champagneAccent} strokeWidth={2.6} />
+            <>
+              <Plus size={14} color={COLORS.champagneAccent} strokeWidth={2.5} />
+              <Text style={styles.toggleButtonTextInactive}>Добавить в сет</Text>
+            </>
           )}
         </Pressable>
       </View>
@@ -248,11 +256,12 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   toggleButton: {
-    width: 36,
-    height: 36,
-    borderRadius: RADIUS.full,
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: RADIUS.full,
+    gap: 5,
     borderWidth: 1.5,
   },
   toggleButtonActive: {
@@ -263,8 +272,20 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(22, 25, 31, 0.8)',
     borderColor: 'rgba(229, 169, 98, 0.4)',
   },
+  toggleButtonTextActive: {
+    fontFamily: FONTS.sans,
+    fontSize: 12,
+    fontWeight: '700',
+    color: COLORS.obsidianCanvas,
+  },
+  toggleButtonTextInactive: {
+    fontFamily: FONTS.sans,
+    fontSize: 12,
+    fontWeight: '600',
+    color: COLORS.champagneAccent,
+  },
   toggleButtonPressed: {
-    transform: [{ scale: 0.92 }],
+    transform: [{ scale: 0.94 }],
     opacity: 0.9,
   },
 });

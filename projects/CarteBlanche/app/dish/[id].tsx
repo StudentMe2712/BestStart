@@ -22,6 +22,7 @@ import {
   Info,
 } from 'lucide-react-native';
 import { SEED_MENU } from '../../src/data/seedMenu';
+import { COURSE_CATEGORY_SHORT_RU } from '../../src/types/menu';
 import {
   COLORS,
   FONTS,
@@ -113,14 +114,14 @@ export default function DishDetailScreen() {
         <View style={styles.metaHeaderRow}>
           <View style={styles.categoryBadge}>
             <Text style={styles.categoryBadgeText}>
-              {dish.course.toUpperCase()}
+              {(COURSE_CATEGORY_SHORT_RU[dish.course] || dish.course).toUpperCase()}
             </Text>
           </View>
 
           {dish.isChefSelection && (
             <View style={styles.chefBadge}>
               <Crown size={12} color={COLORS.champagneAccent} strokeWidth={2.5} />
-              <Text style={styles.chefBadgeText}>CHEF'S SELECTION</Text>
+              <Text style={styles.chefBadgeText}>ВЫБОР ШЕФА</Text>
             </View>
           )}
         </View>
@@ -128,10 +129,11 @@ export default function DishDetailScreen() {
         {/* Dish Title */}
         <Text style={styles.title}>{dish.name}</Text>
 
-        {/* Origin */}
+        {/* Origin / Terroir */}
         {dish.origin && (
           <View style={styles.originRow}>
             <Compass size={13} color={COLORS.champagneAccent} strokeWidth={2} />
+            <Text style={styles.originLabel}>Терруар и происхождение:</Text>
             <Text style={styles.originText}>{dish.origin}</Text>
           </View>
         )}
@@ -157,12 +159,12 @@ export default function DishDetailScreen() {
           <View style={styles.sectionHeaderRow}>
             <View style={styles.sectionTitleCluster}>
               <Sparkles size={14} color={COLORS.champagneAccent} />
-              <Text style={styles.sectionTitle}>SENSORY FLAVOR PROFILE</Text>
+              <Text style={styles.sectionTitle}>СЕНСОРНЫЙ ВКУСОВОЙ ПРОФИЛЬ</Text>
             </View>
 
             {/* Language Switcher */}
             <View style={styles.langSelector}>
-              {(['RU', 'EN', 'dual'] as AxisLanguage[]).map((lang) => (
+              {(['RU', 'EN'] as AxisLanguage[]).map((lang) => (
                 <Pressable
                   key={lang}
                   onPress={() => setRadarLanguage(lang)}
@@ -178,7 +180,7 @@ export default function DishDetailScreen() {
                       radarLanguage === lang && styles.langBtnTextActive,
                     ]}
                   >
-                    {lang === 'dual' ? 'Dual' : lang}
+                    {lang}
                   </Text>
                 </Pressable>
               ))}
@@ -203,7 +205,7 @@ export default function DishDetailScreen() {
         >
           <View style={styles.storyHeader}>
             <Flame size={15} color={COLORS.champagneAccent} />
-            <Text style={styles.storySectionTitle}>CULINARY STORY & TERROIR</Text>
+            <Text style={styles.storySectionTitle}>ИСТОРИЯ БЛЮДА И ТЕХНИКА ШЕФА</Text>
           </View>
           <Text style={styles.storyBody}>{dish.culinaryStory}</Text>
         </GlassCard>
@@ -214,9 +216,9 @@ export default function DishDetailScreen() {
             <View style={styles.pairingIconBadge}>
               <Wine size={16} color="#FFFFFF" strokeWidth={2.2} />
             </View>
-            <View>
+            <View style={styles.pairingTitleCol}>
               <Text style={styles.pairingTag}>
-                РЕКОМЕНДАЦИЯ СОМЕЛЬЕ • {dish.pairing.type.toUpperCase()}
+                РЕКОМЕНДАЦИЯ СОМЕЛЬЕ И ПОГРЕБ • {dish.pairing.type.toUpperCase()}
               </Text>
               <Text style={styles.pairingName}>
                 {dish.pairing.name}
@@ -227,16 +229,17 @@ export default function DishDetailScreen() {
           {/* Producer & Vintage & Temp */}
           <View style={styles.pairingMetaGrid}>
             <View style={styles.metaCol}>
-              <Text style={styles.metaLabel}>PRODUCER</Text>
+              <Text style={styles.metaLabel}>ПРОИЗВОДИТЕЛЬ</Text>
               <Text style={styles.metaValue}>{dish.pairing.producer}</Text>
             </View>
 
             <View style={styles.metaCol}>
-              <Text style={styles.metaLabel}>VINTAGE</Text>
+              <Text style={styles.metaLabel}>ВИНТАЖ</Text>
               <Text style={styles.metaValue}>{dish.pairing.vintage}</Text>
             </View>
 
             <View style={styles.metaColRight}>
+              <Text style={styles.metaLabel}>ТЕМПЕРАТУРА ПОДАЧИ</Text>
               <View style={styles.tempBadge}>
                 <Thermometer size={12} color={COLORS.champagneAccent} />
                 <Text style={styles.tempText}>{dish.pairing.temperature}</Text>
@@ -246,7 +249,10 @@ export default function DishDetailScreen() {
 
           {/* Harmony Notes */}
           <View style={styles.notesBox}>
-            <Info size={13} color={COLORS.champagneAccent} style={styles.notesIcon} />
+            <View style={styles.notesHeaderRow}>
+              <Info size={13} color={COLORS.champagneAccent} style={styles.notesIcon} />
+              <Text style={styles.notesHeaderLabel}>ГАРМОНИЯ ВКУСА</Text>
+            </View>
             <Text style={styles.notesText}>{dish.pairing.notes}</Text>
           </View>
         </View>
@@ -381,13 +387,22 @@ const styles = StyleSheet.create({
   originRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
+    gap: 6,
+    flexWrap: 'wrap',
     marginBottom: SPACING.md,
+  },
+  originLabel: {
+    fontFamily: FONTS.mono,
+    fontSize: 11,
+    fontWeight: '700',
+    color: COLORS.textSecondary,
+    letterSpacing: 0.8,
   },
   originText: {
     fontFamily: FONTS.sans,
     fontSize: 13,
     color: COLORS.champagneAccent,
+    fontWeight: '600',
     letterSpacing: 0.2,
   },
   fullDescription: {
@@ -518,6 +533,9 @@ const styles = StyleSheet.create({
     color: COLORS.textPrimary,
     marginTop: 2,
   },
+  pairingTitleCol: {
+    flex: 1,
+  },
   pairingMetaGrid: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -565,18 +583,27 @@ const styles = StyleSheet.create({
     color: COLORS.champagneAccent,
   },
   notesBox: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 8,
     backgroundColor: 'rgba(14, 16, 19, 0.5)',
     borderRadius: RADIUS.md,
     padding: SPACING.md,
   },
+  notesHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 4,
+  },
+  notesHeaderLabel: {
+    fontFamily: FONTS.mono,
+    fontSize: 9.5,
+    fontWeight: '700',
+    color: COLORS.champagneAccent,
+    letterSpacing: 1.1,
+  },
   notesIcon: {
-    marginTop: 2,
+    marginTop: 0,
   },
   notesText: {
-    flex: 1,
     fontFamily: FONTS.sans,
     fontSize: 13,
     lineHeight: 19,

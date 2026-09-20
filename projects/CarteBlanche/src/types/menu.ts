@@ -79,3 +79,35 @@ export const DINING_AREAS: DiningArea[] = [
   "Chef's Bar",
   'Veranda Terrace',
 ];
+
+export const COURSE_CATEGORY_LABELS_RU: Record<CourseCategory, string> = {
+  'Prelude': 'Прелюдия • Закуски',
+  'Main Courses': 'Основные подачи',
+  'Garden': 'Ботаника и сад',
+  'Desserts & Fromage': 'Десерты и сыры',
+  'Cellar': 'Винный погреб и бар',
+};
+
+export const COURSE_CATEGORY_SHORT_RU: Record<CourseCategory, string> = {
+  'Prelude': 'Закуски',
+  'Main Courses': 'Основные',
+  'Garden': 'Ботаника',
+  'Desserts & Fromage': 'Десерты',
+  'Cellar': 'Винный погреб',
+};
+
+export const DIETARY_TAG_LABELS_RU: Record<DietaryTag, string> = {
+  'Gluten-Free': 'Без глютена',
+  'Vegan': 'Веган',
+  'Vegetarian': 'Вегетарианское',
+  'Halal': 'Халяль',
+  'Nut-Free': 'Без орехов',
+  'Dairy-Free': 'Без лактозы',
+  'Pescatarian': 'Пескетарианство',
+};
+
+export const DINING_AREA_LABELS_RU: Record<DiningArea, string> = {
+  'Main Salon': 'Главный зал',
+  "Chef's Bar": 'Бар шефа',
+  'Veranda Terrace': 'Панорамная веранда',
+};

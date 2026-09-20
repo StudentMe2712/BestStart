@@ -42,7 +42,7 @@ export const WebPhoneFrame: React.FC<WebPhoneFrameProps> = ({ children }) => {
           <View style={styles.labelBadge}>
             <View style={styles.goldDot} />
             <Text style={styles.labelText}>
-              CARTE BLANCHE • IPHONE 15 PRO LIVE PREVIEW
+              CARTE BLANCHE • ПРЕДПРОСМОТР IPHONE 15 PRO
             </Text>
           </View>
         </View>

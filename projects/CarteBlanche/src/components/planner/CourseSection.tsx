@@ -27,6 +27,14 @@ export interface CourseSectionProps {
   style?: StyleProp<ViewStyle>;
 }
 
+const COURSE_STEP_TITLES: Record<CourseCategory, string> = {
+  'Prelude': 'Закуски',
+  'Main Courses': 'Основной курс',
+  'Garden': 'Ботаника',
+  'Desserts & Fromage': 'Десерты',
+  'Cellar': 'Погреб',
+};
+
 interface DishItemRowProps {
   dish: MenuItem;
   feedback?: DishFeedback;
@@ -84,14 +92,15 @@ const DishItemRow: React.FC<DishItemRowProps> = ({
             accessibilityLabel={`Удалить ${dish.name} из дегустационного сета`}
             hitSlop={8}
           >
-            <Trash2 size={16} color={COLORS.burgundy} strokeWidth={2.2} />
+            <Trash2 size={13} color={COLORS.burgundy} strokeWidth={2.2} />
+            <Text style={styles.removeButtonText}>Удалить</Text>
           </Pressable>
         </View>
       </View>
 
       {/* Guest Sommelier / Gastronomy Rating (1-5 Stars) */}
       <View style={styles.ratingSection}>
-        <Text style={styles.ratingLabel}>ОЦЕНКА ГОСТЯ</Text>
+        <Text style={styles.ratingLabel}>ВАША ДЕГУСТАЦИОННАЯ ОЦЕНКА</Text>
         <View style={styles.starsRow}>
           {[1, 2, 3, 4, 5].map((star) => {
             const isFilled = star <= currentRating;
@@ -123,7 +132,7 @@ const DishItemRow: React.FC<DishItemRowProps> = ({
       <View style={styles.notesContainer}>
         <TextInput
           style={styles.notesInput}
-          placeholder="Дегустационные впечатления, нюансы вкуса..."
+          placeholder="Заметки о вкусе, аромате и впечатлениях..."
           placeholderTextColor="rgba(142, 149, 165, 0.5)"
           value={localNotes}
           onChangeText={handleNotesChange}
@@ -159,7 +168,7 @@ export const CourseSection: React.FC<CourseSectionProps> = ({
 
         <View style={styles.headerTitleBox}>
           <Text style={styles.courseTitle}>
-            {stepNumber}-я подача • {courseName}
+            {stepNumber}-я подача • {COURSE_STEP_TITLES[courseName] || courseName}
           </Text>
           <Text style={styles.courseSubtitle}>
             {dishes.length} {dishes.length === 1 ? 'позиция' : 'позиции'} • €{courseSubtotal.toFixed(2)}
@@ -267,11 +276,21 @@ const styles = StyleSheet.create({
     color: COLORS.champagneAccent,
   },
   removeButton: {
-    padding: 6,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
     borderRadius: RADIUS.sm,
     backgroundColor: 'rgba(140, 45, 56, 0.15)',
     borderWidth: 1,
     borderColor: 'rgba(140, 45, 56, 0.3)',
+  },
+  removeButtonText: {
+    fontFamily: FONTS.sans,
+    fontSize: 11,
+    fontWeight: '600',
+    color: COLORS.burgundyLight,
   },
   removeButtonPressed: {
     opacity: 0.7,

@@ -18,7 +18,7 @@ import {
   UtensilsCrossed,
   FilterX,
 } from 'lucide-react-native';
-import { DINING_AREAS, ALL_DIETARY_TAGS } from '../src/types/menu';
+import { DINING_AREAS, ALL_DIETARY_TAGS, DINING_AREA_LABELS_RU } from '../src/types/menu';
 import {
   COLORS,
   FONTS,
@@ -54,6 +54,14 @@ export default function MenuHomeScreen() {
     setSelectedCourse('All');
   };
 
+  const formatDishCount = (count: number) => {
+    if (count % 10 === 1 && count % 100 !== 11) return `${count} блюдо`;
+    if (count % 10 >= 2 && count % 10 <= 4 && (count % 100 < 10 || count % 100 >= 20)) {
+      return `${count} блюда`;
+    }
+    return `${count} блюд`;
+  };
+
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
       <ScrollView
@@ -69,13 +77,14 @@ export default function MenuHomeScreen() {
           <View style={styles.headerTopRow}>
             <View style={styles.brandCluster}>
               <Sparkles size={12} color={COLORS.champagneAccent} />
-              <Text style={styles.editorialLabel}>HAUTE CUISINE TASTING GUIDE</Text>
+              <Text style={styles.editorialLabel}>ДЕГУСТАЦИОННЫЙ ГИД ВЫСОКОЙ КУХНИ</Text>
             </View>
 
             {/* Dining Area Selector */}
             <View style={styles.areaSelectorRow}>
               {DINING_AREAS.map((area) => {
                 const isActive = selectedArea === area;
+                const label = DINING_AREA_LABELS_RU[area] || area;
                 return (
                   <Pressable
                     key={area}
@@ -86,6 +95,7 @@ export default function MenuHomeScreen() {
                     ]}
                     accessibilityRole="tab"
                     accessibilityState={{ selected: isActive }}
+                    accessibilityLabel={`Зал: ${label}`}
                   >
                     <Text
                       style={[
@@ -93,7 +103,7 @@ export default function MenuHomeScreen() {
                         isActive && styles.areaTextActive,
                       ]}
                     >
-                      {area}
+                      {label}
                     </Text>
                   </Pressable>
                 );
@@ -103,7 +113,7 @@ export default function MenuHomeScreen() {
 
           <Text style={styles.brandTitle}>CARTE BLANCHE</Text>
           <Text style={styles.brandSubtitle}>
-            Offline-first sensory tasting menu & sommelier pairings
+            Авторское дегустационное меню и пейринг сомелье
           </Text>
         </View>
 
@@ -113,7 +123,7 @@ export default function MenuHomeScreen() {
             <Search size={16} color={COLORS.textSecondary} style={styles.searchIcon} />
             <TextInput
               style={styles.searchInput}
-              placeholder="Поиск по названию, ингредиентам, терруару..."
+              placeholder="Поиск по блюдам, ингредиентам, терруару..."
               placeholderTextColor="rgba(142, 149, 165, 0.6)"
               value={searchQuery}
               onChangeText={setSearchQuery}
@@ -173,16 +183,16 @@ export default function MenuHomeScreen() {
         <View style={styles.dishesSection}>
           <View style={styles.dishesHeaderRow}>
             <Text style={styles.microHeader}>
-              ПОЗИЦИИ МЕНЮ ({filteredDishes.length})
+              ПОЗИЦИИ МЕНЮ • НАЙДЕНО {filteredDishes.length} ПОЗИЦИЙ
             </Text>
           </View>
 
           {filteredDishes.length === 0 ? (
             <View style={styles.noResultsBox}>
               <FilterX size={32} color={COLORS.textSecondary} />
-              <Text style={styles.noResultsTitle}>Ничего не найдено</Text>
+              <Text style={styles.noResultsTitle}>Блюда не найдены</Text>
               <Text style={styles.noResultsText}>
-                По заданным критериям фильтрации блюда не найдены. Попробуйте изменить параметры поиска или диетические метки.
+                Попробуйте изменить параметры поиска или фильтры
               </Text>
               <Pressable
                 onPress={handleResetFilters}
@@ -209,8 +219,10 @@ export default function MenuHomeScreen() {
                 <Text style={styles.badgeCountText}>{tastingCount}</Text>
               </View>
               <View style={styles.floatingPriceBox}>
-                <Text style={styles.floatingBarMicroLabel}>СЕТ ДЕГУСТАЦИИ</Text>
-                <Text style={styles.floatingBarPrice}>€{tastingSubtotal.toFixed(2)}</Text>
+                <Text style={styles.floatingBarMicroLabel}>ДЕГУСТАЦИОННЫЙ СЕТ</Text>
+                <Text style={styles.floatingBarPrice}>
+                  €{tastingSubtotal.toFixed(2)} • {formatDishCount(tastingCount)}
+                </Text>
               </View>
             </View>
 
@@ -222,9 +234,9 @@ export default function MenuHomeScreen() {
                 pressed && styles.floatingButtonPressed,
               ]}
               accessibilityRole="button"
-              accessibilityLabel="Открыть дегустационный сет"
+              accessibilityLabel="Перейти к сету"
             >
-              <Text style={styles.floatingBarButtonText}>Дегустационный сет</Text>
+              <Text style={styles.floatingBarButtonText}>Перейти к сету {'->'}</Text>
               <ArrowRight size={16} color={COLORS.obsidianCanvas} strokeWidth={2.6} />
             </Pressable>
           </View>

@@ -1,5 +1,5 @@
-import React from 'react';
-import { View, StyleSheet, StyleProp, ViewStyle } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, Pressable, StyleSheet, StyleProp, ViewStyle } from 'react-native';
 import Svg, {
   Polygon,
   Line,
@@ -11,7 +11,7 @@ import Svg, {
   TSpan,
 } from 'react-native-svg';
 import { FlavorProfile } from '../../types/menu';
-import { COLORS } from '../../constants/theme';
+import { COLORS, FONTS, RADIUS } from '../../constants/theme';
 
 export type AxisLanguage = 'RU' | 'EN' | 'dual';
 
@@ -19,6 +19,8 @@ export interface FlavorRadarChartProps {
   profile: FlavorProfile;
   size?: number;
   language?: AxisLanguage;
+  onLanguageChange?: (lang: AxisLanguage) => void;
+  showLanguageToggle?: boolean;
   showValueLabels?: boolean;
   showGridPercentages?: boolean;
   style?: StyleProp<ViewStyle>;
@@ -31,11 +33,11 @@ interface AxisMeta {
 }
 
 const SENSORY_AXES: AxisMeta[] = [
-  { key: 'umami', ru: 'УМАМИ', en: 'UMAMI' },
-  { key: 'acidity', ru: 'КИСЛОТНОСТЬ', en: 'ACIDITY' },
-  { key: 'sweetness', ru: 'СЛАДОСТЬ', en: 'SWEETNESS' },
-  { key: 'spiciness', ru: 'ПРЯНОСТЬ', en: 'SPICINESS' },
-  { key: 'texture', ru: 'ТЕКСТУРА', en: 'TEXTURE' },
+  { key: 'umami', ru: 'Умами', en: 'Umami' },
+  { key: 'acidity', ru: 'Кислотность', en: 'Acidity' },
+  { key: 'sweetness', ru: 'Сладость', en: 'Sweetness' },
+  { key: 'spiciness', ru: 'Пряность', en: 'Spiciness' },
+  { key: 'texture', ru: 'Текстура', en: 'Texture' },
 ];
 
 const GRID_LEVELS = [0.2, 0.4, 0.6, 0.8, 1.0];
@@ -49,10 +51,19 @@ export const FlavorRadarChart: React.FC<FlavorRadarChartProps> = ({
   profile,
   size = 220,
   language = 'RU',
+  onLanguageChange,
+  showLanguageToggle = false,
   showValueLabels = true,
   showGridPercentages = true,
   style,
 }) => {
+  const [internalLang, setInternalLang] = useState<AxisLanguage>(language);
+  const activeLanguage = language ?? internalLang;
+
+  const handleLangToggle = (lang: AxisLanguage) => {
+    setInternalLang(lang);
+    onLanguageChange?.(lang);
+  };
   // Label padding outside the radar radius
   const paddingX = 64;
   const paddingY = 44;
@@ -113,7 +124,7 @@ export const FlavorRadarChart: React.FC<FlavorRadarChartProps> = ({
 
   // Format axis label
   const formatLabel = (axis: AxisMeta): string => {
-    switch (language) {
+    switch (activeLanguage) {
       case 'RU':
         return axis.ru;
       case 'EN':
@@ -125,6 +136,30 @@ export const FlavorRadarChart: React.FC<FlavorRadarChartProps> = ({
 
   return (
     <View style={[styles.container, style]}>
+      {showLanguageToggle && (
+        <View style={styles.toggleRow}>
+          {(['RU', 'EN'] as AxisLanguage[]).map((lang) => (
+            <Pressable
+              key={lang}
+              onPress={() => handleLangToggle(lang)}
+              style={[
+                styles.toggleBtn,
+                activeLanguage === lang && styles.toggleBtnActive,
+              ]}
+              hitSlop={6}
+            >
+              <Text
+                style={[
+                  styles.toggleBtnText,
+                  activeLanguage === lang && styles.toggleBtnTextActive,
+                ]}
+              >
+                {lang}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
+      )}
       <Svg
         width={svgWidth}
         height={svgHeight}
@@ -216,7 +251,7 @@ export const FlavorRadarChart: React.FC<FlavorRadarChartProps> = ({
         {/* 6. Axis Labels & Percentages */}
         {SENSORY_AXES.map((axis, i) => {
           const angle = getAngle(i);
-          const labelDistance = radius + (language === 'dual' ? 24 : 18);
+          const labelDistance = radius + (activeLanguage === 'dual' ? 24 : 18);
           const lx = cx + labelDistance * Math.cos(angle);
           const ly = cy + labelDistance * Math.sin(angle);
 
@@ -280,6 +315,34 @@ const styles = StyleSheet.create({
   container: {
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  toggleRow: {
+    flexDirection: 'row',
+    alignSelf: 'flex-end',
+    backgroundColor: 'rgba(0, 0, 0, 0.35)',
+    borderRadius: RADIUS.xs,
+    padding: 2,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+  },
+  toggleBtn: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: RADIUS.xs,
+  },
+  toggleBtnActive: {
+    backgroundColor: COLORS.champagneAccent,
+  },
+  toggleBtnText: {
+    fontFamily: FONTS.mono,
+    fontSize: 10,
+    fontWeight: '600',
+    color: COLORS.textSecondary,
+  },
+  toggleBtnTextActive: {
+    color: COLORS.obsidianCanvas,
+    fontWeight: '700',
   },
 });
 

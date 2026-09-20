@@ -24,6 +24,7 @@ import {
   CourseCategory,
   ALL_COURSE_CATEGORIES,
   MenuItem,
+  DINING_AREA_LABELS_RU,
 } from '../src/types/menu';
 import {
   COLORS,
@@ -67,6 +68,14 @@ export default function PlannerScreen() {
     setShowClearConfirm(false);
   };
 
+  const formatDishCount = (count: number) => {
+    if (count % 10 === 1 && count % 100 !== 11) return `${count} блюдо`;
+    if (count % 10 >= 2 && count % 10 <= 4 && (count % 100 < 10 || count % 100 >= 20)) {
+      return `${count} блюда`;
+    }
+    return `${count} блюд`;
+  };
+
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       {/* 1. Header Bar */}
@@ -82,9 +91,9 @@ export default function PlannerScreen() {
         </Pressable>
 
         <View style={styles.headerTitleBox}>
-          <Text style={styles.headerTitle}>DEGUSTATION FLIGHT</Text>
+          <Text style={styles.headerTitle}>ДЕГУСТАЦИОННЫЙ СЕТ И ФОЛИО</Text>
           <Text style={styles.headerSubtitle}>
-            {selectedArea} • {tastingCount} {tastingCount === 1 ? 'курс' : 'курса'}
+            {DINING_AREA_LABELS_RU[selectedArea] || selectedArea} • {formatDishCount(tastingCount)}
           </Text>
         </View>
 
@@ -108,9 +117,9 @@ export default function PlannerScreen() {
           <View style={styles.emptyIconCircle}>
             <UtensilsCrossed size={40} color={COLORS.champagneAccent} strokeWidth={1.8} />
           </View>
-          <Text style={styles.emptyTitle}>Дегустационный сет пуст</Text>
+          <Text style={styles.emptyTitle}>Ваш дегустационный сет пуст</Text>
           <Text style={styles.emptySubtitle}>
-            Ваш гастрономический маршрут пока не сформирован. Исследуйте карту блюд шефа и выберите позиции для индивидуальной подачи.
+            Исследуйте меню высокой кухни и составьте персональную последовательность подач.
           </Text>
           <Pressable
             onPress={() => router.push('/')}
@@ -120,7 +129,7 @@ export default function PlannerScreen() {
             ]}
           >
             <Sparkles size={16} color={COLORS.obsidianCanvas} strokeWidth={2.5} />
-            <Text style={styles.exploreMenuText}>Перейти к меню</Text>
+            <Text style={styles.exploreMenuText}>Выбрать блюда из меню</Text>
           </Pressable>
         </View>
       ) : (
@@ -148,7 +157,7 @@ export default function PlannerScreen() {
               </View>
               <View style={styles.bannerDivider} />
               <View style={styles.bannerItem}>
-                <Text style={styles.bannerLabel}>ПОДЫТОГ СЕТА</Text>
+                <Text style={styles.bannerLabel}>СУММА СЕТА</Text>
                 <Text style={styles.bannerPrice}>€{tastingSubtotal.toFixed(2)}</Text>
               </View>
             </View>
@@ -213,7 +222,7 @@ export default function PlannerScreen() {
           >
             <Text style={styles.confirmModalTitle}>Очистить дегустационный сет?</Text>
             <Text style={styles.confirmModalText}>
-              Все выбранные позиции и неоцененные заметки будут удалены из текущего сета.
+              Все выбранные позиции и дегустационные заметки будут удалены из текущего сета.
             </Text>
 
             <View style={styles.confirmModalActions}>
@@ -252,20 +261,21 @@ export default function PlannerScreen() {
             <View style={styles.completionHeader}>
               <View style={styles.completionHeaderLeft}>
                 <Sparkles size={18} color={COLORS.champagneAccent} />
-                <Text style={styles.completionEditorialTag}>HAUTE CUISINE FOLIO</Text>
+                <Text style={styles.completionEditorialTag}>ДЕГУСТАЦИОННОЕ ФОЛИО</Text>
               </View>
               <Pressable
                 onPress={() => setShowCompletionModal(false)}
                 style={styles.modalCloseBtn}
                 hitSlop={8}
+                accessibilityLabel="Закрыть модальное окно"
               >
                 <X size={20} color={COLORS.textSecondary} />
               </Pressable>
             </View>
 
-            <Text style={styles.completionTitle}>Дегустация успешно завершена</Text>
+            <Text style={styles.completionTitle}>Итоговое дегустационное фолио</Text>
             <Text style={styles.completionSubtitle}>
-              Благодарим за визит в залу «{selectedArea}». Ваш персональный гастрономический маршрут сохранен.
+              Благодарим за визит в Carte Blanche
             </Text>
 
             {/* Degustation Summary List */}
@@ -302,7 +312,7 @@ export default function PlannerScreen() {
             </ScrollView>
 
             <View style={styles.completionTotalBar}>
-              <Text style={styles.completionTotalLabel}>ИТОГО СЕТ:</Text>
+              <Text style={styles.completionTotalLabel}>ИТОГО К ОПЛАТЕ:</Text>
               <Text style={styles.completionTotalValue}>€{tastingSubtotal.toFixed(2)}</Text>
             </View>
 
@@ -315,9 +325,11 @@ export default function PlannerScreen() {
                 styles.completionDoneBtn,
                 pressed && styles.buttonPressed,
               ]}
+              accessibilityRole="button"
+              accessibilityLabel="Закрыть"
             >
               <CheckCircle2 size={18} color={COLORS.obsidianCanvas} strokeWidth={2.5} />
-              <Text style={styles.completionDoneBtnText}>Вернуться в меню</Text>
+              <Text style={styles.completionDoneBtnText}>Закрыть</Text>
             </Pressable>
           </GlassCard>
         </View>

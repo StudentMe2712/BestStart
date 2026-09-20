@@ -35,12 +35,12 @@ interface CategoryItem {
 }
 
 const CATEGORIES: CategoryItem[] = [
-  { id: 'All', label: 'All Courses', icon: Sparkles },
-  { id: 'Prelude', label: 'Prelude', icon: Sparkles },
-  { id: 'Main Courses', label: 'Main Courses', icon: Flame },
-  { id: 'Garden', label: 'Garden', icon: Leaf },
-  { id: 'Desserts & Fromage', label: 'Desserts & Fromage', icon: Cake },
-  { id: 'Cellar', label: 'Cellar', icon: Wine },
+  { id: 'All', label: 'Все подачи', icon: Sparkles },
+  { id: 'Prelude', label: 'Закуски', icon: Sparkles },
+  { id: 'Main Courses', label: 'Основные', icon: Flame },
+  { id: 'Garden', label: 'Ботаника', icon: Leaf },
+  { id: 'Desserts & Fromage', label: 'Десерты', icon: Cake },
+  { id: 'Cellar', label: 'Винный погреб', icon: Wine },
 ];
 
 export const CategoryPills: React.FC<CategoryPillsProps> = ({
@@ -76,7 +76,7 @@ export const CategoryPills: React.FC<CategoryPillsProps> = ({
               onPress={() => handleSelect(item.id)}
               accessibilityRole="tab"
               accessibilityState={{ selected: isActive }}
-              accessibilityLabel={`${item.label} course category`}
+              accessibilityLabel={`Подача: ${item.label}`}
               style={({ pressed }) => [
                 styles.pill,
                 isActive ? styles.pillActive : styles.pillInactive,

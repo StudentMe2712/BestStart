@@ -32,9 +32,9 @@ interface TipOption {
 
 const TIP_OPTIONS: TipOption[] = [
   { percent: 0, label: '0%', sublabel: 'Без чаевых' },
-  { percent: 10, label: '10%', sublabel: 'Стандарт' },
-  { percent: 15, label: '15%', sublabel: 'Рекомендуемый' },
-  { percent: 20, label: '20%', sublabel: 'Исключительный' },
+  { percent: 10, label: '10%', sublabel: 'Сервис' },
+  { percent: 15, label: '15%', sublabel: 'Комплимент сомелье' },
+  { percent: 20, label: '20%', sublabel: 'Высшая кухня' },
 ];
 
 export const BillCalculator: React.FC<BillCalculatorProps> = ({
@@ -76,9 +76,9 @@ export const BillCalculator: React.FC<BillCalculatorProps> = ({
       <View style={styles.header}>
         <View style={styles.headerTitleRow}>
           <Receipt size={16} color={COLORS.champagneAccent} />
-          <Text style={styles.headerTitle}>LUXE GUEST FOLIO</Text>
+          <Text style={styles.headerTitle}>ГОСТЕВОЕ ФОЛИО И РАСЧЕТ</Text>
         </View>
-        <Text style={styles.headerSubtitle}>Расчет счета и чаевых</Text>
+        <Text style={styles.headerSubtitle}>Расчет сета, сервиса и сплита</Text>
       </View>
 
       {/* 2. Tip / Service Percentage Selector */}
@@ -97,7 +97,7 @@ export const BillCalculator: React.FC<BillCalculatorProps> = ({
                   pressed && styles.tipCardPressed,
                 ]}
                 accessibilityRole="button"
-                accessibilityLabel={`Чаевые ${option.label}`}
+                accessibilityLabel={`${option.label} • ${option.sublabel}`}
               >
                 <Text
                   style={[
@@ -127,7 +127,7 @@ export const BillCalculator: React.FC<BillCalculatorProps> = ({
         <View style={styles.splitHeaderRow}>
           <View style={styles.splitTitleCluster}>
             <Users size={14} color={COLORS.champagneAccent} />
-            <Text style={styles.sectionLabel}>РАЗДЕЛИТЬ СЧЕТ (СПЛИТ)</Text>
+            <Text style={styles.sectionLabel}>КОЛИЧЕСТВО ГОСТЕЙ</Text>
           </View>
           <Text style={styles.guestCountSummary}>
             {guestCount} {guestCount === 1 ? 'гость' : guestCount < 5 ? 'гостя' : 'гостей'}
@@ -157,7 +157,7 @@ export const BillCalculator: React.FC<BillCalculatorProps> = ({
           <View style={styles.guestDisplay}>
             <Text style={styles.guestNumberText}>{guestCount}</Text>
             <Text style={styles.guestLabelText}>
-              {guestCount === 1 ? 'PERSON' : 'PERSONS'}
+              {guestCount === 1 ? 'ПЕРСОНА' : guestCount < 5 ? 'ПЕРСОНЫ' : 'ПЕРСОН'}
             </Text>
           </View>
 
@@ -185,13 +185,13 @@ export const BillCalculator: React.FC<BillCalculatorProps> = ({
       {/* 4. Financial Breakdown */}
       <View style={styles.breakdownCard}>
         <View style={styles.breakdownRow}>
-          <Text style={styles.breakdownLabel}>Подытог блюд</Text>
+          <Text style={styles.breakdownLabel}>Сумма блюд</Text>
           <Text style={styles.breakdownValue}>€{subtotal.toFixed(2)}</Text>
         </View>
 
         <View style={styles.breakdownRow}>
           <Text style={styles.breakdownLabel}>
-            Чаевые / Сервис ({selectedTipPercent}%)
+            Сервисный сбор ({selectedTipPercent}%)
           </Text>
           <Text style={styles.breakdownValue}>€{tipAmount.toFixed(2)}</Text>
         </View>
@@ -199,7 +199,7 @@ export const BillCalculator: React.FC<BillCalculatorProps> = ({
         <View style={styles.divider} />
 
         <View style={styles.totalRow}>
-          <Text style={styles.totalLabel}>ИТОГОВАЯ СУММА</Text>
+          <Text style={styles.totalLabel}>ИТОГО К ОПЛАТЕ</Text>
           <Text style={styles.totalValue}>€{totalAmount.toFixed(2)}</Text>
         </View>
       </View>
@@ -215,7 +215,7 @@ export const BillCalculator: React.FC<BillCalculatorProps> = ({
           <Text style={styles.perGuestAmount}>{perGuestAmount.toFixed(2)}</Text>
         </View>
         <Text style={styles.perGuestNote}>
-          сплит на {guestCount} {guestCount === 1 ? 'персону' : 'персоны'} с учетом {selectedTipPercent}% сервиса
+          На каждого гостя: €{perGuestAmount.toFixed(2)} • расчет на {guestCount} {guestCount === 1 ? 'персону' : guestCount < 5 ? 'персоны' : 'персон'} с учетом {selectedTipPercent}% сервиса
         </Text>
       </View>
     </GlassCard>
