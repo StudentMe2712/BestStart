@@ -8,7 +8,15 @@ import {
   Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ShoppingBag, ArrowRight, UtensilsCrossed, Trash2 } from 'lucide-react-native';
+import {
+  ShoppingBag,
+  ArrowRight,
+  UtensilsCrossed,
+  Trash2,
+  Users,
+  Minus,
+  Plus,
+} from 'lucide-react-native';
 import { useCart } from '../context/CartContext';
 import { CartItemRow } from '../components/cart/CartItemRow';
 import { OrderSuccessModal } from '../components/cart/OrderSuccessModal';
@@ -59,6 +67,7 @@ export const CartScreen: React.FC<CartScreenProps> = ({ onNavigateToMenu }) => {
     setTipPercentage,
   } = useCart();
 
+  const [guestCount, setGuestCount] = useState<number>(2);
   const [isSuccessModalVisible, setIsSuccessModalVisible] = useState(false);
 
   const paddingTop = Platform.OS === 'web' ? 56 : Math.max(insets.top + 12, 52);
@@ -197,6 +206,97 @@ export const CartScreen: React.FC<CartScreenProps> = ({ onNavigateToMenu }) => {
             <View style={styles.summaryRowGrand}>
               <Text style={styles.grandTotalLabel}>Итого к оплате:</Text>
               <Text style={styles.grandTotalValue}>{formatKZT(grandTotal)}</Text>
+            </View>
+
+            {/* Interactive Bill Split Section */}
+            <View style={styles.splitSection}>
+              <View style={styles.goldDivider} />
+
+              <View style={styles.splitHeaderRow}>
+                <View style={styles.splitLabelRow}>
+                  <Users size={16} color="#D4A373" strokeWidth={2.2} />
+                  <Text style={styles.splitLabel}>Разделить счет:</Text>
+                </View>
+
+                {/* Stepper Controller [- {guestCount} +] */}
+                <View style={styles.splitStepper}>
+                  <TouchableOpacity
+                    onPress={() => setGuestCount((prev) => Math.max(1, prev - 1))}
+                    disabled={guestCount <= 1}
+                    hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                    style={[
+                      styles.splitStepperBtn,
+                      guestCount <= 1 && styles.splitStepperBtnDisabled,
+                    ]}
+                    accessibilityRole="button"
+                    accessibilityLabel="Уменьшить количество гостей"
+                  >
+                    <Minus
+                      size={13}
+                      color={guestCount <= 1 ? '#4A5060' : '#D4A373'}
+                      strokeWidth={2.6}
+                    />
+                  </TouchableOpacity>
+
+                  <Text style={styles.splitGuestCount}>{guestCount}</Text>
+
+                  <TouchableOpacity
+                    onPress={() => setGuestCount((prev) => Math.min(8, prev + 1))}
+                    disabled={guestCount >= 8}
+                    hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                    style={[
+                      styles.splitStepperBtn,
+                      guestCount >= 8 && styles.splitStepperBtnDisabled,
+                    ]}
+                    accessibilityRole="button"
+                    accessibilityLabel="Увеличить количество гостей"
+                  >
+                    <Plus
+                      size={13}
+                      color={guestCount >= 8 ? '#4A5060' : '#D4A373'}
+                      strokeWidth={2.6}
+                    />
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              {/* Interactive Guest Count Pills (1..8) with active gold pill */}
+              <View style={styles.guestPillsRow}>
+                {[1, 2, 3, 4, 5, 6, 7, 8].map((num) => {
+                  const isActive = guestCount === num;
+                  return (
+                    <TouchableOpacity
+                      key={num}
+                      onPress={() => setGuestCount(num)}
+                      style={[
+                        styles.guestPill,
+                        isActive && styles.guestPillActive,
+                      ]}
+                      accessibilityRole="button"
+                      accessibilityLabel={`${num} персон`}
+                    >
+                      <Text
+                        style={[
+                          styles.guestPillText,
+                          isActive && styles.guestPillTextActive,
+                        ]}
+                      >
+                        {num}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+
+              {/* Dynamic Luxury Split Banner */}
+              <View style={styles.splitBanner}>
+                <Text style={styles.splitBannerAmount}>
+                  По {formatKZT(Math.round(grandTotal / guestCount))} с персоны
+                </Text>
+                <Text style={styles.splitBannerSubtext}>
+                  (включая сервис и чаевые)
+                </Text>
+              </View>
             </View>
           </View>
 
@@ -354,7 +454,7 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingHorizontal: 16,
     paddingTop: 12,
-    paddingBottom: 40,
+    paddingBottom: 110,
     gap: 16,
   },
   itemsSection: {
@@ -457,6 +557,121 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontWeight: '700',
     color: '#D4A373',
+  },
+  splitSection: {
+    gap: 10,
+    marginTop: 4,
+  },
+  splitHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  splitLabelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  splitLabel: {
+    fontFamily: FONTS.sans,
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#F8F9FA',
+  },
+  splitStepper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#0A0B0E',
+    borderWidth: 1,
+    borderColor: '#1E2330',
+    borderRadius: 12,
+    paddingHorizontal: 6,
+    paddingVertical: 4,
+  },
+  splitStepperBtn: {
+    width: 26,
+    height: 26,
+    borderRadius: 8,
+    backgroundColor: 'rgba(212, 163, 115, 0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...Platform.select({
+      web: {
+        cursor: 'pointer',
+      } as any,
+    }),
+  },
+  splitStepperBtnDisabled: {
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+    opacity: 0.4,
+  },
+  splitGuestCount: {
+    fontFamily: FONTS.mono,
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#D4A373',
+    minWidth: 18,
+    textAlign: 'center',
+  },
+  guestPillsRow: {
+    flexDirection: 'row',
+    gap: 6,
+    justifyContent: 'space-between',
+  },
+  guestPill: {
+    flex: 1,
+    height: 32,
+    borderRadius: 8,
+    backgroundColor: '#0A0B0E',
+    borderWidth: 1,
+    borderColor: '#1E2330',
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...Platform.select({
+      web: {
+        cursor: 'pointer',
+      } as any,
+    }),
+  },
+  guestPillActive: {
+    backgroundColor: '#D4A373',
+    borderColor: '#D4A373',
+  },
+  guestPillText: {
+    fontFamily: FONTS.mono,
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#8E95A5',
+  },
+  guestPillTextActive: {
+    color: '#0A0B0E',
+    fontWeight: '700',
+  },
+  splitBanner: {
+    backgroundColor: 'rgba(212, 163, 115, 0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(212, 163, 115, 0.3)',
+    borderRadius: 14,
+    padding: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 3,
+    marginTop: 2,
+  },
+  splitBannerAmount: {
+    fontFamily: FONTS.serif,
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#D4A373',
+    textAlign: 'center',
+    letterSpacing: 0.3,
+  },
+  splitBannerSubtext: {
+    fontFamily: FONTS.sans,
+    fontSize: 11,
+    color: '#8E95A5',
+    textAlign: 'center',
   },
   submitButton: {
     height: 52,

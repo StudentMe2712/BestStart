@@ -39,10 +39,14 @@ export function App({ initialTab = 'menu' }: AppProps) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    height: '100%',
+    overflow: 'hidden',
     backgroundColor: '#0A0B0E',
   },
   screenContainer: {
     flex: 1,
+    height: '100%',
+    overflow: 'hidden',
   },
 });
 

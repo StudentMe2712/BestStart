@@ -483,3 +483,12 @@ export interface MenuItem {
   - [x] Проверка компиляции TypeScript (`npx tsc --noEmit` — 0 ошибок).
   - [x] Проверка экспорта Web (`npx expo export --platform web` — успешно, 2383 модуля).
   - [x] Запуск скрипта синхронизации `./sync.sh`.
+
+- [x] **Этап 8 (V2.1): Устранение багов верстки и интерактивный полиш («Плюшки»)**
+  - [x] Устранение ошибки HTML-вложенности `<button>` в `src/components/menu/DishCardV2.tsx` (корневой `View`, кликабельная область карточки отделена от футера кнопок корзины).
+  - [x] Фиксация `BottomTabBar.tsx` (`position: 'absolute'`, `bottom: 0`, `left: 0`, `right: 0`, `zIndex: 1000`, фон `#0D0F15`, отступ снизу с учетом safe area).
+  - [x] Безопасные отступы скролла `paddingBottom: 110` на экранах `MenuScreen.tsx`, `CartScreen.tsx`, `SommelierScreen.tsx`.
+  - [x] Функция «Пейринг в 1 клик» в `DishDetailModal.tsx` («🍷 Добавить бокал [Вино] (+5 500 ₸)» с моментальным добавлением в корзину).
+  - [x] Интерактивный сплит счета в `CartScreen.tsx` (селектор на 1–8 персон и динамический расчет «По 4 850 ₸ с персоны»).
+  - [x] Компактный BottomSheet диетических фильтров в `MenuScreen.tsx` по кнопке `SlidersHorizontal` без загромождения главного экрана.
+  - [x] Микроанимация бейджа корзины на `BottomTabBar.tsx` (пружинный scale 1.35 -> 1.0 при добавлении блюд).

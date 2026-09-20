@@ -54,6 +54,72 @@ export const DishDetailModal: React.FC<DishDetailModalProps> = ({
   const isChef = Boolean(item.isChefChoice || item.isChefSelection);
   const priceValue = item.priceKZT ?? item.price ?? 0;
 
+  // Wine pairing state & helpers
+  const wineGlassId = `wine-glass-${item.id}`;
+  const wineQuantity = getItemQuantity(wineGlassId);
+  const isPairingAdded = wineQuantity > 0;
+  const wineName = item.pairing?.title || item.pairing?.name || 'Вино';
+
+  const handleAddWinePairing = () => {
+    if (!item.pairing) return;
+    const wineItem: MenuItem = {
+      id: wineGlassId,
+      name: `Бокал ${wineName}`,
+      category: 'drinks',
+      categoryTitle: 'Винный погреб & Бар',
+      priceKZT: 5500,
+      price: 5500,
+      weight: '150 мл',
+      image:
+        'https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?auto=format&fit=crop&w=1000&q=80',
+      shortDescription:
+        item.pairing.description ||
+        `Идеально подобранный бокал вина к блюду «${item.name}».`,
+      fullStory:
+        item.pairing.notes ||
+        item.pairing.description ||
+        `Рекомендация шеф-сомелье ресторана Carte Blanche к ${item.name}.`,
+      isChefChoice: false,
+      dietary: ['Без глютена'],
+      pairing: {
+        title: item.name,
+        type: 'Гастрономическая пара',
+        description: `Подается к ${item.name}`,
+      },
+      flavor: {
+        umami: 0.2,
+        acidity: 0.7,
+        sweetness: 0.3,
+        spiciness: 0.0,
+        crispness: 0.8,
+        texture: 0.7,
+      },
+      course: 'Cellar',
+      description:
+        item.pairing.description ||
+        `Идеально подобранный бокал вина к блюду «${item.name}».`,
+      culinaryStory:
+        item.pairing.notes ||
+        item.pairing.description ||
+        `Рекомендация шеф-сомелье ресторана Carte Blanche к ${item.name}.`,
+      dietaryTags: ['Gluten-Free'],
+      flavorProfile: {
+        umami: 0.2,
+        acidity: 0.7,
+        sweetness: 0.3,
+        spiciness: 0.0,
+        texture: 0.7,
+      },
+      heroImageSymbol:
+        'https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?auto=format&fit=crop&w=1000&q=80',
+      rating: 4.95,
+      isChefSelection: false,
+      origin: item.pairing.producer || 'Винный погреб Carte Blanche',
+    };
+
+    addToCart(wineItem);
+  };
+
   // Resolve category label
   const categoryLabel =
     item.categoryTitle ||
@@ -267,6 +333,40 @@ export const DishDetailModal: React.FC<DishDetailModalProps> = ({
                       )}
                     </View>
                   )}
+
+                  {/* 1-Click Wine Pairing Button */}
+                  <Pressable
+                    onPress={handleAddWinePairing}
+                    style={({ pressed }) => [
+                      styles.winePairingBtn,
+                      isPairingAdded && styles.winePairingBtnAdded,
+                      pressed && styles.winePairingBtnPressed,
+                    ]}
+                    accessibilityRole="button"
+                    accessibilityLabel={
+                      isPairingAdded
+                        ? `Бокал ${wineName} добавлен в заказ`
+                        : `Добавить бокал ${wineName} в заказ`
+                    }
+                  >
+                    <View style={styles.winePairingBtnInner}>
+                      {isPairingAdded ? (
+                        <>
+                          <Check size={16} color="#2EC4B6" strokeWidth={2.8} />
+                          <Text style={styles.winePairingBtnTextAdded}>
+                            ✓ Бокал добавлен{wineQuantity > 1 ? ` (${wineQuantity})` : ''} (+5 500 ₸)
+                          </Text>
+                        </>
+                      ) : (
+                        <>
+                          <Text style={styles.winePairingBtnEmoji}>🍷</Text>
+                          <Text style={styles.winePairingBtnText} numberOfLines={1}>
+                            Добавить бокал {wineName} (+5 500 ₸)
+                          </Text>
+                        </>
+                      )}
+                    </View>
+                  </Pressable>
                 </View>
               )}
             </View>
@@ -578,6 +678,57 @@ const styles = StyleSheet.create({
     fontFamily: FONTS.sans,
     fontSize: 11,
     fontWeight: '500',
+  },
+  winePairingBtn: {
+    marginTop: 14,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderRadius: 12,
+    backgroundColor: 'rgba(212, 163, 115, 0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(212, 163, 115, 0.35)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...Platform.select({
+      web: {
+        cursor: 'pointer',
+        transition: 'all 0.2s ease',
+      } as any,
+    }),
+  },
+  winePairingBtnAdded: {
+    backgroundColor: 'rgba(46, 196, 182, 0.15)',
+    borderColor: '#2EC4B6',
+  },
+  winePairingBtnPressed: {
+    opacity: 0.85,
+    transform: [{ scale: 0.98 }],
+  },
+  winePairingBtnInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    maxWidth: '100%',
+  },
+  winePairingBtnEmoji: {
+    fontSize: 15,
+  },
+  winePairingBtnText: {
+    color: '#D4A373',
+    fontFamily: FONTS.sans,
+    fontSize: 13,
+    fontWeight: '700',
+    letterSpacing: 0.2,
+    flexShrink: 1,
+  },
+  winePairingBtnTextAdded: {
+    color: '#2EC4B6',
+    fontFamily: FONTS.sans,
+    fontSize: 13,
+    fontWeight: '700',
+    letterSpacing: 0.2,
+    flexShrink: 1,
   },
   bottomBar: {
     backgroundColor: '#13161F',

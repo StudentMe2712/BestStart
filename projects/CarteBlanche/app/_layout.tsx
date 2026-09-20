@@ -9,7 +9,7 @@ import { WebPhoneFrame } from '../src/components/common';
 export default function RootLayout() {
   return (
     <WebPhoneFrame>
-      <SafeAreaProvider>
+      <SafeAreaProvider style={{ flex: 1, height: '100%', overflow: 'hidden' }}>
         <CartProvider>
           <TastingProvider>
             <StatusBar style="light" />
@@ -20,6 +20,9 @@ export default function RootLayout() {
             },
             headerTintColor: COLORS.textPrimary,
             contentStyle: {
+              flex: 1,
+              height: '100%',
+              overflow: 'hidden',
               backgroundColor: COLORS.obsidianCanvas,
             },
           }}

@@ -5,6 +5,7 @@ import {
   TouchableOpacity,
   StyleSheet,
   Platform,
+  Animated,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { UtensilsCrossed, Wine, ShoppingBag, LucideIcon } from 'lucide-react-native';
@@ -57,7 +58,30 @@ export const BottomTabBar: React.FC<BottomTabBarProps> = ({
     itemsCount = 0;
   }
 
-  const bottomPadding = Math.max(insets.bottom, Platform.OS === 'web' ? 16 : 12);
+  // Microanimation for floating badge
+  const badgeScale = React.useRef(new Animated.Value(1)).current;
+  const prevCountRef = React.useRef(itemsCount);
+
+  React.useEffect(() => {
+    if (itemsCount > prevCountRef.current) {
+      Animated.sequence([
+        Animated.timing(badgeScale, {
+          toValue: 1.35,
+          duration: 150,
+          useNativeDriver: Platform.OS !== 'web',
+        }),
+        Animated.spring(badgeScale, {
+          toValue: 1,
+          tension: 160,
+          friction: 5,
+          useNativeDriver: Platform.OS !== 'web',
+        }),
+      ]).start();
+    }
+    prevCountRef.current = itemsCount;
+  }, [itemsCount, badgeScale]);
+
+  const bottomPadding = Math.max(insets.bottom, 16);
 
   return (
     <View style={[styles.container, { paddingBottom: bottomPadding }]}>
@@ -84,11 +108,16 @@ export const BottomTabBar: React.FC<BottomTabBarProps> = ({
 
               {/* Floating badge for Cart tab */}
               {tab.key === 'cart' && itemsCount > 0 && (
-                <View style={styles.badge}>
+                <Animated.View
+                  style={[
+                    styles.badge,
+                    { transform: [{ scale: badgeScale }] },
+                  ]}
+                >
                   <Text style={styles.badgeText}>
                     {itemsCount > 99 ? '99+' : itemsCount}
                   </Text>
-                </View>
+                </Animated.View>
               )}
             </View>
 
@@ -110,12 +139,17 @@ export const BottomTabBar: React.FC<BottomTabBarProps> = ({
 
 const styles = StyleSheet.create({
   container: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    zIndex: 1000,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-around',
-    backgroundColor: COLORS.cardSurfaceV2,
+    backgroundColor: '#0D0F15',
     borderTopWidth: 1,
-    borderTopColor: COLORS.borderV2,
+    borderTopColor: 'rgba(255, 255, 255, 0.08)',
     minHeight: 65,
     paddingTop: 10,
     ...Platform.select({

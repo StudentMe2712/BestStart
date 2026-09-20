@@ -7,6 +7,7 @@ import {
   StyleSheet,
   StyleProp,
   ViewStyle,
+  Platform,
 } from 'react-native';
 import { Sparkles, Plus, Minus, Utensils } from 'lucide-react-native';
 import { MenuItem } from '../../types/menu';
@@ -71,69 +72,70 @@ export const DishCardV2: React.FC<DishCardV2Props> = ({
   const descriptionText = item.shortDescription || item.description || '';
 
   return (
-    <Pressable
-      onPress={handleCardPress}
-      accessibilityRole="button"
-      accessibilityLabel={`Блюдо: ${item.name}`}
-      style={({ pressed }) => [
-        styles.card,
-        SHADOWS.card,
-        pressed && styles.cardPressed,
-        style,
-      ]}
-    >
-      {/* 1. Top Image Section */}
-      <View style={styles.imageContainer}>
-        {item.image && !imageError ? (
-          <Image
-            source={{ uri: item.image }}
-            style={styles.image}
-            resizeMode="cover"
-            onError={() => setImageError(true)}
-          />
-        ) : (
-          <View style={styles.imagePlaceholder}>
-            <Utensils size={32} color={COLORS.borderV2} />
-          </View>
-        )}
+    <View style={[styles.card, SHADOWS.card, style]}>
+      {/* Clickable Area: Image and Info */}
+      <Pressable
+        onPress={handleCardPress}
+        accessibilityRole="button"
+        accessibilityLabel={`Блюдо: ${item.name}`}
+        style={({ pressed }) => [
+          styles.clickableArea,
+          pressed && styles.cardPressed,
+        ]}
+      >
+        {/* 1. Top Image Section */}
+        <View style={styles.imageContainer}>
+          {item.image && !imageError ? (
+            <Image
+              source={{ uri: item.image }}
+              style={styles.image}
+              resizeMode="cover"
+              onError={() => setImageError(true)}
+            />
+          ) : (
+            <View style={styles.imagePlaceholder}>
+              <Utensils size={32} color={COLORS.borderV2} />
+            </View>
+          )}
 
-        {/* Floating Badge (Top Left over photo): Chef Choice */}
-        {isChef && (
-          <View style={styles.chefBadge}>
-            <Sparkles size={11} color="#0A0B0E" strokeWidth={2.8} />
-            <Text style={styles.chefBadgeText}>ВЫБОР ШЕФА</Text>
-          </View>
-        )}
+          {/* Floating Badge (Top Left over photo): Chef Choice */}
+          {isChef && (
+            <View style={styles.chefBadge}>
+              <Sparkles size={11} color="#0A0B0E" strokeWidth={2.8} />
+              <Text style={styles.chefBadgeText}>ВЫБОР ШЕФА</Text>
+            </View>
+          )}
 
-        {/* Optional Dietary Tags (Top Right over photo) */}
-        {dietaryList.length > 0 && (
-          <View style={styles.dietaryContainer}>
-            {dietaryList.slice(0, 2).map((tag, idx) => (
-              <View key={`${tag}-${idx}`} style={styles.dietaryChip}>
-                <Text style={styles.dietaryText}>{tag}</Text>
-              </View>
-            ))}
-          </View>
-        )}
-      </View>
-
-      {/* 2. Middle Content Section */}
-      <View style={styles.content}>
-        <View style={styles.titleRow}>
-          <Text style={styles.title} numberOfLines={1}>
-            {item.name}
-          </Text>
-          {Boolean(item.weight) && (
-            <Text style={styles.weight}>{item.weight}</Text>
+          {/* Optional Dietary Tags (Top Right over photo) */}
+          {dietaryList.length > 0 && (
+            <View style={styles.dietaryContainer}>
+              {dietaryList.slice(0, 2).map((tag, idx) => (
+                <View key={`${tag}-${idx}`} style={styles.dietaryChip}>
+                  <Text style={styles.dietaryText}>{tag}</Text>
+                </View>
+              ))}
+            </View>
           )}
         </View>
 
-        {Boolean(descriptionText) && (
-          <Text style={styles.description} numberOfLines={2}>
-            {descriptionText}
-          </Text>
-        )}
-      </View>
+        {/* 2. Middle Content Section */}
+        <View style={styles.content}>
+          <View style={styles.titleRow}>
+            <Text style={styles.title} numberOfLines={1}>
+              {item.name}
+            </Text>
+            {Boolean(item.weight) && (
+              <Text style={styles.weight}>{item.weight}</Text>
+            )}
+          </View>
+
+          {Boolean(descriptionText) && (
+            <Text style={styles.description} numberOfLines={2}>
+              {descriptionText}
+            </Text>
+          )}
+        </View>
+      </Pressable>
 
       {/* 3. Bottom Action Row */}
       <View style={styles.actionRow}>
@@ -186,7 +188,7 @@ export const DishCardV2: React.FC<DishCardV2Props> = ({
           </Pressable>
         )}
       </View>
-    </Pressable>
+    </View>
   );
 };
 
@@ -199,9 +201,16 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     marginBottom: SPACING.md,
   },
+  clickableArea: {
+    width: '100%',
+    ...Platform.select({
+      web: {
+        cursor: 'pointer',
+      } as any,
+    }),
+  },
   cardPressed: {
-    opacity: 0.95,
-    borderColor: 'rgba(212, 163, 115, 0.4)',
+    opacity: 0.92,
   },
   imageContainer: {
     width: '100%',
