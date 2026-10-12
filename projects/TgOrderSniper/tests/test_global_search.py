@@ -8,10 +8,10 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from telethon.errors import FloodWaitError
-from telethon.tl.types import PeerChannel, PeerUser
+from telethon.tl.types import Channel, Chat, PeerChannel, PeerChat, PeerUser, User
 
 from backend.core.config import Settings
-from backend.listener.global_search import GlobalSearchEngine
+from backend.listener.global_search import GlobalSearchEngine, is_strictly_forbidden_chat
 
 
 class MockEntity:
@@ -31,6 +31,9 @@ class MockMessage:
         peer_id: Any = None,
         from_id: Any = None,
         date: datetime | None = None,
+        chat_id: Any = None,
+        out: bool = False,
+        is_private: bool = False,
     ):
         self.id = id
         self.message = text
@@ -38,6 +41,9 @@ class MockMessage:
         self.peer_id = peer_id
         self.from_id = from_id
         self.date = date or datetime.now(timezone.utc)
+        self.chat_id = chat_id
+        self.out = out
+        self.is_private = is_private
 
 
 def test_extract_message_data():
@@ -317,4 +323,84 @@ async def test_polling_loop_lifecycle():
     await run_and_stop()
     assert engine.is_running is False
     assert engine.search_iteration.await_count >= 1
+
+
+def test_is_strictly_forbidden_chat_global_search():
+    """Verifies that is_strictly_forbidden_chat adheres to privacy rules."""
+    target_chat_id = -1004489991927
+    my_id = 12345
+
+    # 1. Message from target chat (TARGET_CHAT_ID) is blocked
+    msg_target = MockMessage(id=1, text="Из целевого чата", chat_id=target_chat_id, peer_id=PeerChannel(4489991927))
+    assert is_strictly_forbidden_chat(None, msg_target, target_chat_id, my_id) is True
+
+    # 2. Personal dialogue with self / Saved messages ('SoloLevelUp' / Избранное)
+    msg_self = MockMessage(id=2, text="Избранное", chat_id=my_id, peer_id=PeerUser(my_id))
+    assert is_strictly_forbidden_chat(None, msg_self, target_chat_id, my_id) is True
+
+    msg_out = MockMessage(id=3, text="Исходящее", peer_id=PeerChannel(100), out=True)
+    assert is_strictly_forbidden_chat(None, msg_out, target_chat_id, my_id) is True
+
+    # 3. Personal chat 'Сухарев / ЙЙ' (User / PeerUser / is_private)
+    msg_user = MockMessage(id=4, text="Личка", peer_id=PeerUser(777))
+    assert is_strictly_forbidden_chat(None, msg_user, target_chat_id, my_id) is True
+
+    msg_private = MockMessage(id=5, text="Личный диалог", peer_id=PeerChannel(100), is_private=True)
+    assert is_strictly_forbidden_chat(None, msg_private, target_chat_id, my_id) is True
+
+    # 4. Ordinary group (Chat / PeerChat) is blocked
+    msg_chat = MockMessage(id=6, text="Обычная группа", peer_id=PeerChat(555))
+    assert is_strictly_forbidden_chat(None, msg_chat, target_chat_id, my_id) is True
+
+    # 5. Public channel (Channel / PeerChannel) is allowed
+    msg_channel = MockMessage(id=7, text="Публичный канал", peer_id=PeerChannel(999), chat_id=-100999)
+    assert is_strictly_forbidden_chat(None, msg_channel, target_chat_id, my_id) is False
+
+
+@pytest.mark.asyncio
+async def test_global_search_privacy_gatekeeper_blocks_forbidden_messages():
+    """Ensures search_iteration filters out target chat, self, user, and basic group messages."""
+    client = MagicMock()
+    client.is_connected = MagicMock(return_value=True)
+    client.is_user_authorized = AsyncMock(return_value=True)
+    me_mock = MagicMock()
+    me_mock.id = 99999
+    client.get_me = AsyncMock(return_value=me_mock)
+
+    target_id = -1004489991927
+    channel_valid = MockEntity(id=1001, title="Orders Supergroup")
+
+    msg_target = MockMessage(id=1, text="Заказ из целевой группы", chat_id=target_id, peer_id=PeerChannel(4489991927))
+    msg_self = MockMessage(id=2, text="Заказ из Избранного", chat_id=99999, peer_id=PeerChannel(200))
+    msg_out = MockMessage(id=3, text="Исходящий заказ", peer_id=PeerChannel(300), out=True)
+    msg_user = MockMessage(id=4, text="Личный чат Сухарев", peer_id=PeerUser(888))
+    msg_chat = MockMessage(id=5, text="Обычный чат", peer_id=PeerChat(555))
+    msg_valid = MockMessage(id=6, text="Срочный заказ на парсер", chat_id=-1001001, peer_id=PeerChannel(1001))
+
+    mock_result = MagicMock()
+    mock_result.messages = [msg_target, msg_self, msg_out, msg_user, msg_chat, msg_valid]
+    mock_result.chats = [channel_valid]
+    mock_result.users = []
+
+    client.side_effect = AsyncMock(return_value=mock_result)
+
+    cfg = Settings(
+        SEARCH_QUERIES=["заказ"],
+        SEARCH_RATE_LIMIT_DELAY=0.01,
+        TARGET_CHAT_ID=target_id,
+        _env_file=None,
+    )
+    engine = GlobalSearchEngine(client=client, settings=cfg)
+
+    dispatched = []
+    async def callback(data: dict):
+        dispatched.append(data)
+
+    processed_count = await engine.search_iteration(callback)
+
+    # Only msg_valid should have passed through the Ironclad Privacy Barrier!
+    assert processed_count == 1
+    assert len(dispatched) == 1
+    assert dispatched[0]["message_id"] == 6
+    assert engine.my_id == 99999
 

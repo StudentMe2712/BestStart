@@ -168,6 +168,7 @@ def check_preflight(project_dir: Path | None = None) -> tuple[Settings, dict[str
         "db_path": settings.DB_PATH,
         "web_scrapers_enabled": settings.ENABLE_WEB_SCRAPERS,
         "web_scrape_interval_minutes": settings.WEB_SCRAPE_INTERVAL_MINUTES,
+        "web_scrapers": "Freelancehunt, Upwork, Weblancer, FL.ru",
         "effective_session": effective_session,
         "session_message": session_message,
         "session_fell_back": fell_back,
@@ -221,7 +222,7 @@ def format_preflight_banner(summary: dict[str, Any]) -> str:
     )
 
     scrapers_status = (
-        f"Enabled (Kwork, Freelancehunt, FL.ru every {summary.get('web_scrape_interval_minutes', 5)}m)"
+        f"Enabled (Freelancehunt, Upwork, Weblancer, FL.ru every {summary.get('web_scrape_interval_minutes', 5)}m)"
         if summary.get("web_scrapers_enabled")
         else "Disabled"
     )

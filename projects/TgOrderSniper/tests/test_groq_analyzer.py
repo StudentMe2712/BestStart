@@ -1,5 +1,6 @@
 """Unit tests for GroqAnalyzer, GroqAnalysisResult, and Pre-Filter Gatekeeper."""
 
+import asyncio
 import json
 from unittest.mock import AsyncMock, patch
 
@@ -73,7 +74,7 @@ def test_groq_analyzer_default_models():
     analyzer = GroqAnalyzer(api_key="test_key", settings=cfg)
     assert analyzer.model == "openai/gpt-oss-20b"
     assert analyzer.fallback_model == "openai/gpt-oss-20b"
-    assert analyzer.request_delay == 1.0
+    assert analyzer.request_delay == 2.0
 
 
 def test_prefilter_gatekeeper_triggers():
@@ -125,14 +126,52 @@ async def test_groq_analyzer_prefilter_drops_before_http_request():
     async with httpx.AsyncClient(transport=transport) as client:
         analyzer = GroqAnalyzer(api_key="test_key", client=client, request_delay=0)
 
-        # 1. Non-commercial chat
-        res1 = await analyzer.analyze("Привет, как у вас дела?")
+        # 1. Non-commercial chat without commercial triggers (len >= 50)
+        res1 = await analyzer.analyze(
+            "Привет всем участникам чата! Какая сегодня замечательная и теплая погода за окном?"
+        )
         assert res1.is_lead is False
         assert called is False
 
-        # 2. Resume / job seeker with stop word
-        res2 = await analyzer.analyze("Нужен проект! Вот мое резюме программиста.")
+        # 2. Resume / job seeker with stop word (len >= 50)
+        res2 = await analyzer.analyze(
+            "Срочно требуется разработчик под проект! Вот мое резюме программиста на Python."
+        )
         assert res2.is_lead is False
+        assert called is False
+
+        # 3. Message shorter than 50 chars with commercial trigger
+        res3 = await analyzer.analyze("Нужен бот срочно на Python!")
+        assert res3.is_lead is False
+        assert called is False
+
+
+@pytest.mark.asyncio
+async def test_groq_analyzer_short_text_dropped_before_http_request():
+    """Verifies that messages shorter than 50 characters are dropped before calling Groq API."""
+    called = False
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal called
+        called = True
+        return httpx.Response(status_code=200, json={})
+
+    transport = httpx.MockTransport(handler)
+    async with httpx.AsyncClient(transport=transport) as client:
+        analyzer = GroqAnalyzer(api_key="test_key", client=client, request_delay=0)
+
+        # Commercial trigger present, but length is 29 chars (< 50)
+        short_lead = "Срочно нужен телеграм-бот!"
+        assert len(short_lead.strip()) < 50
+        res = await analyzer.analyze(short_lead)
+        assert res.is_lead is False
+        assert called is False
+
+        # 49 chars length with trigger
+        text_49 = "Срочно требуется разработчик бота на Python123456"
+        assert len(text_49.strip()) == 49
+        res_49 = await analyzer.analyze(text_49)
+        assert res_49.is_lead is False
         assert called is False
 
 
@@ -141,7 +180,9 @@ async def test_groq_analyzer_unconfigured():
     """Ensures analyzer without API key returns is_lead=False immediately."""
     analyzer = GroqAnalyzer(api_key="")
     assert analyzer.is_configured is False
-    result = await analyzer.analyze("Нужен бот срочно")
+    result = await analyzer.analyze(
+        "Срочно требуется опытный разработчик Telegram-ботов на Python и FastAPI под ключ"
+    )
     assert result.is_lead is False
     assert result.summary == ""
     await analyzer.close()
@@ -157,7 +198,7 @@ async def test_groq_analyzer_empty_text():
 
 
 @pytest.mark.asyncio
-async def test_groq_analyzer_primary_success():
+async def test_groq_analyzer_analyze_lead_success():
     """Verifies successful lead classification via primary model openai/gpt-oss-20b."""
     mock_payload = {
         "choices": [
@@ -192,12 +233,18 @@ async def test_groq_analyzer_primary_success():
             client=client,
             request_delay=0,
         )
-        result = await analyzer.analyze("Срочно нужен телеграм бот для доставки еды")
+        lead_text = "Срочно требуется опытный разработчик Telegram-ботов на Python и FastAPI под ключ"
+        assert len(lead_text.strip()) >= 50
+        result = await analyzer.analyze(lead_text)
         assert result.is_lead is True
         assert result.summary == "Разработка бота для заказа еды"
         assert result.budget == "40 000 руб"
         assert result.tech_stack == "Python, aiogram"
         assert "Добрый день!" in result.ready_pitch
+
+
+# Backward-compatible alias
+test_groq_analyzer_primary_success = test_groq_analyzer_analyze_lead_success
 
 
 @pytest.mark.asyncio
@@ -244,7 +291,9 @@ async def test_groq_analyzer_fallback_on_primary_error():
             client=client,
             request_delay=0,
         )
-        result = await analyzer.analyze("Требуется интеграция с Kaspi")
+        lead_text = "Срочно требуется опытный разработчик для интеграции с Kaspi API под ключ"
+        assert len(lead_text.strip()) >= 50
+        result = await analyzer.analyze(lead_text)
         assert result.is_lead is True
         assert result.summary == "Интеграция Kaspi API"
         assert call_count == 2
@@ -265,7 +314,9 @@ async def test_groq_analyzer_both_models_fail():
             client=client,
             request_delay=0,
         )
-        result = await analyzer.analyze("Требуется разработчик")
+        lead_text = "Срочно требуется опытный разработчик Telegram-ботов на Python и FastAPI под ключ"
+        assert len(lead_text.strip()) >= 50
+        result = await analyzer.analyze(lead_text)
         assert result.is_lead is False
 
 
@@ -281,7 +332,9 @@ async def test_groq_analyzer_invalid_json():
     transport = httpx.MockTransport(handler)
     async with httpx.AsyncClient(transport=transport) as client:
         analyzer = GroqAnalyzer(api_key="test_key", client=client, request_delay=0)
-        result = await analyzer.analyze("Нужен бот")
+        lead_text = "Срочно требуется опытный разработчик Telegram-ботов на Python и FastAPI под ключ"
+        assert len(lead_text.strip()) >= 50
+        result = await analyzer.analyze(lead_text)
         assert result.is_lead is False
 
 
@@ -322,7 +375,9 @@ async def test_groq_analyzer_retry_on_429_success():
     transport = httpx.MockTransport(handler)
     async with httpx.AsyncClient(transport=transport) as client:
         analyzer = GroqAnalyzer(api_key="test_key", client=client, request_delay=0)
-        result = await analyzer.analyze("Нужен бот для заказов")
+        lead_text = "Срочно требуется опытный разработчик Telegram-ботов на Python и FastAPI под ключ"
+        assert len(lead_text.strip()) >= 50
+        result = await analyzer.analyze(lead_text)
         assert result.is_lead is True
         assert result.summary == "Разработка бота"
         assert call_count == 2
@@ -367,7 +422,9 @@ async def test_groq_analyzer_retry_on_429_absent_retry_after():
     async with httpx.AsyncClient(transport=transport) as client:
         analyzer = GroqAnalyzer(api_key="test_key", client=client, request_delay=0)
         with patch("asyncio.sleep", new_callable=AsyncMock) as mock_sleep:
-            result = await analyzer.analyze("Требуется написать скрипт на Python")
+            lead_text = "Срочно требуется написать сложный скрипт автоматизации на Python и FastAPI"
+            assert len(lead_text.strip()) >= 50
+            result = await analyzer.analyze(lead_text)
             assert result.is_lead is True
             assert call_count == 2
             # Verify sleep was invoked with a wait between 3 and 5 seconds
@@ -422,18 +479,67 @@ async def test_groq_analyzer_retry_on_429_then_fallback():
             client=client,
             request_delay=0,
         )
-        result = await analyzer.analyze("Требуется написать парсер")
+        lead_text = "Срочно требуется написать быстрый парсер интернет-магазинов на Python под ключ"
+        assert len(lead_text.strip()) >= 50
+        result = await analyzer.analyze(lead_text)
         assert result.is_lead is True
         assert result.summary == "Парсер сайта"
         # 2 attempts on primary (initial + retry) + 1 on fallback = 3 total
         assert call_count == 3
 
 
+@pytest.mark.asyncio
+async def test_groq_analyzer_lock_prevents_parallel_requests():
+    """Verifies that asyncio.Lock prevents parallel requests to Groq API."""
+    concurrent_requests = 0
+    max_concurrent_requests = 0
+
+    async def mock_handler(request: httpx.Request) -> httpx.Response:
+        nonlocal concurrent_requests, max_concurrent_requests
+        concurrent_requests += 1
+        max_concurrent_requests = max(max_concurrent_requests, concurrent_requests)
+        await asyncio.sleep(0.05)
+        concurrent_requests -= 1
+        return httpx.Response(
+            status_code=200,
+            json={
+                "choices": [
+                    {
+                        "message": {
+                            "content": json.dumps(
+                                {
+                                    "is_lead": True,
+                                    "summary": "Тестовый заказ",
+                                    "budget": "10 000 руб",
+                                    "tech_stack": "Python",
+                                    "ready_pitch": "Готов помочь.",
+                                }
+                            )
+                        }
+                    }
+                ]
+            },
+        )
+
+    transport = httpx.MockTransport(mock_handler)
+    async with httpx.AsyncClient(transport=transport) as client:
+        analyzer = GroqAnalyzer(api_key="test_key", client=client, request_delay=0)
+        lead_text = "Срочно требуется опытный разработчик Telegram-ботов на Python и FastAPI под ключ"
+        results = await asyncio.gather(
+            analyzer.analyze(lead_text),
+            analyzer.analyze(lead_text),
+            analyzer.analyze(lead_text),
+        )
+        assert all(r.is_lead for r in results)
+        assert max_concurrent_requests == 1
+
+
 def test_groq_analyzer_request_delay_init():
     """Checks request_delay initialization from settings or custom argument."""
     cfg = Settings(_env_file=None)
     analyzer_default = GroqAnalyzer(api_key="key", settings=cfg)
-    assert analyzer_default.request_delay == 1.0
+    assert analyzer_default.request_delay == 2.0
 
     analyzer_custom = GroqAnalyzer(api_key="key", request_delay=0.5)
     assert analyzer_custom.request_delay == 0.5
+

@@ -10,10 +10,55 @@ from typing import Any, Awaitable, Callable, Union
 
 from telethon import TelegramClient, events
 from telethon.sessions import StringSession
+from telethon.tl.types import Channel, Chat, User, PeerChannel, PeerChat, PeerUser
 
 from backend.core.config import Settings, settings as global_settings
 
 logger = logging.getLogger(__name__)
+
+
+def is_strictly_forbidden_chat(event, message, target_chat_id, my_id) -> bool:
+    chat_id = getattr(event, "chat_id", None)
+    if chat_id is None and message is not None:
+        chat_id = getattr(message, "chat_id", None)
+
+    msg_obj = message if message is not None else getattr(event, "message", None)
+    peer = getattr(msg_obj, "peer_id", None) if msg_obj is not None else None
+    if peer is None and hasattr(event, "message"):
+        peer = getattr(event.message, "peer_id", None)
+    if peer is None and hasattr(event, "peer_id"):
+        peer = getattr(event, "peer_id", None)
+
+    if chat_id is None and peer is not None:
+        try:
+            from telethon import utils
+            chat_id = utils.get_peer_id(peer)
+        except Exception:
+            chat_id = getattr(peer, "channel_id", None) or getattr(peer, "chat_id", None) or getattr(peer, "user_id", None)
+
+    # 1. Запрет на собственную группу отправки (защита от циклического самопарсинга!)
+    if target_chat_id is not None and target_chat_id != 0 and target_chat_id != "0":
+        if str(chat_id) == str(target_chat_id) or chat_id == target_chat_id:
+            return True
+        str_cid = str(chat_id).replace("-100", "").strip("-") if chat_id is not None else ""
+        str_tid = str(target_chat_id).replace("-100", "").strip("-")
+        if str_cid and str_tid and str_cid == str_tid:
+            return True
+
+    # 2. Запрет на Избранное и личные диалоги с самим собой
+    if (my_id is not None and (chat_id == my_id or str(chat_id) == str(my_id))) or getattr(msg_obj, "out", False):
+        return True
+
+    # 3. Запрет на ЛЮБЫХ пользователей и лички (User / Private)
+    if isinstance(peer, (User, PeerUser)) or getattr(event, "is_private", False) or getattr(msg_obj, "is_private", False):
+        return True
+
+    # 4. РАЗРЕШАТЬ ТОЛЬКО ПУБЛИЧНЫЕ КАНАЛЫ (Broadcast Channels / Supergroups)
+    # Если это обычная группа людей (Chat / PeerChat) или User — игнорировать
+    if not (isinstance(peer, (Channel, PeerChannel))):
+        return True
+
+    return False
 
 
 class TelegramListener:
@@ -33,6 +78,7 @@ class TelegramListener:
         self.settings = settings or global_settings
         self._handler_callback: Callable[[dict[str, Any]], Awaitable[None]] | None = None
         self._is_running: bool = False
+        self.my_id: int | None = None
 
         # Initialize session: StringSession or SQLite session file
         if self.settings.TG_STRING_SESSION and self.settings.TG_STRING_SESSION.strip():
@@ -221,6 +267,15 @@ class TelegramListener:
 
         @self.client.on(events.NewMessage(chats=chats if chats else []))
         async def on_new_message(event: events.NewMessage.Event) -> None:
+            # Ironclad Privacy Barrier: Strictly forbidden chats
+            if is_strictly_forbidden_chat(
+                event,
+                event.message,
+                self.settings.TARGET_CHAT_ID,
+                getattr(self, "my_id", None),
+            ):
+                return
+
             # Privacy Gatekeeper: Outgoing messages (sent by self) are strictly ignored
             if getattr(event.message, "out", False):
                 return
@@ -267,6 +322,7 @@ class TelegramListener:
             )
         else:
             me = await self.client.get_me()
+            self.my_id = me.id
             username_display = f"@{me.username}" if getattr(me, "username", None) else f"ID:{me.id}"
             logger.info(f"[Listener] Authorized successfully as user: {username_display}")
 

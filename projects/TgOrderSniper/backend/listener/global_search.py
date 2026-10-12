@@ -14,12 +14,65 @@ from typing import Any, Awaitable, Callable, Union
 from telethon import TelegramClient, utils
 from telethon.errors import FloodWaitError
 from telethon.tl.functions.messages import SearchGlobalRequest
-from telethon.tl.types import InputMessagesFilterEmpty, InputPeerEmpty
+from telethon.tl.types import (
+    Channel,
+    Chat,
+    InputMessagesFilterEmpty,
+    InputPeerEmpty,
+    PeerChannel,
+    PeerChat,
+    PeerUser,
+    User,
+)
 
 from backend.core.config import Settings, settings as global_settings
 from backend.listener.client import TelegramListener
 
 logger = logging.getLogger(__name__)
+
+
+def is_strictly_forbidden_chat(event, message, target_chat_id, my_id) -> bool:
+    chat_id = getattr(event, "chat_id", None)
+    if chat_id is None and message is not None:
+        chat_id = getattr(message, "chat_id", None)
+
+    msg_obj = message if message is not None else getattr(event, "message", None)
+    peer = getattr(msg_obj, "peer_id", None) if msg_obj is not None else None
+    if peer is None and hasattr(event, "message"):
+        peer = getattr(event.message, "peer_id", None)
+    if peer is None and hasattr(event, "peer_id"):
+        peer = getattr(event.peer_id, None)
+
+    if chat_id is None and peer is not None:
+        try:
+            from telethon import utils as tg_utils
+            chat_id = tg_utils.get_peer_id(peer)
+        except Exception:
+            chat_id = getattr(peer, "channel_id", None) or getattr(peer, "chat_id", None) or getattr(peer, "user_id", None)
+
+    # 1. Запрет на собственную группу отправки (защита от циклического самопарсинга!)
+    if target_chat_id is not None and target_chat_id != 0 and target_chat_id != "0":
+        if str(chat_id) == str(target_chat_id) or chat_id == target_chat_id:
+            return True
+        str_cid = str(chat_id).replace("-100", "").strip("-") if chat_id is not None else ""
+        str_tid = str(target_chat_id).replace("-100", "").strip("-")
+        if str_cid and str_tid and str_cid == str_tid:
+            return True
+
+    # 2. Запрет на Избранное и личные диалоги с самим собой
+    if (my_id is not None and (chat_id == my_id or str(chat_id) == str(my_id))) or getattr(msg_obj, "out", False):
+        return True
+
+    # 3. Запрет на ЛЮБЫХ пользователей и лички (User / Private)
+    if isinstance(peer, (User, PeerUser)) or getattr(event, "is_private", False) or getattr(msg_obj, "is_private", False):
+        return True
+
+    # 4. РАЗРЕШАТЬ ТОЛЬКО ПУБЛИЧНЫЕ КАНАЛЫ (Broadcast Channels / Supergroups)
+    # Если это обычная группа людей (Chat / PeerChat) или User — игнорировать
+    if not (isinstance(peer, (Channel, PeerChannel))):
+        return True
+
+    return False
 
 
 class GlobalSearchEngine:
@@ -34,15 +87,18 @@ class GlobalSearchEngine:
         self,
         client: TelegramClient | None = None,
         settings: Settings | None = None,
+        my_id: int | None = None,
     ) -> None:
         """Initializes GlobalSearchEngine with Telethon client and settings.
 
         Args:
             client: Connected Telethon TelegramClient instance.
             settings: Settings instance. If omitted, uses global cached settings.
+            my_id: Optional authenticated user ID.
         """
         self.settings = settings or global_settings
         self.client = client
+        self.my_id: int | None = my_id
         self.last_run_timestamp: datetime | None = None
         self._is_running: bool = False
 
@@ -179,6 +235,23 @@ class GlobalSearchEngine:
             logger.warning("[GlobalSearch] Client is not connected. Skipping search iteration.")
             return 0
 
+        if self.my_id is None and self.client:
+            try:
+                if hasattr(self.client, "is_user_authorized") and callable(self.client.is_user_authorized):
+                    auth = self.client.is_user_authorized()
+                    if asyncio.iscoroutine(auth):
+                        auth = await auth
+                    if auth and hasattr(self.client, "get_me"):
+                        me_res = self.client.get_me()
+                        me = await me_res if asyncio.iscoroutine(me_res) else me_res
+                        mid = getattr(me, "id", None)
+                        if isinstance(mid, int):
+                            self.my_id = mid
+                        elif mid is not None and not hasattr(mid, "_mock_name"):
+                            self.my_id = mid
+            except Exception as exc:
+                logger.debug(f"[GlobalSearch] Could not get self.my_id: {exc}")
+
         iteration_start = datetime.now(timezone.utc)
         min_date = self.last_run_timestamp
         queries = (
@@ -252,6 +325,12 @@ class GlobalSearchEngine:
                 older_than_min_date = False
 
                 for msg in messages:
+                    # Ironclad Privacy Barrier: Strictly forbidden chats
+                    if is_strictly_forbidden_chat(
+                        None, msg, self.settings.TARGET_CHAT_ID, getattr(self, "my_id", None)
+                    ):
+                        continue
+
                     # Skip empty / service messages without text
                     text = getattr(msg, "message", None) or getattr(msg, "text", None)
                     if not text:

@@ -214,9 +214,11 @@ class GroqAnalyzer:
         self.request_delay: float = (
             request_delay
             if request_delay is not None
-            else getattr(app_settings, "GROQ_REQUEST_DELAY", 1.0)
+            else getattr(app_settings, "GROQ_REQUEST_DELAY", 2.0)
         )
         self.timeout = timeout
+        self.lock = asyncio.Lock()
+        self._lock = self.lock
 
         if client is not None:
             self.client = client
@@ -286,44 +288,50 @@ class GroqAnalyzer:
             logger.debug("[GroqAnalyzer] API key not configured, skipping AI analysis.")
             return GroqAnalysisResult(is_lead=False)
 
-        # Pre-Filter Gatekeeper: drop non-leads immediately without making HTTP request
+        # Prefilter 1: drop empty or messages shorter than 50 characters
+        if not text or len(text.strip()) < 50:
+            logger.debug(
+                f"[GroqAnalyzer] Message text too short (< 50 chars, actual={len(text.strip()) if text else 0}), skipping AI analysis."
+            )
+            return GroqAnalysisResult(is_lead=False)
+
+        # Prefilter 2: drop messages without commercial triggers or containing stop words
         passed, reason = self.check_prefilter(text)
         if not passed:
             logger.debug(f"[GroqAnalyzer] Pre-filter rejected message: {reason}")
             return GroqAnalysisResult(is_lead=False)
 
-        if len(text.strip()) < 10:
-            return GroqAnalysisResult(is_lead=False)
-
         raw_data: dict[str, Any] | None = None
 
-        # Pause between Groq API calls to avoid rate limits
-        if self.request_delay > 0:
-            await asyncio.sleep(self.request_delay)
+        # Queue requests using asyncio.Lock to prevent parallel calls to Groq API
+        async with self.lock:
+            # Pause between Groq API calls to avoid rate limits
+            if self.request_delay > 0:
+                await asyncio.sleep(self.request_delay)
 
-        # Attempt 1: Primary Model
-        try:
-            logger.debug(f"[GroqAnalyzer] Requesting analysis via primary model '{self.model}'...")
-            raw_data = await self._call_groq_api(self.model, text)
-        except Exception as exc:
-            logger.warning(
-                f"[GroqAnalyzer] Primary model '{self.model}' failed: {exc}. "
-                f"Falling back to '{self.fallback_model}'..."
-            )
-            # Attempt 2: Fallback Model
+            # Attempt 1: Primary Model
             try:
-                if self.request_delay > 0:
-                    await asyncio.sleep(self.request_delay)
-                raw_data = await self._call_groq_api(self.fallback_model, text)
-                logger.info(
-                    f"[GroqAnalyzer] Fallback model '{self.fallback_model}' succeeded."
+                logger.debug(f"[GroqAnalyzer] Requesting analysis via primary model '{self.model}'...")
+                raw_data = await self._call_groq_api(self.model, text)
+            except Exception as exc:
+                logger.warning(
+                    f"[GroqAnalyzer] Primary model '{self.model}' failed: {exc}. "
+                    f"Falling back to '{self.fallback_model}'..."
                 )
-            except Exception as fb_exc:
-                logger.error(
-                    f"[GroqAnalyzer] Both primary and fallback models failed: {fb_exc}",
-                    exc_info=True,
-                )
-                return GroqAnalysisResult(is_lead=False)
+                # Attempt 2: Fallback Model
+                try:
+                    if self.request_delay > 0:
+                        await asyncio.sleep(self.request_delay)
+                    raw_data = await self._call_groq_api(self.fallback_model, text)
+                    logger.info(
+                        f"[GroqAnalyzer] Fallback model '{self.fallback_model}' succeeded."
+                    )
+                except Exception as fb_exc:
+                    logger.error(
+                        f"[GroqAnalyzer] Both primary and fallback models failed: {fb_exc}",
+                        exc_info=True,
+                    )
+                    return GroqAnalysisResult(is_lead=False)
 
         # Parse response content
         try:

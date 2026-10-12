@@ -1,4 +1,4 @@
-"""Unit tests for web scrapers (Kwork, Freelancehunt, FL.ru, Habr) and scraper scheduler."""
+"""Unit tests for web scrapers (Upwork, Weblancer, Freelancehunt, FL.ru, Habr) and scraper scheduler."""
 
 from unittest.mock import AsyncMock, patch
 
@@ -9,8 +9,9 @@ from backend.scrapers.base import RawTask
 from backend.scrapers.fl_ru import FlRuScraper
 from backend.scrapers.freelancehunt import FreelancehuntScraper
 from backend.scrapers.habr_freelance import HabrFreelanceScraper
-from backend.scrapers.kwork_playwright import KworkPlaywrightScraper
 from backend.scrapers.scheduler import WebScraperScheduler
+from backend.scrapers.upwork_rss import UpworkRssScraper
+from backend.scrapers.weblancer import WeblancerScraper
 
 SAMPLE_HABR_HTML = """
 <!DOCTYPE html>
@@ -50,23 +51,64 @@ SAMPLE_HABR_HTML = """
 </html>
 """
 
-SAMPLE_KWORK_HTML = """
-<!DOCTYPE html>
+SAMPLE_UPWORK_RSS = """<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>Upwork Job Search - python</title>
+    <link>https://www.upwork.com/ab/feed/jobs/rss?q=python&amp;sort=recency</link>
+    <description>Jobs matching query: python</description>
+    <item>
+      <title>Python Developer for Telegram Bot - Upwork</title>
+      <link>https://www.upwork.com/jobs/Python-Developer-for-Telegram-Bot_~01abc123def456/</link>
+      <description><![CDATA[Looking for an experienced Python developer to build a Telegram bot.<br /><br /><b>Hourly Range</b>: $25.00-$50.00<br /><b>Posted On</b>: October 12, 2026 10:00 UTC<br /><b>Category</b>: Scripting &amp; Automation<br /><b>Skills</b>: Python, Telegram API]]></description>
+      <guid isPermaLink="true">https://www.upwork.com/jobs/Python-Developer-for-Telegram-Bot_~01abc123def456/</guid>
+      <pubDate>Mon, 12 Oct 2026 10:00:00 +0000</pubDate>
+    </item>
+    <item>
+      <title>Web Scraping Automation Script</title>
+      <link>https://www.upwork.com/jobs/~01xyz987654321/</link>
+      <description><![CDATA[Need a script to scrape product prices from an ecommerce website.<br /><br /><b>Budget</b>: $500<br /><b>Posted On</b>: October 12, 2026 09:30 UTC<br /><b>Category</b>: Web Scraping]]></description>
+      <guid isPermaLink="false">~01xyz987654321</guid>
+      <pubDate>Mon, 12 Oct 2026 09:30:00 +0000</pubDate>
+    </item>
+  </channel>
+</rss>
+"""
+
+SAMPLE_WEBLANCER_HTML = """<!DOCTYPE html>
 <html>
 <body>
-    <div class="projects-list">
-        <div class="want-card">
-            <div class="want-card__header">
-                <a href="/projects/849201/view">Интеграция 1С и Kaspi Магазина через API</a>
+    <div class="container-fluid cols_table show_visited">
+        <div class="row click_container">
+            <div class="col-sm-7">
+                <h2 class="title">
+                    <a href="/jobs/veb-programmirovanie-31/telegram-bot-dlya-zakazov-123456/">Telegram бот для заказов</a>
+                </h2>
+                <div class="text_field text-muted">
+                    Необходимо разработать бота на Python aiogram с интеграцией Google Таблиц.
+                </div>
+                <div class="user-info">
+                    <a href="/users/client123/">Иван Заказчик</a>
+                </div>
             </div>
-            <div class="want-card__price">
-                до 40 000 ₽
+            <div class="col-sm-2 amount title">
+                150 $
             </div>
-            <div class="want-card__user">
-                <a href="/user/kaspi_seller">Сергей Kaspi</a>
+        </div>
+        <div class="row click_container">
+            <div class="col-sm-7">
+                <h2 class="title">
+                    <a href="/jobs/skript-parsera-123457/">Скрипт парсера цен</a>
+                </h2>
+                <div class="text_field text-muted">
+                    Парсер каталога товаров с маркетплейсов.
+                </div>
+                <div class="user-info">
+                    <a href="/users/petr/">Петр</a>
+                </div>
             </div>
-            <div class="want-card__description break-word">
-                Нужна автоматическая синхронизация остатков и заказов Kaspi с 1С УТ.
+            <div class="col-sm-2 amount title">
+                По договоренности
             </div>
         </div>
     </div>
@@ -170,76 +212,151 @@ SAMPLE_FL_RU_MAINTENANCE_HTML = """
 def test_raw_task_model() -> None:
     """Verifies RawTask initialization and defaults."""
     task = RawTask(
-        source="web:kwork",
+        source="web:upwork",
         external_id="101",
         title="Скрипт парсинга",
         text="Описание задачи",
-        url="https://kwork.ru/projects/101",
-        budget="15 000 руб",
-        author="Иван",
+        url="https://www.upwork.com/jobs/~01abc",
+        budget="$500",
+        author="Client",
     )
-    assert task.source == "web:kwork"
+    assert task.source == "web:upwork"
     assert task.external_id == "101"
-    assert task.budget == "15 000 руб"
-    assert task.author == "Иван"
+    assert task.budget == "$500"
+    assert task.author == "Client"
 
 
 # ============================================================================
-# Kwork Playwright Scraper Tests
+# Upwork RSS Scraper Tests
 # ============================================================================
 
 
-def test_kwork_playwright_scraper_parse_html() -> None:
-    """Verifies Kwork HTML parsing logic and link normalization."""
-    scraper = KworkPlaywrightScraper()
-    tasks = scraper.parse_html(SAMPLE_KWORK_HTML)
+def test_upwork_rss_scraper_parse_rss() -> None:
+    """Verifies Upwork RSS parsing logic for fixed budget and hourly range."""
+    scraper = UpworkRssScraper()
+    tasks = scraper.parse_rss(SAMPLE_UPWORK_RSS)
 
-    assert len(tasks) == 1
-    t = tasks[0]
-    assert t.source == "web:kwork"
-    assert t.external_id == "849201"
-    assert t.title == "Интеграция 1С и Kaspi Магазина через API"
-    assert t.url == "https://kwork.ru/projects/849201"
-    assert t.budget == "до 40 000 ₽"
-    assert t.author == "Сергей Kaspi"
-    assert "Kaspi" in t.text
+    assert len(tasks) == 2
+
+    # Task 1: Hourly rate
+    t1 = tasks[0]
+    assert t1.source == "web:upwork"
+    assert t1.external_id == "~01abc123def456"
+    assert t1.title == "Python Developer for Telegram Bot"
+    assert "https://www.upwork.com/jobs/Python-Developer-for-Telegram-Bot_~01abc123def456/" in t1.url
+    assert t1.budget == "$25.00-$50.00"
+    assert "Looking for an experienced Python developer" in t1.text
+    assert "<br />" not in t1.text  # HTML stripped
+
+    # Task 2: Fixed budget
+    t2 = tasks[1]
+    assert t2.source == "web:upwork"
+    assert t2.external_id == "~01xyz987654321"
+    assert t2.title == "Web Scraping Automation Script"
+    assert t2.budget == "$500"
+    assert "Need a script to scrape product prices" in t2.text
+
+
+def test_upwork_rss_scraper_parse_rss_empty_or_malformed() -> None:
+    """Verifies Upwork RSS scraper returns empty list on invalid or empty XML."""
+    scraper = UpworkRssScraper()
+    assert scraper.parse_rss("") == []
+    assert scraper.parse_rss("   ") == []
+    assert scraper.parse_rss("<not-xml>something</invalid>") == []
 
 
 @pytest.mark.asyncio
-async def test_kwork_playwright_scraper_browser_failure_graceful() -> None:
-    """Verifies graceful exception handling if Playwright fails to launch browser."""
-    scraper = KworkPlaywrightScraper()
+async def test_upwork_rss_scraper_httpx_fetch() -> None:
+    """Verifies Upwork fetch_new_tasks with mock httpx client and deduplication."""
+    def mock_handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(status_code=200, text=SAMPLE_UPWORK_RSS)
 
-    with patch("playwright.async_api.async_playwright") as mock_pw_ctx:
-        mock_pw = AsyncMock()
-        mock_pw.chromium.launch.side_effect = RuntimeError("Chromium binary not found")
-        mock_pw_ctx.return_value.__aenter__.return_value = mock_pw
-
+    transport = httpx.MockTransport(mock_handler)
+    async with httpx.AsyncClient(transport=transport) as client:
+        # Pass 2 feeds returning identical items to test deduplication
+        scraper = UpworkRssScraper(
+            feed_urls=["https://www.upwork.com/feed1", "https://www.upwork.com/feed2"],
+            client=client,
+        )
         tasks = await scraper.fetch_new_tasks()
-        assert tasks == []
+        # Should be deduplicated by external_id
+        assert len(tasks) == 2
+        assert tasks[0].external_id == "~01abc123def456"
+        assert tasks[1].external_id == "~01xyz987654321"
+
+    # Network error handling
+    def error_handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(status_code=500, text="Internal Server Error")
+
+    err_transport = httpx.MockTransport(error_handler)
+    async with httpx.AsyncClient(transport=err_transport) as client:
+        scraper_err = UpworkRssScraper(client=client)
+        tasks_err = await scraper_err.fetch_new_tasks()
+        assert tasks_err == []
+
+
+# ============================================================================
+# Weblancer Scraper Tests
+# ============================================================================
+
+
+def test_weblancer_scraper_parse_html() -> None:
+    """Verifies Weblancer HTML parsing logic for project cards."""
+    scraper = WeblancerScraper()
+    tasks = scraper.parse_html(SAMPLE_WEBLANCER_HTML)
+
+    assert len(tasks) == 2
+
+    # Task 1: Fixed price
+    t1 = tasks[0]
+    assert t1.source == "web:weblancer"
+    assert t1.external_id == "123456"
+    assert t1.title == "Telegram бот для заказов"
+    assert t1.url == "https://www.weblancer.net/jobs/veb-programmirovanie-31/telegram-bot-dlya-zakazov-123456/"
+    assert t1.budget == "150 $"
+    assert t1.author == "Иван Заказчик"
+    assert "aiogram" in t1.text
+
+    # Task 2: Negotiated price
+    t2 = tasks[1]
+    assert t2.source == "web:weblancer"
+    assert t2.external_id == "123457"
+    assert t2.title == "Скрипт парсера цен"
+    assert t2.url == "https://www.weblancer.net/jobs/skript-parsera-123457/"
+    assert t2.budget is None
+    assert t2.author == "Петр"
+    assert "маркетплейсов" in t2.text
+
+
+def test_weblancer_scraper_parse_html_empty() -> None:
+    """Verifies Weblancer scraper returns empty list on invalid or empty HTML."""
+    scraper = WeblancerScraper()
+    assert scraper.parse_html("") == []
+    assert scraper.parse_html("<html><body><p>No jobs</p></body></html>") == []
 
 
 @pytest.mark.asyncio
-async def test_kwork_playwright_scraper_success() -> None:
-    """Verifies fetch_new_tasks when Playwright page loads properly."""
-    scraper = KworkPlaywrightScraper()
+async def test_weblancer_scraper_httpx_fetch() -> None:
+    """Verifies Weblancer fetch_new_tasks with mock httpx client."""
+    def mock_handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(status_code=200, text=SAMPLE_WEBLANCER_HTML)
 
-    with patch("playwright.async_api.async_playwright") as mock_pw_ctx:
-        mock_pw = AsyncMock()
-        mock_browser = AsyncMock()
-        mock_context = AsyncMock()
-        mock_page = AsyncMock()
-
-        mock_page.content = AsyncMock(return_value=SAMPLE_KWORK_HTML)
-        mock_context.new_page = AsyncMock(return_value=mock_page)
-        mock_browser.new_context = AsyncMock(return_value=mock_context)
-        mock_pw.chromium.launch = AsyncMock(return_value=mock_browser)
-        mock_pw_ctx.return_value.__aenter__.return_value = mock_pw
-
+    transport = httpx.MockTransport(mock_handler)
+    async with httpx.AsyncClient(transport=transport) as client:
+        scraper = WeblancerScraper(client=client)
         tasks = await scraper.fetch_new_tasks()
-        assert len(tasks) == 1
-        assert tasks[0].external_id == "849201"
-        assert tasks[0].url == "https://kwork.ru/projects/849201"
+        assert len(tasks) == 2
+        assert tasks[0].external_id == "123456"
+
+    # Network error handling
+    def error_handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(status_code=500, text="Internal Server Error")
+
+    err_transport = httpx.MockTransport(error_handler)
+    async with httpx.AsyncClient(transport=err_transport) as client:
+        scraper_err = WeblancerScraper(client=client)
+        tasks_err = await scraper_err.fetch_new_tasks()
+        assert tasks_err == []
 
 
 # ============================================================================
@@ -450,13 +567,15 @@ async def test_habr_freelance_scraper_parse_html() -> None:
 
 
 def test_web_scraper_scheduler_default_scrapers_list() -> None:
-    """Verifies default scrapers are Kwork, Freelancehunt, and FL.ru without Habr."""
+    """Verifies default scrapers are Freelancehunt, Upwork, Weblancer, and FL.ru without Habr or Kwork."""
     scheduler = WebScraperScheduler()
     scraper_classes = [s.__class__.__name__ for s in scheduler.scrapers]
 
-    assert "KworkPlaywrightScraper" in scraper_classes
     assert "FreelancehuntScraper" in scraper_classes
+    assert "UpworkRssScraper" in scraper_classes
+    assert "WeblancerScraper" in scraper_classes
     assert "FlRuScraper" in scraper_classes
+    assert "KworkPlaywrightScraper" not in scraper_classes
     assert "HabrFreelanceScraper" not in scraper_classes
 
 
@@ -515,11 +634,11 @@ async def test_web_scraper_scheduler_resilience_to_scraper_errors() -> None:
 
     working_scraper = AsyncMock()
     task = RawTask(
-        source="web:kwork",
+        source="web:upwork",
         external_id="10",
         title="Задача",
         text="Описание",
-        url="https://kwork.ru/projects/10",
+        url="https://www.upwork.com/jobs/~01xyz",
     )
     working_scraper.fetch_new_tasks = AsyncMock(return_value=[task])
 

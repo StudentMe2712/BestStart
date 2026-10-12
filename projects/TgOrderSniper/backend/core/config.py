@@ -61,7 +61,7 @@ class Settings(BaseSettings):
         default="openai/gpt-oss-20b", description="Fallback Groq model"
     )
     GROQ_REQUEST_DELAY: float = Field(
-        default=1.0, description="Pause in seconds before Groq API call to avoid 429 rate limit"
+        default=2.0, description="Pause in seconds before Groq API call to avoid 429 rate limit"
     )
 
     # Global Telegram Search settings

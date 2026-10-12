@@ -1,6 +1,6 @@
 """Scheduler for periodic execution of web scrapers.
 
-Periodically queries registered web scrapers (Kwork, Freelancehunt, FL.ru, etc.) and
+Periodically queries registered web scrapers (Freelancehunt, Upwork, Weblancer, FL.ru, etc.) and
 forwards retrieved RawTasks to the processing pipeline callback.
 """
 
@@ -12,7 +12,8 @@ from backend.core.config import Settings, settings as global_settings
 from backend.scrapers.base import BaseScraper, RawTask
 from backend.scrapers.fl_ru import FlRuScraper
 from backend.scrapers.freelancehunt import FreelancehuntScraper
-from backend.scrapers.kwork_playwright import KworkPlaywrightScraper
+from backend.scrapers.upwork_rss import UpworkRssScraper
+from backend.scrapers.weblancer import WeblancerScraper
 
 logger = logging.getLogger(__name__)
 
@@ -37,8 +38,9 @@ class WebScraperScheduler:
         """
         self.settings = settings or global_settings
         self.scrapers: list[BaseScraper] = scrapers if scrapers is not None else [
-            KworkPlaywrightScraper(),
             FreelancehuntScraper(),
+            UpworkRssScraper(),
+            WeblancerScraper(),
             FlRuScraper(),
         ]
         self.on_task_callback = on_task_callback
