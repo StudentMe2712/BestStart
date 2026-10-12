@@ -1,0 +1,26 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python scripts/context_tracker.py"
+          }
+        ]
+      }
+    ],
+    "PostInvocation": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python scripts/context_tracker.py"
+          }
+        ]
+      }
+    ]
+  }
+}

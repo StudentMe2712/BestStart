@@ -221,7 +221,7 @@ def format_preflight_banner(summary: dict[str, Any]) -> str:
     )
 
     scrapers_status = (
-        f"Enabled (Habr, Kwork every {summary.get('web_scrape_interval_minutes', 5)}m)"
+        f"Enabled (Kwork, Freelancehunt, FL.ru every {summary.get('web_scrape_interval_minutes', 5)}m)"
         if summary.get("web_scrapers_enabled")
         else "Disabled"
     )

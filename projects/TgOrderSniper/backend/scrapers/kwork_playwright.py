@@ -150,6 +150,7 @@ class KworkPlaywrightScraper(BaseScraper):
                 full_url = urljoin(self.BASE_URL, href)
                 id_match = re.search(r"/projects/(\d+)", href)
                 external_id = id_match.group(1) if id_match else href.strip("/").split("/")[-1]
+                project_url = f"{self.PROJECTS_URL}/{external_id}" if id_match else full_url
 
                 if not external_id or external_id in seen_ids:
                     continue
@@ -192,7 +193,7 @@ class KworkPlaywrightScraper(BaseScraper):
                         external_id=external_id,
                         title=title,
                         text=text,
-                        url=full_url,
+                        url=project_url,
                         budget=budget,
                         author=author,
                     )

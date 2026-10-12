@@ -1,6 +1,6 @@
 """Scheduler for periodic execution of web scrapers.
 
-Periodically queries registered web scrapers (Habr, Kwork, etc.) and
+Periodically queries registered web scrapers (Kwork, Freelancehunt, FL.ru, etc.) and
 forwards retrieved RawTasks to the processing pipeline callback.
 """
 
@@ -10,7 +10,8 @@ import logging
 
 from backend.core.config import Settings, settings as global_settings
 from backend.scrapers.base import BaseScraper, RawTask
-from backend.scrapers.habr_freelance import HabrFreelanceScraper
+from backend.scrapers.fl_ru import FlRuScraper
+from backend.scrapers.freelancehunt import FreelancehuntScraper
 from backend.scrapers.kwork_playwright import KworkPlaywrightScraper
 
 logger = logging.getLogger(__name__)
@@ -29,15 +30,16 @@ class WebScraperScheduler:
         """Initializes WebScraperScheduler.
 
         Args:
-            scrapers: List of BaseScraper instances. If None, instantiates Habr and Kwork scrapers.
+            scrapers: List of BaseScraper instances. If None, instantiates default scrapers.
             on_task_callback: Async callback function invoked for each scraped task.
             interval_minutes: Execution interval in minutes. If None, loaded from settings.
             settings: Settings instance.
         """
         self.settings = settings or global_settings
         self.scrapers: list[BaseScraper] = scrapers if scrapers is not None else [
-            HabrFreelanceScraper(),
             KworkPlaywrightScraper(),
+            FreelancehuntScraper(),
+            FlRuScraper(),
         ]
         self.on_task_callback = on_task_callback
         self.interval_minutes: int = (
