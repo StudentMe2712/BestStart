@@ -288,11 +288,11 @@ async def run_service(settings: Settings | None = None) -> None:
 
 
 
-def main() -> None:
+def main(settings: Settings | None = None) -> None:
     """CLI Entry Point."""
     setup_logging()
     try:
-        asyncio.run(run_service())
+        asyncio.run(run_service(settings=settings))
     except KeyboardInterrupt:
         logger.info("[Service] Stopped by KeyboardInterrupt.")
 

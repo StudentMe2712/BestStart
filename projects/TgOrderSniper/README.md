@@ -77,6 +77,27 @@ DEDUP_CACHE_SIZE=5000
 DEDUP_TTL_SECONDS=86400
 ```
 
+### 4. Запуск всех компонентов одной командой
+
+**Вариант A — В один клик на Windows (`start.bat`):**
+Дважды щелкните по `start.bat` в проводнике Windows или выполните в командной строке:
+```cmd
+start.bat
+```
+- Автоматически переключает консоль в UTF-8 (`chcp 65001`);
+- Автоматически находит Python (`.venv`, `venv` или системный Python из `PATH`);
+- Выполняет pre-flight верификацию и запускает бота и все компоненты;
+- При ошибках удерживает окно открытым (`pause`), чтобы текст ошибки не исчез.
+
+**Вариант B — Единый скрипт запуска (`run.py`):**
+```bash
+python run.py
+```
+- **Pre-flight проверка**: проверяет наличие `.env`, выводит наглядный баннер с конфигурацией и маскирует токены;
+- **Авто-fallback сессий**: если сессия из `TG_SESSION_NAME` (например, `OrderParser.session`) отсутствует на диске, но найдена `custom_session.session`, скрипт автоматически подхватит её и предупредит в логах;
+- **Graceful shutdown**: перехватывает `Ctrl+C` и корректно освобождает ресурсы с чистым кодом возврата;
+- **Безопасная проверка**: флаг `python run.py --check` выполнит pre-flight верификацию без запуска бесконечного цикла.
+
 ---
 
 ## 🔑 Инструкция по получению ключей
@@ -106,17 +127,24 @@ python -c "from telethon.sync import TelegramClient; from telethon.sessions impo
 
 ### Запуск сервиса
 ```bash
+# Рекомендуемый способ (единый скрипт с pre-flight проверкой и детекцией сессий):
+python run.py
+
+# На Windows (в один клик через батник):
+start.bat
+
+# Прямой запуск модуля (альтернативный):
 python -m backend.main
 ```
 
 ### Запуск модульных тестов
 ```bash
-pytest tests -v
+pytest -v
 ```
 
 ### Проверка стиля и линтера (Ruff)
 ```bash
-ruff check backend tests
+ruff check .
 ```
 
 ---
@@ -135,12 +163,14 @@ TgOrderSniper/
 │   │   └── dedup.py           # LRU + TTL дедупликация (ID + text hash)
 │   ├── filter/
 │   │   ├── __init__.py
-│   │   └── engine.py          # Strict Gatekeeper, коммерческие триггеры, бюджет
+│   │   ├── engine.py          # Strict Gatekeeper, коммерческие триггеры, бюджет
+│   │   └── groq_analyzer.py   # AI классификатор и генератор питчей (Groq API)
 │   ├── listener/
 │   │   ├── __init__.py
-│   │   └── client.py          # Telethon MTProto event-driven клиент
+│   │   ├── client.py          # Telethon MTProto event-driven клиент
+│   │   └── global_search.py   # Фоновый движок глобального поиска Telegram
 │   ├── __init__.py
-│   └── main.py                # Точка входа, пайплайн и graceful shutdown
+│   └── main.py                # Пайплайн обработки и graceful shutdown
 ├── specs/
 │   ├── ADR-001-hybrid-mtproto-bot-architecture.md # Архитектурное решение ADR-001
 │   └── spec.md                # Спецификация и требования Spec-Kit
@@ -149,10 +179,15 @@ TgOrderSniper/
 │   ├── test_dedup.py
 │   ├── test_dispatcher.py     # Тесты форматирования карточек, кнопок и ретраев
 │   ├── test_filter.py
-│   └── test_listener.py
+│   ├── test_global_search.py  # Тесты фонового поиска
+│   ├── test_groq_analyzer.py  # Тесты AI анализатора
+│   ├── test_listener.py
+│   └── test_run.py            # Тесты pre-flight проверки и точек запуска
 ├── .env.example
 ├── README.md
 ├── requirements.txt
+├── run.py                     # Единая точка запуска с pre-flight проверкой и fallback сессий
+├── start.bat                  # Windows батник запуска в 1 клик с автодетектом Python
 ├── sync.sh                    # Git синхронизация проекта
 └── tg_order_sniper_spec.md    # Трекер выполнения этапов
 ```
