@@ -7,7 +7,12 @@ from backend.listener.client import TelegramListener
 def test_listener_session_initialization():
     """Checks session initialization for both file and StringSession modes."""
     # 1. Unconfigured state (defaults without API credentials)
-    cfg_unconf = Settings(TG_SESSION_NAME="custom_session", TG_STRING_SESSION=None)
+    cfg_unconf = Settings(
+        TG_API_ID=0,
+        TG_API_HASH="",
+        TG_SESSION_NAME="custom_session",
+        TG_STRING_SESSION=None,
+    )
     listener_unconf = TelegramListener(cfg_unconf)
     assert listener_unconf.settings.TG_SESSION_NAME == "custom_session"
     assert listener_unconf.client is None

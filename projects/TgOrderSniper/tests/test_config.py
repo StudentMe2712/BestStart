@@ -5,7 +5,7 @@ from backend.core.config import Settings
 
 def test_default_settings():
     """Checks default settings values when no environment variables are provided."""
-    cfg = Settings()
+    cfg = Settings(_env_file=None)
     assert cfg.TG_API_ID == 0
     assert cfg.TG_API_HASH == ""
     assert cfg.TG_SESSION_NAME == "order_sniper"
@@ -13,6 +13,13 @@ def test_default_settings():
     assert cfg.DEDUP_CACHE_SIZE == 5000
     assert cfg.DEDUP_TTL_SECONDS == 86400
     assert cfg.CHANNELS_TO_WATCH == []
+    assert cfg.GROQ_API_KEY == ""
+    assert cfg.GROQ_MODEL == "openai/gpt-oss-20b"
+    assert cfg.GROQ_FALLBACK_MODEL == "llama-3.3-70b-versatile"
+    assert cfg.SEARCH_INTERVAL_MINUTES == 5
+    assert len(cfg.SEARCH_QUERIES) > 0
+    assert cfg.SEARCH_RATE_LIMIT_DELAY == 2.0
+
 
 
 def test_channels_string_parsing():
@@ -47,3 +54,16 @@ def test_target_chat_id_parsing():
 
     cfg_str = Settings(TARGET_CHAT_ID="@my_target_channel")  # type: ignore[arg-type]
     assert cfg_str.TARGET_CHAT_ID == "@my_target_channel"
+
+
+def test_search_queries_parsing():
+    """Checks parsing of search queries from string and list."""
+    cfg1 = Settings(SEARCH_QUERIES="срочно заказ, нужен бот, 1с доработка")  # type: ignore[arg-type]
+    assert cfg1.SEARCH_QUERIES == ["срочно заказ", "нужен бот", "1с доработка"]
+
+    cfg2 = Settings(SEARCH_QUERIES=[" заказ 1 ", "заказ 2"])  # type: ignore[arg-type]
+    assert cfg2.SEARCH_QUERIES == ["заказ 1", "заказ 2"]
+
+    cfg3 = Settings(SEARCH_QUERIES="")  # type: ignore[arg-type]
+    assert cfg3.SEARCH_QUERIES == []
+

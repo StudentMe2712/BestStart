@@ -1,6 +1,7 @@
 """Unit tests for TelegramBotDispatcher and OrderProcessingPipeline."""
 
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
+
 
 import httpx
 import pytest
@@ -374,3 +375,110 @@ async def test_order_processing_pipeline_flow() -> None:
     order3 = await pipeline.process_message(event_resume)
     assert order3 is None
     assert mock_dispatch.await_count == 0
+
+
+def test_format_card_with_ai_analysis(sample_order: FilteredOrder) -> None:
+    """Verifies that format_card generates enriched AI card with pitch and quote."""
+    from backend.filter.groq_analyzer import GroqAnalysisResult
+
+    ai_result = GroqAnalysisResult(
+        is_lead=True,
+        summary="Разработка Telegram-бота для обработки заявок",
+        budget="50 000 руб",
+        tech_stack="Python, aiogram, PostgreSQL",
+        ready_pitch="Здравствуйте! Реализую Telegram-бота под ключ с подключением БД. Опыт 3+ года.",
+    )
+
+    dispatcher = TelegramBotDispatcher(bot_token="fake_token", target_chat_id="-100999")
+    card_text, reply_markup = dispatcher.format_card(sample_order, ai_analysis=ai_result)
+
+    assert "🔥 <b>НОВЫЙ ЗАКАЗ</b>" in card_text
+    assert "📍 <b>Источник:</b> Freelance Hub" in card_text
+    assert "🎯 <b>Суть:</b> Разработка Telegram-бота для обработки заявок" in card_text
+    assert "💰 <b>Бюджет:</b> 50 000 руб" in card_text
+    assert "🛠 <b>Стек:</b> Python, aiogram, PostgreSQL" in card_text
+    assert "👤 <b>Автор:</b>" in card_text
+    assert "📝 <b>Готовый отклик (скопировать в 1 клик):</b>" in card_text
+    assert "<code>Здравствуйте! Реализую Telegram-бота под ключ с подключением БД. Опыт 3+ года.</code>" in card_text
+    assert "<blockquote expandable>" in card_text
+    assert sample_order.cleaned_text in card_text
+    assert "</blockquote>" in card_text
+
+    # Buttons
+    inline_keyboard = reply_markup["inline_keyboard"]
+    assert len(inline_keyboard) == 1
+    assert inline_keyboard[0][0]["text"] == "🔍 Открыть пост"
+    assert inline_keyboard[0][1]["text"] == "💬 Написать заказчику"
+
+
+@pytest.mark.asyncio
+async def test_order_processing_pipeline_with_groq_analyzer() -> None:
+    """Verifies pipeline flow with GroqAnalyzer scoring."""
+    from backend.filter.groq_analyzer import GroqAnalysisResult, GroqAnalyzer
+
+    dedup = MessageDedup(max_size=100)
+    filter_engine = FilterEngine()
+    mock_dispatch = AsyncMock(return_value=True)
+    dispatcher = TelegramBotDispatcher(bot_token="tok", target_chat_id="123")
+    dispatcher.dispatch = mock_dispatch
+
+    mock_groq = MagicMock(spec=GroqAnalyzer)
+    mock_groq.is_configured = True
+
+    pipeline = OrderProcessingPipeline(
+        dedup=dedup,
+        filter_engine=filter_engine,
+        dispatcher=dispatcher,
+        groq_analyzer=mock_groq,
+    )
+
+    # 1. Lead accepted by AI
+    mock_groq.analyze = AsyncMock(
+        return_value=GroqAnalysisResult(
+            is_lead=True,
+            summary="Доработка скрипта",
+            budget="15 000 руб",
+            tech_stack="Python",
+            ready_pitch="Готов доработать скрипт.",
+        )
+    )
+
+    event_lead = {
+        "chat_id": "-1001",
+        "chat_title": "Orders",
+        "message_id": 601,
+        "text": "Нужен разработчик для доработки скрипта выгрузки. Бюджет 15 000 руб.",
+        "author_id": 20,
+        "author_username": "client20",
+        "author_name": "Дмитрий",
+        "message_url": "https://t.me/c/1/601",
+    }
+    order1 = await pipeline.process_message(event_lead)
+    assert order1 is not None
+    assert order1.ai_analysis is not None
+    assert order1.ai_analysis.is_lead is True
+    assert mock_dispatch.await_count == 1
+
+    # 2. Message rejected by AI (not a lead)
+    mock_dispatch.reset_mock()
+    mock_groq.analyze = AsyncMock(
+        return_value=GroqAnalysisResult(
+            is_lead=False,
+            summary="",
+        )
+    )
+
+    event_not_lead = {
+        "chat_id": "-1001",
+        "chat_title": "Orders",
+        "message_id": 602,
+        "text": "Кто знает хороший хостинг для python скрипта?",
+        "author_id": 21,
+        "author_username": "user21",
+        "author_name": "Олег",
+        "message_url": "",
+    }
+    order2 = await pipeline.process_message(event_not_lead)
+    assert order2 is None
+    assert mock_dispatch.await_count == 0
+

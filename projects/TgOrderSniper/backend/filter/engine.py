@@ -42,6 +42,10 @@ class FilteredOrder(BaseModel):
     category_tags: list[str] = Field(
         default_factory=list, description="Categorized technology and domain tags"
     )
+    ai_analysis: Any | None = Field(
+        default=None, description="Optional AI scoring and pitch result"
+    )
+
 
 
 class FilterEngine:

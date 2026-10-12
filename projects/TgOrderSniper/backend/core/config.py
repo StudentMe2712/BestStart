@@ -38,9 +38,36 @@ class Settings(BaseSettings):
     )
 
     # Channels to listen to
-    CHANNELS_TO_WATCH: list[Union[str, int]] = Field(
+    CHANNELS_TO_WATCH: Union[list[Union[str, int]], str] = Field(
         default_factory=list,
         description="List of channels/chats to watch. Parsed from comma-separated string or list",
+    )
+
+    # Groq AI Classifier settings
+    GROQ_API_KEY: str = Field(default="", description="Groq API key")
+    GROQ_MODEL: str = Field(default="openai/gpt-oss-20b", description="Primary Groq model")
+    GROQ_FALLBACK_MODEL: str = Field(
+        default="llama-3.3-70b-versatile", description="Fallback Groq model"
+    )
+
+    # Global Telegram Search settings
+    SEARCH_INTERVAL_MINUTES: int = Field(
+        default=5, description="Search interval in minutes"
+    )
+    SEARCH_QUERIES: Union[list[str], str] = Field(
+        default_factory=lambda: [
+            "срочно заказ",
+            "нужен разработчик",
+            "требуется написать",
+            "доработка 1с",
+            "интеграция kaspi",
+            "написать бота",
+            "спарсить",
+        ],
+        description="Search queries for global Telegram search",
+    )
+    SEARCH_RATE_LIMIT_DELAY: float = Field(
+        default=2.0, description="Pause between search queries"
     )
 
     # Deduplication cache settings
@@ -93,6 +120,18 @@ class Settings(BaseSettings):
                     parsed_channels.append(str(item))
             return parsed_channels
 
+        return []
+
+    @field_validator("SEARCH_QUERIES", mode="before")
+    @classmethod
+    def parse_search_queries(cls, value: Any) -> list[str]:
+        """Parses search queries list from comma-separated string or list input."""
+        if value is None or value == "":
+            return []
+        if isinstance(value, str):
+            return [item.strip() for item in value.split(",") if item.strip()]
+        if isinstance(value, (list, tuple)):
+            return [str(item).strip() for item in value if str(item).strip()]
         return []
 
     @field_validator("TARGET_CHAT_ID", mode="before")

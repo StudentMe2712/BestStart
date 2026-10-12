@@ -93,3 +93,45 @@ flowchart TD
 - [x] 4.2. Добавить спецификации в `specs/` и зафиксировать ADR-001 по гибридной архитектуре MTProto + Bot API.
 - [x] 4.3. Создать `.env.example`, `requirements.txt` и `README.md`.
 - [x] 4.4. Создать `sync.sh` в `projects/TgOrderSniper` и синхронизировать репозиторий через `./sync.sh`.
+
+---
+
+## 4. Фаза 2: Global Search Poller и Интеллектуальный скоринг через Groq API
+
+```mermaid
+flowchart TD
+    subgraph Telegram_Search["Глобальный поиск и каналы"]
+        SearchGlobal["Telethon SearchGlobalRequest\n(Ротация фраз + min_date)"]
+        UserDialogs["client.iter_dialogs()\n(Динамический подхват каналов)"]
+    end
+
+    subgraph Groq_AI["AI Анализатор Groq API"]
+        GroqClient["Groq LLM Client (httpx.AsyncClient)\nModel: openai/gpt-oss-20b\nFallback: llama-3.3-70b-versatile"]
+        JsonParser["Strict JSON Schema Validation\n(is_lead, summary, budget, tech_stack, ready_pitch)"]
+    end
+
+    subgraph Dispatcher_V2["Бот-диспетчер V2"]
+        RichCard["Расширенная карточка заказа\n- Суть, Бюджет, Стек\n- Готовый отклик (1 клик)\n- Скрытый текст (expandable blockquote)"]
+        Buttons["Inline кнопки:\n[🔍 Открыть пост] [💬 Написать заказчику]"]
+    end
+
+    SearchGlobal -->|Найденные посты| Dedup
+    UserDialogs -->|Новые каналы| SearchGlobal
+    Dedup -->|Уникальный пост| GroqClient
+    GroqClient --> JsonParser
+    JsonParser -->|is_lead = true| RichCard
+    RichCard --> Buttons
+    Buttons --> Dispatcher
+```
+
+### Чек-лист Фазы 2:
+- [x] 2.1. Создать ADR: `specs/ADR-002-groq-ai-scoring-and-global-search.md`.
+- [x] 2.2. Обновить `backend/core/config.py`, `.env.example`, `.env` (Groq API, модели, параметры поиска).
+- [x] 2.3. Реализовать `backend/listener/global_search.py` (ротация запросов, SearchGlobalRequest, min_date, лимиты, dialogs).
+- [x] 2.4. Реализовать `backend/filter/groq_analyzer.py` (асинхронный клиент Groq, валидация JSON, промпт классификатора и генератора pitch, фоллбэк на llama-3.3-70b-versatile).
+- [x] 2.5. Обновить `backend/bot/dispatcher.py` (расширенная карточка с готовым откликом и expandable blockquote).
+- [x] 2.6. Интегрировать компоненты в `backend/main.py`.
+- [x] 2.7. Разработать модульные тесты `tests/test_groq_analyzer.py` и `tests/test_global_search.py`.
+- [x] 2.8. Прогнать pytest и ruff check, исправить все ошибки.
+- [x] 2.9. Зафиксировать изменения и выполнить `./sync.sh`.
+

@@ -15,7 +15,9 @@ from backend.bot.dispatcher import TelegramBotDispatcher
 from backend.core.config import Settings, get_settings
 from backend.core.dedup import MessageDedup
 from backend.filter.engine import FilterEngine, FilteredOrder
+from backend.filter.groq_analyzer import GroqAnalyzer
 from backend.listener.client import TelegramListener
+from backend.listener.global_search import GlobalSearchEngine
 
 logger = logging.getLogger("TgOrderSniper")
 
@@ -37,18 +39,20 @@ def setup_logging(level: int = logging.INFO) -> None:
 
 
 class OrderProcessingPipeline:
-    """Coordinates deduplication, filtering, and dispatching for incoming messages."""
+    """Coordinates deduplication, filtering, AI scoring, and dispatching for incoming messages."""
 
     def __init__(
         self,
         dedup: MessageDedup,
         filter_engine: FilterEngine,
         dispatcher: TelegramBotDispatcher,
+        groq_analyzer: GroqAnalyzer | None = None,
     ) -> None:
-        """Initializes processing pipeline with core components."""
+        """Initializes processing pipeline with core components and optional AI analyzer."""
         self.dedup = dedup
         self.filter_engine = filter_engine
         self.dispatcher = dispatcher
+        self.groq_analyzer = groq_analyzer
 
     async def process_message(self, data: dict[str, Any]) -> FilteredOrder | None:
         """Processes an incoming Telegram message through the pipeline.
@@ -79,21 +83,73 @@ class OrderProcessingPipeline:
             )
             return None
 
-        # 2. Rule Filtering & Metadata Extraction
+        # 2. Rule Filtering & AI Classification
         sender = data.get("sender") or {
             "id": data.get("author_id"),
             "username": data.get("author_username"),
             "name": data.get("author_name"),
         }
 
-        order = self.filter_engine.evaluate(
-            text=text,
-            chat_title=chat_title,
-            chat_id=chat_id,
-            message_id=message_id,
-            sender=sender,
-            message_url=data.get("message_url", ""),
-        )
+        order: FilteredOrder | None = None
+
+        if self.groq_analyzer and self.groq_analyzer.is_configured:
+            # Quick negative pre-filters
+            if not text or len(text.strip()) < self.filter_engine.min_length:
+                logger.debug(
+                    f"[Pipeline] Dropped message {message_id}: length < {self.filter_engine.min_length}"
+                )
+                return None
+
+            if self.filter_engine.check_negative_gatekeeper(text):
+                logger.debug(
+                    f"[Pipeline] Dropped message {message_id}: negative gatekeeper matched"
+                )
+                return None
+
+            # AI classification and pitch generation
+            ai_analysis = await self.groq_analyzer.analyze(text)
+            if not ai_analysis.is_lead:
+                logger.info(
+                    f"[Pipeline] AI rejected message {message_id} in '{chat_title}': classified as not a lead"
+                )
+                return None
+
+            # Build FilteredOrder enriched with AI analysis
+            order = self.filter_engine.evaluate(
+                text=text,
+                chat_title=chat_title,
+                chat_id=chat_id,
+                message_id=message_id,
+                sender=sender,
+                message_url=data.get("message_url", ""),
+            )
+            if order is None:
+                order = FilteredOrder(
+                    chat_id=chat_id,
+                    chat_title=chat_title,
+                    message_id=message_id,
+                    raw_text=text,
+                    cleaned_text=self.filter_engine.clean_text(text),
+                    author_id=data.get("author_id"),
+                    author_username=data.get("author_username"),
+                    author_name=data.get("author_name"),
+                    message_url=data.get("message_url", ""),
+                    matched_triggers=["ai_verified"],
+                    detected_budget=ai_analysis.budget or self.filter_engine.extract_budget(text),
+                    category_tags=self.filter_engine.match_categories(text),
+                    ai_analysis=ai_analysis,
+                )
+            else:
+                order.ai_analysis = ai_analysis
+        else:
+            order = self.filter_engine.evaluate(
+                text=text,
+                chat_title=chat_title,
+                chat_id=chat_id,
+                message_id=message_id,
+                sender=sender,
+                message_url=data.get("message_url", ""),
+            )
 
         if order is None:
             return None
@@ -103,7 +159,7 @@ class OrderProcessingPipeline:
             f"[Pipeline] Valid order identified ({order.message_id} in '{order.chat_title}'). "
             f"Triggers: {order.matched_triggers} | Dispatching to target chat..."
         )
-        dispatch_success = await self.dispatcher.dispatch(order)
+        dispatch_success = await self.dispatcher.dispatch(order, ai_analysis=order.ai_analysis)
         if dispatch_success:
             logger.info(f"[Pipeline] Successfully dispatched order {order.message_id}.")
         else:
@@ -128,6 +184,17 @@ async def run_service(settings: Settings | None = None) -> None:
     logger.info(f"Target Chat ID: {app_settings.TARGET_CHAT_ID}")
     logger.info(f"Channels to Watch: {app_settings.CHANNELS_TO_WATCH or 'ALL Available'}")
     logger.info(f"Dedup LRU Cache Size: {app_settings.DEDUP_CACHE_SIZE}")
+    logger.info(
+        f"Groq Model: {app_settings.GROQ_MODEL} (Fallback: {app_settings.GROQ_FALLBACK_MODEL})"
+    )
+    queries_count = (
+        len(app_settings.SEARCH_QUERIES)
+        if isinstance(app_settings.SEARCH_QUERIES, list)
+        else 1
+    )
+    logger.info(
+        f"Search Polling Interval: {app_settings.SEARCH_INTERVAL_MINUTES} min | Queries: {queries_count}"
+    )
 
     # 1. Initialize Components
     dedup = MessageDedup(
@@ -139,6 +206,7 @@ async def run_service(settings: Settings | None = None) -> None:
         bot_token=app_settings.TG_BOT_TOKEN,
         target_chat_id=app_settings.TARGET_CHAT_ID,
     )
+    groq_analyzer = GroqAnalyzer(settings=app_settings)
     listener = TelegramListener(settings=app_settings)
 
     # 2. Initialize Processing Pipeline
@@ -146,6 +214,7 @@ async def run_service(settings: Settings | None = None) -> None:
         dedup=dedup,
         filter_engine=filter_engine,
         dispatcher=dispatcher,
+        groq_analyzer=groq_analyzer,
     )
 
     # 3. Setup Graceful Shutdown Event
@@ -165,17 +234,32 @@ async def run_service(settings: Settings | None = None) -> None:
             except (ValueError, OSError) as exc:
                 logger.debug(f"[Service] Could not register signal handler for {sig}: {exc}")
 
-    # 4. Start Telethon Listener
+    search_engine: GlobalSearchEngine | None = None
+    search_task: asyncio.Task[None] | None = None
+
+    # 4. Start Telethon Listener & Global Search
     try:
         await listener.start(message_handler_callback=pipeline.process_message)
         logger.info("✅ TgOrderSniper listener successfully activated and listening for orders.")
 
-        # Run until shutdown signal or disconnection
-        listener_task = asyncio.create_task(listener.run_until_disconnected())
-        stop_task = asyncio.create_task(stop_event.wait())
+        tasks = [
+            asyncio.create_task(listener.run_until_disconnected()),
+            asyncio.create_task(stop_event.wait()),
+        ]
+
+        # Launch GlobalSearchEngine if Telethon client is available
+        if listener.client and listener.is_connected:
+            search_engine = GlobalSearchEngine(
+                client=listener.client,
+                settings=app_settings,
+            )
+            search_task = asyncio.create_task(
+                search_engine.start_polling(pipeline.process_message)
+            )
+            tasks.append(search_task)
 
         done, pending = await asyncio.wait(
-            [listener_task, stop_task],
+            tasks,
             return_when=asyncio.FIRST_COMPLETED,
         )
 
@@ -188,7 +272,12 @@ async def run_service(settings: Settings | None = None) -> None:
         logger.error(f"[Service] Fatal error running TgOrderSniper: {exc}", exc_info=True)
     finally:
         logger.info("[Service] Shutting down TgOrderSniper components...")
+        if search_engine:
+            search_engine.stop()
+        if search_task and not search_task.done():
+            search_task.cancel()
         await listener.stop()
+        await groq_analyzer.close()
         await dispatcher.close()
 
         stats = dedup.get_stats()
@@ -196,6 +285,7 @@ async def run_service(settings: Settings | None = None) -> None:
         logger.info("==================================================")
         logger.info("           TgOrderSniper Engine Stopped            ")
         logger.info("==================================================")
+
 
 
 def main() -> None:

@@ -14,6 +14,7 @@ from typing import Any, Union
 import httpx
 
 from backend.filter.engine import FilterEngine, FilteredOrder
+from backend.filter.groq_analyzer import GroqAnalysisResult
 
 logger = logging.getLogger(__name__)
 
@@ -62,47 +63,30 @@ class TelegramBotDispatcher:
         if not self.target_chat_id:
             logger.warning("[Dispatcher] target_chat_id is empty or 0.")
 
-    def format_card(self, order: FilteredOrder) -> tuple[str, dict[str, Any]]:
+    def format_card(
+        self,
+        order: FilteredOrder,
+        ai_analysis: GroqAnalysisResult | None = None,
+    ) -> tuple[str, dict[str, Any]]:
         """Formats FilteredOrder into an HTML card text and an inline keyboard.
 
-        Card Structure:
-        - Header:
-          - Fire marker: `🔥 НОВЫЙ ЗАКАЗ`
-          - Source chat title: `📍 <b>Источник:</b> {chat_title}`
-          - Category tags: `🏷️ <b>Категории:</b> #парсер #бот ...`
-        - Budget block (if detected): `💰 Бюджет: <b>...</b>`
-        - Author block: `@username`, `tg://user?id=...`, or display name
-        - Sanitized & truncated task text with highlighted triggers
-        - Inline keyboard buttons:
-          - `[🔍 Открыть пост]` (direct link to original post)
-          - `[💬 Написать заказчику]` (deep-link to client private chat)
+        Supports both standard rule-based cards and enriched AI-analyzed cards
+        with ready-to-send pitch and expandable quote.
 
         Args:
             order: FilteredOrder instance to format.
+            ai_analysis: Optional GroqAnalysisResult with AI scoring and pitch.
 
         Returns:
             Tuple of (formatted_html_text, reply_markup_dict).
         """
-        lines: list[str] = [
-            "🔥 <b>НОВЫЙ ЗАКАЗ</b>",
-            f"📍 <b>Источник:</b> {html.escape(order.chat_title)}",
-        ]
+        effective_ai = (
+            ai_analysis
+            if ai_analysis is not None
+            else getattr(order, "ai_analysis", None)
+        )
 
-        # Category tags
-        if order.category_tags:
-            formatted_tags = [
-                f"#{t.strip().replace(' ', '_').replace('-', '_')}"
-                for t in order.category_tags
-                if t.strip()
-            ]
-            if formatted_tags:
-                lines.append(f"🏷️ <b>Категории:</b> {' '.join(formatted_tags)}")
-
-        # Budget block
-        if order.detected_budget:
-            lines.append(f"💰 Бюджет: <b>{html.escape(order.detected_budget)}</b>")
-
-        # Author block
+        # Resolve author display
         author_display = "Не указан"
         if order.author_username:
             clean_username = order.author_username.lstrip("@")
@@ -114,36 +98,11 @@ class TelegramBotDispatcher:
         elif order.author_name:
             author_display = html.escape(order.author_name)
 
-        lines.append(f"👤 <b>Автор:</b> {author_display}")
-        lines.append("")
-
-        # Task text: truncate -> html escape -> highlight triggers
-        raw_task_text = order.cleaned_text or order.raw_text or ""
-        if len(raw_task_text) > self.MAX_TEXT_LENGTH:
-            truncated_text = raw_task_text[: self.MAX_TEXT_LENGTH].rstrip() + "..."
-        else:
-            truncated_text = raw_task_text
-
-        escaped_task_text = html.escape(truncated_text)
-
-        # Highlight matched positive triggers
-        highlighted_task_text = self._highlight_triggers(
-            escaped_task_text, order.matched_triggers
-        )
-
-        lines.append("📝 <b>Задача:</b>")
-        lines.append(highlighted_task_text)
-
-        card_text = "\n".join(lines)
-
         # Build inline keyboard buttons
         buttons: list[dict[str, str]] = []
-
-        # Button 1: [🔍 Открыть пост]
         if order.message_url and order.message_url.startswith(("http://", "https://", "tg://")):
             buttons.append({"text": "🔍 Открыть пост", "url": order.message_url})
 
-        # Button 2: [💬 Написать заказчику]
         customer_url = None
         if order.author_username:
             clean_uname = order.author_username.lstrip("@")
@@ -159,6 +118,73 @@ class TelegramBotDispatcher:
             "inline_keyboard": [buttons] if buttons else []
         }
 
+        # 1. Enriched AI-Analyzed Card Format
+        if effective_ai is not None and getattr(effective_ai, "is_lead", False):
+            budget_display = (
+                effective_ai.budget
+                or order.detected_budget
+                or "По договоренности"
+            )
+            tech_stack_display = effective_ai.tech_stack or "Не указан"
+
+            raw_task_text = order.cleaned_text or order.raw_text or ""
+            if len(raw_task_text) > self.MAX_TEXT_LENGTH:
+                truncated_text = raw_task_text[: self.MAX_TEXT_LENGTH].rstrip() + "..."
+            else:
+                truncated_text = raw_task_text
+            escaped_raw = html.escape(truncated_text)
+
+            ai_lines = [
+                "🔥 <b>НОВЫЙ ЗАКАЗ</b>",
+                f"📍 <b>Источник:</b> {html.escape(order.chat_title)}",
+                f"🎯 <b>Суть:</b> {html.escape(effective_ai.summary)}",
+                f"💰 <b>Бюджет:</b> {html.escape(budget_display)}",
+                f"🛠 <b>Стек:</b> {html.escape(tech_stack_display)}",
+                f"👤 <b>Автор:</b> {author_display}",
+                "",
+                "📝 <b>Готовый отклик (скопировать в 1 клик):</b>",
+                f"<code>{html.escape(effective_ai.ready_pitch)}</code>",
+                "",
+                f"<blockquote expandable>{escaped_raw}</blockquote>",
+            ]
+            return "\n".join(ai_lines), reply_markup
+
+        # 2. Standard Rule-Based Card Format
+        lines: list[str] = [
+            "🔥 <b>НОВЫЙ ЗАКАЗ</b>",
+            f"📍 <b>Источник:</b> {html.escape(order.chat_title)}",
+        ]
+
+        if order.category_tags:
+            formatted_tags = [
+                f"#{t.strip().replace(' ', '_').replace('-', '_')}"
+                for t in order.category_tags
+                if t.strip()
+            ]
+            if formatted_tags:
+                lines.append(f"🏷️ <b>Категории:</b> {' '.join(formatted_tags)}")
+
+        if order.detected_budget:
+            lines.append(f"💰 Бюджет: <b>{html.escape(order.detected_budget)}</b>")
+
+        lines.append(f"👤 <b>Автор:</b> {author_display}")
+        lines.append("")
+
+        raw_task_text = order.cleaned_text or order.raw_text or ""
+        if len(raw_task_text) > self.MAX_TEXT_LENGTH:
+            truncated_text = raw_task_text[: self.MAX_TEXT_LENGTH].rstrip() + "..."
+        else:
+            truncated_text = raw_task_text
+
+        escaped_task_text = html.escape(truncated_text)
+        highlighted_task_text = self._highlight_triggers(
+            escaped_task_text, order.matched_triggers
+        )
+
+        lines.append("📝 <b>Задача:</b>")
+        lines.append(highlighted_task_text)
+
+        card_text = "\n".join(lines)
         return card_text, reply_markup
 
     @staticmethod
@@ -188,7 +214,11 @@ class TelegramBotDispatcher:
             logger.debug(f"[Dispatcher] Error highlighting triggers: {exc}")
             return escaped_text
 
-    async def dispatch(self, order: FilteredOrder) -> bool:
+    async def dispatch(
+        self,
+        order: FilteredOrder,
+        ai_analysis: GroqAnalysisResult | None = None,
+    ) -> bool:
         """Dispatches formatted order card to the target Telegram chat/group.
 
         Handles Rate Limiting (HTTP 429 RetryAfter), transient network errors,
@@ -196,6 +226,7 @@ class TelegramBotDispatcher:
 
         Args:
             order: FilteredOrder instance to dispatch.
+            ai_analysis: Optional GroqAnalysisResult with AI scoring and pitch.
 
         Returns:
             True if dispatched successfully, False otherwise.
@@ -206,7 +237,7 @@ class TelegramBotDispatcher:
             )
             return False
 
-        card_text, reply_markup = self.format_card(order)
+        card_text, reply_markup = self.format_card(order, ai_analysis=ai_analysis)
         url = f"{self.base_url}/sendMessage"
 
         payload: dict[str, Any] = {
