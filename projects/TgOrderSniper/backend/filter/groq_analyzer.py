@@ -131,9 +131,14 @@ class GroqAnalysisResult(BaseModel):
     @field_validator("budget", mode="before")
     @classmethod
     def normalize_budget(cls, value: Any) -> str:
-        """Converts integer or numeric budgets to string."""
+        """Converts budget to string, normalizing null/None/empty to empty string."""
         if value is None:
             return ""
+        if isinstance(value, str):
+            stripped = value.strip()
+            if stripped.lower() in ("null", "none", "undefined", '""', "''", ""):
+                return ""
+            return stripped
         if isinstance(value, (int, float)):
             return f"{value:g} руб" if value > 0 else ""
         return str(value).strip()
@@ -165,17 +170,18 @@ class GroqAnalyzer:
     DEFAULT_FALLBACK_MODEL: str = "openai/gpt-oss-20b"
 
     SYSTEM_PROMPT: str = (
-        "Ты — опытный ИИ-классификатор коммерческих заказов и лидов в Telegram для Python-разработчика.\n"
-        "Твоя задача — проанализировать входящий текст из Telegram-чата и определить, является ли он РЕАЛЬНЫМ КОММЕРЧЕСКИМ ЗАКАЗОМ/ПРОЕКТОМ от заказчика.\n\n"
+        "Ты — опытный ИИ-классификатор коммерческих заказов и лидов для Python-разработчика.\n"
+        "Твоя задача — проанализировать входящий текст и определить, является ли он РЕАЛЬНЫМ КОММЕРЧЕСКИМ ЗАКАЗОМ/ПРОЕКТОМ от заказчика.\n\n"
         "ПРАВИЛА КЛАССИФИКАЦИИ:\n"
-        "1. Если сообщение НЕ является заказом (резюме, поиск работы соискателем, реклама, спам, инфобизнес, курсы, вакансия в штат в офис на фуллтайм, сомнительные схемы) -> верни `\"is_lead\": false`.\n"
-        "2. Если сообщение ЯВЛЯЕТСЯ реальным заказом/проектом/подработкой/ТЗ от клиента -> верни `\"is_lead\": true` и заполни поля:\n"
+        "1. Если текст является статьей, новостью, системным промптом, вакансией в офис 5/2 или резюме — возвращай `is_lead`: false.\n"
+        "   Также если сообщение НЕ является заказом (поиск работы соискателем, реклама, спам, инфобизнес, курсы, сомнительные схемы) -> верни `\"is_lead\": false`.\n"
+        "2. Если сообщение ЯВЛЯЕТСЯ реальным коммерческим заказом/проектом/подработкой/ТЗ от клиента -> верни `\"is_lead\": true` и заполни поля:\n"
         "   - `summary`: краткая суть задачи в 1 предложение на русском языке.\n"
-        "   - `budget`: примерный бюджет задачи (если указан в тексте, иначе пустая строка \"\").\n"
+        "   - `budget`: БЮДЖЕТ: Извлекай ТОЛЬКО если в тексте явно указана сумма и валюта. КАТЕГОРИЧЕСКИ ЗАПРЕЩЕНО придумывать или предполагать бюджет! Если точной суммы нет в тексте — возвращай строго null.\n"
         "   - `tech_stack`: требуемый стек технологий через запятую (например: \"Python, Telegram Bot, PostgreSQL\").\n"
         "   - `ready_pitch`: готовый персонализированный профессиональный отклик от 1-го лица разработчика заказчику (2-3 предложения, уверенно, кратко и по делу, на русском языке).\n\n"
         "ФОРМАТ ОТВЕТА:\n"
-        "Строго валидный JSON с ключами: `is_lead` (boolean), `summary` (string), `budget` (string), `tech_stack` (string), `ready_pitch` (string)."
+        "Строго валидный JSON с ключами: `is_lead` (boolean), `summary` (string), `budget` (string или null), `tech_stack` (string), `ready_pitch` (string)."
     )
 
     def __init__(

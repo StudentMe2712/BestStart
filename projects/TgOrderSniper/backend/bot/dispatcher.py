@@ -101,7 +101,9 @@ class TelegramBotDispatcher:
         # Build inline keyboard buttons
         buttons: list[dict[str, str]] = []
         if order.message_url and order.message_url.startswith(("http://", "https://", "tg://")):
-            buttons.append({"text": "🔍 Открыть пост", "url": order.message_url})
+            is_telegram = "t.me" in order.message_url or order.message_url.startswith("tg://")
+            button_label = "🔍 Открыть пост" if is_telegram else "🔗 Открыть задачу"
+            buttons.append({"text": button_label, "url": order.message_url})
 
         customer_url = None
         if order.author_username:

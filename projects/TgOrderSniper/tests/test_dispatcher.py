@@ -525,3 +525,68 @@ async def test_order_processing_pipeline_casual_message_prefiltered_without_groq
     mock_dispatch.assert_not_called()
 
 
+@pytest.mark.asyncio
+async def test_order_processing_pipeline_with_database_and_web_task(tmp_path) -> None:
+    """Verifies that OrderProcessingPipeline processes web tasks and persists to Database."""
+    from backend.db.database import Database
+    from backend.scrapers.base import RawTask
+
+    db_path = tmp_path / "pipeline_test.db"
+    db = Database(db_path=str(db_path))
+    await db.init_db()
+
+    dedup = MessageDedup(max_size=100)
+    filter_engine = FilterEngine()
+    mock_dispatch = AsyncMock(return_value=True)
+    dispatcher = TelegramBotDispatcher(bot_token="tok", target_chat_id="123")
+    dispatcher.dispatch = mock_dispatch
+
+    pipeline = OrderProcessingPipeline(
+        dedup=dedup,
+        filter_engine=filter_engine,
+        dispatcher=dispatcher,
+        db=db,
+    )
+
+    task = RawTask(
+        source="web:habr_freelance",
+        external_id="590001",
+        title="Срочно нужен парсер сайта на Python",
+        text="Требуется написать скрипт для парсинга товаров интернет-магазина. Бюджет 20 000 руб.",
+        url="https://freelance.habr.com/tasks/590001",
+        budget="20 000 руб",
+        author="ООО Ритейл",
+    )
+
+    # 1. First pass: should pass filters, save to DB, and dispatch
+    order = await pipeline.process_task(task)
+    assert order is not None
+    assert order.message_url == "https://freelance.habr.com/tasks/590001"
+    assert mock_dispatch.await_count == 1
+
+    # Verify button in card is "[🔗 Открыть задачу]"
+    card_text, reply_markup = dispatcher.format_card(order)
+    button = reply_markup["inline_keyboard"][0][0]
+    assert button["text"] == "🔗 Открыть задачу"
+    assert button["url"] == "https://freelance.habr.com/tasks/590001"
+
+    # Verify saved in DB
+    is_saved = await db.is_already_processed(
+        source="web:habr_freelance",
+        external_id="590001",
+        content_hash="any_hash_because_id_matches",
+    )
+    assert is_saved is True
+
+    # 2. Second pass: should be dropped by DB deduplication
+    mock_dispatch.reset_mock()
+    # Reset in-memory cache to strictly test DB dedup
+    pipeline.dedup.clear()
+
+    dup_order = await pipeline.process_task(task)
+    assert dup_order is None
+    assert mock_dispatch.await_count == 0
+
+    await db.close()
+
+

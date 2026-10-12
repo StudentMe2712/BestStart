@@ -165,6 +165,9 @@ def check_preflight(project_dir: Path | None = None) -> tuple[Settings, dict[str
         "groq_model": settings.GROQ_MODEL,
         "search_interval_minutes": settings.SEARCH_INTERVAL_MINUTES,
         "search_queries_count": queries_count,
+        "db_path": settings.DB_PATH,
+        "web_scrapers_enabled": settings.ENABLE_WEB_SCRAPERS,
+        "web_scrape_interval_minutes": settings.WEB_SCRAPE_INTERVAL_MINUTES,
         "effective_session": effective_session,
         "session_message": session_message,
         "session_fell_back": fell_back,
@@ -217,6 +220,14 @@ def format_preflight_banner(summary: dict[str, Any]) -> str:
         else "All available dialogs / chats"
     )
 
+    scrapers_status = (
+        f"Enabled (Habr, Kwork every {summary.get('web_scrape_interval_minutes', 5)}m)"
+        if summary.get("web_scrapers_enabled")
+        else "Disabled"
+    )
+
+    db_status = f"SQLite ({summary.get('db_path', 'data/sniper.db')})"
+
     banner_lines = [
         "=" * 70,
         "                TgOrderSniper Service Pre-Flight Check                ",
@@ -229,6 +240,8 @@ def format_preflight_banner(summary: dict[str, Any]) -> str:
         f"  - Groq AI Classifier:  {groq_status}",
         f"  - Channel Monitor:     {channels_status}",
         f"  - Global Search:       {search_status}",
+        f"  - Persistent DB:       {db_status}",
+        f"  - Web Scrapers:        {scrapers_status}",
         "=" * 70,
     ]
     return "\n".join(banner_lines)

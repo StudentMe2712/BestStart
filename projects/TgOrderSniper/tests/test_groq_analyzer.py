@@ -53,6 +53,20 @@ def test_groq_analysis_result_normalization():
     assert res3.tech_stack == ""
 
 
+def test_anti_hallucination_guard_budget_normalization():
+    """Verifies that Anti-Hallucination Guard normalizes null/none/empty budgets to empty string."""
+    for raw_budget in [None, "null", "NULL", "Null", "none", "None", "", "   ", '""']:
+        result = GroqAnalysisResult(budget=raw_budget)  # type: ignore[arg-type]
+        assert result.budget == "", f"Expected empty string for {raw_budget!r}, got {result.budget!r}"
+
+    valid_res = GroqAnalysisResult(budget="25 000 руб")
+    assert valid_res.budget == "25 000 руб"
+
+    # Verify Anti-Hallucination Guard keywords in SYSTEM_PROMPT
+    assert "КАТЕГОРИЧЕСКИ ЗАПРЕЩЕНО придумывать или предполагать бюджет" in GroqAnalyzer.SYSTEM_PROMPT
+    assert "строго null" in GroqAnalyzer.SYSTEM_PROMPT
+
+
 def test_groq_analyzer_default_models():
     """Verifies that GroqAnalyzer defaults to openai/gpt-oss-20b for primary and fallback."""
     cfg = Settings(_env_file=None)

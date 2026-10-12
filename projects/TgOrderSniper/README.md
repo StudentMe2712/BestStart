@@ -1,29 +1,53 @@
-# TgOrderSniper 🎯
+# OmniLeadSniper 🎯 (ранее TgOrderSniper)
 
-**Event-Driven MTProto Listener + Real-Time Heuristic Filter + Telegram Bot API Dispatcher**
+**Multi-Source Ingestion (Telegram MTProto + Web Scrapers) + SQLite Persistent DB + Groq AI Scoring + Bot API Dispatcher**
 
-Высокопроизводительный асинхронный сервис для мгновенного перехвата, фильтрации и интерактивной доставки коммерческих IT-заказов и лидов из сотен Telegram-каналов и чатов в закрытую группу команды отклика с нулевой задержкой (0s latency).
+Высокопроизводительный асинхронный сервис для мгновенного перехвата, скоринга и интерактивной доставки коммерческих IT-заказов и лидов из Telegram-каналов, глобального поиска Telegram и ведущих веб-бирж фриланса (Хабр Фриланс, Kwork) в закрытую группу команды с нулевой задержкой.
 
 ---
 
-## ⚡ Архитектура: Гибридная схема (MTProto + Bot API)
+## ⚡ Архитектура: OmniLeadSniper
 
 ```mermaid
-flowchart LR
-    Channels["Мониторимые чаты\n(IT, Фриланс, Заказы)"] -->|MTProto Push Stream\n(0s latency)| Telethon["Telethon Listener\n(Userbot Read-Only)"]
-    Telethon --> Dedup["MessageDedup\n(LRU + TTL Cache)"]
-    Dedup --> Filter["FilterEngine\n(Gatekeeper + Triggers + Budget)"]
-    Filter --> Dispatcher["TelegramBotDispatcher\n(Async HTTP via httpx)"]
-    Dispatcher -->|Bot API sendMessage\n+ Inline Buttons| TargetChat["Целевой чат команды\n(Мгновенный отклик)"]
+flowchart TD
+    subgraph Sources["Мультиисточниковый сбор"]
+        TG_Push["Telegram Whitelist\n(0s MTProto Push)"]
+        TG_Search["Telegram Global Search\n(SearchGlobalRequest)"]
+        Web_Habr["Хабр Фриланс\n(httpx + BeautifulSoup)"]
+        Web_Kwork["Kwork Exchange\n(Playwright Chromium)"]
+    end
+
+    subgraph Defense["Защита и Фильтрация"]
+        PrivacyGate["Privacy Gatekeeper\n(No out, no private, <1500, no code)"]
+        PreFilter["Regex Commercial Pre-Filter\n(Triggers & Categories)"]
+        GroqAI["Groq LPU AI Classifier\n(Anti-Hallucination: Null Budget)"]
+    end
+
+    subgraph Storage["Персистентное Хранилище"]
+        SQLite["SQLite DB (data/sniper.db)\nModel: ProcessedLead"]
+        Dedup["Composite Dedup Check\n(source:external_id OR content_hash)"]
+    end
+
+    subgraph Delivery["Диспетчеризация"]
+        BotDispatcher["Telegram Bot Dispatcher\n[🔗 Открыть задачу] / [🔍 Открыть пост]"]
+    end
+
+    Sources --> Dedup
+    Dedup -->|Новый лид| PrivacyGate
+    PrivacyGate --> PreFilter
+    PreFilter --> GroqAI
+    GroqAI -->|is_lead = true| SQLite
+    SQLite --> BotDispatcher
 ```
 
-### Ключевые преимущества:
-- **0 секунд задержки**: Никакого периодического опроса (Polling раз в 5-10 минут). Долгоживущее TCP/MTProto соединение Telethon принимает push-события мгновенно в момент публикации на серверах Telegram.
-- **100% Антибан защита**: Userbot-аккаунт работает в строго изолированном режиме `read-only listener` без отправки сообщений в каналы, что исключает FloodWait и риск блокировки аккаунта.
-- **Интерактивный UX в 1 клик**: Доставка выполняется официальным Telegram-ботом, который формирует карточки с кнопками `[🔍 Открыть пост]` и `[💬 Написать заказчику]` (deep-links).
-- **In-Memory Дедупликация**: LRU/TTL кольцевой кэш отсекает повторные срабатывания при пересылке и кросс-постинге одинаковых текстов между каналами.
+### Ключевые преимущества Фазы 3:
+- **Мультиплатформенный охват**: Мониторинг не только Telegram-каналов и глобального поиска, но и ведущих веб-бирж (Хабр Фриланс, Kwork).
+- **100% персистентная защита от дубликатов**: SQLite база данных (`data/sniper.db`) сохраняет состояние между перезапусками сервиса. Двойная дедупликация: по `(source, external_id)` и по `content_hash` (SHA-256) предотвращает повторы кросс-постов.
+- **Privacy Gatekeeper**: Полный запрет на перехват исходящих сообщений (`out`), личных переписок (`is_private`), сообщений длиннее 1500 символов и маркеров исходного кода / системных промптов.
+- **Anti-Hallucination Guard**: Жесткое правило ИИ-анализа — бюджет извлекается ТОЛЬКО при явном наличии суммы и валюты в тексте; при отсутствии возвращается строго `null` (пустая строка).
+- **Адаптивные интерактивные кнопки**: Автоматическое определение типа ссылки: `[🔗 Открыть задачу]` для веб-проектов и `[🔍 Открыть пост]` для постов Telegram.
 
-Подробнее о выборе архитектуры см. в [ADR-001: Гибридная архитектура MTProto + Bot API](specs/ADR-001-hybrid-mtproto-bot-architecture.md) и [Функциональной спецификации](specs/spec.md).
+Подробнее о принятых решениях см. в [ADR-003: Архитектурная трансформация OmniLeadSniper](specs/ADR-003-omnilead-persistent-db-and-web-scrapers.md).
 
 ---
 
@@ -48,6 +72,9 @@ source .venv/bin/activate
 
 # Установка зависимостей
 pip install -r requirements.txt
+
+# Установка браузера Chromium для Playwright-парсинга Kwork
+playwright install chromium
 ```
 
 ### 3. Конфигурация окружения (.env)
@@ -75,6 +102,24 @@ CHANNELS_TO_WATCH=@freelance_chat, @python_jobs, -1009876543210
 # 4. Настройки кэша дедупликации
 DEDUP_CACHE_SIZE=5000
 DEDUP_TTL_SECONDS=86400
+
+# 5. Groq AI Classifier settings
+GROQ_API_KEY=gsk_your_groq_api_key_here
+GROQ_MODEL=openai/gpt-oss-20b
+GROQ_FALLBACK_MODEL=openai/gpt-oss-20b
+GROQ_REQUEST_DELAY=1.0
+
+# 6. Global Telegram Search settings
+SEARCH_INTERVAL_MINUTES=5
+SEARCH_QUERIES=срочно заказ, нужен разработчик, требуется парсер, доработка 1с, интеграция api
+SEARCH_RATE_LIMIT_DELAY=2.0
+
+# 7. Персистентная база данных SQLite
+DB_PATH=data/sniper.db
+
+# 8. Фоновые веб-скраперы (Хабр Фриланс, Kwork)
+ENABLE_WEB_SCRAPERS=true
+WEB_SCRAPE_INTERVAL_MINUTES=5
 ```
 
 ### 4. Запуск всех компонентов одной командой
@@ -161,28 +206,42 @@ TgOrderSniper/
 │   │   ├── __init__.py
 │   │   ├── config.py          # Pydantic Settings конфигурация
 │   │   └── dedup.py           # LRU + TTL дедупликация (ID + text hash)
+│   ├── db/
+│   │   ├── __init__.py
+│   │   ├── database.py        # SQLite async aiosqlite + SQLAlchemy сессии
+│   │   └── models.py          # ORM модель ProcessedLead
 │   ├── filter/
 │   │   ├── __init__.py
 │   │   ├── engine.py          # Strict Gatekeeper, коммерческие триггеры, бюджет
-│   │   └── groq_analyzer.py   # AI классификатор и генератор питчей (Groq API)
+│   │   └── groq_analyzer.py   # AI классификатор, Anti-Hallucination Guard (Groq API)
 │   ├── listener/
 │   │   ├── __init__.py
-│   │   ├── client.py          # Telethon MTProto event-driven клиент
+│   │   ├── client.py          # Telethon MTProto event-driven клиент + Privacy Gatekeeper
 │   │   └── global_search.py   # Фоновый движок глобального поиска Telegram
+│   ├── scrapers/
+│   │   ├── __init__.py
+│   │   ├── base.py            # RawTask pydantic модель и BaseScraper ABC
+│   │   ├── habr_freelance.py  # Скрапер Хабр Фриланс (httpx + BeautifulSoup)
+│   │   ├── kwork_playwright.py# Скрапер Kwork (Playwright Headless Chromium)
+│   │   └── scheduler.py       # Фоновый планировщик скраперов
 │   ├── __init__.py
-│   └── main.py                # Пайплайн обработки и graceful shutdown
+│   └── main.py                # Пайплайн обработки, SQLite дедуп и graceful shutdown
 ├── specs/
-│   ├── ADR-001-hybrid-mtproto-bot-architecture.md # Архитектурное решение ADR-001
-│   └── spec.md                # Спецификация и требования Spec-Kit
+│   ├── ADR-001-hybrid-mtproto-bot-architecture.md
+│   ├── ADR-002-groq-ai-scoring-and-global-search.md
+│   ├── ADR-003-omnilead-persistent-db-and-web-scrapers.md
+│   └── spec.md
 ├── tests/
 │   ├── test_config.py
+│   ├── test_db.py             # Тесты SQLite схемы, сохранения и дедупликации
 │   ├── test_dedup.py
-│   ├── test_dispatcher.py     # Тесты форматирования карточек, кнопок и ретраев
+│   ├── test_dispatcher.py     # Тесты карточек, кнопок, пайплайна и веб-задач
 │   ├── test_filter.py
 │   ├── test_global_search.py  # Тесты фонового поиска
-│   ├── test_groq_analyzer.py  # Тесты AI анализатора
-│   ├── test_listener.py
-│   └── test_run.py            # Тесты pre-flight проверки и точек запуска
+│   ├── test_groq_analyzer.py  # Тесты AI анализатора и Anti-Hallucination Guard
+│   ├── test_listener.py       # Тесты сессий, URL и Privacy Gatekeeper
+│   ├── test_run.py            # Тесты pre-flight проверки и точек запуска
+│   └── test_scrapers.py       # Тесты Хабр, Kwork скраперов и планировщика
 ├── .env.example
 ├── README.md
 ├── requirements.txt

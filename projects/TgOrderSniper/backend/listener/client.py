@@ -207,14 +207,43 @@ class TelegramListener:
             )
 
         self._handler_callback = message_handler_callback
-        chats = self.settings.CHANNELS_TO_WATCH if self.settings.CHANNELS_TO_WATCH else None
+        chats = list(self.settings.CHANNELS_TO_WATCH) if self.settings.CHANNELS_TO_WATCH else []
+
+        if not chats:
+            logger.warning(
+                "[Listener] CHANNELS_TO_WATCH is empty. Privacy gatekeeper active: "
+                "refusing to listen to all user dialogs."
+            )
 
         logger.info(
-            f"[Listener] Registering events.NewMessage handler (watching {len(chats) if chats else 'ALL'} chats)"
+            f"[Listener] Registering events.NewMessage handler (watching {len(chats)} whitelisted chats)"
         )
 
-        @self.client.on(events.NewMessage(chats=chats))
+        @self.client.on(events.NewMessage(chats=chats if chats else []))
         async def on_new_message(event: events.NewMessage.Event) -> None:
+            # Privacy Gatekeeper: Outgoing messages (sent by self) are strictly ignored
+            if getattr(event.message, "out", False):
+                return
+
+            # Privacy Gatekeeper: Private 1-on-1 dialogues are strictly ignored
+            if getattr(event, "is_private", False):
+                return
+
+            # Privacy Gatekeeper: Whitelisted channels only
+            if not chats:
+                return
+
+            raw_text = getattr(event.message, "text", None) or getattr(event.message, "raw_text", None) or ""
+
+            # Length gatekeeper: Messages exceeding 1500 chars are ignored
+            if len(raw_text) > 1500:
+                return
+
+            # Code & Prompt gatekeeper: Ignore code dumps, scripts, prompt injections
+            code_markers = ["def ", "class ", "```", "Ты — автономный", "import ", "from "]
+            if any(m in raw_text for m in code_markers):
+                return
+
             try:
                 data = await self.extract_message_data(event)
                 if self._handler_callback:

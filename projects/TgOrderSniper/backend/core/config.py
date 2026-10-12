@@ -39,8 +39,19 @@ class Settings(BaseSettings):
 
     # Channels to listen to
     CHANNELS_TO_WATCH: Union[list[Union[str, int]], str] = Field(
-        default_factory=list,
+        default_factory=lambda: ["@freelance_chat", "@python_jobs", "@freelance_orders"],
         description="List of channels/chats to watch. Parsed from comma-separated string or list",
+    )
+
+    # Database settings
+    DB_PATH: str = Field(default="data/sniper.db", description="Path to SQLite database file")
+
+    # Web Scrapers settings
+    ENABLE_WEB_SCRAPERS: bool = Field(
+        default=True, description="Enable background web scrapers"
+    )
+    WEB_SCRAPE_INTERVAL_MINUTES: int = Field(
+        default=5, description="Interval for web scrapers"
     )
 
     # Groq AI Classifier settings

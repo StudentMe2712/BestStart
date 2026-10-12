@@ -1,5 +1,7 @@
 """Unit tests for TelegramListener client."""
 
+import pytest
+
 from backend.core.config import Settings
 from backend.listener.client import TelegramListener
 
@@ -78,3 +80,81 @@ def test_build_message_url():
     # String chat ID with -100
     url_str_num = TelegramListener.build_message_url(None, "-1001555666777", 88)
     assert url_str_num == "https://t.me/c/1555666777/88"
+
+
+@pytest.mark.asyncio
+async def test_privacy_gatekeeper_filters() -> None:
+    """Verifies that Privacy Gatekeeper drops outgoing, private, oversized, and code messages."""
+    from unittest.mock import AsyncMock, MagicMock
+
+    cfg = Settings(
+        TG_API_ID=123456,
+        TG_API_HASH="0123456789abcdef0123456789abcdef",
+        CHANNELS_TO_WATCH=["@freelance_chat"],
+    )
+    listener = TelegramListener(cfg)
+
+    # Capture registered event handler
+    captured_handler = None
+
+    def mock_on(builder):
+        def decorator(fn):
+            nonlocal captured_handler
+            captured_handler = fn
+            return fn
+        return decorator
+
+    listener.client.on = mock_on
+    listener.client.is_connected = MagicMock(return_value=True)
+    listener.client.connect = AsyncMock()
+    listener.client.is_user_authorized = AsyncMock(return_value=True)
+    me_mock = MagicMock()
+    me_mock.username = "test_user"
+    listener.client.get_me = AsyncMock(return_value=me_mock)
+
+    callback_mock = AsyncMock()
+    await listener.start(message_handler_callback=callback_mock)
+
+    assert captured_handler is not None
+
+    def make_event(text: str, out: bool = False, is_private: bool = False):
+        event = MagicMock()
+        event.chat_id = -100111
+        event.sender_id = 999
+        event.is_private = is_private
+        event.message = MagicMock()
+        event.message.id = 123
+        event.message.out = out
+        event.message.text = text
+        event.message.raw_text = text
+        event.get_chat = AsyncMock(return_value=None)
+        event.get_sender = AsyncMock(return_value=None)
+        return event
+
+    # 1. Outgoing message -> dropped
+    await captured_handler(make_event("Нужен разработчик бота", out=True))
+    assert callback_mock.await_count == 0
+
+    # 2. Private 1-on-1 dialogue -> dropped
+    await captured_handler(make_event("Нужен разработчик бота", is_private=True))
+    assert callback_mock.await_count == 0
+
+    # 3. Oversized text (>1500 chars) -> dropped
+    await captured_handler(make_event("А" * 1501))
+    assert callback_mock.await_count == 0
+
+    # 4. Code markers and system prompt leaks -> dropped
+    for code_text in [
+        "def run_script(): pass",
+        "class OrderParser: pass",
+        "```python\nprint(1)```",
+        "Ты — автономный агент",
+        "import telethon",
+        "from fastapi import FastAPI",
+    ]:
+        await captured_handler(make_event(f"Текст заказа: {code_text}"))
+        assert callback_mock.await_count == 0
+
+    # 5. Legitimate commercial lead -> accepted and passed to callback
+    await captured_handler(make_event("Срочно требуется разработчик Telegram-ботов!"))
+    assert callback_mock.await_count == 1

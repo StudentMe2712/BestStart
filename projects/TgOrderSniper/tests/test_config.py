@@ -12,7 +12,10 @@ def test_default_settings():
     assert cfg.TG_STRING_SESSION is None
     assert cfg.DEDUP_CACHE_SIZE == 5000
     assert cfg.DEDUP_TTL_SECONDS == 86400
-    assert cfg.CHANNELS_TO_WATCH == []
+    assert len(cfg.CHANNELS_TO_WATCH) > 0
+    assert cfg.DB_PATH == "data/sniper.db"
+    assert cfg.ENABLE_WEB_SCRAPERS is True
+    assert cfg.WEB_SCRAPE_INTERVAL_MINUTES == 5
     assert cfg.GROQ_API_KEY == ""
     assert cfg.GROQ_MODEL == "openai/gpt-oss-20b"
     assert cfg.GROQ_FALLBACK_MODEL == "openai/gpt-oss-20b"

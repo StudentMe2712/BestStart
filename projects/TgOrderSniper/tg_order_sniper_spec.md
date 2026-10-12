@@ -135,3 +135,54 @@ flowchart TD
 - [x] 2.8. Прогнать pytest и ruff check, исправить все ошибки.
 - [x] 2.9. Зафиксировать изменения и выполнить `./sync.sh`.
 
+---
+
+## 5. Фаза 3: OmniLeadSniper (SQLite Persistent DB + Web Scrapers + Anti-Hallucination Guard)
+
+```mermaid
+flowchart TD
+    subgraph Multi_Source_Ingestion["Источники заказов"]
+        TG_Public["Telegram Public Channels\n(Whitelisted Freelance Exchanges)"]
+        TG_Global["Telegram Global Search\n(SearchGlobalRequest)"]
+        Web_Habr["Хабр Фриланс Scraper\n(httpx + BeautifulSoup)"]
+        Web_Kwork["Kwork Scraper\n(Playwright Headless)"]
+    end
+
+    subgraph Storage_Layer["Персистентное хранилище"]
+        SQLite_DB["SQLite Persistent Database\n(data/sniper.db)\nModel: ProcessedLead\n- source, external_id, content_hash"]
+        Dedup_Gate["Atomic Dedup Gatekeeper\n(is_already_processed: source+id or hash)"]
+    end
+
+    subgraph AI_Guard["Pre-Filter & Anti-Hallucination Guard"]
+        PrivacyGate["Telegram Privacy & Gatekeeper\n- Ignore outgoing (out=True)\n- Ignore private (is_private=True)\n- Ignore code / prompts / >1500 chars"]
+        PreFilter["Commercial Pre-Filter Gatekeeper\n(Regex triggers & stop-words)"]
+        GroqGuard["Groq AI Classifier (openai/gpt-oss-20b)\n- Strict Anti-Hallucination Budget Rule\n- Strict Lead vs Article/Resume/5-2 Vacancy"]
+    end
+
+    subgraph Unified_Dispatch["Единый диспетчер доставки"]
+        Dispatcher_V3["Telegram Bot Dispatcher\n(Кнопки: [🔗 Открыть задачу], [💬 Написать заказчику])"]
+        Target_Group["Target Telegram Group (-1004489991927)"]
+    end
+
+    Multi_Source_Ingestion --> Dedup_Gate
+    Dedup_Gate -->|Новая задача| PrivacyGate
+    PrivacyGate --> PreFilter
+    PreFilter --> GroqGuard
+    GroqGuard -->|is_lead = True| SQLite_DB
+    SQLite_DB --> Dispatcher_V3
+    Dispatcher_V3 --> Target_Group
+```
+
+### Чек-лист Фазы 3:
+- [x] 3.1. Создать ADR: `specs/ADR-003-omnilead-persistent-db-and-web-scrapers.md`.
+- [x] 3.2. Обновить `requirements.txt` (`playwright`, `beautifulsoup4`, `aiosqlite`, `sqlalchemy`).
+- [x] 3.3. Реализовать `backend/db/` (`database.py`, `models.py`) с моделью `ProcessedLead` и авто-созданием `data/sniper.db`.
+- [x] 3.4. Реализовать Privacy Gatekeeper в `backend/listener/client.py` и Anti-Hallucination Guard в `backend/filter/groq_analyzer.py`.
+- [x] 3.5. Реализовать `backend/scrapers/` (`base.py`, `habr_freelance.py`, `kwork_playwright.py`, `scheduler.py`).
+- [x] 3.6. Обновить `backend/main.py` под единый конвейер (Unified Pipeline) и планировщик веб-скрапинга.
+- [x] 3.7. Обновить конфигурацию `backend/core/config.py`, `.env.example`, `run.py` и `README.md`.
+- [x] 3.8. Написать тесты `tests/test_db.py`, `tests/test_scrapers.py`, обновить существующие тесты.
+- [x] 3.9. Запустить `pytest` и `ruff check .`, убедиться в отсутствии ошибок.
+- [x] 3.10. Зафиксировать изменения и выполнить `./sync.sh`.
+
+
