@@ -1,13 +1,15 @@
 """Groq LPU AI Lead Analyzer.
 
 Performs ultra-fast classification and scoring of Telegram messages using
-Groq LPU chat completion API with JSON mode and automatic fallback.
+Groq LPU chat completion API with JSON mode, keyword pre-filtering,
+and automatic fallback.
 Extracts summary, budget, tech stack, and generates a ready-to-send pitch.
 """
 
 import asyncio
 import json
 import logging
+import re
 from typing import Any
 
 import httpx
@@ -16,6 +18,86 @@ from pydantic import BaseModel, Field, field_validator
 from backend.core.config import Settings, settings as global_settings
 
 logger = logging.getLogger(__name__)
+
+PREFILTER_TRIGGERS: tuple[str, ...] = (
+    "заказ",
+    "нужен",
+    "нужна",
+    "нужно",
+    "нужны",
+    "требуется",
+    "требуются",
+    "разработка",
+    "разработать",
+    "доработка",
+    "доработать",
+    "написать",
+    "скрипт",
+    "бот",
+    "1с",
+    "1c",
+    "спарсить",
+    "парсер",
+    "ищем",
+)
+
+PREFILTER_STOP_WORDS: tuple[str, ...] = (
+    "резюме",
+    "ищу работу",
+    "ищу вакансию",
+    "портфолио",
+    "курсы",
+    "слив курсов",
+)
+
+
+def check_prefilter(text: str) -> tuple[bool, str]:
+    """Evaluates whether text passes commercial lead pre-filtering.
+
+    Must match at least one trigger keyword:
+    `заказ`, `нужен`, `нужна`, `нужно`, `нужны`, `требуется`, `требуются`,
+    `разработка`, `разработать`, `доработка`, `доработать`, `написать`,
+    `скрипт`, `бот`, `1с`, `1c`, `спарсить`, `парсер`, `ищем`.
+
+    Must NOT match stop words:
+    `резюме`, `ищу работу`, `ищу вакансию`, `портфолио`, `курсы`, `слив курсов`.
+
+    Args:
+        text: Input message text to evaluate.
+
+    Returns:
+        tuple[bool, str]: (is_passed, reason)
+    """
+    if not text or not text.strip():
+        return False, "Empty or blank text"
+
+    lower = text.lower()
+
+    # 1. Stop words gatekeeper
+    for stop_word in PREFILTER_STOP_WORDS:
+        if stop_word in lower:
+            return False, f"Matched stop word: '{stop_word}'"
+
+    # 2. Trigger keywords matching
+    matched_trigger: str | None = None
+    for trigger in PREFILTER_TRIGGERS:
+        if trigger == "бот":
+            # Word boundary check to prevent matching 'работа', 'суббота', etc.
+            if re.search(r"\bбот(?:[а-яa-z]{0,4})\b", lower):
+                matched_trigger = trigger
+                break
+        elif trigger in ("1с", "1c"):
+            if re.search(r"\b1[сc]\b", lower):
+                matched_trigger = trigger
+                break
+        elif trigger in lower:
+            matched_trigger = trigger
+            break
+
+    if not matched_trigger:
+        return False, "No commercial trigger keywords found"
+
+    return True, f"Passed pre-filter (matched trigger: '{matched_trigger}')"
 
 
 class GroqAnalysisResult(BaseModel):
@@ -79,6 +161,8 @@ class GroqAnalyzer:
     """Async AI analyzer using Groq LPU Chat Completion API."""
 
     GROQ_API_URL: str = "https://api.groq.com/openai/v1/chat/completions"
+    DEFAULT_MODEL: str = "openai/gpt-oss-20b"
+    DEFAULT_FALLBACK_MODEL: str = "openai/gpt-oss-20b"
 
     SYSTEM_PROMPT: str = (
         "Ты — опытный ИИ-классификатор коммерческих заказов и лидов в Telegram для Python-разработчика.\n"
@@ -117,12 +201,14 @@ class GroqAnalyzer:
         """
         app_settings = settings or global_settings
         self.api_key = api_key if api_key is not None else app_settings.GROQ_API_KEY
-        self.model = model or app_settings.GROQ_MODEL
-        self.fallback_model = fallback_model or app_settings.GROQ_FALLBACK_MODEL
+        self.model = model or getattr(app_settings, "GROQ_MODEL", self.DEFAULT_MODEL)
+        self.fallback_model = fallback_model or getattr(
+            app_settings, "GROQ_FALLBACK_MODEL", self.DEFAULT_FALLBACK_MODEL
+        )
         self.request_delay: float = (
             request_delay
             if request_delay is not None
-            else getattr(app_settings, "GROQ_REQUEST_DELAY", 1.5)
+            else getattr(app_settings, "GROQ_REQUEST_DELAY", 1.0)
         )
         self.timeout = timeout
 
@@ -137,6 +223,11 @@ class GroqAnalyzer:
     def is_configured(self) -> bool:
         """Checks if Groq API key is present."""
         return bool(self.api_key and self.api_key.strip())
+
+    @staticmethod
+    def check_prefilter(text: str) -> tuple[bool, str]:
+        """Evaluates whether text passes commercial lead pre-filtering."""
+        return check_prefilter(text)
 
     async def _call_groq_api(self, model: str, text: str) -> dict[str, Any]:
         """Performs HTTP POST request to Groq chat completions endpoint."""
@@ -159,9 +250,12 @@ class GroqAnalyzer:
         if response.status_code == 429:
             retry_after_str = response.headers.get("Retry-After", "")
             try:
-                retry_after = float(retry_after_str) if retry_after_str else 2.0
+                retry_after = float(retry_after_str) if retry_after_str else 3.0
+                if retry_after <= 0:
+                    retry_after = 3.0
             except (ValueError, TypeError):
-                retry_after = 2.0
+                retry_after = 3.0
+
             logger.warning(
                 f"[GroqAnalyzer] Rate limit (429) hit for model '{model}'. "
                 f"Retrying after {retry_after:.1f}s..."
@@ -186,10 +280,20 @@ class GroqAnalyzer:
             logger.debug("[GroqAnalyzer] API key not configured, skipping AI analysis.")
             return GroqAnalysisResult(is_lead=False)
 
-        if not text or len(text.strip()) < 10:
+        # Pre-Filter Gatekeeper: drop non-leads immediately without making HTTP request
+        passed, reason = self.check_prefilter(text)
+        if not passed:
+            logger.debug(f"[GroqAnalyzer] Pre-filter rejected message: {reason}")
+            return GroqAnalysisResult(is_lead=False)
+
+        if len(text.strip()) < 10:
             return GroqAnalysisResult(is_lead=False)
 
         raw_data: dict[str, Any] | None = None
+
+        # Pause between Groq API calls to avoid rate limits
+        if self.request_delay > 0:
+            await asyncio.sleep(self.request_delay)
 
         # Attempt 1: Primary Model
         try:
@@ -202,6 +306,8 @@ class GroqAnalyzer:
             )
             # Attempt 2: Fallback Model
             try:
+                if self.request_delay > 0:
+                    await asyncio.sleep(self.request_delay)
                 raw_data = await self._call_groq_api(self.fallback_model, text)
                 logger.info(
                     f"[GroqAnalyzer] Fallback model '{self.fallback_model}' succeeded."

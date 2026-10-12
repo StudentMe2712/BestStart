@@ -1,11 +1,19 @@
-"""Unit tests for GroqAnalyzer and GroqAnalysisResult."""
+"""Unit tests for GroqAnalyzer, GroqAnalysisResult, and Pre-Filter Gatekeeper."""
 
 import json
+from unittest.mock import AsyncMock, patch
+
 import httpx
 import pytest
 
-
-from backend.filter.groq_analyzer import GroqAnalysisResult, GroqAnalyzer
+from backend.core.config import Settings
+from backend.filter.groq_analyzer import (
+    PREFILTER_STOP_WORDS,
+    PREFILTER_TRIGGERS,
+    GroqAnalysisResult,
+    GroqAnalyzer,
+    check_prefilter,
+)
 
 
 def test_groq_analysis_result_normalization():
@@ -45,6 +53,75 @@ def test_groq_analysis_result_normalization():
     assert res3.tech_stack == ""
 
 
+def test_groq_analyzer_default_models():
+    """Verifies that GroqAnalyzer defaults to openai/gpt-oss-20b for primary and fallback."""
+    cfg = Settings(_env_file=None)
+    analyzer = GroqAnalyzer(api_key="test_key", settings=cfg)
+    assert analyzer.model == "openai/gpt-oss-20b"
+    assert analyzer.fallback_model == "openai/gpt-oss-20b"
+    assert analyzer.request_delay == 1.0
+
+
+def test_prefilter_gatekeeper_triggers():
+    """Verifies that all required trigger keywords pass pre-filter."""
+    for trigger in PREFILTER_TRIGGERS:
+        text = f"Здравствуйте, нам нужен исполнитель: {trigger} для сервиса"
+        passed, reason = check_prefilter(text)
+        assert passed is True, f"Trigger '{trigger}' failed prefilter: {reason}"
+        assert GroqAnalyzer.check_prefilter(text)[0] is True
+
+
+def test_prefilter_gatekeeper_stop_words():
+    """Verifies that stop words reject messages even when triggers are present."""
+    for stop_word in PREFILTER_STOP_WORDS:
+        text = f"Срочно заказ! Мое {stop_word} прикреплено."
+        passed, reason = check_prefilter(text)
+        assert passed is False, f"Stop word '{stop_word}' unexpectedly passed: {reason}"
+        assert f"'{stop_word}'" in reason
+
+
+def test_prefilter_gatekeeper_no_triggers_and_word_boundaries():
+    """Verifies rejection of messages without commercial triggers and prevents false positives."""
+    # Casual chatter without triggers
+    passed1, reason1 = check_prefilter("Привет всем! Какая сегодня отличная погода в чате?")
+    assert passed1 is False
+    assert "No commercial trigger keywords found" in reason1
+
+    # Empty string
+    passed_empty, _ = check_prefilter("   ")
+    assert passed_empty is False
+
+    # False positive test: 'работа' contains 'бот', but should NOT trigger 'бот'
+    passed_work, reason_work = check_prefilter("У меня есть постоянная работа в крупном офисе")
+    assert passed_work is False
+    assert "No commercial trigger keywords found" in reason_work
+
+
+@pytest.mark.asyncio
+async def test_groq_analyzer_prefilter_drops_before_http_request():
+    """Verifies that messages failing pre-filter return is_lead=False without any HTTP call."""
+    called = False
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal called
+        called = True
+        return httpx.Response(status_code=200, json={})
+
+    transport = httpx.MockTransport(handler)
+    async with httpx.AsyncClient(transport=transport) as client:
+        analyzer = GroqAnalyzer(api_key="test_key", client=client, request_delay=0)
+
+        # 1. Non-commercial chat
+        res1 = await analyzer.analyze("Привет, как у вас дела?")
+        assert res1.is_lead is False
+        assert called is False
+
+        # 2. Resume / job seeker with stop word
+        res2 = await analyzer.analyze("Нужен проект! Вот мое резюме программиста.")
+        assert res2.is_lead is False
+        assert called is False
+
+
 @pytest.mark.asyncio
 async def test_groq_analyzer_unconfigured():
     """Ensures analyzer without API key returns is_lead=False immediately."""
@@ -67,7 +144,7 @@ async def test_groq_analyzer_empty_text():
 
 @pytest.mark.asyncio
 async def test_groq_analyzer_primary_success():
-    """Verifies successful lead classification via primary model."""
+    """Verifies successful lead classification via primary model openai/gpt-oss-20b."""
     mock_payload = {
         "choices": [
             {
@@ -99,6 +176,7 @@ async def test_groq_analyzer_primary_success():
             api_key="test_key",
             model="openai/gpt-oss-20b",
             client=client,
+            request_delay=0,
         )
         result = await analyzer.analyze("Срочно нужен телеграм бот для доставки еды")
         assert result.is_lead is True
@@ -150,6 +228,7 @@ async def test_groq_analyzer_fallback_on_primary_error():
             model="primary-model",
             fallback_model="fallback-model",
             client=client,
+            request_delay=0,
         )
         result = await analyzer.analyze("Требуется интеграция с Kaspi")
         assert result.is_lead is True
@@ -170,6 +249,7 @@ async def test_groq_analyzer_both_models_fail():
             model="model-1",
             fallback_model="model-2",
             client=client,
+            request_delay=0,
         )
         result = await analyzer.analyze("Требуется разработчик")
         assert result.is_lead is False
@@ -186,7 +266,7 @@ async def test_groq_analyzer_invalid_json():
 
     transport = httpx.MockTransport(handler)
     async with httpx.AsyncClient(transport=transport) as client:
-        analyzer = GroqAnalyzer(api_key="test_key", client=client)
+        analyzer = GroqAnalyzer(api_key="test_key", client=client, request_delay=0)
         result = await analyzer.analyze("Нужен бот")
         assert result.is_lead is False
 
@@ -227,11 +307,59 @@ async def test_groq_analyzer_retry_on_429_success():
 
     transport = httpx.MockTransport(handler)
     async with httpx.AsyncClient(transport=transport) as client:
-        analyzer = GroqAnalyzer(api_key="test_key", client=client)
+        analyzer = GroqAnalyzer(api_key="test_key", client=client, request_delay=0)
         result = await analyzer.analyze("Нужен бот для заказов")
         assert result.is_lead is True
         assert result.summary == "Разработка бота"
         assert call_count == 2
+
+
+@pytest.mark.asyncio
+async def test_groq_analyzer_retry_on_429_absent_retry_after():
+    """Verifies that 429 without Retry-After header waits 3-5 seconds and retries."""
+    call_count = 0
+
+    mock_payload = {
+        "choices": [
+            {
+                "message": {
+                    "content": json.dumps(
+                        {
+                            "is_lead": True,
+                            "summary": "Написание скрипта",
+                            "budget": "25 000 руб",
+                            "tech_stack": "Python",
+                            "ready_pitch": "Здравствуйте! Напишу скрипт быстро и качественно.",
+                        }
+                    )
+                }
+            }
+        ]
+    }
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal call_count
+        call_count += 1
+        if call_count == 1:
+            # 429 without Retry-After header
+            return httpx.Response(
+                status_code=429,
+                headers={},
+                json={"error": "Rate limit exceeded"},
+            )
+        return httpx.Response(status_code=200, json=mock_payload)
+
+    transport = httpx.MockTransport(handler)
+    async with httpx.AsyncClient(transport=transport) as client:
+        analyzer = GroqAnalyzer(api_key="test_key", client=client, request_delay=0)
+        with patch("asyncio.sleep", new_callable=AsyncMock) as mock_sleep:
+            result = await analyzer.analyze("Требуется написать скрипт на Python")
+            assert result.is_lead is True
+            assert call_count == 2
+            # Verify sleep was invoked with a wait between 3 and 5 seconds
+            assert mock_sleep.await_count == 1
+            slept_time = mock_sleep.call_args[0][0]
+            assert 3.0 <= slept_time <= 5.0
 
 
 @pytest.mark.asyncio
@@ -278,6 +406,7 @@ async def test_groq_analyzer_retry_on_429_then_fallback():
             model="primary-model",
             fallback_model="fallback-model",
             client=client,
+            request_delay=0,
         )
         result = await analyzer.analyze("Требуется написать парсер")
         assert result.is_lead is True
@@ -288,9 +417,9 @@ async def test_groq_analyzer_retry_on_429_then_fallback():
 
 def test_groq_analyzer_request_delay_init():
     """Checks request_delay initialization from settings or custom argument."""
-    analyzer_default = GroqAnalyzer(api_key="key")
-    assert analyzer_default.request_delay == 1.5
+    cfg = Settings(_env_file=None)
+    analyzer_default = GroqAnalyzer(api_key="key", settings=cfg)
+    assert analyzer_default.request_delay == 1.0
 
     analyzer_custom = GroqAnalyzer(api_key="key", request_delay=0.5)
     assert analyzer_custom.request_delay == 0.5
-

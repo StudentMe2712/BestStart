@@ -116,11 +116,6 @@ class OrderProcessingPipeline:
                 )
                 return None
 
-            # Micro-pause to prevent 429 spikes
-            delay = getattr(self.groq_analyzer, "request_delay", 1.5)
-            if isinstance(delay, (int, float)) and delay > 0:
-                await asyncio.sleep(delay)
-
             # AI classification and pitch generation
             ai_analysis = await self.groq_analyzer.analyze(text)
             if not ai_analysis.is_lead:

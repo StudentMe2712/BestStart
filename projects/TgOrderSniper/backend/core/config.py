@@ -45,12 +45,12 @@ class Settings(BaseSettings):
 
     # Groq AI Classifier settings
     GROQ_API_KEY: str = Field(default="", description="Groq API key")
-    GROQ_MODEL: str = Field(default="llama-3.1-8b-instant", description="Primary Groq model")
+    GROQ_MODEL: str = Field(default="openai/gpt-oss-20b", description="Primary Groq model")
     GROQ_FALLBACK_MODEL: str = Field(
-        default="llama-3.1-8b-instant", description="Fallback Groq model"
+        default="openai/gpt-oss-20b", description="Fallback Groq model"
     )
     GROQ_REQUEST_DELAY: float = Field(
-        default=1.5, description="Pause in seconds before Groq API call to avoid 429 rate limit"
+        default=1.0, description="Pause in seconds before Groq API call to avoid 429 rate limit"
     )
 
     # Global Telegram Search settings

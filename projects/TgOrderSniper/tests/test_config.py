@@ -14,9 +14,9 @@ def test_default_settings():
     assert cfg.DEDUP_TTL_SECONDS == 86400
     assert cfg.CHANNELS_TO_WATCH == []
     assert cfg.GROQ_API_KEY == ""
-    assert cfg.GROQ_MODEL == "llama-3.1-8b-instant"
-    assert cfg.GROQ_FALLBACK_MODEL == "llama-3.1-8b-instant"
-    assert cfg.GROQ_REQUEST_DELAY == 1.5
+    assert cfg.GROQ_MODEL == "openai/gpt-oss-20b"
+    assert cfg.GROQ_FALLBACK_MODEL == "openai/gpt-oss-20b"
+    assert cfg.GROQ_REQUEST_DELAY == 1.0
     assert cfg.SEARCH_INTERVAL_MINUTES == 5
     assert len(cfg.SEARCH_QUERIES) > 0
     assert cfg.SEARCH_RATE_LIMIT_DELAY == 2.0

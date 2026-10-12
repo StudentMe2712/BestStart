@@ -1,7 +1,7 @@
 """Global Telegram Search Engine and Poller based on Telethon.
 
-Provides periodic keyword search across all Telegram public channels,
-supergroups, and dynamic user dialogs using MTProto SearchGlobalRequest.
+Provides periodic keyword search across all Telegram public channels
+and supergroups using MTProto SearchGlobalRequest.
 Protects against flood limits, filters by run timestamp (min_date),
 and feeds discovered messages into the processing pipeline.
 """
@@ -11,8 +11,10 @@ from datetime import datetime, timezone
 import logging
 from typing import Any, Awaitable, Callable, Union
 
-from telethon import TelegramClient, functions, types, utils
+from telethon import TelegramClient, utils
 from telethon.errors import FloodWaitError
+from telethon.tl.functions.messages import SearchGlobalRequest
+from telethon.tl.types import InputMessagesFilterEmpty, InputPeerEmpty
 
 from backend.core.config import Settings, settings as global_settings
 from backend.listener.client import TelegramListener
@@ -43,44 +45,11 @@ class GlobalSearchEngine:
         self.client = client
         self.last_run_timestamp: datetime | None = None
         self._is_running: bool = False
-        self._known_dialogs: dict[int, Any] = {}
 
     @property
     def is_running(self) -> bool:
         """Checks if poller is currently active."""
         return self._is_running
-
-    async def scan_dialogs(self) -> list[Any]:
-        """Discovers and caches all dialogs (channels/groups) the client participates in.
-
-        Returns:
-            List of discovered dialog entities.
-        """
-        if not self.client or not self.client.is_connected():
-            logger.debug("[GlobalSearch] Cannot scan dialogs: client not connected.")
-            return []
-
-        discovered: list[Any] = []
-        try:
-            logger.info("[GlobalSearch] Scanning user dialogs to discover active chats...")
-            async for dialog in self.client.iter_dialogs():
-                dialog_id = dialog.id
-                self._known_dialogs[dialog_id] = dialog.entity
-                discovered.append(dialog.entity)
-
-            logger.info(
-                f"[GlobalSearch] Dialog scan completed: {len(discovered)} dialogs indexed."
-            )
-        except FloodWaitError as err:
-            wait_time = getattr(err, "seconds", 60) + 1
-            logger.warning(
-                f"[GlobalSearch] FloodWaitError during dialog scan. Sleeping for {wait_time}s..."
-            )
-            await asyncio.sleep(wait_time)
-        except Exception as exc:
-            logger.error(f"[GlobalSearch] Failed to scan dialogs: {exc}", exc_info=True)
-
-        return discovered
 
     def extract_message_data(
         self,
@@ -115,7 +84,7 @@ class GlobalSearchEngine:
             except Exception:
                 chat_id = getattr(peer, "channel_id", 0) or getattr(peer, "chat_id", 0)
 
-            # Look up in chats_map or known dialogs
+            # Look up in chats_map or users_map
             raw_target_id = (
                 getattr(peer, "channel_id", None)
                 or getattr(peer, "chat_id", None)
@@ -123,10 +92,12 @@ class GlobalSearchEngine:
             )
             if raw_target_id in chats_map:
                 chat_entity = chats_map[raw_target_id]
-            elif chat_id in self._known_dialogs:
-                chat_entity = self._known_dialogs[chat_id]
+            elif chat_id in chats_map:
+                chat_entity = chats_map[chat_id]
             elif raw_target_id in users_map:
                 chat_entity = users_map[raw_target_id]
+            elif chat_id in users_map:
+                chat_entity = users_map[chat_id]
 
         chat_title = ""
         if chat_entity is not None:
@@ -155,6 +126,8 @@ class GlobalSearchEngine:
             author_id = message.sender_id
             if author_id in users_map:
                 sender_entity = users_map[author_id]
+            elif author_id in chats_map:
+                sender_entity = chats_map[author_id]
 
         author_username: str | None = None
         author_name: str | None = None
@@ -227,24 +200,25 @@ class GlobalSearchEngine:
 
             logger.debug(f"[GlobalSearch] Executing global search query: '{clean_query}'")
             offset_id = 0
-            offset_peer: Any = types.InputPeerEmpty()
+            offset_peer: Any = InputPeerEmpty()
             offset_rate = 0
             max_pages = 5
             page = 0
 
             while page < max_pages:
                 try:
-                    request = functions.messages.SearchGlobalRequest(
-                        q=clean_query,
-                        filter=types.InputMessagesFilterEmpty(),
-                        min_date=min_date,
-                        max_date=None,
-                        offset_rate=offset_rate,
-                        offset_peer=offset_peer,
-                        offset_id=offset_id,
-                        limit=50,
+                    result = await self.client(
+                        SearchGlobalRequest(
+                            q=clean_query,
+                            filter=InputMessagesFilterEmpty(),
+                            min_date=min_date,
+                            max_date=None,
+                            offset_rate=offset_rate,
+                            offset_peer=offset_peer,
+                            offset_id=offset_id,
+                            limit=50,
+                        )
                     )
-                    result = await self.client(request)
                 except FloodWaitError as flood_err:
                     wait_time = getattr(flood_err, "seconds", 60) + 1
                     logger.warning(
@@ -310,14 +284,15 @@ class GlobalSearchEngine:
                     if getattr(last_msg, "peer_id", None):
                         offset_peer = await self.client.get_input_entity(last_msg.peer_id)
                     else:
-                        offset_peer = types.InputPeerEmpty()
+                        offset_peer = InputPeerEmpty()
                 except Exception:
-                    offset_peer = types.InputPeerEmpty()
+                    offset_peer = InputPeerEmpty()
 
                 page += 1
 
             # Pause between search queries to respect Telegram limits
-            await asyncio.sleep(self.settings.SEARCH_RATE_LIMIT_DELAY)
+            rate_limit_delay = getattr(self.settings, "SEARCH_RATE_LIMIT_DELAY", 2.0)
+            await asyncio.sleep(rate_limit_delay)
 
         self.last_run_timestamp = iteration_start
         logger.info(
@@ -340,9 +315,6 @@ class GlobalSearchEngine:
             f"[GlobalSearch] Starting continuous search polling loop "
             f"(interval: {self.settings.SEARCH_INTERVAL_MINUTES} min / {interval_seconds}s)..."
         )
-
-        # Initial scan of user dialogs
-        await self.scan_dialogs()
 
         while self._is_running:
             try:

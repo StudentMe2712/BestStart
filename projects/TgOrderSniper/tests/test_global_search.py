@@ -188,30 +188,49 @@ async def test_search_iteration_flood_wait():
 
 
 @pytest.mark.asyncio
-async def test_scan_dialogs():
-    """Verifies dialog scanning and caching."""
+async def test_search_global_request_parameters_without_dialog_scan():
+    """Verifies that search_iteration constructs SearchGlobalRequest correctly without dialog scanning."""
+    from telethon.tl.functions.messages import SearchGlobalRequest
+    from telethon.tl.types import InputMessagesFilterEmpty, InputPeerEmpty
+
     client = MagicMock()
     client.is_connected = MagicMock(return_value=True)
+    client.iter_dialogs = MagicMock()
 
-    d1 = MagicMock()
-    d1.id = -100111
-    d1.entity = MockEntity(id=111, title="Chat 1")
+    mock_result = MagicMock()
+    mock_result.messages = []
+    mock_result.chats = []
+    mock_result.users = []
 
-    d2 = MagicMock()
-    d2.id = -100222
-    d2.entity = MockEntity(id=222, title="Chat 2")
+    requests_sent = []
+    async def mock_call(req):
+        requests_sent.append(req)
+        return mock_result
 
-    async def mock_iter_dialogs():
-        yield d1
-        yield d2
+    client.side_effect = mock_call
 
-    client.iter_dialogs = mock_iter_dialogs
+    cfg = Settings(
+        SEARCH_QUERIES=["нужен бот"],
+        SEARCH_RATE_LIMIT_DELAY=0.01,
+        _env_file=None,
+    )
+    engine = GlobalSearchEngine(client=client, settings=cfg)
+    assert not hasattr(engine, "_known_dialogs")
+    assert not hasattr(engine, "scan_dialogs")
 
-    engine = GlobalSearchEngine(client=client)
-    discovered = await engine.scan_dialogs()
-    assert len(discovered) == 2
-    assert -100111 in engine._known_dialogs
-    assert -100222 in engine._known_dialogs
+    await engine.search_iteration(AsyncMock())
+
+    assert len(requests_sent) == 1
+    req = requests_sent[0]
+    assert isinstance(req, SearchGlobalRequest)
+    assert req.q == "нужен бот"
+    assert isinstance(req.filter, InputMessagesFilterEmpty)
+    assert isinstance(req.offset_peer, InputPeerEmpty)
+    assert req.offset_rate == 0
+    assert req.offset_id == 0
+    assert req.limit == 50
+    # Verify client.iter_dialogs was never accessed or called
+    client.iter_dialogs.assert_not_called()
 
 
 @pytest.mark.asyncio
@@ -274,15 +293,9 @@ async def test_search_iteration_multi_page_pagination():
 
 @pytest.mark.asyncio
 async def test_polling_loop_lifecycle():
-    """Verifies start_polling initial scan, iteration, and stop."""
+    """Verifies start_polling lifecycle without dialog scanning."""
     client = MagicMock()
     client.is_connected = MagicMock(return_value=True)
-
-    async def mock_iter_dialogs():
-        if False:
-            yield
-
-    client.iter_dialogs = mock_iter_dialogs
 
     cfg = Settings(
         SEARCH_QUERIES=["бот"],
