@@ -5,6 +5,7 @@ Groq LPU chat completion API with JSON mode and automatic fallback.
 Extracts summary, budget, tech stack, and generates a ready-to-send pitch.
 """
 
+import asyncio
 import json
 import logging
 from typing import Any
@@ -98,6 +99,7 @@ class GroqAnalyzer:
         api_key: str | None = None,
         model: str | None = None,
         fallback_model: str | None = None,
+        request_delay: float | None = None,
         client: httpx.AsyncClient | None = None,
         timeout: float = 15.0,
         settings: Settings | None = None,
@@ -108,6 +110,7 @@ class GroqAnalyzer:
             api_key: Groq API key. If omitted, loaded from settings.
             model: Primary Groq model. If omitted, loaded from settings.
             fallback_model: Fallback Groq model on primary failure. If omitted, loaded from settings.
+            request_delay: Pause in seconds before Groq API call to avoid 429 rate limit.
             client: Optional httpx.AsyncClient instance.
             timeout: HTTP request timeout in seconds.
             settings: Optional Settings instance.
@@ -116,6 +119,11 @@ class GroqAnalyzer:
         self.api_key = api_key if api_key is not None else app_settings.GROQ_API_KEY
         self.model = model or app_settings.GROQ_MODEL
         self.fallback_model = fallback_model or app_settings.GROQ_FALLBACK_MODEL
+        self.request_delay: float = (
+            request_delay
+            if request_delay is not None
+            else getattr(app_settings, "GROQ_REQUEST_DELAY", 1.5)
+        )
         self.timeout = timeout
 
         if client is not None:
@@ -148,6 +156,19 @@ class GroqAnalyzer:
         }
 
         response = await self.client.post(self.GROQ_API_URL, headers=headers, json=payload)
+        if response.status_code == 429:
+            retry_after_str = response.headers.get("Retry-After", "")
+            try:
+                retry_after = float(retry_after_str) if retry_after_str else 2.0
+            except (ValueError, TypeError):
+                retry_after = 2.0
+            logger.warning(
+                f"[GroqAnalyzer] Rate limit (429) hit for model '{model}'. "
+                f"Retrying after {retry_after:.1f}s..."
+            )
+            await asyncio.sleep(retry_after)
+            response = await self.client.post(self.GROQ_API_URL, headers=headers, json=payload)
+
         response.raise_for_status()
         data = response.json()
         return data

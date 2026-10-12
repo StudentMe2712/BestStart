@@ -424,6 +424,7 @@ async def test_order_processing_pipeline_with_groq_analyzer() -> None:
 
     mock_groq = MagicMock(spec=GroqAnalyzer)
     mock_groq.is_configured = True
+    mock_groq.request_delay = 0
 
     pipeline = OrderProcessingPipeline(
         dedup=dedup,
@@ -481,4 +482,46 @@ async def test_order_processing_pipeline_with_groq_analyzer() -> None:
     order2 = await pipeline.process_message(event_not_lead)
     assert order2 is None
     assert mock_dispatch.await_count == 0
+
+
+@pytest.mark.asyncio
+async def test_order_processing_pipeline_casual_message_prefiltered_without_groq() -> None:
+    """Ensures casual messages are pre-filtered without invoking Groq AI."""
+    from backend.filter.groq_analyzer import GroqAnalyzer
+
+    dedup = MessageDedup(max_size=100)
+    filter_engine = FilterEngine()
+    mock_dispatch = AsyncMock(return_value=True)
+    dispatcher = TelegramBotDispatcher(bot_token="fake_bot_token", target_chat_id="123")
+    dispatcher.dispatch = mock_dispatch
+
+    mock_groq = MagicMock(spec=GroqAnalyzer)
+    mock_groq.is_configured = True
+    mock_groq.request_delay = 0
+    mock_groq.analyze = AsyncMock()
+
+    pipeline = OrderProcessingPipeline(
+        dedup=dedup,
+        filter_engine=filter_engine,
+        dispatcher=dispatcher,
+        groq_analyzer=mock_groq,
+    )
+
+    event_casual = {
+        "chat_id": "-1001",
+        "chat_title": "Kazakhstan Chat",
+        "message_id": 777,
+        "text": "Привет, как погода в Казахстане?",
+        "author_id": 88,
+        "author_username": "tourist",
+        "author_name": "Анна",
+        "message_url": "",
+    }
+
+    result = await pipeline.process_message(event_casual)
+    assert result is None
+    # Crucial assertion: Groq AI analyze must NOT be called
+    mock_groq.analyze.assert_not_called()
+    mock_dispatch.assert_not_called()
+
 

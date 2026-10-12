@@ -189,3 +189,108 @@ async def test_groq_analyzer_invalid_json():
         analyzer = GroqAnalyzer(api_key="test_key", client=client)
         result = await analyzer.analyze("Нужен бот")
         assert result.is_lead is False
+
+
+@pytest.mark.asyncio
+async def test_groq_analyzer_retry_on_429_success():
+    """Verifies that 429 rate limit triggers Retry-After wait and succeeds on retry."""
+    call_count = 0
+
+    mock_payload = {
+        "choices": [
+            {
+                "message": {
+                    "content": json.dumps(
+                        {
+                            "is_lead": True,
+                            "summary": "Разработка бота",
+                            "budget": "20 000 руб",
+                            "tech_stack": "Python",
+                            "ready_pitch": "Готов выполнить проект.",
+                        }
+                    )
+                }
+            }
+        ]
+    }
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal call_count
+        call_count += 1
+        if call_count == 1:
+            return httpx.Response(
+                status_code=429,
+                headers={"Retry-After": "0.01"},
+                json={"error": "Rate limit exceeded"},
+            )
+        return httpx.Response(status_code=200, json=mock_payload)
+
+    transport = httpx.MockTransport(handler)
+    async with httpx.AsyncClient(transport=transport) as client:
+        analyzer = GroqAnalyzer(api_key="test_key", client=client)
+        result = await analyzer.analyze("Нужен бот для заказов")
+        assert result.is_lead is True
+        assert result.summary == "Разработка бота"
+        assert call_count == 2
+
+
+@pytest.mark.asyncio
+async def test_groq_analyzer_retry_on_429_then_fallback():
+    """Verifies that persistent 429 on primary triggers fallback model."""
+    call_count = 0
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal call_count
+        call_count += 1
+        body = json.loads(request.content.decode("utf-8"))
+        if body["model"] == "primary-model":
+            return httpx.Response(
+                status_code=429,
+                headers={"Retry-After": "0.01"},
+                json={"error": "Rate limit exceeded"},
+            )
+        # Fallback model succeeds
+        return httpx.Response(
+            status_code=200,
+            json={
+                "choices": [
+                    {
+                        "message": {
+                            "content": json.dumps(
+                                {
+                                    "is_lead": True,
+                                    "summary": "Парсер сайта",
+                                    "budget": "10 000 руб",
+                                    "tech_stack": "Python, BS4",
+                                    "ready_pitch": "Здравствуйте! Сделаю парсер.",
+                                }
+                            )
+                        }
+                    }
+                ]
+            },
+        )
+
+    transport = httpx.MockTransport(handler)
+    async with httpx.AsyncClient(transport=transport) as client:
+        analyzer = GroqAnalyzer(
+            api_key="test_key",
+            model="primary-model",
+            fallback_model="fallback-model",
+            client=client,
+        )
+        result = await analyzer.analyze("Требуется написать парсер")
+        assert result.is_lead is True
+        assert result.summary == "Парсер сайта"
+        # 2 attempts on primary (initial + retry) + 1 on fallback = 3 total
+        assert call_count == 3
+
+
+def test_groq_analyzer_request_delay_init():
+    """Checks request_delay initialization from settings or custom argument."""
+    analyzer_default = GroqAnalyzer(api_key="key")
+    assert analyzer_default.request_delay == 1.5
+
+    analyzer_custom = GroqAnalyzer(api_key="key", request_delay=0.5)
+    assert analyzer_custom.request_delay == 0.5
+

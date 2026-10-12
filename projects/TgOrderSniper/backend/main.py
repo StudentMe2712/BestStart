@@ -106,6 +106,21 @@ class OrderProcessingPipeline:
                 )
                 return None
 
+            # Primary commercial/tech pre-filter
+            matched_triggers = self.filter_engine.match_positive_triggers(text)
+            matched_categories = self.filter_engine.match_categories(text)
+            if not matched_triggers and not matched_categories:
+                logger.debug(
+                    f"[Pipeline] Skipped Groq for message {message_id} in '{chat_title}': "
+                    "no commercial triggers or tech categories found"
+                )
+                return None
+
+            # Micro-pause to prevent 429 spikes
+            delay = getattr(self.groq_analyzer, "request_delay", 1.5)
+            if isinstance(delay, (int, float)) and delay > 0:
+                await asyncio.sleep(delay)
+
             # AI classification and pitch generation
             ai_analysis = await self.groq_analyzer.analyze(text)
             if not ai_analysis.is_lead:
