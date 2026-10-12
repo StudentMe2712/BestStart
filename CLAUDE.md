@@ -188,4 +188,16 @@ prefer ONE per function.
 3. **Surgical changes** — touch only what's needed; don't "improve" unrelated code.
 4. **Goal-driven** — turn instructions into goals with a verification step.
 
+## 📊 Session Context Tracking (MANDATORY IN EVERY RESPONSE)
+
+В конце каждого своего ответа ОБЯЗАТЕЛЬНО выводи визуальный прогресс-бар заполнения контекста сессии в формате:
+`[Контекст: ████░░░░░░░░░░░░░░░░] 20% (~40k / 200k токенов)`
+
+Правила расчёта и отображения:
+- Номинальный лимит контекста сессии: 200k токенов (200,000 токенов).
+- Длина прогресс-бара: 20 блоков (`█` — 5% на блок, `░` — пусто).
+- Формат: `[Контекст: ████░░░░░░░░░░░░░░░░] XX% (~YYk / 200k токенов)`.
+- Если процент превышает 75%, выводи предупреждение:
+  `⚠️ Рекомендуется начать новый чат.`
+
 A project's own `projects/<name>/CLAUDE.md` takes precedence over this file.
