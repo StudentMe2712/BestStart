@@ -20,6 +20,12 @@ public class OverlayCoordinator : IDisposable
     private readonly Func<OverlayCoordinator, VideoWindow?> _videoWindowFactory;
     private readonly Action<Action> _dispatcherInvoker;
     private readonly object _lock = new();
+    private bool _isManualTestSession;
+
+    /// <summary>
+    /// Gets whether the current provocation session was triggered in manual test mode.
+    /// </summary>
+    public bool IsManualTestSession => _isManualTestSession;
 
     /// <summary>
     /// Gets the scheduler instance.
@@ -141,6 +147,7 @@ public class OverlayCoordinator : IDisposable
                     return;
                 }
 
+                _isManualTestSession = isManualTest;
                 _scheduler.Stop();
                 _scheduler.IsSessionActive = true;
 
@@ -212,7 +219,7 @@ public class OverlayCoordinator : IDisposable
                         ActiveVideoWindow.Owner = ActiveOverlayWindow;
                     }
                     ActiveVideoWindow?.Show();
-                    ActiveVideoWindow?.PlayVideo(nextVideo.FilePath, nextVideo.Title);
+                    ActiveVideoWindow?.PlayVideo(nextVideo.FilePath, nextVideo.Title, _isManualTestSession);
                 }
                 else
                 {
@@ -243,13 +250,14 @@ public class OverlayCoordinator : IDisposable
                 var nextVideo = FindNextPlayableVideo(failedPath);
                 if (nextVideo != null && !string.IsNullOrWhiteSpace(nextVideo.FilePath))
                 {
-                    ActiveVideoWindow?.PlayVideo(nextVideo.FilePath, nextVideo.Title);
+                    ActiveVideoWindow?.PlayVideo(nextVideo.FilePath, nextVideo.Title, _isManualTestSession);
                 }
                 else
                 {
                     // All videos are exhausted or unplayable
                     if (ActiveVideoWindow != null)
                     {
+                        ActiveVideoWindow.AllowClose = true;
                         try
                         {
                             ActiveVideoWindow.Close();
@@ -346,6 +354,7 @@ public class OverlayCoordinator : IDisposable
     {
         if (ActiveVideoWindow != null)
         {
+            ActiveVideoWindow.AllowClose = true;
             try
             {
                 ActiveVideoWindow.Close();
@@ -359,6 +368,7 @@ public class OverlayCoordinator : IDisposable
 
         if (ActiveOverlayWindow != null)
         {
+            ActiveOverlayWindow.CanClose = true;
             try
             {
                 ActiveOverlayWindow.SafeClose();

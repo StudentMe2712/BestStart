@@ -7,6 +7,13 @@ Add entries with the `/lesson` command, or by hand. Newest on top.
 
 ## Log
 
+### 2026-10-19 — WPF Window Loaded reflection ambiguity and Mandatory Watch Lock close guard
+- **Problem:** 1) `AmbiguousMatchException: Ambiguous match found for 'OverlayWindow Void OnLoaded(Object, RoutedEventArgs)'` when querying `GetMethod("OnLoaded", ...)` via reflection in tests. 2) Closing windows in `OverlayCoordinator.CompleteSession()` being cancelled when `VideoWindow` has closing protection.
+- **Root cause:** 1) Base `FrameworkElement` defines non-public loaded lifecycle methods that clash with window event handlers when reflected without explicit type signatures. 2) Closing guard in `OnClosing` blocks `Window.Close()` unless `AllowClose = true` is explicitly granted beforehand.
+- **Fix:** 1) Trigger loaded event handlers via `window.RaiseEvent(new RoutedEventArgs(FrameworkElement.LoadedEvent))` instead of fragile private reflection. 2) Always set `AllowClose = true` on `VideoWindow` and `CanClose = true` on `OverlayWindow` in coordinator before calling `Close()`.
+- **Rule:** Use `RaiseEvent(LoadedEvent)` to simulate WPF window loading in tests, and always grant close authorization flags on windows before programmatically closing them from coordinators.
+- **Scope:** this-project
+
 ### 2026-10-19 — WPF StaticResource Resolution on Root Window and SystemEvents DisplaySettingsChanged
 - **Problem:** 1) `XamlParseException: Cannot find resource named 'BackgroundBrush'` when root `<Window Background="{StaticResource BackgroundBrush}">` is parsed in unit tests. 2) Memory leak or invalid UI thread access on screen resolution changes (`SystemEvents.DisplaySettingsChanged`).
 - **Root cause:** 1) Properties declared on root `<Window>` element are evaluated by XAML before `<Window.Resources>` is populated. 2) Static event `SystemEvents.DisplaySettingsChanged` holds references to window instances indefinitely if not unsubscribed, and fires on a non-UI thread.

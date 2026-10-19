@@ -142,7 +142,7 @@ public class OverlayWindowTests : IDisposable
     }
 
     [Fact]
-    public void BackdropClick_DuringVideoPlaying_DismissesSession()
+    public void BackdropClick_DuringVideoPlaying_EnforcesMandatoryWatchNotice_DoesNotDismissSession()
     {
         RunInSta(() =>
         {
@@ -151,12 +151,13 @@ public class OverlayWindowTests : IDisposable
             var videoLib = new VideoLibraryService(store, fileExistsChecker: _ => true);
 
             OverlayWindow? overlay = null;
+            VideoWindow? video = null;
             using var coordinator = new OverlayCoordinator(
                 scheduler,
                 videoLib,
                 store,
                 overlayWindowFactory: coord => overlay = new OverlayWindow(coord, store),
-                videoWindowFactory: coord => new VideoWindow(coord, store),
+                videoWindowFactory: coord => video = new VideoWindow(coord, store),
                 dispatcherInvoker: a => a(),
                 fileExistsChecker: _ => true);
 
@@ -172,10 +173,36 @@ public class OverlayWindowTests : IDisposable
             videoLib.AddVideo("sample.mp4", "Sample Video");
             coordinator.OnMascotClicked();
             Assert.Equal(SessionState.VideoPlaying, coordinator.CurrentState);
+            Assert.NotNull(video);
 
-            // Now click on backdrop dismisses active video session
+            // Mandatory Watch Lock: Backdrop click during VideoPlaying MUST NOT dismiss session!
             overlay.HandleBackdropClick();
+            Assert.Equal(SessionState.VideoPlaying, coordinator.CurrentState);
+
+            coordinator.CompleteSession();
             Assert.Equal(SessionState.BackgroundIdle, coordinator.CurrentState);
+        });
+    }
+
+    [Fact]
+    public void OverlayWindow_OnLoaded_ConfiguresSmoothDimmingAndNotchAlignment()
+    {
+        RunInSta(() =>
+        {
+            var store = CreateTestSettingsStore();
+            var scheduler = new RandomReminderScheduler();
+            var videoLib = new VideoLibraryService(store);
+            using var coordinator = new OverlayCoordinator(scheduler, videoLib, store);
+
+            var window = new OverlayWindow(coordinator, store);
+            window.RaiseEvent(new RoutedEventArgs(FrameworkElement.LoadedEvent));
+
+            Assert.Equal(System.Windows.HorizontalAlignment.Center, window.Mascot.HorizontalAlignment);
+            Assert.Equal(System.Windows.VerticalAlignment.Top, window.Mascot.VerticalAlignment);
+            Assert.Equal(new Thickness(0), window.Mascot.Margin);
+            Assert.NotNull(window.DimmingRectangle);
+
+            window.SafeClose();
         });
     }
 

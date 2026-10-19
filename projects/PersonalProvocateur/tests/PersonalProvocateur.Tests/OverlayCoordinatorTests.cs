@@ -655,4 +655,49 @@ public class OverlayCoordinatorTests : IDisposable
             overlayWin.SafeClose();
         });
     }
+
+    [Fact]
+    public void OverlayCoordinator_CompleteSession_EnablesAllowCloseAndCanCloseOnActiveWindows()
+    {
+        RunInSta(() =>
+        {
+            var store = CreateTestSettingsStore(isPaused: false);
+            var scheduler = new RandomReminderScheduler();
+
+            var testVideo = Path.Combine(_tempDir, "close_guard.mp4");
+            var shuffleBag = new VideoShuffleBag(fileExistsChecker: _ => true);
+            var videoLib = new VideoLibraryService(store, shuffleBag, fileExistsChecker: _ => true);
+            videoLib.AddVideo(testVideo, "Close Guard Clip");
+
+            OverlayWindow? overlayWin = null;
+            VideoWindow? videoWin = null;
+
+            using var coordinator = new OverlayCoordinator(
+                scheduler,
+                videoLib,
+                store,
+                overlayWindowFactory: coord => overlayWin = new OverlayWindow(coord, store),
+                videoWindowFactory: coord => videoWin = new VideoWindow(coord, store),
+                dispatcherInvoker: a => a(),
+                fileExistsChecker: _ => true);
+
+            coordinator.TriggerProvocation(isManualTest: false);
+            Assert.False(coordinator.IsManualTestSession);
+            Assert.NotNull(overlayWin);
+            Assert.False(overlayWin.CanClose);
+
+            coordinator.OnMascotClicked();
+            Assert.NotNull(videoWin);
+            Assert.False(videoWin.AllowClose);
+            Assert.False(videoWin.IsManualTest);
+
+            // CompleteSession MUST set AllowClose = true and CanClose = true to ensure 100% reliable close
+            coordinator.CompleteSession();
+
+            Assert.True(overlayWin.CanClose);
+            Assert.True(videoWin.AllowClose);
+            Assert.Equal(SessionState.BackgroundIdle, coordinator.CurrentState);
+            Assert.True(scheduler.IsRunning);
+        });
+    }
 }

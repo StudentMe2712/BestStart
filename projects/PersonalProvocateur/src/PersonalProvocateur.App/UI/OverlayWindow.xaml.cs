@@ -4,6 +4,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Media.Animation;
 using Color = System.Windows.Media.Color;
 using PersonalProvocateur.App.Services;
 using PersonalProvocateur.App.Storage;
@@ -57,16 +58,25 @@ public partial class OverlayWindow : Window
     {
         UpdateOverlayBounds();
 
-        // Apply dimming opacity from settings
-        double opacity = _settingsStore?.CurrentSettings?.DimmingOpacity ?? 0.60;
-        opacity = Math.Clamp(opacity, 0.10, 0.95);
-        byte alpha = (byte)(opacity * 255);
-        DimmingRectangle.Fill = new SolidColorBrush(Color.FromArgb(alpha, 0, 0, 0));
+        // Apply dimming opacity from settings with smooth 350ms FadeIn animation (DoubleAnimation)
+        double targetOpacity = _settingsStore?.CurrentSettings?.DimmingOpacity ?? 0.60;
+        targetOpacity = Math.Clamp(targetOpacity, 0.10, 0.95);
+        DimmingRectangle.Fill = new SolidColorBrush(Color.FromRgb(0, 0, 0));
+        DimmingRectangle.Opacity = 0.0;
+
+        var fadeInAnimation = new DoubleAnimation
+        {
+            From = 0.0,
+            To = targetOpacity,
+            Duration = TimeSpan.FromMilliseconds(350),
+            EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
+        };
+        DimmingRectangle.BeginAnimation(UIElement.OpacityProperty, fadeInAnimation);
 
         // Reset click handling flag
         _isClickHandled = false;
 
-        // Position mascot randomly within safe screen bounds
+        // Position mascot strictly at top-center edge
         PositionMascot();
 
         // Start entrance peek animation
@@ -109,13 +119,16 @@ public partial class OverlayWindow : Window
     }
 
     /// <summary>
-    /// Handles backdrop click dismissing the active session if a video is currently playing.
+    /// Handles backdrop click during active video playback (Mandatory Watch Lock).
+    /// Clicking outside the video does NOT close the video; instead, it returns focus
+    /// to the video player and flashes the mandatory watch alert notice.
     /// </summary>
     public void HandleBackdropClick()
     {
         if (_coordinator?.CurrentState == PersonalProvocateur.App.Models.SessionState.VideoPlaying)
         {
-            _coordinator.CompleteSession();
+            _coordinator.ActiveVideoWindow?.Activate();
+            _coordinator.ActiveVideoWindow?.FlashMandatoryWatchNotice();
         }
     }
 
@@ -124,7 +137,8 @@ public partial class OverlayWindow : Window
         if (_coordinator?.CurrentState == PersonalProvocateur.App.Models.SessionState.VideoPlaying)
         {
             e.Handled = true;
-            _coordinator.CompleteSession();
+            _coordinator.ActiveVideoWindow?.Activate();
+            _coordinator.ActiveVideoWindow?.FlashMandatoryWatchNotice();
         }
     }
 

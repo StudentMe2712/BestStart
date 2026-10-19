@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
@@ -13,6 +14,10 @@ using PersonalProvocateur.App.WindowsInterop;
 using Brush = System.Windows.Media.Brush;
 using Color = System.Windows.Media.Color;
 using SolidColorBrush = System.Windows.Media.SolidColorBrush;
+using KeyEventArgs = System.Windows.Input.KeyEventArgs;
+using Key = System.Windows.Input.Key;
+using TextBox = System.Windows.Controls.TextBox;
+using OpenFileDialog = Microsoft.Win32.OpenFileDialog;
 
 namespace PersonalProvocateur.App.UI;
 
@@ -123,6 +128,9 @@ public partial class SettingsWindow : Window
             if (QuickPauseIcon != null && TryFindResource("IconPlay") is Geometry playGeom)
             {
                 QuickPauseIcon.Data = playGeom;
+                QuickPauseIcon.Fill = new SolidColorBrush(Color.FromRgb(0xF3, 0xF4, 0xF6));
+                QuickPauseIcon.Stroke = new SolidColorBrush(Color.FromRgb(0xF3, 0xF4, 0xF6));
+                QuickPauseIcon.StrokeThickness = 1;
             }
             QuickPauseText.Text = "Возобновить";
             NextTriggerTextBlock.Text = "Таймер остановлен (на паузе)";
@@ -141,6 +149,9 @@ public partial class SettingsWindow : Window
             if (QuickPauseIcon != null && TryFindResource("IconPause") is Geometry pauseGeom)
             {
                 QuickPauseIcon.Data = pauseGeom;
+                QuickPauseIcon.Fill = new SolidColorBrush(Color.FromRgb(0xF3, 0xF4, 0xF6));
+                QuickPauseIcon.Stroke = new SolidColorBrush(Color.FromRgb(0xF3, 0xF4, 0xF6));
+                QuickPauseIcon.StrokeThickness = 1;
             }
             QuickPauseText.Text = "Пауза";
 
@@ -208,9 +219,78 @@ public partial class SettingsWindow : Window
         }
     }
 
-    private void HotkeyTextBox_TextChanged(object sender, System.Windows.Controls.TextChangedEventArgs e)
+    private void HotkeyTextBox_TextChanged(object sender, TextChangedEventArgs e)
     {
         ValidateAllHotkeys();
+    }
+
+    /// <summary>
+    /// Interactive Hotkey Recorder: captures pressed modifier and character/function keys,
+    /// formats them into a clean string (e.g. "Ctrl+Alt+P"), and automatically validates availability.
+    /// </summary>
+    private void HotkeyTextBox_PreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        var rawKey = e.Key == Key.System ? e.SystemKey : e.Key;
+
+        // Ignore standalone modifier keypresses without a trailing key
+        if (rawKey is Key.LeftCtrl or Key.RightCtrl
+            or Key.LeftAlt or Key.RightAlt
+            or Key.LeftShift or Key.RightShift
+            or Key.LWin or Key.RWin)
+        {
+            return;
+        }
+
+        var modifiers = Keyboard.Modifiers;
+        bool hasCtrl = (modifiers & ModifierKeys.Control) != 0;
+        bool hasAlt = (modifiers & ModifierKeys.Alt) != 0;
+        bool hasShift = (modifiers & ModifierKeys.Shift) != 0;
+        bool hasWin = (modifiers & ModifierKeys.Windows) != 0
+                      || Keyboard.IsKeyDown(Key.LWin)
+                      || Keyboard.IsKeyDown(Key.RWin);
+
+        string? keyName = rawKey switch
+        {
+            >= Key.A and <= Key.Z => rawKey.ToString().ToUpperInvariant(),
+            >= Key.D0 and <= Key.D9 => ((int)(rawKey - Key.D0)).ToString(),
+            >= Key.NumPad0 and <= Key.NumPad9 => ((int)(rawKey - Key.NumPad0)).ToString(),
+            >= Key.F1 and <= Key.F12 => rawKey.ToString(),
+            Key.Escape => "Esc",
+            Key.Space => "Space",
+            Key.Tab => "Tab",
+            Key.Enter or Key.Return => "Enter",
+            Key.Back => "Backspace",
+            Key.Delete => "Delete",
+            Key.Home => "Home",
+            Key.End => "End",
+            Key.PageUp => "PageUp",
+            Key.PageDown => "PageDown",
+            _ => null
+        };
+
+        if (keyName == null)
+        {
+            return;
+        }
+
+        var parts = new List<string>(4);
+        if (hasCtrl) parts.Add("Ctrl");
+        if (hasAlt) parts.Add("Alt");
+        if (hasShift) parts.Add("Shift");
+        if (hasWin) parts.Add("Win");
+        parts.Add(keyName);
+
+        string hotkeyStr = string.Join("+", parts);
+
+        if (sender is TextBox textBox)
+        {
+            textBox.Text = hotkeyStr;
+            textBox.Select(textBox.Text.Length, 0);
+            ValidateAllHotkeys();
+            Keyboard.ClearFocus();
+        }
+
+        e.Handled = true;
     }
 
     private void ValidateAllHotkeys()
@@ -226,7 +306,7 @@ public partial class SettingsWindow : Window
         }
     }
 
-    private static void UpdateHotkeyStatusUi(string hotkeyText, string? activeKey, System.Windows.Controls.TextBlock statusBlock)
+    private static void UpdateHotkeyStatusUi(string hotkeyText, string? activeKey, TextBlock statusBlock)
     {
         var status = GlobalHotkeyService.CheckHotkeyStatus(hotkeyText, activeKey);
         switch (status)
@@ -252,7 +332,7 @@ public partial class SettingsWindow : Window
 
     private void AddVideoButton_Click(object sender, RoutedEventArgs e)
     {
-        var dialog = new Microsoft.Win32.OpenFileDialog
+        var dialog = new OpenFileDialog
         {
             Title = "Выберите .mp4 видеофайлы для библиотеки",
             Filter = "MP4 Видео (*.mp4)|*.mp4|Все поддерживаемые (*.mp4;*.wmv;*.avi)|*.mp4;*.wmv;*.avi|Все файлы (*.*)|*.*",
@@ -368,7 +448,7 @@ public partial class SettingsWindow : Window
         StartupManager.SetRunOnStartup(runOnStartup);
 
         // Display floating macOS Toast HUD and smoothly close after delay
-        ShowToast("Настройки успешно сохранены", isSuccess: true, onCompleted: () =>
+        ShowToast("Настройки сохранены", isSuccess: true, onCompleted: () =>
         {
             try
             {
@@ -405,7 +485,7 @@ public partial class SettingsWindow : Window
     }
 
     /// <summary>
-    /// Displays a floating macOS Toast HUD banner with icon and smooth fade animation.
+    /// Displays a floating macOS Toast HUD banner with icon and smooth fade/translate animations.
     /// </summary>
     /// <param name="message">Notification message text.</param>
     /// <param name="isSuccess">True for green success indicator; false for red warning indicator.</param>
@@ -424,38 +504,43 @@ public partial class SettingsWindow : Window
 
         if (isSuccess)
         {
-            if (TryFindResource("SuccessBrush") is Brush successBrush)
+            var successBrush = new SolidColorBrush(Color.FromRgb(0x10, 0xB9, 0x81));
+            ToastHudBorder.BorderBrush = successBrush;
+            if (ToastIcon != null)
             {
-                ToastHudBorder.BorderBrush = successBrush;
-                if (ToastIcon != null)
+                ToastIcon.Stroke = successBrush;
+                if (TryFindResource("IconCheck") is Geometry checkGeom)
                 {
-                    ToastIcon.Fill = successBrush;
+                    ToastIcon.Data = checkGeom;
                 }
-            }
-            if (ToastIcon != null && TryFindResource("IconCheckCircle") is Geometry checkGeom)
-            {
-                ToastIcon.Data = checkGeom;
             }
         }
         else
         {
-            if (TryFindResource("DangerBrush") is Brush dangerBrush)
+            var dangerBrush = new SolidColorBrush(Color.FromRgb(0xEF, 0x44, 0x44));
+            ToastHudBorder.BorderBrush = dangerBrush;
+            if (ToastIcon != null)
             {
-                ToastHudBorder.BorderBrush = dangerBrush;
-                if (ToastIcon != null)
+                ToastIcon.Stroke = dangerBrush;
+                if (TryFindResource("IconWarning") is Geometry alertGeom)
                 {
-                    ToastIcon.Fill = dangerBrush;
+                    ToastIcon.Data = alertGeom;
                 }
-            }
-            if (ToastIcon != null && TryFindResource("IconAlert") is Geometry alertGeom)
-            {
-                ToastIcon.Data = alertGeom;
             }
         }
 
         ToastHudBorder.Visibility = Visibility.Visible;
-        var fadeIn = new DoubleAnimation(0.0, 1.0, TimeSpan.FromMilliseconds(200));
+        var fadeIn = new DoubleAnimation(0.0, 1.0, TimeSpan.FromMilliseconds(220))
+        {
+            EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
+        };
+        var slideIn = new DoubleAnimation(20.0, 0.0, TimeSpan.FromMilliseconds(220))
+        {
+            EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
+        };
+
         ToastHudBorder.BeginAnimation(UIElement.OpacityProperty, fadeIn);
+        ToastTransform?.BeginAnimation(TranslateTransform.YProperty, slideIn);
 
         _toastTimer = new DispatcherTimer
         {
@@ -464,13 +549,21 @@ public partial class SettingsWindow : Window
         _toastTimer.Tick += (s, e) =>
         {
             _toastTimer.Stop();
-            var fadeOut = new DoubleAnimation(1.0, 0.0, TimeSpan.FromMilliseconds(300));
+            var fadeOut = new DoubleAnimation(1.0, 0.0, TimeSpan.FromMilliseconds(220))
+            {
+                EasingFunction = new CubicEase { EasingMode = EasingMode.EaseIn }
+            };
+            var slideOut = new DoubleAnimation(0.0, 20.0, TimeSpan.FromMilliseconds(220))
+            {
+                EasingFunction = new CubicEase { EasingMode = EasingMode.EaseIn }
+            };
             fadeOut.Completed += (_, _) =>
             {
                 ToastHudBorder.Visibility = Visibility.Collapsed;
                 onCompleted?.Invoke();
             };
             ToastHudBorder.BeginAnimation(UIElement.OpacityProperty, fadeOut);
+            ToastTransform?.BeginAnimation(TranslateTransform.YProperty, slideOut);
         };
         _toastTimer.Start();
     }

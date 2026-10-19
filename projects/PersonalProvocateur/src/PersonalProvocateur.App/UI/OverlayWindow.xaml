@@ -25,11 +25,12 @@
         </ResourceDictionary>
     </Window.Resources>
     <Grid x:Name="RootGrid" Focusable="False" MouseLeftButtonDown="DimmingLayer_MouseLeftButtonDown">
-        <!-- Dimming Background Layer -->
+        <!-- Dimming Background Layer (Smoothly fades in on Loaded) -->
         <Rectangle x:Name="DimmingRectangle"
                    HorizontalAlignment="Stretch"
                    VerticalAlignment="Stretch"
-                   Fill="#99000000"
+                   Fill="#000000"
+                   Opacity="0.0"
                    Focusable="False"
                    MouseLeftButtonDown="DimmingLayer_MouseLeftButtonDown" />
 
@@ -58,7 +59,11 @@
             <StackPanel HorizontalAlignment="Center" Focusable="False">
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,12" Focusable="False">
                     <Path Data="{StaticResource IconAlert}"
-                          Fill="{StaticResource DangerBrush}"
+                          Stroke="{StaticResource DangerBrush}"
+                          StrokeThickness="2"
+                          StrokeStartLineCap="Round"
+                          StrokeEndLineCap="Round"
+                          StrokeLineJoin="Round"
                           Stretch="Uniform"
                           Width="20" Height="20"
                           Margin="0,0,8,0"

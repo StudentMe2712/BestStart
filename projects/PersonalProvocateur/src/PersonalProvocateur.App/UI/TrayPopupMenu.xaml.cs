@@ -1,5 +1,6 @@
 using System.Windows;
 using System.Windows.Media;
+using System.Windows.Media.Animation;
 using System.Windows.Shapes;
 using Brush = System.Windows.Media.Brush;
 using Color = System.Windows.Media.Color;
@@ -54,6 +55,22 @@ public partial class TrayPopupMenu : Window
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
         RefreshStatus();
+        PlayEntranceAnimation();
+    }
+
+    private void PlayEntranceAnimation()
+    {
+        var fadeIn = new DoubleAnimation(0.0, 1.0, TimeSpan.FromMilliseconds(160))
+        {
+            EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
+        };
+        var slideUp = new DoubleAnimation(10.0, 0.0, TimeSpan.FromMilliseconds(160))
+        {
+            EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
+        };
+
+        BeginAnimation(UIElement.OpacityProperty, fadeIn);
+        MenuTranslate?.BeginAnimation(TranslateTransform.YProperty, slideUp);
     }
 
     private void OnDeactivated(object? sender, EventArgs e)
@@ -111,6 +128,7 @@ public partial class TrayPopupMenu : Window
 
         Show();
         Activate();
+        PlayEntranceAnimation();
     }
 
     private void RefreshStatus()
@@ -164,6 +182,8 @@ public partial class TrayPopupMenu : Window
             if (TryFindResource("AccentBrush") is Brush accentBrush)
             {
                 PauseResumeIcon.Fill = accentBrush;
+                PauseResumeIcon.Stroke = accentBrush;
+                PauseResumeIcon.StrokeThickness = 1;
             }
             PauseResumeText.Text = "Возобновить";
         }
@@ -176,6 +196,8 @@ public partial class TrayPopupMenu : Window
             if (TryFindResource("TextSecondaryBrush") is Brush secondaryBrush)
             {
                 PauseResumeIcon.Fill = secondaryBrush;
+                PauseResumeIcon.Stroke = secondaryBrush;
+                PauseResumeIcon.StrokeThickness = 1;
             }
             PauseResumeText.Text = "Приостановить";
         }

@@ -13,7 +13,7 @@
         SnapsToDevicePixels="True"
         TextOptions.TextFormattingMode="Ideal"
         TextOptions.TextRenderingMode="ClearType"
-        FontFamily="Segoe UI Variable Display, Segoe UI, sans-serif">
+        FontFamily="Inter, Segoe UI Variable Display, Segoe UI, sans-serif">
     <Window.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
@@ -23,8 +23,8 @@
         </ResourceDictionary>
     </Window.Resources>
 
-    <Border Background="#1C1D26"
-            BorderBrush="#2E303E"
+    <Border Background="#13151F"
+            BorderBrush="#232738"
             BorderThickness="1"
             CornerRadius="14"
             Margin="10"
@@ -32,12 +32,15 @@
             Width="260"
             SnapsToDevicePixels="True">
         <Border.Effect>
-            <DropShadowEffect Color="#000000" BlurRadius="20" ShadowDepth="4" Opacity="0.6" />
+            <DropShadowEffect Color="#000000" BlurRadius="22" ShadowDepth="4" Opacity="0.65" />
         </Border.Effect>
+        <Border.RenderTransform>
+            <TranslateTransform x:Name="MenuTranslate" Y="0" />
+        </Border.RenderTransform>
 
         <StackPanel>
             <!-- App Header & Status Indicator -->
-            <Border Background="#12131A" CornerRadius="8" Padding="12,10" Margin="0,0,0,8">
+            <Border Background="#0B0C10" CornerRadius="8" Padding="12,10" Margin="0,0,0,8" BorderBrush="#232738" BorderThickness="1">
                 <StackPanel>
                     <Grid>
                         <Grid.ColumnDefinitions>
@@ -72,6 +75,8 @@
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                     <Path Data="{StaticResource IconBolt}"
                           Fill="{StaticResource AccentBrush}"
+                          Stroke="{StaticResource AccentBrush}"
+                          StrokeThickness="1"
                           Stretch="Uniform"
                           Width="14" Height="14"
                           Margin="0,0,10,0"
@@ -88,6 +93,8 @@
                     <Path x:Name="PauseResumeIcon"
                           Data="{StaticResource IconPause}"
                           Fill="{StaticResource TextSecondaryBrush}"
+                          Stroke="{StaticResource TextSecondaryBrush}"
+                          StrokeThickness="1"
                           Stretch="Uniform"
                           Width="14" Height="14"
                           Margin="0,0,10,0"
@@ -102,8 +109,10 @@
                     Style="{StaticResource TrayMenuButtonStyle}"
                     Click="SettingsButton_Click">
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                    <Path Data="{StaticResource IconSliders}"
-                          Fill="{StaticResource TextSecondaryBrush}"
+                    <Path Data="{StaticResource IconSettings}"
+                          Stroke="{StaticResource TextSecondaryBrush}"
+                          StrokeThickness="2"
+                          StrokeLineJoin="Round"
                           Stretch="Uniform"
                           Width="14" Height="14"
                           Margin="0,0,10,0"
@@ -118,7 +127,10 @@
                     Click="DismissOverlayButton_Click">
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                     <Path Data="{StaticResource IconEyeOff}"
-                          Fill="{StaticResource TextSecondaryBrush}"
+                          Stroke="{StaticResource TextSecondaryBrush}"
+                          StrokeThickness="2"
+                          StrokeStartLineCap="Round"
+                          StrokeEndLineCap="Round"
                           Stretch="Uniform"
                           Width="14" Height="14"
                           Margin="0,0,10,0"
@@ -129,7 +141,7 @@
             </Button>
 
             <!-- Separator -->
-            <Rectangle Height="1" Fill="#2E303E" Margin="4,6" SnapsToDevicePixels="True" />
+            <Rectangle Height="1" Fill="#232738" Margin="4,6" SnapsToDevicePixels="True" />
 
             <Button x:Name="ExitButton"
                     Style="{StaticResource TrayMenuButtonStyle}"
@@ -137,7 +149,11 @@
                     Click="ExitButton_Click">
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                     <Path Data="{StaticResource IconLogOut}"
-                          Fill="{StaticResource DangerBrush}"
+                          Stroke="{StaticResource DangerBrush}"
+                          StrokeThickness="2"
+                          StrokeStartLineCap="Round"
+                          StrokeEndLineCap="Round"
+                          StrokeLineJoin="Round"
                           Stretch="Uniform"
                           Width="14" Height="14"
                           Margin="0,0,10,0"

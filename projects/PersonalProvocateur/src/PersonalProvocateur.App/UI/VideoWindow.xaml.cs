@@ -3,6 +3,7 @@ using System.ComponentModel;
 using System.IO;
 using System.Windows;
 using System.Windows.Input;
+using System.Windows.Media.Animation;
 using System.Windows.Threading;
 using PersonalProvocateur.App.Services;
 using PersonalProvocateur.App.Storage;
@@ -17,6 +18,23 @@ public partial class VideoWindow : Window
     private readonly OverlayCoordinator? _coordinator;
     private readonly SettingsStore? _settingsStore;
     private readonly DispatcherTimer _playbackWatchdogTimer;
+    private bool _hasCompleted;
+
+    /// <summary>
+    /// Gets or sets whether the window is explicitly permitted to close.
+    /// If false and <see cref="IsManualTest"/> is false, closing signals are blocked (Mandatory Watch Lock).
+    /// </summary>
+    public bool AllowClose { get; set; } = false;
+
+    /// <summary>
+    /// Gets or sets whether this video is being played in manual test mode (from settings/tray).
+    /// </summary>
+    public bool IsManualTest { get; set; } = false;
+
+    /// <summary>
+    /// Gets whether playback completion has already been triggered.
+    /// </summary>
+    public bool HasCompleted => _hasCompleted;
 
     /// <summary>
     /// Gets the playback watchdog timer instance.
@@ -37,7 +55,7 @@ public partial class VideoWindow : Window
 
         _playbackWatchdogTimer = new DispatcherTimer
         {
-            Interval = TimeSpan.FromMilliseconds(200)
+            Interval = TimeSpan.FromMilliseconds(100)
         };
         _playbackWatchdogTimer.Tick += OnPlaybackWatchdogTick;
 
@@ -87,14 +105,20 @@ public partial class VideoWindow : Window
     /// </summary>
     /// <param name="filePath">Path to the video file.</param>
     /// <param name="title">Display title of the video.</param>
-    public void PlayVideo(string filePath, string title)
+    /// <param name="isManualTest">True if invoked as a manual test from settings/tray; enables close button.</param>
+    public void PlayVideo(string filePath, string title, bool isManualTest = false)
     {
+        IsManualTest = isManualTest;
+        CloseButton.Visibility = isManualTest ? Visibility.Visible : Visibility.Collapsed;
+
         VideoTitleTextBlock.Text = title;
 
         double volume = _settingsStore?.CurrentSettings?.VideoVolume ?? 0.85;
         Player.Volume = Math.Clamp(volume, 0.0, 1.0);
 
         PlaybackProgressBar.Value = 0;
+        RemainingTimeTextBlock.Text = "--:--";
+        _hasCompleted = false;
         _playbackWatchdogTimer.Start();
 
         try
@@ -112,23 +136,103 @@ public partial class VideoWindow : Window
     }
 
     /// <summary>
-    /// Checks playback progress, updates the progress bar, and enforces 100% reliable
-    /// auto-completion when the video reaches its natural duration (ADR-008).
+    /// Flashes the mandatory watch notice overlay for 1.2 seconds to alert the user
+    /// that closing the motivation video early is forbidden.
     /// </summary>
-    public void CheckPlaybackProgress()
+    public void FlashMandatoryWatchNotice()
     {
-        if (Player.NaturalDuration.HasTimeSpan && Player.NaturalDuration.TimeSpan.TotalSeconds > 0)
+        if (MandatoryWatchNotice == null)
         {
-            double totalSeconds = Player.NaturalDuration.TimeSpan.TotalSeconds;
-            double currentSeconds = Player.Position.TotalSeconds;
-            double progress = Math.Clamp((currentSeconds / totalSeconds) * 100.0, 0.0, 100.0);
-            PlaybackProgressBar.Value = progress;
+            return;
+        }
 
-            if (Player.Position >= Player.NaturalDuration.TimeSpan - TimeSpan.FromMilliseconds(150))
+        MandatoryWatchNotice.BeginAnimation(UIElement.OpacityProperty, null);
+
+        var anim = new DoubleAnimationUsingKeyFrames
+        {
+            Duration = TimeSpan.FromMilliseconds(1200)
+        };
+        anim.KeyFrames.Add(new LinearDoubleKeyFrame(0.0, KeyTime.FromTimeSpan(TimeSpan.Zero)));
+        anim.KeyFrames.Add(new LinearDoubleKeyFrame(1.0, KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(200))));
+        anim.KeyFrames.Add(new LinearDoubleKeyFrame(1.0, KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(800))));
+        anim.KeyFrames.Add(new LinearDoubleKeyFrame(0.0, KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(1200))));
+
+        MandatoryWatchNotice.BeginAnimation(UIElement.OpacityProperty, anim);
+    }
+
+    /// <summary>
+    /// Checks playback progress, updates the progress bar and remaining time, and enforces
+    /// 100% reliable auto-completion when the video reaches its natural duration (ADR-008).
+    /// </summary>
+    /// <param name="overridePosition">Optional simulated playback position for unit testing.</param>
+    /// <param name="overrideDuration">Optional simulated natural duration for unit testing.</param>
+    public void CheckPlaybackProgress(TimeSpan? overridePosition = null, TimeSpan? overrideDuration = null)
+    {
+        bool hasNaturalDuration = overrideDuration.HasValue || (Player.NaturalDuration.HasTimeSpan && Player.NaturalDuration.TimeSpan.TotalSeconds > 0);
+        TimeSpan natural = overrideDuration ?? (Player.NaturalDuration.HasTimeSpan ? Player.NaturalDuration.TimeSpan : TimeSpan.Zero);
+        TimeSpan position = overridePosition ?? Player.Position;
+
+        if (hasNaturalDuration && natural.TotalSeconds > 0)
+        {
+            var remaining = natural > position ? natural - position : TimeSpan.Zero;
+            if (RemainingTimeTextBlock != null)
             {
-                _playbackWatchdogTimer.Stop();
-                _coordinator?.CompleteSession();
+                RemainingTimeTextBlock.Text = remaining.ToString(@"m\:ss");
             }
+
+            double progress = Math.Clamp((position.TotalSeconds / natural.TotalSeconds) * 100.0, 0.0, 100.0);
+            if (PlaybackProgressBar != null)
+            {
+                PlaybackProgressBar.Value = progress;
+            }
+
+            // Reliable completion check at natural duration - 120ms
+            if (position >= natural - TimeSpan.FromMilliseconds(120))
+            {
+                CompleteVideoPlayback();
+            }
+        }
+    }
+
+    /// <summary>
+    /// Completes video playback with fade-out animation and informs the coordinator.
+    /// Uses <see cref="_hasCompleted"/> guard to prevent duplicate invocations.
+    /// </summary>
+    /// <param name="immediate">True to bypass animation for testability or manual closing.</param>
+    public void CompleteVideoPlayback(bool immediate = false)
+    {
+        if (_hasCompleted)
+        {
+            return;
+        }
+
+        _hasCompleted = true;
+        _playbackWatchdogTimer.Stop();
+
+        if (immediate || !IsLoaded)
+        {
+            _coordinator?.CompleteSession();
+            return;
+        }
+
+        try
+        {
+            var fadeOut = new DoubleAnimation
+            {
+                From = 1.0,
+                To = 0.0,
+                Duration = TimeSpan.FromMilliseconds(250),
+                EasingFunction = new CubicEase { EasingMode = EasingMode.EaseIn }
+            };
+            fadeOut.Completed += (s, e) =>
+            {
+                _coordinator?.CompleteSession();
+            };
+            BeginAnimation(UIElement.OpacityProperty, fadeOut);
+        }
+        catch
+        {
+            _coordinator?.CompleteSession();
         }
     }
 
@@ -145,8 +249,7 @@ public partial class VideoWindow : Window
 
     private void Player_MediaEnded(object sender, RoutedEventArgs e)
     {
-        _playbackWatchdogTimer.Stop();
-        _coordinator?.CompleteSession();
+        CompleteVideoPlayback();
     }
 
     private void Player_MediaFailed(object? sender, ExceptionRoutedEventArgs e)
@@ -166,22 +269,40 @@ public partial class VideoWindow : Window
 
     private void CloseButton_Click(object sender, RoutedEventArgs e)
     {
-        _playbackWatchdogTimer.Stop();
-        _coordinator?.CompleteSession();
+        if (!AllowClose && !IsManualTest)
+        {
+            FlashMandatoryWatchNotice();
+            return;
+        }
+
+        CompleteVideoPlayback(immediate: true);
     }
 
     private void Window_KeyDown(object sender, System.Windows.Input.KeyEventArgs e)
     {
         if (e.Key == Key.Escape)
         {
-            _playbackWatchdogTimer.Stop();
-            _coordinator?.CompleteSession();
+            if (!AllowClose && !IsManualTest)
+            {
+                FlashMandatoryWatchNotice();
+                e.Handled = true;
+                return;
+            }
+
+            CompleteVideoPlayback(immediate: true);
             e.Handled = true;
         }
     }
 
     protected override void OnClosing(CancelEventArgs e)
     {
+        if (!AllowClose && !IsManualTest)
+        {
+            e.Cancel = true;
+            FlashMandatoryWatchNotice();
+            return;
+        }
+
         _playbackWatchdogTimer.Stop();
         try
         {

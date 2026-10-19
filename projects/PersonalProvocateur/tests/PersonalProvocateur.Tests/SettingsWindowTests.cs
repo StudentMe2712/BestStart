@@ -198,4 +198,128 @@ public class SettingsWindowTests : IDisposable
             windowWithVideos.Close();
         });
     }
+
+    [Fact]
+    public void SettingsWindow_Footer_HasSaveAndCloseButtonsAndNoDuplicateTestButton()
+    {
+        RunInSta(() =>
+        {
+            var store = new SettingsStore(_settingsPath);
+            var videoLib = new VideoLibraryService(store, fileExistsChecker: _ => false);
+            var scheduler = new RandomReminderScheduler();
+            using var coordinator = new OverlayCoordinator(scheduler, videoLib, store);
+
+            var window = new SettingsWindow(store, videoLib, coordinator, scheduler);
+            window.Show();
+
+            Assert.NotNull(window.SaveButton);
+            Assert.NotNull(window.CloseButton);
+
+            // Verify BottomTestButton is no longer in the window
+            var bottomTest = window.FindName("BottomTestButton");
+            Assert.Null(bottomTest);
+
+            window.Close();
+        });
+    }
+
+    [Fact]
+    public void Icons_AllRequiredSprint5VectorIconsExistInResourceDictionary()
+    {
+        RunInSta(() =>
+        {
+            var dict = new ResourceDictionary
+            {
+                Source = new Uri("/PersonalProvocateur.App;component/UI/Theme/Icons.xaml", UriKind.RelativeOrAbsolute)
+            };
+
+            string[] requiredIcons =
+            [
+                "IconBolt",
+                "IconPlay",
+                "IconPause",
+                "IconTrash",
+                "IconPlus",
+                "IconVideo",
+                "IconClock",
+                "IconSettings",
+                "IconEyeOff",
+                "IconLogOut",
+                "IconCheck",
+                "IconWarning",
+                "IconClose",
+                "IconMinimize"
+            ];
+
+            foreach (var iconKey in requiredIcons)
+            {
+                Assert.True(dict.Contains(iconKey), $"Icon key '{iconKey}' must exist in Icons.xaml");
+                var geom = dict[iconKey] as System.Windows.Media.StreamGeometry;
+                Assert.NotNull(geom);
+            }
+        });
+    }
+
+    [Fact]
+    public void DarkTheme_MacOsToggleSwitchStyle_ExistsAndCanBeInstantiated()
+    {
+        RunInSta(() =>
+        {
+            var dict = new ResourceDictionary
+            {
+                Source = new Uri("/PersonalProvocateur.App;component/UI/Theme/DarkTheme.xaml", UriKind.RelativeOrAbsolute)
+            };
+
+            Assert.True(dict.Contains("MacOsToggleSwitchStyle"));
+            var style = dict["MacOsToggleSwitchStyle"] as Style;
+            Assert.NotNull(style);
+            Assert.Equal(typeof(System.Windows.Controls.CheckBox), style.TargetType);
+        });
+    }
+
+    [Fact]
+    public void TrayPopupMenu_InstantiatesAndLoadsWithoutErrorsInSta()
+    {
+        RunInSta(() =>
+        {
+            var store = new SettingsStore(_settingsPath);
+            var videoLib = new VideoLibraryService(store, fileExistsChecker: _ => false);
+            var scheduler = new RandomReminderScheduler();
+            using var coordinator = new OverlayCoordinator(scheduler, videoLib, store);
+
+            var menu = new TrayPopupMenu(coordinator, scheduler, store, () => { });
+            Assert.NotNull(menu);
+            menu.Show();
+
+            Assert.NotNull(menu.TriggerNowButton);
+            Assert.NotNull(menu.PauseResumeButton);
+            Assert.NotNull(menu.SettingsButton);
+            Assert.NotNull(menu.DismissOverlayButton);
+            Assert.NotNull(menu.ExitButton);
+
+            menu.Close();
+        });
+    }
+
+    [Fact]
+    public void SettingsWindow_ShowToast_ShowsToastBannerInSta()
+    {
+        RunInSta(() =>
+        {
+            var store = new SettingsStore(_settingsPath);
+            var videoLib = new VideoLibraryService(store, fileExistsChecker: _ => false);
+            var scheduler = new RandomReminderScheduler();
+            using var coordinator = new OverlayCoordinator(scheduler, videoLib, store);
+
+            var window = new SettingsWindow(store, videoLib, coordinator, scheduler);
+            window.Show();
+
+            window.ShowToast("Тестовое уведомление", isSuccess: true);
+
+            Assert.Equal(Visibility.Visible, window.ToastHudBorder.Visibility);
+            Assert.Equal("Тестовое уведомление", window.ToastMessageTextBlock.Text);
+
+            window.Close();
+        });
+    }
 }

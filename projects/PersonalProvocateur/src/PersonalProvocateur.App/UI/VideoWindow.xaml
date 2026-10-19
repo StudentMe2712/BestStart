@@ -66,7 +66,7 @@
                            HorizontalAlignment="Center"
                            Margin="16,0" />
 
-                <!-- Floating Close Button -->
+                <!-- Floating Close Button (Visible only during manual test mode) -->
                 <Button x:Name="CloseButton"
                         Grid.Column="2"
                         Width="32"
@@ -76,6 +76,7 @@
                         Background="#26293A"
                         BorderThickness="0"
                         Cursor="Hand"
+                        Visibility="Collapsed"
                         Click="CloseButton_Click"
                         ToolTip="Закрыть видео (Esc)">
                     <Button.Template>
@@ -86,7 +87,10 @@
                                     SnapsToDevicePixels="True">
                                 <Path x:Name="closeIcon"
                                       Data="{StaticResource IconClose}"
-                                      Fill="{TemplateBinding Foreground}"
+                                      Stroke="{TemplateBinding Foreground}"
+                                      StrokeThickness="2"
+                                      StrokeStartLineCap="Round"
+                                      StrokeEndLineCap="Round"
                                       Stretch="Uniform"
                                       Width="11" Height="11"
                                       HorizontalAlignment="Center"
@@ -95,7 +99,7 @@
                             <ControlTemplate.Triggers>
                                 <Trigger Property="IsMouseOver" Value="True">
                                     <Setter TargetName="border" Property="Background" Value="#EF4444" />
-                                    <Setter TargetName="closeIcon" Property="Fill" Value="#FFFFFF" />
+                                    <Setter TargetName="closeIcon" Property="Stroke" Value="#FFFFFF" />
                                 </Trigger>
                             </ControlTemplate.Triggers>
                         </ControlTemplate>
@@ -116,28 +120,81 @@
                               MediaFailed="Player_MediaFailed" />
             </Grid>
 
-            <!-- Bottom Playback Progress Bar (Purple accent fill) -->
-            <ProgressBar x:Name="PlaybackProgressBar"
-                         Grid.Row="2"
-                         Height="4"
-                         Minimum="0"
-                         Maximum="100"
-                         Value="0"
-                         Background="#181A24"
-                         Foreground="#8B5CF6"
-                         BorderThickness="0">
-                <ProgressBar.Template>
-                    <ControlTemplate TargetType="ProgressBar">
-                        <Grid Background="{TemplateBinding Background}">
-                            <Border x:Name="PART_Track" />
-                            <Border x:Name="PART_Indicator"
-                                    HorizontalAlignment="Left"
-                                    Background="{TemplateBinding Foreground}"
-                                    CornerRadius="0,2,2,0" />
-                        </Grid>
-                    </ControlTemplate>
-                </ProgressBar.Template>
-            </ProgressBar>
+            <!-- Bottom Playback Footer Bar (Progress bar and remaining time) -->
+            <Grid Grid.Row="2" Background="#181A24" Height="28">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <ProgressBar x:Name="PlaybackProgressBar"
+                             Grid.Column="0"
+                             Height="4"
+                             VerticalAlignment="Center"
+                             Margin="16,0,12,0"
+                             Minimum="0"
+                             Maximum="100"
+                             Value="0"
+                             Background="#26293A"
+                             Foreground="#8B5CF6"
+                             BorderThickness="0"
+                             Focusable="False"
+                             IsHitTestVisible="False">
+                    <ProgressBar.Template>
+                        <ControlTemplate TargetType="ProgressBar">
+                            <Grid Background="{TemplateBinding Background}">
+                                <Border x:Name="PART_Track" />
+                                <Border x:Name="PART_Indicator"
+                                        HorizontalAlignment="Left"
+                                        Background="{TemplateBinding Foreground}"
+                                        CornerRadius="0,2,2,0" />
+                            </Grid>
+                        </ControlTemplate>
+                    </ProgressBar.Template>
+                </ProgressBar>
+                <TextBlock x:Name="RemainingTimeTextBlock"
+                           Grid.Column="1"
+                           Text="--:--"
+                           FontSize="12"
+                           FontWeight="Medium"
+                           Foreground="#94A3B8"
+                           VerticalAlignment="Center"
+                           Margin="0,0,16,0"
+                           Focusable="False" />
+            </Grid>
+
+            <!-- Mandatory Watch Notice Overlay -->
+            <Border x:Name="MandatoryWatchNotice"
+                    Grid.Row="0" Grid.RowSpan="3"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    Background="#E6181A24"
+                    BorderBrush="#EF4444"
+                    BorderThickness="1.5"
+                    CornerRadius="14"
+                    Padding="24,14"
+                    Opacity="0"
+                    IsHitTestVisible="False">
+                <Border.Effect>
+                    <DropShadowEffect Color="#EF4444" BlurRadius="24" ShadowDepth="0" Opacity="0.55" />
+                </Border.Effect>
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <Path Data="{StaticResource IconAlert}"
+                          Stroke="#EF4444"
+                          StrokeThickness="2"
+                          StrokeStartLineCap="Round"
+                          StrokeEndLineCap="Round"
+                          StrokeLineJoin="Round"
+                          Stretch="Uniform"
+                          Width="20" Height="20"
+                          Margin="0,0,10,0"
+                          VerticalAlignment="Center" />
+                    <TextBlock Text="Досмотрите видео до конца!"
+                               FontSize="14"
+                               FontWeight="SemiBold"
+                               Foreground="#F8FAFC"
+                               VerticalAlignment="Center" />
+                </StackPanel>
+            </Border>
         </Grid>
     </Border>
 </Window>
