@@ -1,3 +1,4 @@
+using System.IO;
 using System.Windows;
 using PersonalProvocateur.App.Models;
 using PersonalProvocateur.App.Storage;
@@ -14,10 +15,21 @@ public class OverlayCoordinator : IDisposable
     private readonly RandomReminderScheduler _scheduler;
     private readonly VideoLibraryService _videoLibrary;
     private readonly SettingsStore _settingsStore;
+    private readonly Func<string, bool> _fileExistsChecker;
     private readonly Func<OverlayCoordinator, OverlayWindow?> _overlayWindowFactory;
     private readonly Func<OverlayCoordinator, VideoWindow?> _videoWindowFactory;
     private readonly Action<Action> _dispatcherInvoker;
     private readonly object _lock = new();
+
+    /// <summary>
+    /// Gets the scheduler instance.
+    /// </summary>
+    public RandomReminderScheduler Scheduler => _scheduler;
+
+    /// <summary>
+    /// Gets the video library service.
+    /// </summary>
+    public VideoLibraryService VideoLibrary => _videoLibrary;
 
     /// <summary>
     /// Gets the current session state.
@@ -48,17 +60,20 @@ public class OverlayCoordinator : IDisposable
     /// <param name="overlayWindowFactory">Optional factory delegate for creating overlay windows.</param>
     /// <param name="videoWindowFactory">Optional factory delegate for creating video windows.</param>
     /// <param name="dispatcherInvoker">Optional UI dispatcher invoker for testability.</param>
+    /// <param name="fileExistsChecker">Optional file existence checker function.</param>
     public OverlayCoordinator(
         RandomReminderScheduler scheduler,
         VideoLibraryService videoLibrary,
         SettingsStore settingsStore,
         Func<OverlayCoordinator, OverlayWindow?>? overlayWindowFactory = null,
         Func<OverlayCoordinator, VideoWindow?>? videoWindowFactory = null,
-        Action<Action>? dispatcherInvoker = null)
+        Action<Action>? dispatcherInvoker = null,
+        Func<string, bool>? fileExistsChecker = null)
     {
         _scheduler = scheduler ?? throw new ArgumentNullException(nameof(scheduler));
         _videoLibrary = videoLibrary ?? throw new ArgumentNullException(nameof(videoLibrary));
         _settingsStore = settingsStore ?? throw new ArgumentNullException(nameof(settingsStore));
+        _fileExistsChecker = fileExistsChecker ?? File.Exists;
 
         _overlayWindowFactory = overlayWindowFactory ?? (coord => new OverlayWindow(coord, _settingsStore));
         _videoWindowFactory = videoWindowFactory ?? (coord => new VideoWindow(coord, _settingsStore));
@@ -138,6 +153,40 @@ public class OverlayCoordinator : IDisposable
     }
 
     /// <summary>
+    /// Finds the next playable video that exists on disk, skipping broken/missing files up to PoolCount attempts.
+    /// </summary>
+    /// <param name="excludePath">Optional file path to exclude (e.g. video that just failed playback).</param>
+    /// <returns>Next playable VideoItem, or null if all available videos are invalid or missing.</returns>
+    public VideoItem? FindNextPlayableVideo(string? excludePath = null)
+    {
+        int poolCount = _videoLibrary.ShuffleBag.PoolCount;
+        int allCount = _videoLibrary.GetAllVideos().Count;
+        int maxAttempts = Math.Max(3, Math.Max(poolCount, allCount) + 1);
+
+        for (int i = 0; i < maxAttempts; i++)
+        {
+            var candidate = _videoLibrary.GetNextVideo();
+            if (candidate == null)
+            {
+                break;
+            }
+
+            if (!string.IsNullOrWhiteSpace(excludePath) &&
+                string.Equals(candidate.FilePath, excludePath, StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            if (!string.IsNullOrWhiteSpace(candidate.FilePath) && _fileExistsChecker(candidate.FilePath))
+            {
+                return candidate;
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>
     /// Handles user click on the provocateur mascot.
     /// Transitions state to VideoPlaying and opens the video window with the next shuffled clip.
     /// </summary>
@@ -152,7 +201,7 @@ public class OverlayCoordinator : IDisposable
                     return;
                 }
 
-                var nextVideo = _videoLibrary.GetNextVideo();
+                var nextVideo = FindNextPlayableVideo();
                 if (nextVideo != null && !string.IsNullOrWhiteSpace(nextVideo.FilePath))
                 {
                     TransitionTo(SessionState.VideoPlaying);
@@ -167,8 +216,58 @@ public class OverlayCoordinator : IDisposable
                 }
                 else
                 {
-                    // Video library is empty or files are missing
+                    // Video library is empty or all files are missing
                     ActiveOverlayWindow?.ShowEmptyLibraryNotice();
+                }
+            }
+        });
+    }
+
+    /// <summary>
+    /// Handles media playback failure (e.g. corrupt codec or unreadable file).
+    /// Attempts to automatically switch to the next valid video in the shuffle bag.
+    /// If all videos fail, displays notice and closes cleanly without crashing.
+    /// </summary>
+    /// <param name="failedPath">Path to the video file that failed playback.</param>
+    public void OnVideoPlaybackFailed(string failedPath)
+    {
+        _dispatcherInvoker(() =>
+        {
+            lock (_lock)
+            {
+                if (CurrentState != SessionState.VideoPlaying)
+                {
+                    return;
+                }
+
+                var nextVideo = FindNextPlayableVideo(failedPath);
+                if (nextVideo != null && !string.IsNullOrWhiteSpace(nextVideo.FilePath))
+                {
+                    ActiveVideoWindow?.PlayVideo(nextVideo.FilePath, nextVideo.Title);
+                }
+                else
+                {
+                    // All videos are exhausted or unplayable
+                    if (ActiveVideoWindow != null)
+                    {
+                        try
+                        {
+                            ActiveVideoWindow.Close();
+                        }
+                        catch
+                        {
+                        }
+                        ActiveVideoWindow = null;
+                    }
+
+                    if (ActiveOverlayWindow != null)
+                    {
+                        ActiveOverlayWindow.ShowEmptyLibraryNotice();
+                    }
+                    else
+                    {
+                        CompleteSession();
+                    }
                 }
             }
         });

@@ -495,4 +495,164 @@ public class OverlayCoordinatorTests : IDisposable
             window.SafeClose();
         });
     }
+
+    [Fact]
+    public void FindNextPlayableVideo_SkipsMissingFiles()
+    {
+        var store = CreateTestSettingsStore(isPaused: false);
+        var scheduler = new RandomReminderScheduler();
+
+        var existingPath = Path.Combine(_tempDir, "real.mp4");
+        var missingPath = Path.Combine(_tempDir, "missing.mp4");
+
+        var shuffleBag = new VideoShuffleBag(fileExistsChecker: _ => true);
+        var videoLib = new VideoLibraryService(store, shuffleBag, fileExistsChecker: _ => true);
+        videoLib.AddVideo(missingPath, "Missing");
+        videoLib.AddVideo(existingPath, "Real");
+
+        using var coordinator = new OverlayCoordinator(
+            scheduler,
+            videoLib,
+            store,
+            overlayWindowFactory: _ => null,
+            videoWindowFactory: _ => null,
+            dispatcherInvoker: a => a(),
+            fileExistsChecker: p => p == existingPath);
+
+        var playable = coordinator.FindNextPlayableVideo();
+        Assert.NotNull(playable);
+        Assert.Equal(existingPath, playable.FilePath);
+    }
+
+    [Fact]
+    public void OnMascotClicked_WhenFirstVideoMissing_PlaysSecondAvailableVideo()
+    {
+        var store = CreateTestSettingsStore(isPaused: false);
+        var scheduler = new RandomReminderScheduler();
+
+        var missingPath = Path.Combine(_tempDir, "broken.mp4");
+        var goodPath = Path.Combine(_tempDir, "good.mp4");
+
+        var shuffleBag = new VideoShuffleBag(fileExistsChecker: _ => true);
+        var videoLib = new VideoLibraryService(store, shuffleBag, fileExistsChecker: _ => true);
+        videoLib.AddVideo(missingPath, "Broken");
+        videoLib.AddVideo(goodPath, "Good");
+
+        using var coordinator = new OverlayCoordinator(
+            scheduler,
+            videoLib,
+            store,
+            overlayWindowFactory: _ => null,
+            videoWindowFactory: _ => null,
+            dispatcherInvoker: a => a(),
+            fileExistsChecker: p => p == goodPath);
+
+        coordinator.TriggerProvocation(isManualTest: true);
+        coordinator.OnMascotClicked();
+
+        Assert.Equal(SessionState.VideoPlaying, coordinator.CurrentState);
+    }
+
+    [Fact]
+    public void OnMascotClicked_WhenAllVideosMissing_ShowsEmptyLibraryNotice()
+    {
+        RunInSta(() =>
+        {
+            var store = CreateTestSettingsStore(isPaused: false);
+            var scheduler = new RandomReminderScheduler();
+
+            var missingPath = Path.Combine(_tempDir, "ghost.mp4");
+            var shuffleBag = new VideoShuffleBag(fileExistsChecker: _ => true);
+            var videoLib = new VideoLibraryService(store, shuffleBag, fileExistsChecker: _ => true);
+            videoLib.AddVideo(missingPath, "Ghost");
+
+            OverlayWindow? overlayWin = null;
+            using var coordinator = new OverlayCoordinator(
+                scheduler,
+                videoLib,
+                store,
+                overlayWindowFactory: coord => overlayWin = new OverlayWindow(coord, store),
+                videoWindowFactory: _ => null,
+                dispatcherInvoker: a => a(),
+                fileExistsChecker: _ => false);
+
+            coordinator.TriggerProvocation(isManualTest: true);
+            Assert.NotNull(overlayWin);
+            Assert.Equal(System.Windows.Visibility.Visible, overlayWin.MascotCanvas.Visibility);
+
+            coordinator.OnMascotClicked();
+
+            Assert.Equal(System.Windows.Visibility.Collapsed, overlayWin.MascotCanvas.Visibility);
+            Assert.Equal(System.Windows.Visibility.Visible, overlayWin.EmptyLibraryNotice.Visibility);
+
+            overlayWin.SafeClose();
+        });
+    }
+
+    [Fact]
+    public void OnVideoPlaybackFailed_SwitchesToNextVideo()
+    {
+        var store = CreateTestSettingsStore(isPaused: false);
+        var scheduler = new RandomReminderScheduler();
+
+        var corruptPath = Path.Combine(_tempDir, "corrupt.mp4");
+        var backupPath = Path.Combine(_tempDir, "backup.mp4");
+
+        var shuffleBag = new VideoShuffleBag(fileExistsChecker: _ => true);
+        var videoLib = new VideoLibraryService(store, shuffleBag, fileExistsChecker: _ => true);
+        videoLib.AddVideo(corruptPath, "Corrupt");
+        videoLib.AddVideo(backupPath, "Backup");
+
+        using var coordinator = new OverlayCoordinator(
+            scheduler,
+            videoLib,
+            store,
+            overlayWindowFactory: _ => null,
+            videoWindowFactory: _ => null,
+            dispatcherInvoker: a => a(),
+            fileExistsChecker: _ => true);
+
+        coordinator.TriggerProvocation(isManualTest: true);
+        coordinator.OnMascotClicked();
+        Assert.Equal(SessionState.VideoPlaying, coordinator.CurrentState);
+
+        coordinator.OnVideoPlaybackFailed(corruptPath);
+        Assert.Equal(SessionState.VideoPlaying, coordinator.CurrentState);
+    }
+
+    [Fact]
+    public void OnVideoPlaybackFailed_WhenNoOtherVideos_ShowsNoticeAndCompletesSession()
+    {
+        RunInSta(() =>
+        {
+            var store = CreateTestSettingsStore(isPaused: false);
+            var scheduler = new RandomReminderScheduler();
+
+            var onlyVideo = Path.Combine(_tempDir, "single.mp4");
+            var shuffleBag = new VideoShuffleBag(fileExistsChecker: _ => true);
+            var videoLib = new VideoLibraryService(store, shuffleBag, fileExistsChecker: _ => true);
+            videoLib.AddVideo(onlyVideo, "Single");
+
+            OverlayWindow? overlayWin = null;
+            using var coordinator = new OverlayCoordinator(
+                scheduler,
+                videoLib,
+                store,
+                overlayWindowFactory: coord => overlayWin = new OverlayWindow(coord, store),
+                videoWindowFactory: _ => null,
+                dispatcherInvoker: a => a(),
+                fileExistsChecker: _ => true);
+
+            coordinator.TriggerProvocation(isManualTest: true);
+            coordinator.OnMascotClicked();
+            Assert.Equal(SessionState.VideoPlaying, coordinator.CurrentState);
+
+            coordinator.OnVideoPlaybackFailed(onlyVideo);
+            Assert.NotNull(overlayWin);
+            Assert.Equal(System.Windows.Visibility.Collapsed, overlayWin.MascotCanvas.Visibility);
+            Assert.Equal(System.Windows.Visibility.Visible, overlayWin.EmptyLibraryNotice.Visibility);
+
+            overlayWin.SafeClose();
+        });
+    }
 }

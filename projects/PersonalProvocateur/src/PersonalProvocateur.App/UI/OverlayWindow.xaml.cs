@@ -43,6 +43,7 @@ public partial class OverlayWindow : Window
         _settingsStore = settingsStore;
 
         Loaded += OnLoaded;
+        Microsoft.Win32.SystemEvents.DisplaySettingsChanged += OnDisplaySettingsChanged;
     }
 
     /// <summary>
@@ -54,11 +55,7 @@ public partial class OverlayWindow : Window
 
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
-        // Enforce coverage of the entire primary display
-        Left = 0;
-        Top = 0;
-        Width = SystemParameters.PrimaryScreenWidth;
-        Height = SystemParameters.PrimaryScreenHeight;
+        UpdateOverlayBounds();
 
         // Apply dimming opacity from settings
         double opacity = _settingsStore?.CurrentSettings?.DimmingOpacity ?? 0.60;
@@ -223,6 +220,28 @@ public partial class OverlayWindow : Window
         }
     }
 
+    private void OnDisplaySettingsChanged(object? sender, EventArgs e)
+    {
+        var app = System.Windows.Application.Current;
+        if (app?.Dispatcher != null && !app.Dispatcher.CheckAccess())
+        {
+            app.Dispatcher.InvokeAsync(UpdateOverlayBounds);
+        }
+        else
+        {
+            UpdateOverlayBounds();
+        }
+    }
+
+    private void UpdateOverlayBounds()
+    {
+        Left = 0;
+        Top = 0;
+        Width = SystemParameters.PrimaryScreenWidth;
+        Height = SystemParameters.PrimaryScreenHeight;
+        PositionMascot();
+    }
+
     protected override void OnClosing(CancelEventArgs e)
     {
         if (!CanClose)
@@ -237,6 +256,7 @@ public partial class OverlayWindow : Window
 
     protected override void OnClosed(EventArgs e)
     {
+        Microsoft.Win32.SystemEvents.DisplaySettingsChanged -= OnDisplaySettingsChanged;
         Mascot?.StopAllAnimations();
         base.OnClosed(e);
     }

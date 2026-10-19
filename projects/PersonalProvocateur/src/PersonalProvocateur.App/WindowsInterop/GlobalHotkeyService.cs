@@ -4,6 +4,17 @@ using System.Windows.Interop;
 namespace PersonalProvocateur.App.WindowsInterop;
 
 /// <summary>
+/// Hotkey registration validation states.
+/// </summary>
+public enum HotkeyValidationState
+{
+    Valid,
+    Empty,
+    InvalidFormat,
+    OccupiedByAnotherApp
+}
+
+/// <summary>
 /// Manages global system-wide hotkeys (Trigger and Panic) using Win32 RegisterHotKey and WPF HwndSource.
 /// </summary>
 public sealed class GlobalHotkeyService : IDisposable
@@ -18,9 +29,39 @@ public sealed class GlobalHotkeyService : IDisposable
 
     private Action? _triggerCallback;
     private Action? _panicCallback;
+    private string? _currentTriggerHotkeyStr;
+    private string? _currentPanicHotkeyStr;
     private bool _isTriggerRegistered;
     private bool _isPanicRegistered;
     private readonly object _lock = new();
+
+    /// <summary>
+    /// Gets the currently registered trigger hotkey string.
+    /// </summary>
+    public string? CurrentTriggerHotkey
+    {
+        get
+        {
+            lock (_lock)
+            {
+                return _currentTriggerHotkeyStr;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Gets the currently registered panic hotkey string.
+    /// </summary>
+    public string? CurrentPanicHotkey
+    {
+        get
+        {
+            lock (_lock)
+            {
+                return _currentPanicHotkeyStr;
+            }
+        }
+    }
 
     /// <summary>
     /// Gets whether the trigger hotkey is currently registered with Windows.
@@ -311,6 +352,7 @@ public sealed class GlobalHotkeyService : IDisposable
             if (registered)
             {
                 _triggerCallback = callback;
+                _currentTriggerHotkeyStr = hotkeyStr;
                 _isTriggerRegistered = true;
                 return true;
             }
@@ -362,6 +404,7 @@ public sealed class GlobalHotkeyService : IDisposable
             if (registered)
             {
                 _panicCallback = callback;
+                _currentPanicHotkeyStr = hotkeyStr;
                 _isPanicRegistered = true;
                 return true;
             }
@@ -394,6 +437,66 @@ public sealed class GlobalHotkeyService : IDisposable
 
             _triggerCallback = null;
             _panicCallback = null;
+            _currentTriggerHotkeyStr = null;
+            _currentPanicHotkeyStr = null;
+        }
+    }
+
+    /// <summary>
+    /// Checks the validation and registration availability of a candidate hotkey string.
+    /// </summary>
+    /// <param name="hotkeyStr">Candidate hotkey string (e.g. "Ctrl+Alt+P").</param>
+    /// <param name="currentActiveHotkey">Optional currently registered hotkey to treat as valid.</param>
+    /// <returns>Validation state of the hotkey.</returns>
+    public static HotkeyValidationState CheckHotkeyStatus(string? hotkeyStr, string? currentActiveHotkey = null)
+    {
+        if (string.IsNullOrWhiteSpace(hotkeyStr))
+        {
+            return HotkeyValidationState.Empty;
+        }
+
+        if (!TryParseHotkey(hotkeyStr, out uint modifiers, out uint virtualKey))
+        {
+            return HotkeyValidationState.InvalidFormat;
+        }
+
+        if (!string.IsNullOrWhiteSpace(currentActiveHotkey) &&
+            string.Equals(hotkeyStr.Trim(), currentActiveHotkey.Trim(), StringComparison.OrdinalIgnoreCase))
+        {
+            return HotkeyValidationState.Valid;
+        }
+
+        try
+        {
+            var parameters = new HwndSourceParameters("PP_HotkeyTester")
+            {
+                WindowStyle = 0,
+                Width = 0,
+                Height = 0,
+                PositionX = 0,
+                PositionY = 0
+            };
+            using var tempSource = new HwndSource(parameters);
+            IntPtr hwnd = tempSource.Handle;
+            const int testId = 9999;
+
+            bool success = NativeMethods.RegisterHotKey(hwnd, testId, modifiers | NativeMethods.MOD_NOREPEAT, virtualKey);
+            if (!success)
+            {
+                success = NativeMethods.RegisterHotKey(hwnd, testId, modifiers, virtualKey);
+            }
+
+            if (success)
+            {
+                NativeMethods.UnregisterHotKey(hwnd, testId);
+                return HotkeyValidationState.Valid;
+            }
+
+            return HotkeyValidationState.OccupiedByAnotherApp;
+        }
+        catch
+        {
+            return HotkeyValidationState.Valid;
         }
     }
 

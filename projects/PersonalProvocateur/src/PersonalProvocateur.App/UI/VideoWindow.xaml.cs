@@ -28,6 +28,7 @@ public partial class VideoWindow : Window
         _settingsStore = settingsStore;
 
         Loaded += OnLoaded;
+        Microsoft.Win32.SystemEvents.DisplaySettingsChanged += OnDisplaySettingsChanged;
     }
 
     /// <summary>
@@ -38,6 +39,24 @@ public partial class VideoWindow : Window
     }
 
     private void OnLoaded(object sender, RoutedEventArgs e)
+    {
+        UpdateLayoutBounds();
+    }
+
+    private void OnDisplaySettingsChanged(object? sender, EventArgs e)
+    {
+        var app = System.Windows.Application.Current;
+        if (app?.Dispatcher != null && !app.Dispatcher.CheckAccess())
+        {
+            app.Dispatcher.InvokeAsync(UpdateLayoutBounds);
+        }
+        else
+        {
+            UpdateLayoutBounds();
+        }
+    }
+
+    private void UpdateLayoutBounds()
     {
         // 75% to 80% screen coverage
         double targetWidth = Math.Max(720, SystemParameters.PrimaryScreenWidth * 0.78);
@@ -70,7 +89,7 @@ public partial class VideoWindow : Window
         catch
         {
             // If URI creation or initial play fails, complete session gracefully
-            _coordinator?.CompleteSession();
+            _coordinator?.OnVideoPlaybackFailed(filePath);
         }
     }
 
@@ -86,8 +105,16 @@ public partial class VideoWindow : Window
 
     private void Player_MediaFailed(object? sender, ExceptionRoutedEventArgs e)
     {
-        // Ensure no crash on corrupt media files
-        _coordinator?.CompleteSession();
+        // Automatically switch to next video or cleanly complete without crashing
+        string failedPath = Player.Source?.LocalPath ?? string.Empty;
+        if (_coordinator != null)
+        {
+            _coordinator.OnVideoPlaybackFailed(failedPath);
+        }
+        else
+        {
+            Close();
+        }
     }
 
     private void CloseButton_Click(object sender, RoutedEventArgs e)
@@ -117,5 +144,11 @@ public partial class VideoWindow : Window
         }
 
         base.OnClosing(e);
+    }
+
+    protected override void OnClosed(EventArgs e)
+    {
+        Microsoft.Win32.SystemEvents.DisplaySettingsChanged -= OnDisplaySettingsChanged;
+        base.OnClosed(e);
     }
 }

@@ -114,7 +114,7 @@ public partial class App : System.Windows.Application
             return;
         }
 
-        _settingsWindow = new SettingsWindow(_settingsStore, _videoLibraryService, _overlayCoordinator);
+        _settingsWindow = new SettingsWindow(_settingsStore, _videoLibraryService, _overlayCoordinator, _scheduler);
         _settingsWindow.Closed += (s, e) => _settingsWindow = null;
         _settingsWindow.Show();
         _settingsWindow.Activate();
@@ -124,6 +124,12 @@ public partial class App : System.Windows.Application
     {
         try
         {
+            if (_settingsWindow != null && _settingsWindow.IsLoaded)
+            {
+                _settingsWindow.Close();
+                _settingsWindow = null;
+            }
+
             _trayIconService?.Dispose();
             _hotkeyService?.Dispose();
             _powerWatcher?.Dispose();

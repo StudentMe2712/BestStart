@@ -7,7 +7,12 @@ Add entries with the `/lesson` command, or by hand. Newest on top.
 
 ## Log
 
-### 2026-10-19 — WPF Panel/Border TabStop and WinForms Graphics Types Disambiguation
+### 2026-10-19 — WPF StaticResource Resolution on Root Window and SystemEvents DisplaySettingsChanged
+- **Problem:** 1) `XamlParseException: Cannot find resource named 'BackgroundBrush'` when root `<Window Background="{StaticResource BackgroundBrush}">` is parsed in unit tests. 2) Memory leak or invalid UI thread access on screen resolution changes (`SystemEvents.DisplaySettingsChanged`).
+- **Root cause:** 1) Properties declared on root `<Window>` element are evaluated by XAML before `<Window.Resources>` is populated. 2) Static event `SystemEvents.DisplaySettingsChanged` holds references to window instances indefinitely if not unsubscribed, and fires on a non-UI thread.
+- **Fix:** 1) Use literal hex background (`Background="#12131A"`) on root `<Window>` elements. 2) Marshal `DisplaySettingsChanged` handlers via `Dispatcher.InvokeAsync` and strictly unsubscribe in `OnClosed(EventArgs e)`.
+- **Rule:** Never use StaticResource on the root element of a standalone window, and always unsubscribe from Win32 static events in `OnClosed`.
+- **Scope:** this-project
 - **Problem:** 1) `error MC3072: property 'IsTabStop' does not exist in XML namespace` on `Grid` or `Border`. 2) `error CS0104: 'Brush'/'Pen'/'UserControl' is an ambiguous reference between System.Drawing/System.Windows.Forms and System.Windows.Media/System.Windows.Controls`.
 - **Root cause:** `IsTabStop` is defined only on `Control` subclasses, not on `Panel` (`Grid`) or `Border`. Also, `<UseWindowsForms>true</UseWindowsForms>` imports `System.Drawing` and `System.Windows.Forms` which clash with `System.Windows.Media.Brush/Pen` and `System.Windows.Controls.UserControl`.
 - **Fix:** 1) Use attached property `KeyboardNavigation.IsTabStop="False"` on non-`Control` elements (`Grid`, `Border`). 2) Explicitly alias `using Brush = System.Windows.Media.Brush;`, `using Pen = System.Windows.Media.Pen;`, `using UserControl = System.Windows.Controls.UserControl;`.
