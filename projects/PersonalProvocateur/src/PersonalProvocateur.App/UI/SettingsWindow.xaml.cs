@@ -18,6 +18,7 @@ using SolidColorBrush = System.Windows.Media.SolidColorBrush;
 using KeyEventArgs = System.Windows.Input.KeyEventArgs;
 using Key = System.Windows.Input.Key;
 using TextBox = System.Windows.Controls.TextBox;
+using Button = System.Windows.Controls.Button;
 using OpenFileDialog = Microsoft.Win32.OpenFileDialog;
 
 namespace PersonalProvocateur.App.UI;
@@ -29,7 +30,8 @@ namespace PersonalProvocateur.App.UI;
 /// </summary>
 public partial class SettingsWindow : Window
 {
-    private static readonly Brush ActiveTabBg = CreateFrozenBrush(0xFF, 0x25, 0x29, 0x3A);
+    private static readonly Brush ActiveNavBg = CreateFrozenBrush(0xFF, 0x1C, 0x20, 0x33);
+    private static readonly Brush ActiveTabBg = CreateFrozenBrush(0xFF, 0x1C, 0x20, 0x33);
     private static readonly Brush ActiveTabFg = CreateFrozenBrush(0xFF, 0xF3, 0xF4, 0xF6);
     private static readonly Brush InactiveTabBg = Brushes.Transparent;
     private static readonly Brush InactiveTabFg = CreateFrozenBrush(0xFF, 0x9C, 0xA3, 0xAF);
@@ -77,6 +79,31 @@ public partial class SettingsWindow : Window
     /// Gets the path to the custom mascot image if CustomImage skin is selected.
     /// </summary>
     public string CustomMascotPath => _customMascotPath;
+
+    /// <summary>
+    /// Gets the navigation button for the Content tab (alias for backward compatibility).
+    /// </summary>
+    public Button TabVideosButton => NavContentButton;
+
+    /// <summary>
+    /// Gets the navigation button for the Schedule &amp; Mascot tab (alias for backward compatibility).
+    /// </summary>
+    public Button TabAppearanceButton => NavScheduleButton;
+
+    /// <summary>
+    /// Gets the navigation button for the System tab (alias for backward compatibility).
+    /// </summary>
+    public Button TabSystemButton => NavSystemButton;
+
+    /// <summary>
+    /// Gets the video modal card button (alias for backward compatibility).
+    /// </summary>
+    public Button AddVideoButton => AddVideoModalCardButton;
+
+    /// <summary>
+    /// Gets the text modal card button (alias for backward compatibility).
+    /// </summary>
+    public Button AddTextButton => AddTextModalCardButton;
 
     /// <summary>
     /// Initializes a new instance of <see cref="SettingsWindow"/>.
@@ -343,32 +370,44 @@ public partial class SettingsWindow : Window
     #region Segmented Control & Navigation
 
     /// <summary>
-    /// Selects the active tab in the macOS Segmented Control (0: Content, 1: Appearance &amp; Timer, 2: System).
+    /// Selects the active tab in the sidebar navigation (0: Content, 1: Appearance &amp; Timer, 2: System).
     /// </summary>
     /// <param name="index">Tab index.</param>
     public void SelectTab(int index)
     {
         _selectedTabIndex = Math.Clamp(index, 0, 2);
 
-        if (TabVideosButton != null)
+        if (NavContentButton != null)
         {
-            TabVideosButton.Background = _selectedTabIndex == 0 ? ActiveTabBg : InactiveTabBg;
-            TabVideosButton.Foreground = _selectedTabIndex == 0 ? ActiveTabFg : InactiveTabFg;
-            TabVideosButton.FontWeight = _selectedTabIndex == 0 ? FontWeights.SemiBold : FontWeights.Medium;
+            NavContentButton.Background = _selectedTabIndex == 0 ? ActiveNavBg : InactiveTabBg;
+            NavContentButton.Foreground = _selectedTabIndex == 0 ? ActiveTabFg : InactiveTabFg;
+            NavContentButton.FontWeight = _selectedTabIndex == 0 ? FontWeights.SemiBold : FontWeights.Medium;
+        }
+        if (NavContentAccent != null)
+        {
+            NavContentAccent.Visibility = _selectedTabIndex == 0 ? Visibility.Visible : Visibility.Collapsed;
         }
 
-        if (TabAppearanceButton != null)
+        if (NavScheduleButton != null)
         {
-            TabAppearanceButton.Background = _selectedTabIndex == 1 ? ActiveTabBg : InactiveTabBg;
-            TabAppearanceButton.Foreground = _selectedTabIndex == 1 ? ActiveTabFg : InactiveTabFg;
-            TabAppearanceButton.FontWeight = _selectedTabIndex == 1 ? FontWeights.SemiBold : FontWeights.Medium;
+            NavScheduleButton.Background = _selectedTabIndex == 1 ? ActiveNavBg : InactiveTabBg;
+            NavScheduleButton.Foreground = _selectedTabIndex == 1 ? ActiveTabFg : InactiveTabFg;
+            NavScheduleButton.FontWeight = _selectedTabIndex == 1 ? FontWeights.SemiBold : FontWeights.Medium;
+        }
+        if (NavScheduleAccent != null)
+        {
+            NavScheduleAccent.Visibility = _selectedTabIndex == 1 ? Visibility.Visible : Visibility.Collapsed;
         }
 
-        if (TabSystemButton != null)
+        if (NavSystemButton != null)
         {
-            TabSystemButton.Background = _selectedTabIndex == 2 ? ActiveTabBg : InactiveTabBg;
-            TabSystemButton.Foreground = _selectedTabIndex == 2 ? ActiveTabFg : InactiveTabFg;
-            TabSystemButton.FontWeight = _selectedTabIndex == 2 ? FontWeights.SemiBold : FontWeights.Medium;
+            NavSystemButton.Background = _selectedTabIndex == 2 ? ActiveNavBg : InactiveTabBg;
+            NavSystemButton.Foreground = _selectedTabIndex == 2 ? ActiveTabFg : InactiveTabFg;
+            NavSystemButton.FontWeight = _selectedTabIndex == 2 ? FontWeights.SemiBold : FontWeights.Medium;
+        }
+        if (NavSystemAccent != null)
+        {
+            NavSystemAccent.Visibility = _selectedTabIndex == 2 ? Visibility.Visible : Visibility.Collapsed;
         }
 
         if (TabVideosContent != null)
@@ -386,6 +425,12 @@ public partial class SettingsWindow : Window
             TabSystemContent.Visibility = _selectedTabIndex == 2 ? Visibility.Visible : Visibility.Collapsed;
         }
     }
+
+    private void NavContentButton_Click(object sender, RoutedEventArgs e) => SelectTab(0);
+
+    private void NavScheduleButton_Click(object sender, RoutedEventArgs e) => SelectTab(1);
+
+    private void NavSystemButton_Click(object sender, RoutedEventArgs e) => SelectTab(2);
 
     private void TabVideos_Click(object sender, RoutedEventArgs e) => SelectTab(0);
 
@@ -509,43 +554,6 @@ public partial class SettingsWindow : Window
         return Math.Max(min, _settingsStore?.CurrentSettings.MaxIntervalMinutes ?? 20);
     }
 
-    private void MinIntervalMinus_Click(object sender, RoutedEventArgs e)
-    {
-        int current = GetMinInterval();
-        int next = Math.Max(1, current - 1);
-        MinIntervalTextBox.Text = next.ToString();
-        TriggerAutoSave(immediate: false);
-    }
-
-    private void MinIntervalPlus_Click(object sender, RoutedEventArgs e)
-    {
-        int current = GetMinInterval();
-        int max = GetMaxInterval();
-        int next = Math.Min(120, current + 1);
-        if (next > max)
-        {
-            MaxIntervalTextBox.Text = next.ToString();
-        }
-        MinIntervalTextBox.Text = next.ToString();
-        TriggerAutoSave(immediate: false);
-    }
-
-    private void MaxIntervalMinus_Click(object sender, RoutedEventArgs e)
-    {
-        int current = GetMaxInterval();
-        int min = GetMinInterval();
-        int next = Math.Max(min, current - 1);
-        MaxIntervalTextBox.Text = next.ToString();
-        TriggerAutoSave(immediate: false);
-    }
-
-    private void MaxIntervalPlus_Click(object sender, RoutedEventArgs e)
-    {
-        int current = GetMaxInterval();
-        int next = Math.Min(480, current + 1);
-        MaxIntervalTextBox.Text = next.ToString();
-        TriggerAutoSave(immediate: false);
-    }
 
     private void IntervalTextBox_TextChanged(object sender, TextChangedEventArgs e)
     {
@@ -825,7 +833,32 @@ public partial class SettingsWindow : Window
 
     #region Content Actions (Videos & Text Reminders)
 
-    private void AddVideoButton_Click(object sender, RoutedEventArgs e)
+    private void OpenAddModalButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (AddContentModalOverlay != null)
+        {
+            AddContentModalOverlay.Visibility = Visibility.Visible;
+            if (ModalSelectionView != null)
+            {
+                ModalSelectionView.Visibility = Visibility.Visible;
+            }
+            if (ModalTextInputView != null)
+            {
+                ModalTextInputView.Visibility = Visibility.Collapsed;
+            }
+            InlineAddTextBox?.Clear();
+        }
+    }
+
+    private void CloseAddModalButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (AddContentModalOverlay != null)
+        {
+            AddContentModalOverlay.Visibility = Visibility.Collapsed;
+        }
+    }
+
+    private void AddVideoModalCardButton_Click(object sender, RoutedEventArgs e)
     {
         var dialog = new OpenFileDialog
         {
@@ -844,28 +877,41 @@ public partial class SettingsWindow : Window
                 }
             }
 
+            if (AddContentModalOverlay != null)
+            {
+                AddContentModalOverlay.Visibility = Visibility.Collapsed;
+            }
+
             RefreshVideosList();
             TriggerAutoSave(immediate: true);
             ShowToast("Видео успешно добавлены в библиотеку", isSuccess: true);
         }
     }
 
-    private void AddTextButton_Click(object sender, RoutedEventArgs e)
+    private void AddTextModalCardButton_Click(object sender, RoutedEventArgs e)
     {
-        if (InlineAddTextBorder != null)
+        if (ModalSelectionView != null)
         {
-            InlineAddTextBorder.Visibility = Visibility.Visible;
+            ModalSelectionView.Visibility = Visibility.Collapsed;
+        }
+        if (ModalTextInputView != null)
+        {
+            ModalTextInputView.Visibility = Visibility.Visible;
             InlineAddTextBox?.Focus();
         }
     }
 
     private void CancelAddTextButton_Click(object sender, RoutedEventArgs e)
     {
-        if (InlineAddTextBorder != null)
+        if (ModalTextInputView != null)
         {
-            InlineAddTextBorder.Visibility = Visibility.Collapsed;
-            InlineAddTextBox?.Clear();
+            ModalTextInputView.Visibility = Visibility.Collapsed;
         }
+        if (ModalSelectionView != null)
+        {
+            ModalSelectionView.Visibility = Visibility.Visible;
+        }
+        InlineAddTextBox?.Clear();
     }
 
     private void ConfirmAddTextButton_Click(object sender, RoutedEventArgs e)
@@ -899,14 +945,22 @@ public partial class SettingsWindow : Window
         }
 
         InlineAddTextBox?.Clear();
-        if (InlineAddTextBorder != null)
+        if (AddContentModalOverlay != null)
         {
-            InlineAddTextBorder.Visibility = Visibility.Collapsed;
+            AddContentModalOverlay.Visibility = Visibility.Collapsed;
         }
 
         RefreshVideosList();
         TriggerAutoSave(immediate: true);
         ShowToast("Текстовое напоминание добавлено", isSuccess: true);
+    }
+
+    private void AddVideoButton_Click(object sender, RoutedEventArgs e) => AddVideoModalCardButton_Click(sender, e);
+
+    private void AddTextButton_Click(object sender, RoutedEventArgs e)
+    {
+        OpenAddModalButton_Click(sender, e);
+        AddTextModalCardButton_Click(sender, e);
     }
 
     private void RemoveVideoButton_Click(object sender, RoutedEventArgs e)

@@ -177,8 +177,8 @@ public class SettingsWindowTests : IDisposable
             window.Show();
 
             Assert.Equal("Provocateur", window.Title);
-            Assert.Equal(780, window.Width);
-            Assert.Equal(640, window.Height);
+            Assert.Equal(860, window.Width);
+            Assert.Equal(600, window.Height);
             Assert.True(window.ShowInTaskbar);
 
             Assert.Equal("5", window.MinIntervalTextBox.Text);
@@ -193,7 +193,7 @@ public class SettingsWindowTests : IDisposable
     }
 
     [Fact]
-    public void SettingsWindow_StepperButtons_IncrementAndDecrementIntervals()
+    public void SettingsWindow_NumericInputs_ManualInputValidatesAndSaves()
     {
         RunInSta(() =>
         {
@@ -209,21 +209,18 @@ public class SettingsWindowTests : IDisposable
             Assert.Equal("5", window.MinIntervalTextBox.Text);
             Assert.Equal("20", window.MaxIntervalTextBox.Text);
 
-            // Increment Min
-            window.MinIntervalPlusButton.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
-            Assert.Equal("6", window.MinIntervalTextBox.Text);
+            // Manual input
+            window.MinIntervalTextBox.Text = "8";
+            window.MaxIntervalTextBox.Text = "35";
 
-            // Decrement Min
-            window.MinIntervalMinusButton.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
-            Assert.Equal("5", window.MinIntervalTextBox.Text);
+            Assert.Equal(8, window.GetMinInterval());
+            Assert.Equal(35, window.GetMaxInterval());
 
-            // Increment Max
-            window.MaxIntervalPlusButton.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
-            Assert.Equal("21", window.MaxIntervalTextBox.Text);
+            // Trigger auto-save immediately
+            window.TriggerAutoSave(immediate: true);
 
-            // Decrement Max
-            window.MaxIntervalMinusButton.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
-            Assert.Equal("20", window.MaxIntervalTextBox.Text);
+            Assert.Equal(8, store.CurrentSettings.MinIntervalMinutes);
+            Assert.Equal(35, store.CurrentSettings.MaxIntervalMinutes);
 
             window.Close();
         });
@@ -262,7 +259,7 @@ public class SettingsWindowTests : IDisposable
     }
 
     [Fact]
-    public void SettingsWindow_SegmentedControl_HasThreeTabsAndSaveButton()
+    public void SettingsWindow_SidebarNavigation_HasThreeSectionsAndSwitchesContent()
     {
         RunInSta(() =>
         {
@@ -274,10 +271,15 @@ public class SettingsWindowTests : IDisposable
             var window = new SettingsWindow(store, videoLib, coordinator, scheduler);
             window.Show();
 
-            // Verify three segmented control tabs exist
-            Assert.NotNull(window.TabVideosButton);
-            Assert.NotNull(window.TabAppearanceButton);
-            Assert.NotNull(window.TabSystemButton);
+            // Verify three sidebar navigation buttons exist
+            Assert.NotNull(window.NavContentButton);
+            Assert.NotNull(window.NavScheduleButton);
+            Assert.NotNull(window.NavSystemButton);
+
+            // Verify backward compatibility aliases
+            Assert.Same(window.NavContentButton, window.TabVideosButton);
+            Assert.Same(window.NavScheduleButton, window.TabAppearanceButton);
+            Assert.Same(window.NavSystemButton, window.TabSystemButton);
 
             Assert.NotNull(window.TabVideosContent);
             Assert.NotNull(window.TabAppearanceContent);
@@ -301,17 +303,72 @@ public class SettingsWindowTests : IDisposable
             Assert.Equal(Visibility.Collapsed, window.TabAppearanceContent.Visibility);
             Assert.Equal(Visibility.Collapsed, window.TabSystemContent.Visibility);
 
-            window.SelectTab(1);
+            // Switch to Schedule & Mascot tab
+            window.NavScheduleButton.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
             Assert.Equal(1, window.SelectedTabIndex);
             Assert.Equal(Visibility.Collapsed, window.TabVideosContent.Visibility);
             Assert.Equal(Visibility.Visible, window.TabAppearanceContent.Visibility);
             Assert.Equal(Visibility.Collapsed, window.TabSystemContent.Visibility);
 
-            window.SelectTab(2);
+            // Switch to System tab
+            window.NavSystemButton.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
             Assert.Equal(2, window.SelectedTabIndex);
             Assert.Equal(Visibility.Collapsed, window.TabVideosContent.Visibility);
             Assert.Equal(Visibility.Collapsed, window.TabAppearanceContent.Visibility);
             Assert.Equal(Visibility.Visible, window.TabSystemContent.Visibility);
+
+            // Switch back to Content tab
+            window.NavContentButton.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+            Assert.Equal(0, window.SelectedTabIndex);
+            Assert.Equal(Visibility.Visible, window.TabVideosContent.Visibility);
+            Assert.Equal(Visibility.Collapsed, window.TabAppearanceContent.Visibility);
+            Assert.Equal(Visibility.Collapsed, window.TabSystemContent.Visibility);
+
+            window.Close();
+        });
+    }
+
+    [Fact]
+    public void SettingsWindow_SingleAddButton_OpensModalOverlay()
+    {
+        RunInSta(() =>
+        {
+            var store = new SettingsStore(_settingsPath);
+            var videoLib = new VideoLibraryService(store, fileExistsChecker: _ => false);
+            var scheduler = new RandomReminderScheduler();
+            using var coordinator = new OverlayCoordinator(scheduler, videoLib, store);
+
+            var window = new SettingsWindow(store, videoLib, coordinator, scheduler);
+            window.Show();
+
+            Assert.NotNull(window.OpenAddModalButton);
+            Assert.NotNull(window.AddContentModalOverlay);
+            Assert.NotNull(window.CloseAddModalButton);
+            Assert.NotNull(window.AddVideoModalCardButton);
+            Assert.NotNull(window.AddTextModalCardButton);
+
+            // Initially modal is collapsed
+            Assert.Equal(Visibility.Collapsed, window.AddContentModalOverlay.Visibility);
+
+            // Click OpenAddModalButton
+            window.OpenAddModalButton.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+            Assert.Equal(Visibility.Visible, window.AddContentModalOverlay.Visibility);
+            Assert.Equal(Visibility.Visible, window.ModalSelectionView.Visibility);
+            Assert.Equal(Visibility.Collapsed, window.ModalTextInputView.Visibility);
+
+            // Click AddTextModalCardButton to switch to text input
+            window.AddTextModalCardButton.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+            Assert.Equal(Visibility.Collapsed, window.ModalSelectionView.Visibility);
+            Assert.Equal(Visibility.Visible, window.ModalTextInputView.Visibility);
+
+            // Click CancelAddTextButton to go back to selection view
+            window.CancelAddTextButton.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+            Assert.Equal(Visibility.Visible, window.ModalSelectionView.Visibility);
+            Assert.Equal(Visibility.Collapsed, window.ModalTextInputView.Visibility);
+
+            // Click CloseAddModalButton to close overlay
+            window.CloseAddModalButton.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+            Assert.Equal(Visibility.Collapsed, window.AddContentModalOverlay.Visibility);
 
             window.Close();
         });
