@@ -16,6 +16,16 @@ public class VideoItem
     public string Title { get; set; } = string.Empty;
 
     /// <summary>
+    /// Type of provocation content (video or text).
+    /// </summary>
+    public ProvocationContentType ContentType { get; set; } = ProvocationContentType.Video;
+
+    /// <summary>
+    /// Text content for text-based provocation reminders.
+    /// </summary>
+    public string TextContent { get; set; } = string.Empty;
+
+    /// <summary>
     /// Absolute or relative file path to the video file on disk.
     /// </summary>
     public string FilePath { get; set; } = string.Empty;

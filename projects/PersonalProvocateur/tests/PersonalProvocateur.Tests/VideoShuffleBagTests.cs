@@ -143,4 +143,50 @@ public class VideoShuffleBagTests
             last = next;
         }
     }
+
+    [Fact]
+    public void SyncPool_IncludesTextItemsAlongsideVideos_AndShufflesBoth()
+    {
+        var v1 = CreateVideo("VideoClip", isEnabled: true);
+        var t1 = new VideoItem
+        {
+            Id = Guid.NewGuid(),
+            Title = "Love Note",
+            ContentType = ProvocationContentType.Text,
+            TextContent = "Tell her you love her!",
+            IsEnabled = true
+        };
+        var tEmpty = new VideoItem
+        {
+            Id = Guid.NewGuid(),
+            Title = "Empty Text",
+            ContentType = ProvocationContentType.Text,
+            TextContent = "   ",
+            IsEnabled = true
+        };
+        var tDisabled = new VideoItem
+        {
+            Id = Guid.NewGuid(),
+            Title = "Disabled Text",
+            ContentType = ProvocationContentType.Text,
+            TextContent = "Valid content",
+            IsEnabled = false
+        };
+
+        var bag = new VideoShuffleBag(fileExistsChecker: _ => true);
+        bag.SyncPool(new[] { v1, t1, tEmpty, tDisabled });
+
+        Assert.Equal(2, bag.PoolCount);
+
+        var cycleItems = new List<VideoItem>();
+        for (int i = 0; i < 2; i++)
+        {
+            var item = bag.Next();
+            Assert.NotNull(item);
+            cycleItems.Add(item);
+        }
+
+        Assert.Contains(cycleItems, x => x.ContentType == ProvocationContentType.Video && x.Id == v1.Id);
+        Assert.Contains(cycleItems, x => x.ContentType == ProvocationContentType.Text && x.Id == t1.Id);
+    }
 }

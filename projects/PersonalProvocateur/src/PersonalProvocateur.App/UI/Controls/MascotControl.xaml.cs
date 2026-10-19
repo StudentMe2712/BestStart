@@ -205,15 +205,17 @@ public partial class MascotControl : UserControl
     }
 
     /// <summary>
-    /// Updates the text shown inside the speech bubble.
+    /// Gets the last speech text set on the control (for backwards compatibility).
+    /// </summary>
+    public string LastSpeechText { get; private set; } = string.Empty;
+
+    /// <summary>
+    /// Updates the speech text (speech bubble removed in ADR-018; stores text for tracking).
     /// </summary>
     /// <param name="text">The message to display.</param>
     public void SetSpeechText(string text)
     {
-        if (SpeechBubbleText != null)
-        {
-            SpeechBubbleText.Text = text;
-        }
+        LastSpeechText = text;
     }
 
     /// <summary>
@@ -234,17 +236,16 @@ public partial class MascotControl : UserControl
     }
 
     /// <summary>
-    /// Plays the peek entrance animation (smooth spring slide-in from top screen edge),
-    /// automatically transitioning to <see cref="PlayIdleAnimation"/> upon completion.
+    /// Plays the peek entrance animation (smooth spring slide-in from -130 to 14 over 380ms),
+    /// automatically transitioning to <see cref="PlayIdleAnimation"/> upon completion (ADR-018).
     /// </summary>
     public void PlayPeekAnimation()
     {
         StopRunningAnimations();
 
         SetState(MascotState.Peek);
-        SetSpeechText("Ку-ку! 👀");
 
-        MascotTranslate.Y = -260.0;
+        MascotTranslate.Y = -130.0;
         MascotTranslate.X = 0.0;
         Opacity = 0.0;
 
@@ -252,10 +253,10 @@ public partial class MascotControl : UserControl
 
         var slideAnim = new DoubleAnimation
         {
-            From = -260.0,
-            To = 0.0,
-            Duration = TimeSpan.FromMilliseconds(520),
-            EasingFunction = new BackEase { Amplitude = 0.35, EasingMode = EasingMode.EaseOut }
+            From = -130.0,
+            To = 14.0,
+            Duration = TimeSpan.FromMilliseconds(380),
+            EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
         };
         Storyboard.SetTarget(slideAnim, MascotTranslate);
         Storyboard.SetTargetProperty(slideAnim, new PropertyPath(TranslateTransform.YProperty));
@@ -265,7 +266,7 @@ public partial class MascotControl : UserControl
         {
             From = 0.0,
             To = 1.0,
-            Duration = TimeSpan.FromMilliseconds(520),
+            Duration = TimeSpan.FromMilliseconds(300),
             EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
         };
         Storyboard.SetTarget(opacityAnim, this);
@@ -296,7 +297,7 @@ public partial class MascotControl : UserControl
         SetRandomSpeech(MascotState.Idle);
 
         Opacity = 1.0;
-        MascotTranslate.Y = 0.0;
+        MascotTranslate.Y = 14.0;
         MascotTranslate.X = 0.0;
         MascotScale.ScaleX = 1.0;
         MascotScale.ScaleY = 1.0;
@@ -304,11 +305,11 @@ public partial class MascotControl : UserControl
 
         var sb = new Storyboard();
 
-        // Subtle vertical floating at top edge (0 to 6px)
+        // Subtle vertical floating at top edge (14 to 20px)
         var floatAnim = new DoubleAnimation
         {
-            From = 0.0,
-            To = 6.0,
+            From = 14.0,
+            To = 20.0,
             Duration = TimeSpan.FromMilliseconds(1400),
             AutoReverse = true,
             RepeatBehavior = RepeatBehavior.Forever,
@@ -352,11 +353,11 @@ public partial class MascotControl : UserControl
 
         var sb = new Storyboard();
 
-        // Bouncing jump downwards from notch (TranslateY 0 to 16)
+        // Bouncing jump downwards from notch (TranslateY 14 to 28)
         var bounceAnim = new DoubleAnimation
         {
-            From = 0.0,
-            To = 16.0,
+            From = 14.0,
+            To = 28.0,
             Duration = TimeSpan.FromMilliseconds(220),
             AutoReverse = true,
             RepeatBehavior = new RepeatBehavior(3),
@@ -396,7 +397,7 @@ public partial class MascotControl : UserControl
 
     /// <summary>
     /// Plays the click response animation (expanding light pulse with scale up to 1.25 over 100ms,
-    /// followed by smooth upward exit to -260 over 220ms with Opacity fading to 0).
+    /// followed by smooth upward exit to -130 over 220ms with Opacity fading to 0).
     /// </summary>
     /// <param name="onCompleted">Action invoked after the animation concludes.</param>
     public void PlayClickAnimation(Action onCompleted)
@@ -433,11 +434,11 @@ public partial class MascotControl : UserControl
         Storyboard.SetTargetProperty(scaleYAnim, new PropertyPath(ScaleTransform.ScaleYProperty));
         sb.Children.Add(scaleYAnim);
 
-        // Smooth exit upwards: MascotTranslate.Y from 0 to -260 over 220ms
+        // Smooth exit upwards: MascotTranslate.Y from 14 to -130 over 220ms
         var exitAnim = new DoubleAnimation
         {
-            From = 0.0,
-            To = -260.0,
+            From = 14.0,
+            To = -130.0,
             BeginTime = TimeSpan.FromMilliseconds(100),
             Duration = TimeSpan.FromMilliseconds(220),
             EasingFunction = new CubicEase { EasingMode = EasingMode.EaseIn }

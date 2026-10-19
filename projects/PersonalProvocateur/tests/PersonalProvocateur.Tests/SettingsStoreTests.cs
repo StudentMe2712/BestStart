@@ -38,8 +38,8 @@ public class SettingsStoreTests : IDisposable
         var settings = store.Load();
 
         Assert.NotNull(settings);
-        Assert.Equal(15, settings.MinIntervalMinutes);
-        Assert.Equal(45, settings.MaxIntervalMinutes);
+        Assert.Equal(5, settings.MinIntervalMinutes);
+        Assert.Equal(20, settings.MaxIntervalMinutes);
         Assert.Equal(0.60, settings.DimmingOpacity, 2);
     }
 
@@ -52,8 +52,8 @@ public class SettingsStoreTests : IDisposable
         var settings = store.Load();
 
         Assert.NotNull(settings);
-        Assert.Equal(15, settings.MinIntervalMinutes);
-        Assert.Equal(45, settings.MaxIntervalMinutes);
+        Assert.Equal(5, settings.MinIntervalMinutes);
+        Assert.Equal(20, settings.MaxIntervalMinutes);
     }
 
     [Fact]

@@ -6,6 +6,7 @@ using System.Runtime.ExceptionServices;
 using System.Threading;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Media;
 using PersonalProvocateur.App.Models;
 using PersonalProvocateur.App.Services;
 using PersonalProvocateur.App.Storage;
@@ -359,6 +360,180 @@ public class OverlayWindowTests : IDisposable
             // Clean up by completing session
             coordinator.CompleteSession();
             Assert.Equal(SessionState.BackgroundIdle, coordinator.CurrentState);
+        });
+    }
+
+    [Fact]
+    public void OverlayWindow_Constructor_SecondaryDimmerOnly_HidesMascotAndNotices()
+    {
+        RunInSta(() =>
+        {
+            var store = CreateTestSettingsStore();
+            var scheduler = new RandomReminderScheduler();
+            var videoLib = new VideoLibraryService(store);
+            using var coordinator = new OverlayCoordinator(scheduler, videoLib, store);
+
+            var window = new OverlayWindow(coordinator, store, isSecondaryDimmerOnly: true);
+
+            Assert.True(window.IsSecondaryDimmerOnly);
+            Assert.Equal(Visibility.Collapsed, window.Mascot.Visibility);
+            Assert.Equal(Visibility.Collapsed, window.EmptyLibraryNotice.Visibility);
+            Assert.Equal(Visibility.Collapsed, window.SpotlightContainer.Visibility);
+
+            window.SafeClose();
+        });
+    }
+
+    [Fact]
+    public void OverlayWindow_ShowSpotlightText_DisplaysCardAndHidesMascot()
+    {
+        RunInSta(() =>
+        {
+            var store = CreateTestSettingsStore();
+            var scheduler = new RandomReminderScheduler();
+            var videoLib = new VideoLibraryService(store);
+            using var coordinator = new OverlayCoordinator(scheduler, videoLib, store);
+
+            var window = new OverlayWindow(coordinator, store);
+            Assert.Equal(Visibility.Visible, window.Mascot.Visibility);
+            Assert.Equal(Visibility.Collapsed, window.SpotlightContainer.Visibility);
+
+            window.ShowSpotlightText("Сделать разминку 5 минут");
+
+            Assert.Equal(Visibility.Collapsed, window.Mascot.Visibility);
+            Assert.Equal(Visibility.Visible, window.SpotlightContainer.Visibility);
+            Assert.Equal("Сделать разминку 5 минут", window.SpotlightTextBlock.Text);
+
+            window.SafeClose();
+        });
+    }
+
+    [Fact]
+    public void OverlayWindow_BackdropClick_WhenSpotlightVisible_DoesNotDismissSession()
+    {
+        RunInSta(() =>
+        {
+            var store = CreateTestSettingsStore();
+            var scheduler = new RandomReminderScheduler();
+            var videoLib = new VideoLibraryService(store);
+            using var coordinator = new OverlayCoordinator(
+                scheduler,
+                videoLib,
+                store,
+                overlayWindowFactory: _ => null,
+                videoWindowFactory: _ => null,
+                dispatcherInvoker: a => a());
+
+            coordinator.TriggerProvocation(isManualTest: true);
+
+            var window = new OverlayWindow(coordinator, store);
+            window.ShowSpotlightText("Сделать разминку");
+
+            // Backdrop click must not dismiss
+            window.HandleBackdropClick();
+
+            Assert.Equal(Visibility.Visible, window.SpotlightContainer.Visibility);
+
+            window.SafeClose();
+            coordinator.CompleteSession();
+        });
+    }
+
+    [Fact]
+    public void OverlayWindow_SpotlightDoneButton_CompletesSession()
+    {
+        RunInSta(() =>
+        {
+            var store = CreateTestSettingsStore();
+            var scheduler = new RandomReminderScheduler();
+            var videoLib = new VideoLibraryService(store);
+            using var coordinator = new OverlayCoordinator(
+                scheduler,
+                videoLib,
+                store,
+                overlayWindowFactory: _ => null,
+                videoWindowFactory: _ => null,
+                dispatcherInvoker: a => a());
+
+            coordinator.TriggerProvocation(isManualTest: true);
+
+            var window = new OverlayWindow(coordinator, store);
+            window.ShowSpotlightText("Прочитать заметку");
+
+            // Click done button
+            window.SpotlightDoneButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+
+            Assert.Equal(SessionState.BackgroundIdle, coordinator.CurrentState);
+            Assert.True(scheduler.IsRunning);
+
+            window.SafeClose();
+        });
+    }
+
+    [Fact]
+    public void OverlayWindow_EnterKey_WhenSpotlightVisible_CompletesSession()
+    {
+        RunInSta(() =>
+        {
+            var store = CreateTestSettingsStore();
+            var scheduler = new RandomReminderScheduler();
+            var videoLib = new VideoLibraryService(store);
+            using var coordinator = new OverlayCoordinator(
+                scheduler,
+                videoLib,
+                store,
+                overlayWindowFactory: _ => null,
+                videoWindowFactory: _ => null,
+                dispatcherInvoker: a => a());
+
+            coordinator.TriggerProvocation(isManualTest: true);
+
+            var window = new OverlayWindow(coordinator, store);
+            window.ShowSpotlightText("Задача");
+
+            var keyArgs = new System.Windows.Input.KeyEventArgs(
+                System.Windows.Input.Keyboard.PrimaryDevice,
+                new System.Windows.Interop.HwndSource(0, 0, 0, 0, 0, "", IntPtr.Zero),
+                0,
+                System.Windows.Input.Key.Enter)
+            {
+                RoutedEvent = UIElement.PreviewKeyDownEvent
+            };
+            window.RaiseEvent(keyArgs);
+
+            Assert.Equal(SessionState.BackgroundIdle, coordinator.CurrentState);
+            Assert.True(keyArgs.Handled);
+
+            window.SafeClose();
+        });
+    }
+
+    [Fact]
+    public void OverlayWindow_PositionOnScreen_SetsWindowCoordinates()
+    {
+        RunInSta(() =>
+        {
+            var store = CreateTestSettingsStore();
+            var scheduler = new RandomReminderScheduler();
+            var videoLib = new VideoLibraryService(store);
+            using var coordinator = new OverlayCoordinator(scheduler, videoLib, store);
+
+            var window = new OverlayWindow(coordinator, store);
+            var screen = System.Windows.Forms.Screen.PrimaryScreen;
+            if (screen != null)
+            {
+                window.PositionOnScreen(screen);
+                var dpi = VisualTreeHelper.GetDpi(window);
+                double dpiScaleX = 1.0 / dpi.DpiScaleX;
+                double dpiScaleY = 1.0 / dpi.DpiScaleY;
+
+                Assert.Equal(screen.Bounds.Left * dpiScaleX, window.Left);
+                Assert.Equal(screen.Bounds.Top * dpiScaleY, window.Top);
+                Assert.Equal(screen.Bounds.Width * dpiScaleX, window.Width);
+                Assert.Equal(screen.Bounds.Height * dpiScaleY, window.Height);
+            }
+
+            window.SafeClose();
         });
     }
 }

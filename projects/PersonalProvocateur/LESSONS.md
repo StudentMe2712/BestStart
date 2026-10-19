@@ -7,6 +7,13 @@ Add entries with the `/lesson` command, or by hand. Newest on top.
 
 ## Log
 
+### 2026-10-19 — GDI+ Transparent Crystal Icon Generation and WPF Numeric Stepper Two-Way Binding
+- **Problem:** 1) Generating Win32 HICON for Taskbar without a background square requires 32-bit ARGB with proper alpha channel preservation. 2) Replacing Sliders with TextBoxes and Steppers requires robust handling of non-numeric input, bounds clamping (1..120, min..480), and debounced saving to prevent race conditions during rapid typing.
+- **Root cause:** 1) Default `Graphics.Clear` or non-ARGB bitmaps in GDI+ render black backgrounds on Windows taskbars. 2) WPF `TextBox.TextChanged` fires on every keystroke, including empty or incomplete numeric states (e.g. while backspacing).
+- **Fix:** 1) Used `PixelFormat.Format32bppArgb` with `g.Clear(Color.Transparent)` and high-quality smoothing modes when drawing polygon crystal facets with HIcon conversion. 2) Validated numeric keys in `PreviewKeyDown`, clamped values with `Math.Clamp` on `LostFocus` and stepper clicks, and synchronized auto-save via debounced timer.
+- **Rule:** For transparent programmatic icons in WPF/Win32, always use 32bpp ARGB bitmaps with explicit transparency clearing and handle numeric text box input with `PreviewKeyDown` filter + `LostFocus` boundary clamping.
+- **Scope:** this-project
+
 ### 2026-10-19 — WPF static Freezable brushes and cross-STA-thread unit test execution
 - **Problem:** `InvalidOperationException: Cannot use a DependencyObject that belongs to a different thread than its parent Freezable` when assigning `static readonly Brush` fields to UI elements in tests running across multiple STA threads.
 - **Root cause:** WPF `Brush` (and other `Freezable` types) instantiated statically on one STA thread are bound to that thread by default. If another test runs in a new STA thread and accesses or assigns these static brushes to controls, WPF throws thread ownership exceptions.

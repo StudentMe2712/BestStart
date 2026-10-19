@@ -83,7 +83,9 @@ public class VideoShuffleBag
             {
                 foreach (var video in availableVideos)
                 {
-                    if (video != null && video.IsEnabled && !string.IsNullOrWhiteSpace(video.FilePath) && _fileExistsChecker(video.FilePath))
+                    if (video != null && video.IsEnabled &&
+                        ((video.ContentType == ProvocationContentType.Video && !string.IsNullOrWhiteSpace(video.FilePath) && _fileExistsChecker(video.FilePath)) ||
+                         (video.ContentType == ProvocationContentType.Text && !string.IsNullOrWhiteSpace(video.TextContent))))
                     {
                         _pool.Add(video);
                     }

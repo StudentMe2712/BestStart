@@ -700,4 +700,150 @@ public class OverlayCoordinatorTests : IDisposable
             Assert.True(scheduler.IsRunning);
         });
     }
+
+    [Fact]
+    public void TriggerProvocation_MultiMonitor_OpensOverlaysOnAllScreensWithTargetPrimary()
+    {
+        RunInSta(() =>
+        {
+            var store = CreateTestSettingsStore(isPaused: false);
+            var scheduler = new RandomReminderScheduler();
+            var videoLib = new VideoLibraryService(store);
+
+            var createdOverlays = new List<OverlayWindow>();
+            var screen = System.Windows.Forms.Screen.PrimaryScreen ??
+                (System.Windows.Forms.Screen.AllScreens.Length > 0 ? System.Windows.Forms.Screen.AllScreens[0] : null);
+
+            using var coordinator = new OverlayCoordinator(
+                scheduler,
+                videoLib,
+                store,
+                screensProvider: () => screen != null ? new[] { screen, screen } : System.Windows.Forms.Screen.AllScreens,
+                multiOverlayWindowFactory: (coord, isDimmer) =>
+                {
+                    var win = new OverlayWindow(coord, store, isDimmer);
+                    createdOverlays.Add(win);
+                    return win;
+                },
+                videoWindowFactory: _ => null,
+                dispatcherInvoker: a => a());
+
+            coordinator.TriggerProvocation(isManualTest: true);
+
+            if (screen != null)
+            {
+                Assert.Equal(2, coordinator.ActiveOverlayWindows.Count);
+                Assert.Equal(2, createdOverlays.Count);
+
+                var primary = coordinator.ActiveOverlayWindow;
+                Assert.NotNull(primary);
+                Assert.False(primary.IsSecondaryDimmerOnly);
+
+                var secondary = coordinator.ActiveOverlayWindows[1];
+                Assert.True(secondary.IsSecondaryDimmerOnly);
+                Assert.Equal(System.Windows.Visibility.Collapsed, secondary.Mascot.Visibility);
+            }
+
+            coordinator.CompleteSession();
+
+            Assert.Empty(coordinator.ActiveOverlayWindows);
+            Assert.Null(coordinator.ActiveOverlayWindow);
+            foreach (var win in createdOverlays)
+            {
+                Assert.True(win.CanClose);
+            }
+        });
+    }
+
+    [Fact]
+    public void CompleteSession_InvokesMemoryOptimizerTrim()
+    {
+        var store = CreateTestSettingsStore(isPaused: false);
+        var scheduler = new RandomReminderScheduler();
+        var videoLib = new VideoLibraryService(store);
+
+        bool trimCalled = false;
+        using var coordinator = new OverlayCoordinator(
+            scheduler,
+            videoLib,
+            store,
+            overlayWindowFactory: _ => null,
+            videoWindowFactory: _ => null,
+            dispatcherInvoker: a => a(),
+            memoryTrimmer: () => trimCalled = true);
+
+        coordinator.TriggerProvocation(isManualTest: true);
+        Assert.Equal(SessionState.MascotOverlayActive, coordinator.CurrentState);
+
+        coordinator.CompleteSession();
+
+        Assert.True(trimCalled);
+        Assert.Equal(SessionState.BackgroundIdle, coordinator.CurrentState);
+    }
+
+    [Fact]
+    public void EmergencyDismiss_InvokesMemoryOptimizerTrim()
+    {
+        var store = CreateTestSettingsStore(isPaused: false);
+        var scheduler = new RandomReminderScheduler();
+        var videoLib = new VideoLibraryService(store);
+
+        bool trimCalled = false;
+        using var coordinator = new OverlayCoordinator(
+            scheduler,
+            videoLib,
+            store,
+            overlayWindowFactory: _ => null,
+            videoWindowFactory: _ => null,
+            dispatcherInvoker: a => a(),
+            memoryTrimmer: () => trimCalled = true);
+
+        coordinator.TriggerProvocation(isManualTest: true);
+        Assert.Equal(SessionState.MascotOverlayActive, coordinator.CurrentState);
+
+        coordinator.EmergencyDismiss();
+
+        Assert.True(trimCalled);
+        Assert.Equal(SessionState.BackgroundIdle, coordinator.CurrentState);
+    }
+
+    [Fact]
+    public void OnMascotClicked_WithTextContent_DisplaysSpotlightAndTransitionsToVideoPlaying()
+    {
+        RunInSta(() =>
+        {
+            var store = CreateTestSettingsStore(isPaused: false);
+            var scheduler = new RandomReminderScheduler();
+            var videoLib = new VideoLibraryService(store);
+            videoLib.AddTextItem("Сделай глубокий вдох");
+
+            OverlayWindow? overlayWin = null;
+            using var coordinator = new OverlayCoordinator(
+                scheduler,
+                videoLib,
+                store,
+                overlayWindowFactory: coord => overlayWin = new OverlayWindow(coord, store),
+                videoWindowFactory: _ => null,
+                dispatcherInvoker: a => a());
+
+            coordinator.TriggerProvocation(isManualTest: true);
+            Assert.NotNull(overlayWin);
+            Assert.Equal(SessionState.MascotOverlayActive, coordinator.CurrentState);
+            Assert.Equal(System.Windows.Visibility.Visible, overlayWin.Mascot.Visibility);
+            Assert.Equal(System.Windows.Visibility.Collapsed, overlayWin.SpotlightContainer.Visibility);
+
+            coordinator.OnMascotClicked();
+
+            Assert.Equal(SessionState.VideoPlaying, coordinator.CurrentState);
+            Assert.Equal(System.Windows.Visibility.Collapsed, overlayWin.Mascot.Visibility);
+            Assert.Equal(System.Windows.Visibility.Visible, overlayWin.SpotlightContainer.Visibility);
+            Assert.Equal("Сделай глубокий вдох", overlayWin.SpotlightTextBlock.Text);
+
+            // Complete session via Done button
+            overlayWin.SpotlightDoneButton.RaiseEvent(new System.Windows.RoutedEventArgs(System.Windows.Controls.Button.ClickEvent));
+
+            Assert.Equal(SessionState.BackgroundIdle, coordinator.CurrentState);
+            Assert.True(scheduler.IsRunning);
+        });
+    }
 }

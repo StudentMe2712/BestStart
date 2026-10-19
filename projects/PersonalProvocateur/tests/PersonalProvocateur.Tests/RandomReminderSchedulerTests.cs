@@ -31,6 +31,32 @@ public class RandomReminderSchedulerTests
     }
 
     [Fact]
+    public void StartNextCycle_GeneratesSecondAccurateIntervals()
+    {
+        var random = new Random(100);
+        var intervals = new List<TimeSpan>();
+        using var scheduler = new RandomReminderScheduler(
+            random,
+            (_, interval) => intervals.Add(interval));
+
+        for (int i = 0; i < 20; i++)
+        {
+            scheduler.StartNextCycle(5, 20);
+        }
+
+        Assert.Equal(20, intervals.Count);
+        Assert.All(intervals, interval =>
+        {
+            Assert.True(interval >= TimeSpan.FromMinutes(5));
+            Assert.True(interval <= TimeSpan.FromMinutes(20));
+            Assert.Equal(0, interval.Milliseconds);
+        });
+
+        // Second-level granularity: at least one cycle must have non-zero seconds
+        Assert.Contains(intervals, interval => interval.Seconds != 0);
+    }
+
+    [Fact]
     public void StartNextCycle_DoesNothing_WhenSessionActiveOrPaused()
     {
         var scheduledCount = 0;

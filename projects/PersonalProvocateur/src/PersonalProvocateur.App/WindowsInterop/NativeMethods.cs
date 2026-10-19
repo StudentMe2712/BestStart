@@ -38,4 +38,10 @@ public static class NativeMethods
     [DllImport("user32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
     public static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
+
+    [DllImport("psapi.dll", SetLastError = true)]
+    internal static extern bool EmptyWorkingSet(IntPtr hProcess);
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    internal static extern bool SetProcessWorkingSetSize(IntPtr hProcess, IntPtr dwMinimumWorkingSetSize, IntPtr dwMaximumWorkingSetSize);
 }

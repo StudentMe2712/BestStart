@@ -42,6 +42,44 @@
                                 Focusable="False"
                                 MouseLeftButtonUp="Mascot_MouseLeftButtonUp" />
 
+        <!-- macOS Spotlight / Raycast Style Text Card (ADR-014) -->
+        <Border x:Name="SpotlightContainer"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                Width="640"
+                MinHeight="88"
+                Padding="28,22"
+                CornerRadius="22"
+                Background="#A80D0F18"
+                BorderBrush="#808B5CF6"
+                BorderThickness="1.5"
+                Visibility="Collapsed"
+                Focusable="False"
+                MouseLeftButtonDown="SpotlightContainer_MouseLeftButtonDown">
+            <Border.Effect>
+                <DropShadowEffect Color="#000000" BlurRadius="30" ShadowDepth="8" Opacity="0.6" />
+            </Border.Effect>
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <!-- Spark icon -->
+                <Path Grid.Column="0" Data="{StaticResource IconBolt}" Fill="#A78BFA" Stretch="Uniform" Width="20" Height="20" VerticalAlignment="Center" Margin="0,0,16,0" />
+                <!-- Text Content -->
+                <TextBlock x:Name="SpotlightTextBlock" Grid.Column="1" FontSize="22" FontWeight="SemiBold" Foreground="#FFFFFF" TextWrapping="Wrap" VerticalAlignment="Center" />
+                <!-- Done Button -->
+                <Button x:Name="SpotlightDoneButton" Grid.Column="2" Content="✓ Готово" Padding="18,8" FontSize="14" FontWeight="SemiBold" Background="#8B5CF6" Foreground="#FFFFFF" BorderThickness="0" Margin="16,0,0,0" VerticalAlignment="Center" Cursor="Hand" Click="SpotlightDoneButton_Click">
+                    <Button.Resources>
+                        <Style TargetType="Border">
+                            <Setter Property="CornerRadius" Value="14" />
+                        </Style>
+                    </Button.Resources>
+                </Button>
+            </Grid>
+        </Border>
+
         <!-- Empty Library Notification Overlay (Shown if video library is empty) -->
         <Border x:Name="EmptyLibraryNotice"
                 HorizontalAlignment="Center"

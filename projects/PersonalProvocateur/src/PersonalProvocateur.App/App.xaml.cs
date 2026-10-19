@@ -115,7 +115,11 @@ public partial class App : System.Windows.Application
         }
 
         _settingsWindow = new SettingsWindow(_settingsStore, _videoLibraryService, _overlayCoordinator, _scheduler);
-        _settingsWindow.Closed += (s, e) => _settingsWindow = null;
+        _settingsWindow.Closed += (s, e) =>
+        {
+            _settingsWindow = null;
+            MemoryOptimizer.TrimProcessMemory();
+        };
         _settingsWindow.Show();
         _settingsWindow.Activate();
     }

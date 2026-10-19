@@ -1,7 +1,7 @@
 <Window x:Class="PersonalProvocateur.App.UI.TrayPopupMenu"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Personal Provocateur Menu"
+        Title="Provocateur Menu"
         WindowStyle="None"
         AllowsTransparency="True"
         Topmost="True"
@@ -39,7 +39,7 @@
         </Border.RenderTransform>
 
         <StackPanel>
-            <!-- App Header & Status Indicator with macOS Squircle Badge (ADR-011) -->
+            <!-- App Header & Status Indicator with Clean Brand Prism (ADR-017) -->
             <Border Background="#0B0C10" CornerRadius="10" Padding="10,10" Margin="0,0,0,8" BorderBrush="#232738" BorderThickness="1">
                 <Grid>
                     <Grid.ColumnDefinitions>
@@ -48,41 +48,17 @@
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
 
-                    <!-- macOS Squircle Badge (ADR-011) -->
-                    <Border Grid.Column="0"
-                            Width="28" Height="28"
-                            CornerRadius="7"
-                            BorderBrush="#40FFFFFF"
-                            BorderThickness="1"
-                            Margin="0,0,10,0"
-                            VerticalAlignment="Center"
-                            ClipToBounds="True">
-                        <Border.Background>
-                            <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
-                                <GradientStop Color="#1E1B4B" Offset="0.0" />
-                                <GradientStop Color="#6D28D9" Offset="1.0" />
-                            </LinearGradientBrush>
-                        </Border.Background>
-                        <Grid>
-                            <!-- Fallback IconBrandPrism Vector -->
-                            <Path Data="{StaticResource IconBrandPrism}"
-                                  Fill="#A78BFA"
-                                  Stroke="#C4B5FD"
-                                  StrokeThickness="0.5"
-                                  Stretch="Uniform"
-                                  Margin="5"
-                                  VerticalAlignment="Center"
-                                  HorizontalAlignment="Center" />
-                            <!-- Brand Logo Image (ADR-011) -->
-                            <Image Source="pack://application:,,,/Assets/logo.png"
-                                   Stretch="Uniform"
-                                   Margin="3"
-                                   RenderOptions.BitmapScalingMode="HighQuality" />
-                        </Grid>
-                    </Border>
+                    <!-- Clean Vector IconBrandPrism (ADR-017) -->
+                    <Path Grid.Column="0"
+                          Data="{StaticResource IconBrandPrism}"
+                          Fill="#8B5CF6"
+                          Stretch="Uniform"
+                          Width="22" Height="22"
+                          VerticalAlignment="Center"
+                          Margin="0,0,10,0" />
 
                     <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                        <TextBlock Text="Personal Provocateur"
+                        <TextBlock Text="Provocateur"
                                    FontWeight="SemiBold"
                                    FontSize="13"
                                    Foreground="#F8FAFC"

@@ -3,6 +3,7 @@ using System.Windows;
 using PersonalProvocateur.App.Models;
 using PersonalProvocateur.App.Storage;
 using PersonalProvocateur.App.UI;
+using PersonalProvocateur.App.WindowsInterop;
 
 namespace PersonalProvocateur.App.Services;
 
@@ -16,9 +17,12 @@ public class OverlayCoordinator : IDisposable
     private readonly VideoLibraryService _videoLibrary;
     private readonly SettingsStore _settingsStore;
     private readonly Func<string, bool> _fileExistsChecker;
-    private readonly Func<OverlayCoordinator, OverlayWindow?> _overlayWindowFactory;
+    private readonly Func<System.Windows.Forms.Screen[]> _screensProvider;
+    private readonly Func<OverlayCoordinator, bool, OverlayWindow?> _overlayWindowFactory;
     private readonly Func<OverlayCoordinator, VideoWindow?> _videoWindowFactory;
     private readonly Action<Action> _dispatcherInvoker;
+    private readonly Action _memoryTrimmer;
+    private readonly List<OverlayWindow> _activeOverlayWindows = new();
     private readonly object _lock = new();
     private bool _isManualTestSession;
 
@@ -48,9 +52,14 @@ public class OverlayCoordinator : IDisposable
     public event EventHandler<SessionState>? StateChanged;
 
     /// <summary>
-    /// Gets the currently active overlay window, if open.
+    /// Gets the primary active overlay window, if open.
     /// </summary>
     public OverlayWindow? ActiveOverlayWindow { get; private set; }
+
+    /// <summary>
+    /// Gets the collection of all currently active overlay windows across all monitors.
+    /// </summary>
+    public IReadOnlyList<OverlayWindow> ActiveOverlayWindows => _activeOverlayWindows;
 
     /// <summary>
     /// Gets the currently active video window, if open.
@@ -67,6 +76,9 @@ public class OverlayCoordinator : IDisposable
     /// <param name="videoWindowFactory">Optional factory delegate for creating video windows.</param>
     /// <param name="dispatcherInvoker">Optional UI dispatcher invoker for testability.</param>
     /// <param name="fileExistsChecker">Optional file existence checker function.</param>
+    /// <param name="screensProvider">Optional provider for connected display screens.</param>
+    /// <param name="multiOverlayWindowFactory">Optional multi-monitor overlay window factory delegate.</param>
+    /// <param name="memoryTrimmer">Optional memory trimming action for testing.</param>
     public OverlayCoordinator(
         RandomReminderScheduler scheduler,
         VideoLibraryService videoLibrary,
@@ -74,14 +86,32 @@ public class OverlayCoordinator : IDisposable
         Func<OverlayCoordinator, OverlayWindow?>? overlayWindowFactory = null,
         Func<OverlayCoordinator, VideoWindow?>? videoWindowFactory = null,
         Action<Action>? dispatcherInvoker = null,
-        Func<string, bool>? fileExistsChecker = null)
+        Func<string, bool>? fileExistsChecker = null,
+        Func<System.Windows.Forms.Screen[]>? screensProvider = null,
+        Func<OverlayCoordinator, bool, OverlayWindow?>? multiOverlayWindowFactory = null,
+        Action? memoryTrimmer = null)
     {
         _scheduler = scheduler ?? throw new ArgumentNullException(nameof(scheduler));
         _videoLibrary = videoLibrary ?? throw new ArgumentNullException(nameof(videoLibrary));
         _settingsStore = settingsStore ?? throw new ArgumentNullException(nameof(settingsStore));
         _fileExistsChecker = fileExistsChecker ?? File.Exists;
+        _screensProvider = screensProvider ?? (() => System.Windows.Forms.Screen.AllScreens);
+        _memoryTrimmer = memoryTrimmer ?? MemoryOptimizer.TrimProcessMemory;
 
-        _overlayWindowFactory = overlayWindowFactory ?? (coord => new OverlayWindow(coord, _settingsStore));
+        if (multiOverlayWindowFactory != null)
+        {
+            _overlayWindowFactory = multiOverlayWindowFactory;
+        }
+        else if (overlayWindowFactory != null)
+        {
+            _overlayWindowFactory = (coord, isDimmerOnly) =>
+                isDimmerOnly ? new OverlayWindow(coord, _settingsStore, true) : overlayWindowFactory(coord);
+        }
+        else
+        {
+            _overlayWindowFactory = (coord, isDimmerOnly) => new OverlayWindow(coord, _settingsStore, isDimmerOnly);
+        }
+
         _videoWindowFactory = videoWindowFactory ?? (coord => new VideoWindow(coord, _settingsStore));
 
         _dispatcherInvoker = dispatcherInvoker ?? new Action<Action>(action =>
@@ -153,17 +183,54 @@ public class OverlayCoordinator : IDisposable
 
                 TransitionTo(SessionState.MascotOverlayActive);
 
-                ActiveOverlayWindow = _overlayWindowFactory(this);
-                ActiveOverlayWindow?.Show();
+                var screens = _screensProvider() ?? System.Windows.Forms.Screen.AllScreens;
+                if (screens.Length == 0)
+                {
+                    screens = System.Windows.Forms.Screen.AllScreens;
+                }
+
+                int targetIdx = Math.Clamp(_settingsStore.CurrentSettings.TargetMonitorIndex, 0, Math.Max(0, screens.Length - 1));
+
+                var primaryScreen = screens.Length > 0 ? screens[targetIdx] : null;
+                var primaryOverlay = _overlayWindowFactory(this, false);
+                if (primaryOverlay != null)
+                {
+                    if (primaryScreen != null)
+                    {
+                        primaryOverlay.PositionOnScreen(primaryScreen);
+                    }
+                    ActiveOverlayWindow = primaryOverlay;
+                    _activeOverlayWindows.Add(primaryOverlay);
+                    primaryOverlay.Show();
+
+                    if (screens.Length > 1)
+                    {
+                        for (int i = 0; i < screens.Length; i++)
+                        {
+                            if (i == targetIdx)
+                            {
+                                continue;
+                            }
+
+                            var secondaryOverlay = _overlayWindowFactory(this, true);
+                            if (secondaryOverlay != null)
+                            {
+                                secondaryOverlay.PositionOnScreen(screens[i]);
+                                _activeOverlayWindows.Add(secondaryOverlay);
+                                secondaryOverlay.Show();
+                            }
+                        }
+                    }
+                }
             }
         });
     }
 
     /// <summary>
-    /// Finds the next playable video that exists on disk, skipping broken/missing files up to PoolCount attempts.
+    /// Finds the next playable item (video or text) that exists, skipping broken/missing files up to PoolCount attempts.
     /// </summary>
     /// <param name="excludePath">Optional file path to exclude (e.g. video that just failed playback).</param>
-    /// <returns>Next playable VideoItem, or null if all available videos are invalid or missing.</returns>
+    /// <returns>Next playable VideoItem, or null if all available items are invalid or missing.</returns>
     public VideoItem? FindNextPlayableVideo(string? excludePath = null)
     {
         int poolCount = _videoLibrary.ShuffleBag.PoolCount;
@@ -184,9 +251,19 @@ public class OverlayCoordinator : IDisposable
                 continue;
             }
 
-            if (!string.IsNullOrWhiteSpace(candidate.FilePath) && _fileExistsChecker(candidate.FilePath))
+            if (candidate.ContentType == ProvocationContentType.Text)
             {
-                return candidate;
+                if (!string.IsNullOrWhiteSpace(candidate.TextContent))
+                {
+                    return candidate;
+                }
+            }
+            else
+            {
+                if (!string.IsNullOrWhiteSpace(candidate.FilePath) && _fileExistsChecker(candidate.FilePath))
+                {
+                    return candidate;
+                }
             }
         }
 
@@ -195,7 +272,7 @@ public class OverlayCoordinator : IDisposable
 
     /// <summary>
     /// Handles user click on the provocateur mascot.
-    /// Transitions state to VideoPlaying and opens the video window with the next shuffled clip.
+    /// Transitions state to VideoPlaying and opens the video window or Spotlight text card.
     /// </summary>
     public void OnMascotClicked()
     {
@@ -208,8 +285,20 @@ public class OverlayCoordinator : IDisposable
                     return;
                 }
 
-                var nextVideo = FindNextPlayableVideo();
-                if (nextVideo != null && !string.IsNullOrWhiteSpace(nextVideo.FilePath))
+                var nextItem = FindNextPlayableVideo();
+                if (nextItem == null)
+                {
+                    // Video library is empty or all files are missing
+                    ActiveOverlayWindow?.ShowEmptyLibraryNotice();
+                    return;
+                }
+
+                if (nextItem.ContentType == ProvocationContentType.Text)
+                {
+                    TransitionTo(SessionState.VideoPlaying);
+                    ActiveOverlayWindow?.ShowSpotlightText(nextItem.TextContent);
+                }
+                else
                 {
                     TransitionTo(SessionState.VideoPlaying);
 
@@ -226,12 +315,7 @@ public class OverlayCoordinator : IDisposable
                         }
                     }
                     ActiveVideoWindow?.Show();
-                    ActiveVideoWindow?.PlayVideo(nextVideo.FilePath, nextVideo.Title, _isManualTestSession);
-                }
-                else
-                {
-                    // Video library is empty or all files are missing
-                    ActiveOverlayWindow?.ShowEmptyLibraryNotice();
+                    ActiveVideoWindow?.PlayVideo(nextItem.FilePath, nextItem.Title, _isManualTestSession);
                 }
             }
         });
@@ -310,7 +394,7 @@ public class OverlayCoordinator : IDisposable
 
     /// <summary>
     /// Completes the active session, closes all overlay/video windows,
-    /// sets state to BackgroundIdle, and restarts the reminder schedule.
+    /// trims process working set memory, sets state to BackgroundIdle, and restarts the reminder schedule.
     /// </summary>
     public void CompleteSession()
     {
@@ -319,6 +403,7 @@ public class OverlayCoordinator : IDisposable
             lock (_lock)
             {
                 CloseAllWindows();
+                _memoryTrimmer();
 
                 _scheduler.IsSessionActive = false;
                 TransitionTo(SessionState.BackgroundIdle);
@@ -332,7 +417,7 @@ public class OverlayCoordinator : IDisposable
 
     /// <summary>
     /// Instantly dismisses all active provocation windows on emergency panic hotkey,
-    /// returns state to BackgroundIdle, and schedules a fresh cycle.
+    /// trims process memory, returns state to BackgroundIdle, and schedules a fresh cycle.
     /// </summary>
     public void EmergencyDismiss()
     {
@@ -341,6 +426,7 @@ public class OverlayCoordinator : IDisposable
             lock (_lock)
             {
                 CloseAllWindows();
+                _memoryTrimmer();
 
                 _scheduler.IsSessionActive = false;
                 TransitionTo(SessionState.BackgroundIdle);
@@ -392,6 +478,20 @@ public class OverlayCoordinator : IDisposable
             }
             ActiveVideoWindow = null;
         }
+
+        foreach (var overlay in _activeOverlayWindows)
+        {
+            overlay.CanClose = true;
+            try
+            {
+                overlay.SafeClose();
+            }
+            catch
+            {
+                // Suppress window close exceptions
+            }
+        }
+        _activeOverlayWindows.Clear();
 
         if (ActiveOverlayWindow != null)
         {

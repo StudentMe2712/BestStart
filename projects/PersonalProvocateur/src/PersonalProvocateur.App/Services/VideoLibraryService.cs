@@ -45,14 +45,52 @@ public class VideoLibraryService
     }
 
     /// <summary>
-    /// Returns only active and existing video items.
+    /// Returns only active and existing video or text items.
     /// </summary>
     public IReadOnlyList<VideoItem> GetAvailableVideos()
     {
         return _settingsStore.CurrentSettings.Videos
-            .Where(v => v != null && v.IsEnabled && !string.IsNullOrWhiteSpace(v.FilePath) && _fileExistsChecker(v.FilePath))
+            .Where(v => v != null && v.IsEnabled &&
+                (v.ContentType == ProvocationContentType.Text
+                    ? !string.IsNullOrWhiteSpace(v.TextContent)
+                    : (!string.IsNullOrWhiteSpace(v.FilePath) && _fileExistsChecker(v.FilePath))))
             .ToList()
             .AsReadOnly();
+    }
+
+    /// <summary>
+    /// Adds a new text provocation reminder to the library, updates settings, and refreshes the shuffle pool.
+    /// </summary>
+    /// <param name="text">The reminder text to provoke the user with.</param>
+    /// <returns>The created <see cref="VideoItem"/>.</returns>
+    public VideoItem AddTextItem(string text)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            throw new ArgumentException("Text content cannot be null or empty.", nameof(text));
+        }
+
+        var trimmedText = text.Trim();
+        var title = trimmedText.Length > 40 ? trimmedText.Substring(0, 37) + "..." : trimmedText;
+
+        var textItem = new VideoItem
+        {
+            Id = Guid.NewGuid(),
+            Title = title,
+            ContentType = ProvocationContentType.Text,
+            TextContent = trimmedText,
+            FilePath = string.Empty,
+            IsEnabled = true,
+            AddedAtUtc = DateTime.UtcNow
+        };
+
+        _settingsStore.Update(settings =>
+        {
+            settings.Videos.Add(textItem);
+        });
+
+        RefreshPool();
+        return textItem;
     }
 
     /// <summary>

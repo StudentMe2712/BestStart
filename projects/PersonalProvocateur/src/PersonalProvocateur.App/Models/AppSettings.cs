@@ -5,8 +5,8 @@ namespace PersonalProvocateur.App.Models;
 /// </summary>
 public class AppSettings
 {
-    private int _minIntervalMinutes = 15;
-    private int _maxIntervalMinutes = 45;
+    private int _minIntervalMinutes = 5;
+    private int _maxIntervalMinutes = 20;
     private double _dimmingOpacity = 0.60;
     private double _videoVolume = 0.85;
 
@@ -77,6 +77,11 @@ public class AppSettings
     public string CustomMascotPath { get; set; } = string.Empty;
 
     /// <summary>
+    /// Target monitor index for presenting interactive provocations (default: 0).
+    /// </summary>
+    public int TargetMonitorIndex { get; set; } = 0;
+
+    /// <summary>
     /// User's video library items.
     /// </summary>
     public List<VideoItem> Videos { get; set; } = new();
@@ -86,6 +91,11 @@ public class AppSettings
     /// </summary>
     public void Sanitize()
     {
+        if (TargetMonitorIndex < 0)
+        {
+            TargetMonitorIndex = 0;
+        }
+
         if (MinIntervalMinutes < 1)
         {
             MinIntervalMinutes = 1;

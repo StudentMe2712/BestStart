@@ -77,8 +77,6 @@ public class MascotControlTests : IDisposable
             Assert.NotNull(control.MascotRotate);
             Assert.NotNull(control.MascotTranslate);
             Assert.NotNull(control.MascotImage);
-            Assert.NotNull(control.SpeechBubbleText);
-            Assert.NotNull(control.SpeechBubbleBorder);
 
             Assert.False(control.Focusable);
             Assert.Equal(Cursors.Hand, control.Cursor);
@@ -112,13 +110,13 @@ public class MascotControlTests : IDisposable
     }
 
     [Fact]
-    public void SetSpeechText_UpdatesBubbleTextBlock()
+    public void SetSpeechText_UpdatesLastSpeechText()
     {
         RunInSta(() =>
         {
             var control = new MascotControl(_assetService);
             control.SetSpeechText("Привет, мир!");
-            Assert.Equal("Привет, мир!", control.SpeechBubbleText.Text);
+            Assert.Equal("Привет, мир!", control.LastSpeechText);
         });
     }
 
@@ -130,13 +128,13 @@ public class MascotControlTests : IDisposable
             var control = new MascotControl(_assetService);
 
             control.SetRandomSpeech(MascotState.Idle);
-            Assert.False(string.IsNullOrWhiteSpace(control.SpeechBubbleText.Text));
+            Assert.False(string.IsNullOrWhiteSpace(control.LastSpeechText));
 
             control.SetRandomSpeech(MascotState.Attention);
-            Assert.False(string.IsNullOrWhiteSpace(control.SpeechBubbleText.Text));
+            Assert.False(string.IsNullOrWhiteSpace(control.LastSpeechText));
 
             control.SetRandomSpeech(MascotState.Clicked);
-            Assert.False(string.IsNullOrWhiteSpace(control.SpeechBubbleText.Text));
+            Assert.False(string.IsNullOrWhiteSpace(control.LastSpeechText));
         });
     }
 
@@ -161,20 +159,20 @@ public class MascotControlTests : IDisposable
             control.PlayPeekAnimation();
 
             Assert.Equal(MascotState.Peek, control.CurrentState);
-            Assert.Equal("Ку-ку! 👀", control.SpeechBubbleText.Text);
 
             var sbField = typeof(MascotControl).GetField("_activeStoryboard", BindingFlags.Instance | BindingFlags.NonPublic);
             var sb = sbField?.GetValue(control) as Storyboard;
             Assert.NotNull(sb);
 
             var slideAnim = sb.Children.OfType<DoubleAnimation>()
-                .FirstOrDefault(a => a.From == -260.0 && a.To == 0.0);
+                .FirstOrDefault(a => a.From == -130.0 && a.To == 14.0);
             Assert.NotNull(slideAnim);
-            Assert.Equal(TimeSpan.FromMilliseconds(520), slideAnim.Duration.TimeSpan);
+            Assert.Equal(TimeSpan.FromMilliseconds(380), slideAnim.Duration.TimeSpan);
 
             var opacityAnim = sb.Children.OfType<DoubleAnimation>()
                 .FirstOrDefault(a => a.From == 0.0 && a.To == 1.0);
             Assert.NotNull(opacityAnim);
+            Assert.Equal(TimeSpan.FromMilliseconds(300), opacityAnim.Duration.TimeSpan);
 
             control.StopAllAnimations();
         });
@@ -242,9 +240,9 @@ public class MascotControlTests : IDisposable
             Assert.NotNull(scaleAnim);
             Assert.Equal(TimeSpan.FromMilliseconds(100), scaleAnim.Duration.TimeSpan);
 
-            // Smooth exit upwards: MascotTranslate.Y from 0 to -260 over 220ms
+            // Smooth exit upwards: MascotTranslate.Y from 14 to -130 over 220ms (ADR-018)
             var exitAnim = sb.Children.OfType<DoubleAnimation>()
-                .FirstOrDefault(a => a.From == 0.0 && a.To == -260.0);
+                .FirstOrDefault(a => a.From == 14.0 && a.To == -130.0);
             Assert.NotNull(exitAnim);
             Assert.Equal(TimeSpan.FromMilliseconds(220), exitAnim.Duration.TimeSpan);
 

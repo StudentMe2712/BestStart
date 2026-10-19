@@ -70,7 +70,7 @@ public sealed class TrayIconService : IDisposable
         _notifyIcon = new NotifyIcon
         {
             Icon = _icon,
-            Text = "Personal Provocateur",
+            Text = "Provocateur",
             Visible = true
         };
 
@@ -114,25 +114,43 @@ public sealed class TrayIconService : IDisposable
     }
 
     /// <summary>
-    /// Creates the application tray icon using the brand squircle logo (ADR-011)
-    /// or high-quality programmatic obsidian-violet crystal squircle fallback.
+    /// Creates the application tray icon on a 100% transparent background with smooth IconBrandPrism crystal (ADR-017).
     /// </summary>
     public static Icon CreateApplicationIcon()
     {
-        string? logoPath = FindLogoFile();
-        if (!string.IsNullOrEmpty(logoPath) && File.Exists(logoPath))
+        using var bitmap = CreateCrystalBitmap(32);
+        IntPtr hIcon = bitmap.GetHicon();
+        try
         {
-            try
-            {
-                return CreateIconFromImage(logoPath);
-            }
-            catch
-            {
-                // Fall back to programmatic squircle on decode error
-            }
+            using var tempIcon = Icon.FromHandle(hIcon);
+            return (Icon)tempIcon.Clone();
         }
+        finally
+        {
+            DestroyIcon(hIcon);
+        }
+    }
 
-        return CreateProgrammaticSquircleIcon();
+    /// <summary>
+    /// Creates a high-resolution WPF ImageSource on 100% transparent background for SettingsWindow.Icon and Windows Taskbar (ADR-017).
+    /// </summary>
+    public static System.Windows.Media.ImageSource CreateTaskbarIconSource()
+    {
+        using var bitmap = CreateCrystalBitmap(48);
+        IntPtr hIcon = bitmap.GetHicon();
+        try
+        {
+            var source = System.Windows.Interop.Imaging.CreateBitmapSourceFromHIcon(
+                hIcon,
+                System.Windows.Int32Rect.Empty,
+                System.Windows.Media.Imaging.BitmapSizeOptions.FromEmptyOptions());
+            source.Freeze();
+            return source;
+        }
+        finally
+        {
+            DestroyIcon(hIcon);
+        }
     }
 
     /// <summary>
@@ -140,165 +158,80 @@ public sealed class TrayIconService : IDisposable
     /// </summary>
     public static Icon CreateProgrammaticIcon() => CreateApplicationIcon();
 
-    private static string? FindLogoFile()
+    private static Bitmap CreateCrystalBitmap(int size)
     {
-        string[] candidates =
-        [
-            Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "logo.png"),
-            Path.Combine(AppPaths.AppDataDirectory, "Assets", "logo.png"),
-            Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "logo.png"),
-            "Assets/logo.png",
-            "logo.png"
-        ];
-
-        foreach (var path in candidates)
-        {
-            if (File.Exists(path))
-            {
-                return path;
-            }
-        }
-
-        return null;
-    }
-
-    private static Icon CreateIconFromImage(string filePath)
-    {
-        using var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
-        using var original = Image.FromStream(stream);
-        using var bitmap = new Bitmap(32, 32);
+        var bitmap = new Bitmap(size, size);
         using (var g = Graphics.FromImage(bitmap))
         {
-            g.SmoothingMode = SmoothingMode.HighQuality;
-            g.InterpolationMode = InterpolationMode.HighQualityBicubic;
-            g.PixelOffsetMode = PixelOffsetMode.HighQuality;
-            g.CompositingQuality = CompositingQuality.HighQuality;
-            g.Clear(Color.Transparent);
-
-            // macOS Squircle clip (32x32 with 7px corner radius)
-            using var path = CreateRoundedRectanglePath(new RectangleF(0.5f, 0.5f, 31f, 31f), 7f);
-
-            // Subtle gradient background behind logo
-            using (var bgBrush = new LinearGradientBrush(
-                new PointF(0, 0),
-                new PointF(32, 32),
-                Color.FromArgb(0x1E, 0x1B, 0x4B),
-                Color.FromArgb(0x6D, 0x28, 0xD9)))
-            {
-                g.FillPath(bgBrush, path);
-            }
-
-            g.SetClip(path);
-            g.DrawImage(original, new RectangleF(1f, 1f, 30f, 30f));
-            g.ResetClip();
-
-            // Subtle border: #40FFFFFF
-            using var borderPen = new System.Drawing.Pen(Color.FromArgb(64, 255, 255, 255), 1.0f);
-            g.DrawPath(borderPen, path);
-        }
-
-        IntPtr hIcon = bitmap.GetHicon();
-        try
-        {
-            using var tempIcon = Icon.FromHandle(hIcon);
-            return (Icon)tempIcon.Clone();
-        }
-        finally
-        {
-            DestroyIcon(hIcon);
-        }
-    }
-
-    private static Icon CreateProgrammaticSquircleIcon()
-    {
-        using var bitmap = new Bitmap(32, 32);
-        using (var g = Graphics.FromImage(bitmap))
-        {
-            g.SmoothingMode = SmoothingMode.HighQuality;
+            g.SmoothingMode = SmoothingMode.AntiAlias;
             g.InterpolationMode = InterpolationMode.HighQualityBicubic;
             g.PixelOffsetMode = PixelOffsetMode.HighQuality;
             g.Clear(Color.Transparent);
 
-            using var path = CreateRoundedRectanglePath(new RectangleF(0.5f, 0.5f, 31f, 31f), 7f);
+            float scale = size / 24.0f;
 
-            // Deep obsidian-purple squircle background (#1E1B4B -> #6D28D9)
-            using (var bgBrush = new LinearGradientBrush(
-                new PointF(0, 0),
-                new PointF(32, 32),
-                Color.FromArgb(0x1E, 0x1B, 0x4B),
-                Color.FromArgb(0x6D, 0x28, 0xD9)))
-            {
-                g.FillPath(bgBrush, path);
-            }
-
-            // Crisp neon crystal inside (IconBrandPrism)
+            // Coordinates matching IconBrandPrism in 24x24 viewBox:
+            // Outer: (12, 2) -> (2, 8.5) -> (12, 22) -> (22, 8.5)
+            // Inner: (12, 5.2) -> (18.5, 9.5) -> (12, 18.2) -> (5.5, 9.5)
             PointF[] outerPoints =
             [
-                new(16f, 6f),
-                new(6f, 12.5f),
-                new(16f, 26f),
-                new(26f, 12.5f)
+                new PointF(12f * scale, 2f * scale),
+                new PointF(2f * scale, 8.5f * scale),
+                new PointF(12f * scale, 22f * scale),
+                new PointF(22f * scale, 8.5f * scale)
             ];
+
             PointF[] innerPoints =
             [
-                new(16f, 9.2f),
-                new(22.5f, 13.5f),
-                new(16f, 22.2f),
-                new(9.5f, 13.5f)
+                new PointF(12f * scale, 5.2f * scale),
+                new PointF(18.5f * scale, 9.5f * scale),
+                new PointF(12f * scale, 18.2f * scale),
+                new PointF(5.5f * scale, 9.5f * scale)
             ];
 
-            using (var crystalFill = new SolidBrush(Color.FromArgb(180, 0xC4, 0xB5, 0xFD)))
+            // Neon-purple crystal facet fills
+            using (var innerBrush = new SolidBrush(Color.FromArgb(200, 0x8B, 0x5C, 0xF6)))
             {
-                g.FillPolygon(crystalFill, innerPoints);
+                g.FillPolygon(innerBrush, innerPoints);
             }
 
-            using (var outerPen = new System.Drawing.Pen(Color.FromArgb(0x8B, 0x5C, 0xF6), 1.5f))
+            // Top facet highlight
+            PointF[] topFacet = [outerPoints[0], innerPoints[0], innerPoints[1], outerPoints[3]];
+            using (var topBrush = new SolidBrush(Color.FromArgb(90, 0xC4, 0xB5, 0xFD)))
+            {
+                g.FillPolygon(topBrush, topFacet);
+            }
+
+            // Left facet
+            PointF[] leftFacet = [outerPoints[0], outerPoints[1], innerPoints[3], innerPoints[0]];
+            using (var leftBrush = new SolidBrush(Color.FromArgb(60, 0x7C, 0x3A, 0xED)))
+            {
+                g.FillPolygon(leftBrush, leftFacet);
+            }
+
+            // Facet connector lines
+            using (var facetPen = new System.Drawing.Pen(Color.FromArgb(220, 0xC4, 0xB5, 0xFD), 1.2f * scale))
+            {
+                g.DrawLine(facetPen, outerPoints[0], innerPoints[0]);
+                g.DrawLine(facetPen, outerPoints[1], innerPoints[3]);
+                g.DrawLine(facetPen, outerPoints[2], innerPoints[2]);
+                g.DrawLine(facetPen, outerPoints[3], innerPoints[1]);
+            }
+
+            // Crisp neon violet outer contour
+            using (var outerPen = new System.Drawing.Pen(Color.FromArgb(0x8B, 0x5C, 0xF6), 1.8f * scale))
             {
                 g.DrawPolygon(outerPen, outerPoints);
             }
 
-            using (var innerPen = new System.Drawing.Pen(Color.FromArgb(0xEE, 0xF2, 0xFF), 1.2f))
+            // Inner contour
+            using (var innerPen = new System.Drawing.Pen(Color.FromArgb(0xEE, 0xF2, 0xFF), 1.2f * scale))
             {
                 g.DrawPolygon(innerPen, innerPoints);
-                g.DrawLine(innerPen, outerPoints[0], innerPoints[0]);
-                g.DrawLine(innerPen, outerPoints[1], innerPoints[3]);
-                g.DrawLine(innerPen, outerPoints[2], innerPoints[2]);
-                g.DrawLine(innerPen, outerPoints[3], innerPoints[1]);
             }
-
-            // Subtle border: #40FFFFFF
-            using var borderPen = new System.Drawing.Pen(Color.FromArgb(64, 255, 255, 255), 1.0f);
-            g.DrawPath(borderPen, path);
         }
 
-        IntPtr hIcon = bitmap.GetHicon();
-        try
-        {
-            using var tempIcon = Icon.FromHandle(hIcon);
-            return (Icon)tempIcon.Clone();
-        }
-        finally
-        {
-            DestroyIcon(hIcon);
-        }
-    }
-
-    private static GraphicsPath CreateRoundedRectanglePath(RectangleF rect, float radius)
-    {
-        var path = new GraphicsPath();
-        float diameter = radius * 2f;
-        var arc = new RectangleF(rect.X, rect.Y, diameter, diameter);
-
-        path.AddArc(arc, 180, 90);
-        arc.X = rect.Right - diameter;
-        path.AddArc(arc, 270, 90);
-        arc.Y = rect.Bottom - diameter;
-        path.AddArc(arc, 0, 90);
-        arc.X = rect.Left;
-        path.AddArc(arc, 90, 90);
-        path.CloseFigure();
-
-        return path;
+        return bitmap;
     }
 
     /// <summary>

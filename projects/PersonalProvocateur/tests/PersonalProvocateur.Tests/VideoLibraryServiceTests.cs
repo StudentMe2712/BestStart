@@ -1,3 +1,4 @@
+using PersonalProvocateur.App.Models;
 using PersonalProvocateur.App.Storage;
 using PersonalProvocateur.App.Services;
 using Xunit;
@@ -105,5 +106,54 @@ public class VideoLibraryServiceTests : IDisposable
         var next = service.GetNextVideo();
         Assert.NotNull(next);
         Assert.Equal("V1", next.Title);
+    }
+
+    [Fact]
+    public void AddTextItem_ValidText_AddsToSettingsAndPool()
+    {
+        var service = new VideoLibraryService(_settingsStore, fileExistsChecker: _ => true);
+
+        var item = service.AddTextItem("  Сделай разминку для глаз!  ");
+
+        Assert.NotNull(item);
+        Assert.Equal("Сделай разминку для глаз!", item.Title);
+        Assert.Equal("Сделай разминку для глаз!", item.TextContent);
+        Assert.Equal(ProvocationContentType.Text, item.ContentType);
+        Assert.Equal(string.Empty, item.FilePath);
+        Assert.True(item.IsEnabled);
+
+        var all = service.GetAllVideos();
+        Assert.Single(all);
+        Assert.Equal(item.Id, all[0].Id);
+        Assert.Equal(1, service.ShuffleBag.PoolCount);
+
+        var available = service.GetAvailableVideos();
+        Assert.Single(available);
+        Assert.Equal(item.Id, available[0].Id);
+    }
+
+    [Fact]
+    public void AddTextItem_LongText_TruncatesTitleTo37CharsWithEllipsis()
+    {
+        var service = new VideoLibraryService(_settingsStore, fileExistsChecker: _ => true);
+        var longText = "Это очень длинный текст напоминания, который превышает сорок символов значительно";
+
+        var item = service.AddTextItem(longText);
+
+        Assert.NotNull(item);
+        Assert.Equal(longText.Substring(0, 37) + "...", item.Title);
+        Assert.Equal(40, item.Title.Length);
+        Assert.Equal(longText, item.TextContent);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void AddTextItem_NullOrWhitespace_ThrowsArgumentException(string? invalidText)
+    {
+        var service = new VideoLibraryService(_settingsStore, fileExistsChecker: _ => true);
+
+        Assert.Throws<ArgumentException>(() => service.AddTextItem(invalidText!));
     }
 }

@@ -46,6 +46,19 @@ public class RandomReminderScheduler : IDisposable
     }
 
     /// <summary>
+    /// Gets the next scheduled local trigger time.
+    /// </summary>
+    public DateTime? NextTriggerTime => NextTriggerTimeLocal;
+
+    /// <summary>
+    /// Updates interval bounds and reschedules the next reminder cycle.
+    /// </summary>
+    public void UpdateIntervals(int minMinutes, int maxMinutes)
+    {
+        StartNextCycle(minMinutes, maxMinutes);
+    }
+
+    /// <summary>
     /// Gets or sets whether a provocation session (mascot or video) is currently active on screen.
     /// While true, new scheduled cycles will not start.
     /// </summary>
@@ -161,18 +174,10 @@ public class RandomReminderScheduler : IDisposable
                 return;
             }
 
-            if (minMinutes < 1)
-            {
-                minMinutes = 1;
-            }
-
-            if (maxMinutes < minMinutes)
-            {
-                maxMinutes = minMinutes;
-            }
-
-            var minutes = _random.Next(minMinutes, maxMinutes + 1);
-            interval = TimeSpan.FromMinutes(minutes);
+            int minSeconds = Math.Max(1, minMinutes * 60);
+            int maxSeconds = Math.Max(minSeconds, maxMinutes * 60);
+            int randomSeconds = _random.Next(minSeconds, maxSeconds + 1);
+            interval = TimeSpan.FromSeconds(randomSeconds);
 
             _currentScheduledInterval = interval;
             _nextTriggerTimeLocal = DateTime.Now.Add(interval);

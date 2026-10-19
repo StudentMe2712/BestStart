@@ -88,6 +88,8 @@ public class SettingsWindowTests : IDisposable
         Assert.Equal("C:\\test\\clip.mp4", vm.FilePath);
         Assert.True(vm.IsEnabled);
         Assert.True(vm.IsAvailable);
+        Assert.False(vm.IsText);
+        Assert.Equal("ВИДЕО", vm.ContentTypeBadgeText);
         Assert.Equal("Доступен", vm.AvailabilityText);
         Assert.NotNull(vm.AvailabilityBackground);
         Assert.NotNull(vm.AvailabilityForeground);
@@ -108,9 +110,32 @@ public class SettingsWindowTests : IDisposable
         Assert.Equal("Missing Clip", vm.Title);
         Assert.False(vm.IsEnabled);
         Assert.False(vm.IsAvailable);
+        Assert.False(vm.IsText);
+        Assert.Equal("ВИДЕО", vm.ContentTypeBadgeText);
         Assert.Equal("Не найден", vm.AvailabilityText);
         Assert.NotNull(vm.AvailabilityBackground);
         Assert.NotNull(vm.AvailabilityForeground);
+    }
+
+    [Fact]
+    public void VideoItemViewModel_WhenTextItem_SetsProperBadgesAndAvailability()
+    {
+        var item = new VideoItem
+        {
+            Title = "Сделай разминку",
+            ContentType = ProvocationContentType.Text,
+            TextContent = "Сделай разминку для глаз прямо сейчас!",
+            IsEnabled = true
+        };
+
+        var vm = new VideoItemViewModel(item, isAvailable: true);
+
+        Assert.True(vm.IsText);
+        Assert.Equal("ТЕКСТ", vm.ContentTypeBadgeText);
+        Assert.Equal("Готов к показу", vm.AvailabilityText);
+        Assert.Equal("Сделай разминку для глаз прямо сейчас!", vm.SecondaryText);
+        Assert.NotNull(vm.ContentTypeBadgeBackground);
+        Assert.NotNull(vm.ContentTypeBadgeForeground);
     }
 
     [Theory]
@@ -150,17 +175,25 @@ public class SettingsWindowTests : IDisposable
 
             // Trigger window load
             window.Show();
-            Assert.Equal(15, window.MinIntervalSlider.Value);
-            Assert.Equal(45, window.MaxIntervalSlider.Value);
+
+            Assert.Equal("Provocateur", window.Title);
+            Assert.Equal(780, window.Width);
+            Assert.Equal(640, window.Height);
+            Assert.True(window.ShowInTaskbar);
+
+            Assert.Equal("5", window.MinIntervalTextBox.Text);
+            Assert.Equal("20", window.MaxIntervalTextBox.Text);
             Assert.Equal(60, window.OpacitySlider.Value);
             Assert.Equal(85, window.VolumeSlider.Value);
+            Assert.NotNull(window.TargetMonitorComboBox);
+            Assert.NotNull(window.SaveButton);
 
             window.Close();
         });
     }
 
     [Fact]
-    public void SettingsWindow_SliderValidation_KeepsMinLessThanOrEqualToMax()
+    public void SettingsWindow_StepperButtons_IncrementAndDecrementIntervals()
     {
         RunInSta(() =>
         {
@@ -172,9 +205,25 @@ public class SettingsWindowTests : IDisposable
             var window = new SettingsWindow(store, videoLib, coordinator, scheduler);
             window.Show();
 
-            // Set Min higher than Max
-            window.MinIntervalSlider.Value = 60;
-            Assert.True(window.MaxIntervalSlider.Value >= window.MinIntervalSlider.Value);
+            // Initial: 5 and 20
+            Assert.Equal("5", window.MinIntervalTextBox.Text);
+            Assert.Equal("20", window.MaxIntervalTextBox.Text);
+
+            // Increment Min
+            window.MinIntervalPlusButton.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+            Assert.Equal("6", window.MinIntervalTextBox.Text);
+
+            // Decrement Min
+            window.MinIntervalMinusButton.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+            Assert.Equal("5", window.MinIntervalTextBox.Text);
+
+            // Increment Max
+            window.MaxIntervalPlusButton.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+            Assert.Equal("21", window.MaxIntervalTextBox.Text);
+
+            // Decrement Max
+            window.MaxIntervalMinusButton.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+            Assert.Equal("20", window.MaxIntervalTextBox.Text);
 
             window.Close();
         });
@@ -213,7 +262,7 @@ public class SettingsWindowTests : IDisposable
     }
 
     [Fact]
-    public void SettingsWindow_SegmentedControl_HasThreeTabsAndNoFooterButtons()
+    public void SettingsWindow_SegmentedControl_HasThreeTabsAndSaveButton()
     {
         RunInSta(() =>
         {
@@ -234,10 +283,12 @@ public class SettingsWindowTests : IDisposable
             Assert.NotNull(window.TabAppearanceContent);
             Assert.NotNull(window.TabSystemContent);
 
-            // Verify old footer buttons are completely removed
+            // Verify SaveButton is present (ADR-018)
             var saveBtn = window.FindName("SaveButton");
-            Assert.Null(saveBtn);
+            Assert.NotNull(saveBtn);
+            Assert.Same(window.SaveButton, saveBtn);
 
+            // Verify old footer buttons are absent
             var closeBtn = window.FindName("CloseButton");
             Assert.Null(closeBtn);
 
@@ -281,8 +332,8 @@ public class SettingsWindowTests : IDisposable
 
             Assert.NotNull(window.AutoSaveBadge);
 
-            window.MinIntervalSlider.Value = 22;
-            window.MaxIntervalSlider.Value = 55;
+            window.MinIntervalTextBox.Text = "22";
+            window.MaxIntervalTextBox.Text = "55";
             window.OpacitySlider.Value = 75;
             window.VolumeSlider.Value = 90;
 
@@ -294,6 +345,29 @@ public class SettingsWindowTests : IDisposable
             Assert.Equal(0.90, store.CurrentSettings.VideoVolume, precision: 2);
 
             window.Close();
+        });
+    }
+
+    [Fact]
+    public void SettingsWindow_SaveButton_SavesSettingsAndClosesWindow()
+    {
+        RunInSta(() =>
+        {
+            var store = new SettingsStore(_settingsPath);
+            var videoLib = new VideoLibraryService(store, fileExistsChecker: _ => false);
+            var scheduler = new RandomReminderScheduler();
+            using var coordinator = new OverlayCoordinator(scheduler, videoLib, store);
+
+            var window = new SettingsWindow(store, videoLib, coordinator, scheduler);
+            window.Show();
+
+            window.MinIntervalTextBox.Text = "15";
+            window.MaxIntervalTextBox.Text = "45";
+
+            window.SaveButton.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+
+            Assert.Equal(15, store.CurrentSettings.MinIntervalMinutes);
+            Assert.Equal(45, store.CurrentSettings.MaxIntervalMinutes);
         });
     }
 
@@ -356,7 +430,8 @@ public class SettingsWindowTests : IDisposable
                 "IconCheck",
                 "IconWarning",
                 "IconClose",
-                "IconMinimize"
+                "IconMinimize",
+                "IconBrandPrism"
             ];
 
             foreach (var iconKey in requiredIcons)

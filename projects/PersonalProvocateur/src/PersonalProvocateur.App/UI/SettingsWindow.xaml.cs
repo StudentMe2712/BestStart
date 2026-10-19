@@ -24,7 +24,8 @@ namespace PersonalProvocateur.App.UI;
 
 /// <summary>
 /// Minimalist frameless macOS-styled dashboard window featuring Segmented Control tabs,
-/// toggle switches, instant debounced auto-saving, and skin selection (ADR-013).
+/// content management (MP4 videos and Spotlight text reminders), numeric interval steppers,
+/// monitor targeting, instant debounced auto-saving, and skin selection (ADR-013, ADR-017, ADR-018).
 /// </summary>
 public partial class SettingsWindow : Window
 {
@@ -63,7 +64,7 @@ public partial class SettingsWindow : Window
     private int _selectedTabIndex = 0;
 
     /// <summary>
-    /// Gets the currently selected tab index (0: Videos, 1: Appearance &amp; Timer, 2: System).
+    /// Gets the currently selected tab index (0: Content, 1: Appearance &amp; Timer, 2: System).
     /// </summary>
     public int SelectedTabIndex => _selectedTabIndex;
 
@@ -133,15 +134,35 @@ public partial class SettingsWindow : Window
         _isLoading = true;
         try
         {
+            try
+            {
+                Icon = TrayIconService.CreateTaskbarIconSource();
+            }
+            catch
+            {
+                // Ignore in testing / non-GDI+ environments
+            }
+
+            PopulateMonitors();
+
             if (_settingsStore != null)
             {
                 var s = _settingsStore.CurrentSettings;
                 _isPaused = s.IsPaused;
 
-                MinIntervalSlider.Value = s.MinIntervalMinutes;
-                MaxIntervalSlider.Value = s.MaxIntervalMinutes;
+                MinIntervalTextBox.Text = s.MinIntervalMinutes.ToString();
+                MaxIntervalTextBox.Text = s.MaxIntervalMinutes.ToString();
                 OpacitySlider.Value = (int)Math.Round(s.DimmingOpacity * 100);
                 VolumeSlider.Value = (int)Math.Round(s.VideoVolume * 100);
+
+                if (s.TargetMonitorIndex >= 0 && s.TargetMonitorIndex < TargetMonitorComboBox.Items.Count)
+                {
+                    TargetMonitorComboBox.SelectedIndex = s.TargetMonitorIndex;
+                }
+                else if (TargetMonitorComboBox.Items.Count > 0)
+                {
+                    TargetMonitorComboBox.SelectedIndex = 0;
+                }
 
                 _initialTriggerHotkey = s.TriggerHotkey;
                 _initialPanicHotkey = s.PanicHotkey;
@@ -163,8 +184,14 @@ public partial class SettingsWindow : Window
             }
             else
             {
+                MinIntervalTextBox.Text = "5";
+                MaxIntervalTextBox.Text = "20";
                 _selectedSkin = "DynamicOrb";
                 _customMascotPath = string.Empty;
+                if (TargetMonitorComboBox.Items.Count > 0)
+                {
+                    TargetMonitorComboBox.SelectedIndex = 0;
+                }
             }
 
             UpdateSkinSelectionUi();
@@ -179,7 +206,32 @@ public partial class SettingsWindow : Window
         }
     }
 
-    #region Auto-Save Engine (ADR-013)
+    private void PopulateMonitors()
+    {
+        if (TargetMonitorComboBox == null)
+        {
+            return;
+        }
+
+        TargetMonitorComboBox.Items.Clear();
+
+        try
+        {
+            var screens = System.Windows.Forms.Screen.AllScreens;
+            for (int i = 0; i < screens.Length; i++)
+            {
+                var screen = screens[i];
+                string primaryMarker = screen.Primary ? " (Основной)" : string.Empty;
+                TargetMonitorComboBox.Items.Add($"Монитор {i + 1}: {screen.Bounds.Width}x{screen.Bounds.Height}{primaryMarker}");
+            }
+        }
+        catch
+        {
+            TargetMonitorComboBox.Items.Add("Монитор 1 (Основной)");
+        }
+    }
+
+    #region Auto-Save Engine (ADR-013, ADR-018)
 
     /// <summary>
     /// Triggers automatic saving of all settings to the store.
@@ -207,8 +259,8 @@ public partial class SettingsWindow : Window
 
     private void ExecuteAutoSave()
     {
-        int min = MinIntervalSlider != null ? (int)MinIntervalSlider.Value : 15;
-        int max = MaxIntervalSlider != null ? (int)MaxIntervalSlider.Value : 45;
+        int min = GetMinInterval();
+        int max = GetMaxInterval();
         if (max < min)
         {
             max = min;
@@ -216,6 +268,12 @@ public partial class SettingsWindow : Window
 
         double opacity = OpacitySlider != null ? Math.Clamp(OpacitySlider.Value / 100.0, 0.10, 0.95) : 0.60;
         double volume = VolumeSlider != null ? Math.Clamp(VolumeSlider.Value / 100.0, 0.0, 1.0) : 0.85;
+
+        int targetMonitorIndex = TargetMonitorComboBox?.SelectedIndex ?? 0;
+        if (targetMonitorIndex < 0)
+        {
+            targetMonitorIndex = 0;
+        }
 
         string triggerKey = TriggerHotkeyTextBox?.Text?.Trim() ?? "Ctrl+Alt+P";
         string panicKey = PanicHotkeyTextBox?.Text?.Trim() ?? "Ctrl+Alt+Shift+P";
@@ -229,6 +287,7 @@ public partial class SettingsWindow : Window
             s.MaxIntervalMinutes = max;
             s.DimmingOpacity = opacity;
             s.VideoVolume = volume;
+            s.TargetMonitorIndex = targetMonitorIndex;
             if (!string.IsNullOrWhiteSpace(triggerKey))
             {
                 s.TriggerHotkey = triggerKey;
@@ -268,12 +327,23 @@ public partial class SettingsWindow : Window
         AutoSaveBadge.BeginAnimation(UIElement.OpacityProperty, anim);
     }
 
+    private void SaveButton_Click(object sender, RoutedEventArgs e)
+    {
+        ExecuteAutoSave();
+
+        int min = GetMinInterval();
+        int max = GetMaxInterval();
+        _scheduler?.UpdateIntervals(min, max);
+
+        Close();
+    }
+
     #endregion
 
     #region Segmented Control & Navigation
 
     /// <summary>
-    /// Selects the active tab in the macOS Segmented Control (0: Videos, 1: Appearance &amp; Timer, 2: System).
+    /// Selects the active tab in the macOS Segmented Control (0: Content, 1: Appearance &amp; Timer, 2: System).
     /// </summary>
     /// <param name="index">Tab index.</param>
     public void SelectTab(int index)
@@ -418,19 +488,114 @@ public partial class SettingsWindow : Window
 
     #endregion
 
-    #region Sliders & Value Changes
+    #region Steppers, Controls & Monitor Selection (ADR-018)
 
-    private void IntervalSliders_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    public int GetMinInterval()
     {
-        if (MinIntervalSlider != null && MaxIntervalSlider != null)
+        if (MinIntervalTextBox != null && int.TryParse(MinIntervalTextBox.Text, out int val))
         {
-            if (MinIntervalSlider.Value > MaxIntervalSlider.Value)
-            {
-                MaxIntervalSlider.Value = MinIntervalSlider.Value;
-            }
+            return Math.Clamp(val, 1, 120);
+        }
+        return _settingsStore?.CurrentSettings.MinIntervalMinutes ?? 5;
+    }
+
+    public int GetMaxInterval()
+    {
+        int min = GetMinInterval();
+        if (MaxIntervalTextBox != null && int.TryParse(MaxIntervalTextBox.Text, out int val))
+        {
+            return Math.Clamp(val, min, 480);
+        }
+        return Math.Max(min, _settingsStore?.CurrentSettings.MaxIntervalMinutes ?? 20);
+    }
+
+    private void MinIntervalMinus_Click(object sender, RoutedEventArgs e)
+    {
+        int current = GetMinInterval();
+        int next = Math.Max(1, current - 1);
+        MinIntervalTextBox.Text = next.ToString();
+        TriggerAutoSave(immediate: false);
+    }
+
+    private void MinIntervalPlus_Click(object sender, RoutedEventArgs e)
+    {
+        int current = GetMinInterval();
+        int max = GetMaxInterval();
+        int next = Math.Min(120, current + 1);
+        if (next > max)
+        {
+            MaxIntervalTextBox.Text = next.ToString();
+        }
+        MinIntervalTextBox.Text = next.ToString();
+        TriggerAutoSave(immediate: false);
+    }
+
+    private void MaxIntervalMinus_Click(object sender, RoutedEventArgs e)
+    {
+        int current = GetMaxInterval();
+        int min = GetMinInterval();
+        int next = Math.Max(min, current - 1);
+        MaxIntervalTextBox.Text = next.ToString();
+        TriggerAutoSave(immediate: false);
+    }
+
+    private void MaxIntervalPlus_Click(object sender, RoutedEventArgs e)
+    {
+        int current = GetMaxInterval();
+        int next = Math.Min(480, current + 1);
+        MaxIntervalTextBox.Text = next.ToString();
+        TriggerAutoSave(immediate: false);
+    }
+
+    private void IntervalTextBox_TextChanged(object sender, TextChangedEventArgs e)
+    {
+        if (_isLoading)
+        {
+            return;
         }
 
         TriggerAutoSave(immediate: false);
+    }
+
+    private void IntervalTextBox_LostFocus(object sender, RoutedEventArgs e)
+    {
+        int min = GetMinInterval();
+        int max = GetMaxInterval();
+
+        if (MinIntervalTextBox != null)
+        {
+            MinIntervalTextBox.Text = min.ToString();
+        }
+
+        if (MaxIntervalTextBox != null)
+        {
+            MaxIntervalTextBox.Text = max.ToString();
+        }
+
+        TriggerAutoSave(immediate: true);
+    }
+
+    private void NumericTextBox_PreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key is >= Key.D0 and <= Key.D9
+            or >= Key.NumPad0 and <= Key.NumPad9
+            or Key.Back or Key.Delete or Key.Tab
+            or Key.Left or Key.Right or Key.Enter)
+        {
+            return;
+        }
+
+        e.Handled = true;
+    }
+
+    private void TargetMonitorComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_isLoading)
+        {
+            return;
+        }
+
+        TriggerAutoSave(immediate: true);
     }
 
     private void Slider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
@@ -449,53 +614,28 @@ public partial class SettingsWindow : Window
 
     private void RefreshStatusHeader()
     {
-        if (StatusBadgeBorder == null || StatusBadgeText == null || QuickPauseText == null)
-        {
-            return;
-        }
-
         if (_isPaused)
         {
-            StatusBadgeBorder.Background = new SolidColorBrush(Color.FromArgb(0x1A, 0xF5, 0x9E, 0x0B));
-            StatusBadgeBorder.BorderBrush = new SolidColorBrush(Color.FromRgb(0xF5, 0x9E, 0x0B));
-            if (StatusBadgeDot != null)
-            {
-                StatusBadgeDot.Fill = new SolidColorBrush(Color.FromRgb(0xF5, 0x9E, 0x0B));
-            }
-            StatusBadgeText.Foreground = new SolidColorBrush(Color.FromRgb(0xF5, 0x9E, 0x0B));
+            StatusBadgeDot.Fill = (Brush)FindResource("WarningBrush");
             StatusBadgeText.Text = "На паузе";
+            StatusBadgeText.Foreground = (Brush)FindResource("WarningBrush");
+            StatusBadgeBorder.Style = (Style)FindResource("WarningBadgeStyle");
 
-            if (QuickPauseIcon != null && TryFindResource("IconPlay") is Geometry playGeom)
-            {
-                QuickPauseIcon.Data = playGeom;
-                QuickPauseIcon.Fill = new SolidColorBrush(Color.FromRgb(0xF3, 0xF4, 0xF6));
-                QuickPauseIcon.Stroke = new SolidColorBrush(Color.FromRgb(0xF3, 0xF4, 0xF6));
-                QuickPauseIcon.StrokeThickness = 1;
-            }
-            QuickPauseText.Text = "Возобновить";
-            NextTriggerTextBlock.Text = "Таймер остановлен (на паузе)";
+            QuickPauseText.Text = "Продолжить";
+            QuickPauseIcon.Data = (Geometry)FindResource("IconPlay");
+            NextTriggerTextBlock.Text = "Таймер приостановлен";
         }
         else
         {
-            StatusBadgeBorder.Background = new SolidColorBrush(Color.FromArgb(0x1A, 0x10, 0xB9, 0x81));
-            StatusBadgeBorder.BorderBrush = new SolidColorBrush(Color.FromRgb(0x10, 0xB9, 0x81));
-            if (StatusBadgeDot != null)
-            {
-                StatusBadgeDot.Fill = new SolidColorBrush(Color.FromRgb(0x10, 0xB9, 0x81));
-            }
-            StatusBadgeText.Foreground = new SolidColorBrush(Color.FromRgb(0x10, 0xB9, 0x81));
+            StatusBadgeDot.Fill = (Brush)FindResource("SuccessBrush");
             StatusBadgeText.Text = "Активен";
+            StatusBadgeText.Foreground = (Brush)FindResource("SuccessBrush");
+            StatusBadgeBorder.Style = (Style)FindResource("SuccessBadgeStyle");
 
-            if (QuickPauseIcon != null && TryFindResource("IconPause") is Geometry pauseGeom)
-            {
-                QuickPauseIcon.Data = pauseGeom;
-                QuickPauseIcon.Fill = new SolidColorBrush(Color.FromRgb(0xF3, 0xF4, 0xF6));
-                QuickPauseIcon.Stroke = new SolidColorBrush(Color.FromRgb(0xF3, 0xF4, 0xF6));
-                QuickPauseIcon.StrokeThickness = 1;
-            }
             QuickPauseText.Text = "Пауза";
+            QuickPauseIcon.Data = (Geometry)FindResource("IconPause");
 
-            var next = _scheduler?.NextTriggerTimeLocal ?? _coordinator?.Scheduler?.NextTriggerTimeLocal;
+            var next = _scheduler?.NextTriggerTime;
             if (next.HasValue)
             {
                 var remaining = next.Value - DateTime.Now;
@@ -521,8 +661,17 @@ public partial class SettingsWindow : Window
 
         foreach (var v in rawVideos)
         {
-            bool exists = !string.IsNullOrWhiteSpace(v.FilePath) && File.Exists(v.FilePath);
-            if (exists)
+            bool isAvail;
+            if (v.ContentType == ProvocationContentType.Text)
+            {
+                isAvail = !string.IsNullOrWhiteSpace(v.TextContent);
+            }
+            else
+            {
+                isAvail = !string.IsNullOrWhiteSpace(v.FilePath) && File.Exists(v.FilePath);
+            }
+
+            if (isAvail)
             {
                 availableCount++;
             }
@@ -531,7 +680,7 @@ public partial class SettingsWindow : Window
                 activeCount++;
             }
 
-            _videos.Add(new VideoItemViewModel(v, exists));
+            _videos.Add(new VideoItemViewModel(v, isAvail));
         }
 
         if (_videos.Count == 0)
@@ -545,7 +694,7 @@ public partial class SettingsWindow : Window
             VideosListBox.Visibility = Visibility.Visible;
         }
 
-        VideoCountTextBlock.Text = $"Всего роликов: {_videos.Count} (активно: {activeCount}, доступно: {availableCount})";
+        VideoCountTextBlock.Text = $"Всего элементов: {_videos.Count} (активно: {activeCount}, доступно: {availableCount})";
     }
 
     #endregion
@@ -674,7 +823,7 @@ public partial class SettingsWindow : Window
 
     #endregion
 
-    #region Video Library Actions
+    #region Content Actions (Videos & Text Reminders)
 
     private void AddVideoButton_Click(object sender, RoutedEventArgs e)
     {
@@ -701,6 +850,65 @@ public partial class SettingsWindow : Window
         }
     }
 
+    private void AddTextButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (InlineAddTextBorder != null)
+        {
+            InlineAddTextBorder.Visibility = Visibility.Visible;
+            InlineAddTextBox?.Focus();
+        }
+    }
+
+    private void CancelAddTextButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (InlineAddTextBorder != null)
+        {
+            InlineAddTextBorder.Visibility = Visibility.Collapsed;
+            InlineAddTextBox?.Clear();
+        }
+    }
+
+    private void ConfirmAddTextButton_Click(object sender, RoutedEventArgs e)
+    {
+        var text = InlineAddTextBox?.Text?.Trim();
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            ShowToast("Введите текст напоминания", isSuccess: false);
+            return;
+        }
+
+        if (_videoLibrary != null)
+        {
+            _videoLibrary.AddTextItem(text);
+        }
+        else if (_settingsStore != null)
+        {
+            var title = text.Length > 40 ? text.Substring(0, 37) + "..." : text;
+            _settingsStore.Update(s =>
+            {
+                s.Videos.Add(new VideoItem
+                {
+                    Id = Guid.NewGuid(),
+                    Title = title,
+                    ContentType = ProvocationContentType.Text,
+                    TextContent = text,
+                    IsEnabled = true,
+                    AddedAtUtc = DateTime.UtcNow
+                });
+            });
+        }
+
+        InlineAddTextBox?.Clear();
+        if (InlineAddTextBorder != null)
+        {
+            InlineAddTextBorder.Visibility = Visibility.Collapsed;
+        }
+
+        RefreshVideosList();
+        TriggerAutoSave(immediate: true);
+        ShowToast("Текстовое напоминание добавлено", isSuccess: true);
+    }
+
     private void RemoveVideoButton_Click(object sender, RoutedEventArgs e)
     {
         if (sender is FrameworkElement element && element.DataContext is VideoItemViewModel vm)
@@ -725,6 +933,15 @@ public partial class SettingsWindow : Window
     {
         if (sender is FrameworkElement element && element.DataContext is VideoItemViewModel vm)
         {
+            if (vm.IsText)
+            {
+                var spotlight = new TextSpotlightWindow(vm.Item.TextContent);
+                spotlight.Owner = this;
+                spotlight.WindowStartupLocation = WindowStartupLocation.CenterOwner;
+                spotlight.Show();
+                return;
+            }
+
             if (!File.Exists(vm.FilePath))
             {
                 ShowToast($"Файл не найден на диске: {Path.GetFileName(vm.FilePath)}", isSuccess: false);
@@ -876,7 +1093,7 @@ public partial class SettingsWindow : Window
 }
 
 /// <summary>
-/// ViewModel wrapping <see cref="VideoItem"/> for rich databinding with disk availability indicators.
+/// ViewModel wrapping <see cref="VideoItem"/> for rich databinding with type badges and disk availability indicators.
 /// </summary>
 public class VideoItemViewModel
 {
@@ -884,6 +1101,11 @@ public class VideoItemViewModel
     private static readonly Brush AvailableFg = CreateFrozenBrush(0xFF, 0x10, 0xB9, 0x81);
     private static readonly Brush MissingBg = CreateFrozenBrush(0x1A, 0xEF, 0x44, 0x44);
     private static readonly Brush MissingFg = CreateFrozenBrush(0xFF, 0xEF, 0x44, 0x44);
+
+    private static readonly Brush VideoBadgeBg = CreateFrozenBrush(0x25, 0x8B, 0x5C, 0xF6);
+    private static readonly Brush VideoBadgeFg = CreateFrozenBrush(0xFF, 0xA7, 0x8B, 0xFA);
+    private static readonly Brush TextBadgeBg = CreateFrozenBrush(0x25, 0x06, 0xB6, 0xD4);
+    private static readonly Brush TextBadgeFg = CreateFrozenBrush(0xFF, 0x38, 0xBD, 0xF8);
 
     private static Brush CreateFrozenBrush(byte a, byte r, byte g, byte b)
     {
@@ -898,6 +1120,7 @@ public class VideoItemViewModel
     public Guid Id => Item.Id;
     public string Title => Item.Title;
     public string FilePath => Item.FilePath;
+    public bool IsText => Item.ContentType == ProvocationContentType.Text;
 
     public bool IsEnabled
     {
@@ -905,9 +1128,17 @@ public class VideoItemViewModel
         set => Item.IsEnabled = value;
     }
 
-    public string AvailabilityText => IsAvailable ? "Доступен" : "Не найден";
-    public Brush AvailabilityBackground => IsAvailable ? AvailableBg : MissingBg;
-    public Brush AvailabilityForeground => IsAvailable ? AvailableFg : MissingFg;
+    public string ContentTypeBadgeText => IsText ? "ТЕКСТ" : "ВИДЕО";
+    public Brush ContentTypeBadgeBackground => IsText ? TextBadgeBg : VideoBadgeBg;
+    public Brush ContentTypeBadgeForeground => IsText ? TextBadgeFg : VideoBadgeFg;
+
+    public string SecondaryText => IsText
+        ? (string.IsNullOrWhiteSpace(Item.TextContent) ? Item.Title : Item.TextContent)
+        : Item.FilePath;
+
+    public string AvailabilityText => IsText ? "Готов к показу" : (IsAvailable ? "Доступен" : "Не найден");
+    public Brush AvailabilityBackground => IsText ? AvailableBg : (IsAvailable ? AvailableBg : MissingBg);
+    public Brush AvailabilityForeground => IsText ? AvailableFg : (IsAvailable ? AvailableFg : MissingFg);
 
     public VideoItemViewModel(VideoItem item, bool isAvailable)
     {
