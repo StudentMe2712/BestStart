@@ -42,6 +42,10 @@ public partial class App : System.Windows.Application
         _scheduler = new RandomReminderScheduler();
         _overlayCoordinator = new OverlayCoordinator(_scheduler, _videoLibraryService, _settingsStore);
 
+        // Pre-generate and verify mascot graphics assets (ADR-003)
+        var mascotAssetService = new MascotAssetService();
+        mascotAssetService.EnsureAssetsExist();
+
         // 3. Scheduler trigger wiring
         _scheduler.TimerTriggered += (s, args) => _overlayCoordinator.TriggerProvocation(isManualTest: false);
 

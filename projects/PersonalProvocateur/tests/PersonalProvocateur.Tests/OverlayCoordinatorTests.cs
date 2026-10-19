@@ -485,11 +485,11 @@ public class OverlayCoordinatorTests : IDisposable
             using var coordinator = new OverlayCoordinator(scheduler, videoLib, store);
 
             var window = new OverlayWindow(coordinator, store);
-            Assert.Equal(System.Windows.Visibility.Visible, window.MascotContainer.Visibility);
+            Assert.Equal(System.Windows.Visibility.Visible, window.MascotCanvas.Visibility);
             Assert.Equal(System.Windows.Visibility.Collapsed, window.EmptyLibraryNotice.Visibility);
 
             window.ShowEmptyLibraryNotice();
-            Assert.Equal(System.Windows.Visibility.Collapsed, window.MascotContainer.Visibility);
+            Assert.Equal(System.Windows.Visibility.Collapsed, window.MascotCanvas.Visibility);
             Assert.Equal(System.Windows.Visibility.Visible, window.EmptyLibraryNotice.Visibility);
 
             window.SafeClose();

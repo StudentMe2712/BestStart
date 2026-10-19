@@ -196,15 +196,15 @@ projects/PersonalProvocateur/
 - [x] **2.5. Верификация Спринта 2:** Проверить компиляцию `dotnet build -c Release --warnaserror`, прогнать `dotnet test`, актуализировать чекбоксы в `personal_provocateur_spec.md` и выполнить `./sync.sh`.
 
 ### СПРИНТ 3: 2D-Персонаж, Генератор спрайтов и WPF Storyboard-анимации
-- [ ] **3.1. Генератор и загрузчик спрайтов (`MascotAssetService`):** Реализовать проверку и автогенерацию 4 высококачественных прозрачных PNG-спрайтов фиолетового персонажа (`idle.png`, `peek.png`, `attention.png`, `clicked.png`) в `Assets/Mascot/` при их отсутствии, а также загрузку с `CacheOption = BitmapCacheOption.OnLoad`.
-- [ ] **3.2. Компонент персонажа (`MascotControl.xaml`):** Сверстать интерактивный контрол персонажа с поддержкой `RenderTransform` (`ScaleTransform`, `RotateTransform`, `TranslateTransform`), бабблом провокационной подсказки («Ну давай, нажми меня!») и привязкой к состояниям `MascotState`.
-- [ ] **3.3. Программные и XAML-анимации (`Storyboard`):** Реализовать 4 плавные анимации:
+- [x] **3.1. Генератор и загрузчик спрайтов (`MascotAssetService`):** Реализовать проверку и автогенерацию 4 высококачественных прозрачных PNG-спрайтов фиолетового персонажа (`idle.png`, `peek.png`, `attention.png`, `clicked.png`) в `Assets/Mascot/` при их отсутствии, а также загрузку с `CacheOption = BitmapCacheOption.OnLoad`.
+- [x] **3.2. Компонент персонажа (`MascotControl.xaml`):** Сверстать интерактивный контрол персонажа с поддержкой `RenderTransform` (`ScaleTransform`, `RotateTransform`, `TranslateTransform`), бабблом провокационной подсказки («Ну давай, нажми меня!») и привязкой к состояниям `MascotState`.
+- [x] **3.3. Программные и XAML-анимации (`Storyboard`):** Реализовать 4 плавные анимации:
   * `Peek` — плавное выглядывание из-за края экрана с легким наклоном;
   * `Idle` — мягкое «дыхание» и покачивание;
   * `Attention` — периодическое подпрыгивание и легкая пульсация каждые несколько секунд ожидания;
   * `Clicked` — резкий скейл-импульс и радостно-ехидная реакция перед открытием `VideoWindow`.
-- [ ] **3.4. Рандомизация позиции появления:** Настроить в `OverlayWindow` выбор случайной точки/угла появления персонажа в пределах безопасной зоны основного монитора, чтобы пользователь не кликал мышечной памятью в одну точку.
-- [ ] **3.5. Верификация Спринта 3:** Проверить сборку и тесты, убедиться в отсутствии утечек памяти анимаций при закрытии `OverlayWindow`, обновить `personal_provocateur_spec.md` и выполнить `./sync.sh`.
+- [x] **3.4. Рандомизация позиции появления:** Настроить в `OverlayWindow` выбор случайной точки/угла появления персонажа в пределах безопасной зоны основного монитора, чтобы пользователь не кликал мышечной памятью в одну точку.
+- [x] **3.5. Верификация Спринта 3:** Проверить сборку и тесты, убедиться в отсутствии утечек памяти анимаций при закрытии `OverlayWindow`, обновить `personal_provocateur_spec.md` и выполнить `./sync.sh`.
 
 ### СПРИНТ 4: Окно настроек, Полиш UI, Обработка крайних случаев и Финализация MVP
 - [ ] **4.1. Единая дизайн-система (`DarkTheme.xaml`):** Оформить современную темную тему (глубокий графитовый фон `#12131A`, акцентный фиолетовый `#8B5CF6`, аккуратные карточки, кастомные кнопки, слайдеры и списки).
@@ -222,5 +222,5 @@ projects/PersonalProvocateur/
 | :--- | :--- | :--- | :--- |
 | **Спринт 1** | `[x]` Завершен | `PersonalProvocateur.sln`, `PersonalProvocateur.App.csproj`, `PersonalProvocateur.Tests.csproj`, `App.xaml`, `App.xaml.cs`, `AppSettings.cs`, `VideoItem.cs`, `MascotState.cs`, `SessionState.cs`, `AppPaths.cs`, `SettingsStore.cs`, `VideoShuffleBag.cs`, `VideoLibraryService.cs`, `RandomReminderScheduler.cs`, `SettingsStoreTests.cs`, `VideoShuffleBagTests.cs`, `VideoLibraryServiceTests.cs`, `RandomReminderSchedulerTests.cs`, `AppSettingsTests.cs` | `dotnet build -c Release --warnaserror`: 0 errors, 0 warnings.<br>`dotnet test -c Release`: 28 passed, 0 failed (100% pass rate). |
 | **Спринт 2** | `[x]` Завершен | `SingleInstanceGuard.cs`, `NativeMethods.cs`, `GlobalHotkeyService.cs`, `StartupManager.cs`, `SystemPowerWatcher.cs`, `DarkTheme.xaml`, `OverlayCoordinator.cs`, `OverlayWindow.xaml`, `OverlayWindow.xaml.cs`, `VideoWindow.xaml`, `VideoWindow.xaml.cs`, `TrayPopupMenu.xaml`, `TrayPopupMenu.xaml.cs`, `TrayIconService.cs`, `SettingsWindow.xaml`, `SettingsWindow.xaml.cs`, `App.xaml`, `App.xaml.cs`, `OverlayCoordinatorTests.cs`, `GlobalHotkeyParserTests.cs`, `SingleInstanceGuardTests.cs`, `StartupManagerTests.cs`, `SystemPowerWatcherTests.cs` | `dotnet build -c Release --warnaserror`: 0 errors, 0 warnings.<br>`dotnet test -c Release`: 92 passed, 0 failed (100% pass rate). |
-| **Спринт 3** | `[ ]` Ожидает | — | — |
+| **Спринт 3** | `[x]` Завершен | `MascotAssetService.cs`, `MascotControl.xaml`, `MascotControl.xaml.cs`, `OverlayWindow.xaml`, `OverlayWindow.xaml.cs`, `MascotAssetServiceTests.cs`, `MascotControlTests.cs`, `OverlayWindowTests.cs` | `dotnet build -c Release --warnaserror`: 0 errors, 0 warnings.<br>`dotnet test -c Release`: 124 passed, 0 failed (100% pass rate). |
 | **Спринт 4** | `[ ]` Ожидает | — | — |

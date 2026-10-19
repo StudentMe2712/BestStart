@@ -7,6 +7,13 @@ Add entries with the `/lesson` command, or by hand. Newest on top.
 
 ## Log
 
+### 2026-10-19 — WPF Panel/Border TabStop and WinForms Graphics Types Disambiguation
+- **Problem:** 1) `error MC3072: property 'IsTabStop' does not exist in XML namespace` on `Grid` or `Border`. 2) `error CS0104: 'Brush'/'Pen'/'UserControl' is an ambiguous reference between System.Drawing/System.Windows.Forms and System.Windows.Media/System.Windows.Controls`.
+- **Root cause:** `IsTabStop` is defined only on `Control` subclasses, not on `Panel` (`Grid`) or `Border`. Also, `<UseWindowsForms>true</UseWindowsForms>` imports `System.Drawing` and `System.Windows.Forms` which clash with `System.Windows.Media.Brush/Pen` and `System.Windows.Controls.UserControl`.
+- **Fix:** 1) Use attached property `KeyboardNavigation.IsTabStop="False"` on non-`Control` elements (`Grid`, `Border`). 2) Explicitly alias `using Brush = System.Windows.Media.Brush;`, `using Pen = System.Windows.Media.Pen;`, `using UserControl = System.Windows.Controls.UserControl;`.
+- **Rule:** When mixing WPF and WinForms, always alias graphics brushes/pens and use `KeyboardNavigation.IsTabStop` on layout containers.
+- **Scope:** this-project
+
 ### 2026-10-19 — WPF Standalone Window Resources and WindowsForms Namespace Collisions
 - **Problem:** When instantiating WPF Windows in unit tests or when `<UseWindowsForms>true</UseWindowsForms>` is enabled in `.csproj`, errors occur: 1) `XamlParseException: Cannot find resource named '...'`, 2) `CS0104: 'Application'/'Color'/'Size'/'KeyEventArgs' is an ambiguous reference between System.Windows.Forms and System.Windows`.
 - **Root cause:** Unit tests do not execute `App.xaml` by default so `Application.Current.Resources` is unpopulated. Also, `UseWindowsForms` imports WinForms namespaces that collide with WPF standard types.
