@@ -1,7 +1,7 @@
 <UserControl x:Class="PersonalProvocateur.App.UI.Controls.MascotControl"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             Width="280" Height="260"
+             Width="340" Height="140"
              RenderTransformOrigin="0.5, 0.0"
              Cursor="Hand"
              Focusable="False"
@@ -20,67 +20,229 @@
             </TransformGroup>
         </Grid.RenderTransform>
 
-        <!-- macOS Dynamic Island / Claude Top-Center Notch Capsule -->
+        <!-- macOS Dynamic Island Notch Capsule (ADR-012) -->
         <Border x:Name="NotchCapsule"
                 HorizontalAlignment="Center"
                 VerticalAlignment="Top"
-                Background="#181A24"
-                BorderBrush="#34384E"
+                Background="#08090D"
+                BorderBrush="#2D234D"
                 BorderThickness="1,0,1,1"
                 CornerRadius="0,0,24,24"
-                Padding="16,6,16,12"
+                Padding="16,6,18,12"
                 Focusable="False"
                 KeyboardNavigation.IsTabStop="False">
             <Border.Effect>
-                <DropShadowEffect Color="#8B5CF6" BlurRadius="22" ShadowDepth="4" Opacity="0.40" Direction="270" />
+                <DropShadowEffect Color="#8B5CF6" BlurRadius="24" ShadowDepth="4" Opacity="0.45" Direction="270" />
             </Border.Effect>
 
             <StackPanel HorizontalAlignment="Center" Focusable="False">
                 <!-- Top Notch Grip Accent -->
-                <Border Width="38" Height="4"
-                        Background="#34384E"
-                        CornerRadius="2"
+                <Border Width="38" Height="3"
+                        Background="#2D234D"
+                        CornerRadius="1.5"
                         HorizontalAlignment="Center"
-                        Margin="0,0,0,4"
+                        Margin="0,0,0,8"
                         Focusable="False" />
 
-                <!-- Character Sprite Container -->
-                <Grid x:Name="MascotContainer"
-                      HorizontalAlignment="Center"
-                      VerticalAlignment="Center"
-                      Focusable="False"
-                      KeyboardNavigation.IsTabStop="False">
-                    <Image x:Name="MascotImage"
-                           Width="164"
-                           Height="164"
-                           Stretch="Uniform"
-                           Focusable="False"
-                           KeyboardNavigation.IsTabStop="False" />
-                </Grid>
+                <!-- Dynamic Island Content Row: Visual Avatar (Left) + Provocative Speech Bubble (Right) -->
+                <Grid VerticalAlignment="Center">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
 
-                <!-- Speech Bubble in Dark Glass Aesthetic -->
-                <Border x:Name="SpeechBubbleBorder"
-                        HorizontalAlignment="Center"
-                        VerticalAlignment="Top"
-                        Background="#10111A"
-                        BorderBrush="#8B5CF6"
-                        BorderThickness="1"
-                        CornerRadius="12"
-                        Padding="14,6"
-                        Margin="0,4,0,0"
-                        Focusable="False"
-                        KeyboardNavigation.IsTabStop="False">
-                    <TextBlock x:Name="SpeechBubbleText"
-                               Text="Ну давай, кликни!"
-                               Foreground="#F8FAFC"
-                               FontSize="12"
-                               FontWeight="SemiBold"
-                               TextAlignment="Center"
-                               TextWrapping="Wrap"
-                               MaxWidth="220"
-                               Focusable="False"
-                               KeyboardNavigation.IsTabStop="False" />
-                </Border>
+                    <!-- Mascot Visual Element Container -->
+                    <Grid x:Name="MascotContainer"
+                          Grid.Column="0"
+                          Width="84" Height="84"
+                          Margin="0,0,12,0"
+                          HorizontalAlignment="Center"
+                          VerticalAlignment="Center"
+                          Focusable="False"
+                          KeyboardNavigation.IsTabStop="False">
+
+                        <!-- 1. DynamicOrb: AI Pulse Orb (ADR-012 Default) -->
+                        <Grid x:Name="DynamicOrbContainer"
+                              Width="84" Height="84"
+                              HorizontalAlignment="Center"
+                              VerticalAlignment="Center"
+                              RenderTransformOrigin="0.5,0.5">
+                            <!-- Outer Ring: Opacity 0.25 -->
+                            <Ellipse x:Name="OrbOuterRing"
+                                     Width="80" Height="80"
+                                     StrokeThickness="1.5"
+                                     Opacity="0.25"
+                                     RenderTransformOrigin="0.5,0.5">
+                                <Ellipse.Stroke>
+                                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                        <GradientStop Color="#6D28D9" Offset="0.0" />
+                                        <GradientStop Color="#8B5CF6" Offset="0.5" />
+                                        <GradientStop Color="#C4B5FD" Offset="1.0" />
+                                    </LinearGradientBrush>
+                                </Ellipse.Stroke>
+                                <Ellipse.Effect>
+                                    <DropShadowEffect Color="#8B5CF6" BlurRadius="16" ShadowDepth="0" Opacity="0.4" />
+                                </Ellipse.Effect>
+                                <Ellipse.RenderTransform>
+                                    <ScaleTransform x:Name="OrbOuterScale" ScaleX="1.0" ScaleY="1.0" CenterX="40" CenterY="40" />
+                                </Ellipse.RenderTransform>
+                            </Ellipse>
+
+                            <!-- Middle Ring: Opacity 0.45 -->
+                            <Ellipse x:Name="OrbMiddleRing"
+                                     Width="62" Height="62"
+                                     StrokeThickness="2"
+                                     Opacity="0.45"
+                                     RenderTransformOrigin="0.5,0.5">
+                                <Ellipse.Stroke>
+                                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                        <GradientStop Color="#7C3AED" Offset="0.0" />
+                                        <GradientStop Color="#A78BFA" Offset="0.6" />
+                                        <GradientStop Color="#DDD6FE" Offset="1.0" />
+                                    </LinearGradientBrush>
+                                </Ellipse.Stroke>
+                                <Ellipse.Effect>
+                                    <DropShadowEffect Color="#8B5CF6" BlurRadius="14" ShadowDepth="0" Opacity="0.5" />
+                                </Ellipse.Effect>
+                                <Ellipse.RenderTransform>
+                                    <ScaleTransform x:Name="OrbMiddleScale" ScaleX="1.0" ScaleY="1.0" CenterX="31" CenterY="31" />
+                                </Ellipse.RenderTransform>
+                            </Ellipse>
+
+                            <!-- Inner Ring: Opacity 0.75 -->
+                            <Ellipse x:Name="OrbInnerRing"
+                                     Width="46" Height="46"
+                                     StrokeThickness="2"
+                                     Opacity="0.75"
+                                     RenderTransformOrigin="0.5,0.5">
+                                <Ellipse.Stroke>
+                                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                        <GradientStop Color="#8B5CF6" Offset="0.0" />
+                                        <GradientStop Color="#C4B5FD" Offset="0.5" />
+                                        <GradientStop Color="#FFFFFF" Offset="1.0" />
+                                    </LinearGradientBrush>
+                                </Ellipse.Stroke>
+                                <Ellipse.Effect>
+                                    <DropShadowEffect Color="#8B5CF6" BlurRadius="12" ShadowDepth="0" Opacity="0.7" />
+                                </Ellipse.Effect>
+                                <Ellipse.RenderTransform>
+                                    <ScaleTransform x:Name="OrbInnerScale" ScaleX="1.0" ScaleY="1.0" CenterX="23" CenterY="23" />
+                                </Ellipse.RenderTransform>
+                            </Ellipse>
+
+                            <!-- Central Glowing Neon-Violet Core (#8B5CF6) -->
+                            <Ellipse x:Name="OrbCore"
+                                     Width="30" Height="30"
+                                     RenderTransformOrigin="0.5,0.5">
+                                <Ellipse.Fill>
+                                    <RadialGradientBrush Center="0.4,0.35" GradientOrigin="0.4,0.35" RadiusX="0.6" RadiusY="0.6">
+                                        <GradientStop Color="#FFFFFF" Offset="0.0" />
+                                        <GradientStop Color="#DDD6FE" Offset="0.25" />
+                                        <GradientStop Color="#8B5CF6" Offset="0.7" />
+                                        <GradientStop Color="#5B21B6" Offset="1.0" />
+                                    </RadialGradientBrush>
+                                </Ellipse.Fill>
+                                <Ellipse.Effect>
+                                    <DropShadowEffect Color="#8B5CF6" BlurRadius="22" ShadowDepth="0" Opacity="0.95" />
+                                </Ellipse.Effect>
+                                <Ellipse.RenderTransform>
+                                    <ScaleTransform x:Name="OrbCoreScale" ScaleX="1.0" ScaleY="1.0" CenterX="15" CenterY="15" />
+                                </Ellipse.RenderTransform>
+                            </Ellipse>
+                        </Grid>
+
+                        <!-- 2. CyberVisor: Matte-black visor with glowing slit eyes (ADR-012) -->
+                        <Grid x:Name="CyberVisorContainer"
+                              Width="84" Height="84"
+                              Visibility="Collapsed"
+                              HorizontalAlignment="Center"
+                              VerticalAlignment="Center">
+                            <Border Width="74" Height="42"
+                                    CornerRadius="12"
+                                    Background="#0C0D14"
+                                    BorderBrush="#2D234D"
+                                    BorderThickness="1.5">
+                                <Border.Effect>
+                                    <DropShadowEffect Color="#8B5CF6" BlurRadius="14" ShadowDepth="0" Opacity="0.35" />
+                                </Border.Effect>
+                                <Grid HorizontalAlignment="Center" VerticalAlignment="Center">
+                                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                        <!-- Left Slit Eye -->
+                                        <Border x:Name="VisorLeftEye"
+                                                Width="18" Height="6"
+                                                CornerRadius="3"
+                                                Background="#A78BFA"
+                                                Margin="0,0,6,0"
+                                                RenderTransformOrigin="0.5,0.5">
+                                            <Border.Effect>
+                                                <DropShadowEffect Color="#8B5CF6" BlurRadius="10" ShadowDepth="0" Opacity="0.95" />
+                                            </Border.Effect>
+                                            <Border.RenderTransform>
+                                                <ScaleTransform x:Name="VisorLeftScale" ScaleX="1.0" ScaleY="1.0" CenterY="3" />
+                                            </Border.RenderTransform>
+                                        </Border>
+
+                                        <!-- Right Slit Eye -->
+                                        <Border x:Name="VisorRightEye"
+                                                Width="18" Height="6"
+                                                CornerRadius="3"
+                                                Background="#A78BFA"
+                                                Margin="6,0,0,0"
+                                                RenderTransformOrigin="0.5,0.5">
+                                            <Border.Effect>
+                                                <DropShadowEffect Color="#8B5CF6" BlurRadius="10" ShadowDepth="0" Opacity="0.95" />
+                                            </Border.Effect>
+                                            <Border.RenderTransform>
+                                                <ScaleTransform x:Name="VisorRightScale" ScaleX="1.0" ScaleY="1.0" CenterY="3" />
+                                            </Border.RenderTransform>
+                                        </Border>
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+                        </Grid>
+
+                        <!-- 3. CustomImage: User custom file or fallback sprites (ADR-012) -->
+                        <Grid x:Name="CustomImageContainer"
+                              Width="84" Height="84"
+                              Visibility="Collapsed"
+                              HorizontalAlignment="Center"
+                              VerticalAlignment="Center">
+                            <Image x:Name="MascotImage"
+                                   Width="80" Height="80"
+                                   Stretch="Uniform"
+                                   RenderOptions.BitmapScalingMode="HighQuality"
+                                   Focusable="False" />
+                        </Grid>
+                    </Grid>
+
+                    <!-- Provocative Speech Bubble in Dark Glass Aesthetic (ADR-012) -->
+                    <Border x:Name="SpeechBubbleBorder"
+                            Grid.Column="1"
+                            HorizontalAlignment="Stretch"
+                            VerticalAlignment="Center"
+                            Background="#10111A"
+                            BorderBrush="#2D234D"
+                            BorderThickness="1"
+                            CornerRadius="14"
+                            Padding="12,10"
+                            Margin="0,0,4,0"
+                            Focusable="False"
+                            KeyboardNavigation.IsTabStop="False">
+                        <Border.Effect>
+                            <DropShadowEffect Color="#8B5CF6" BlurRadius="12" ShadowDepth="0" Opacity="0.25" />
+                        </Border.Effect>
+                        <TextBlock x:Name="SpeechBubbleText"
+                                   Text="Ну давай, кликни!"
+                                   Foreground="#F8FAFC"
+                                   FontSize="12"
+                                   FontWeight="SemiBold"
+                                   TextAlignment="Left"
+                                   TextWrapping="Wrap"
+                                   MaxWidth="190"
+                                   Focusable="False"
+                                   KeyboardNavigation.IsTabStop="False" />
+                    </Border>
+                </Grid>
             </StackPanel>
         </Border>
     </Grid>

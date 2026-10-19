@@ -444,4 +444,65 @@ public class VideoWindowTests : IDisposable
             window.Close();
         });
     }
+
+    [Fact]
+    public void VideoWindow_PulseMandatoryWatchWarning_InitializesNoticeAndBorderPulse_WithoutThrowing()
+    {
+        RunInSta(() =>
+        {
+            var store = CreateTestSettingsStore();
+            var scheduler = new RandomReminderScheduler();
+            var videoLib = new VideoLibraryService(store);
+            using var coordinator = new OverlayCoordinator(scheduler, videoLib, store);
+
+            var window = new VideoWindow(coordinator, store);
+
+            Assert.NotNull(window.MandatoryWatchNotice);
+            Assert.NotNull(window.WindowBorder);
+
+            // Pulse warning animations on border and capsule notice
+            window.PulseMandatoryWatchWarning();
+
+            Assert.NotNull(window.MandatoryWatchNotice);
+            Assert.NotNull(window.WindowBorder.BorderBrush);
+
+            // FlashMandatoryWatchNotice redirects to PulseMandatoryWatchWarning
+            window.FlashMandatoryWatchNotice();
+
+            window.AllowClose = true;
+            window.Close();
+        });
+    }
+
+    [Fact]
+    public void VideoWindow_OnClosing_WhenLocked_CancelsAndPulsesWarning()
+    {
+        RunInSta(() =>
+        {
+            var store = CreateTestSettingsStore();
+            var scheduler = new RandomReminderScheduler();
+            var videoLib = new VideoLibraryService(store);
+            using var coordinator = new OverlayCoordinator(scheduler, videoLib, store);
+
+            var window = new VideoWindow(coordinator, store)
+            {
+                AllowClose = false,
+                IsManualTest = false
+            };
+
+            var onClosingMethod = typeof(VideoWindow).GetMethod(
+                "OnClosing",
+                BindingFlags.Instance | BindingFlags.NonPublic);
+            Assert.NotNull(onClosingMethod);
+
+            var cancelArgs = new CancelEventArgs();
+            onClosingMethod.Invoke(window, new object[] { cancelArgs });
+
+            // Closing cancelled due to Mandatory Watch Lock
+            Assert.True(cancelArgs.Cancel);
+
+            window.AllowClose = true;
+            window.Close();
+        });
+    }
 }

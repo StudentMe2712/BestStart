@@ -67,6 +67,16 @@ public class AppSettings
     }
 
     /// <summary>
+    /// Visual mascot skin ("DynamicOrb", "CyberVisor", "CustomImage"). Default: "DynamicOrb".
+    /// </summary>
+    public string MascotSkin { get; set; } = "DynamicOrb";
+
+    /// <summary>
+    /// File path to custom mascot image if MascotSkin is "CustomImage".
+    /// </summary>
+    public string CustomMascotPath { get; set; } = string.Empty;
+
+    /// <summary>
     /// User's video library items.
     /// </summary>
     public List<VideoItem> Videos { get; set; } = new();
@@ -109,6 +119,12 @@ public class AppSettings
             PanicHotkey = "Ctrl+Alt+Shift+P";
         }
 
+        if (MascotSkin != "CyberVisor" && MascotSkin != "CustomImage")
+        {
+            MascotSkin = "DynamicOrb";
+        }
+
+        CustomMascotPath ??= string.Empty;
         Videos ??= new List<VideoItem>();
     }
 }

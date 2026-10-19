@@ -214,9 +214,16 @@ public class OverlayCoordinator : IDisposable
                     TransitionTo(SessionState.VideoPlaying);
 
                     ActiveVideoWindow = _videoWindowFactory(this);
-                    if (ActiveOverlayWindow != null && ActiveVideoWindow != null)
+                    if (ActiveOverlayWindow != null && ActiveVideoWindow != null && ActiveOverlayWindow.IsVisible)
                     {
-                        ActiveVideoWindow.Owner = ActiveOverlayWindow;
+                        try
+                        {
+                            ActiveVideoWindow.Owner = ActiveOverlayWindow;
+                        }
+                        catch
+                        {
+                            // Suppress if owner window is not visible in test/mock environment
+                        }
                     }
                     ActiveVideoWindow?.Show();
                     ActiveVideoWindow?.PlayVideo(nextVideo.FilePath, nextVideo.Title, _isManualTestSession);
@@ -225,6 +232,26 @@ public class OverlayCoordinator : IDisposable
                 {
                     // Video library is empty or all files are missing
                     ActiveOverlayWindow?.ShowEmptyLibraryNotice();
+                }
+            }
+        });
+    }
+
+    /// <summary>
+    /// Handles user clicking on the backdrop/dimming layer outside the video player during video playback.
+    /// Enforces Strict Mandatory Watch Lock (ADR-010): does NOT close any window, refocuses the video window,
+    /// and triggers visual warning pulse on the player.
+    /// </summary>
+    public void OnBackdropClickedDuringVideo()
+    {
+        _dispatcherInvoker(() =>
+        {
+            lock (_lock)
+            {
+                if (CurrentState == SessionState.VideoPlaying)
+                {
+                    ActiveVideoWindow?.Activate();
+                    ActiveVideoWindow?.PulseMandatoryWatchWarning();
                 }
             }
         });

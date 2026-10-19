@@ -3,8 +3,11 @@ using System.ComponentModel;
 using System.IO;
 using System.Windows;
 using System.Windows.Input;
+using System.Windows.Media;
 using System.Windows.Media.Animation;
+using System.Windows.Media.Effects;
 using System.Windows.Threading;
+using Color = System.Windows.Media.Color;
 using PersonalProvocateur.App.Services;
 using PersonalProvocateur.App.Storage;
 
@@ -136,28 +139,78 @@ public partial class VideoWindow : Window
     }
 
     /// <summary>
-    /// Flashes the mandatory watch notice overlay for 1.2 seconds to alert the user
+    /// Flashes the mandatory watch notice overlay to alert the user
     /// that closing the motivation video early is forbidden.
+    /// Redirects to <see cref="PulseMandatoryWatchWarning"/>.
     /// </summary>
     public void FlashMandatoryWatchNotice()
     {
-        if (MandatoryWatchNotice == null)
+        PulseMandatoryWatchWarning();
+    }
+
+    /// <summary>
+    /// Pulses the window border with accent warning colors (#EF4444 / #8B5CF6) and displays
+    /// a stylish mandatory watch capsule notice at the top of the video player for 1.8 seconds.
+    /// Enforces Strict Mandatory Watch Lock (ADR-010).
+    /// </summary>
+    public void PulseMandatoryWatchWarning()
+    {
+        if (MandatoryWatchNotice != null)
         {
-            return;
+            MandatoryWatchNotice.BeginAnimation(UIElement.OpacityProperty, null);
+
+            var noticeAnimation = new DoubleAnimationUsingKeyFrames
+            {
+                Duration = TimeSpan.FromMilliseconds(1800)
+            };
+            noticeAnimation.KeyFrames.Add(new LinearDoubleKeyFrame(0.0, KeyTime.FromTimeSpan(TimeSpan.Zero)));
+            noticeAnimation.KeyFrames.Add(new LinearDoubleKeyFrame(1.0, KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(250))));
+            noticeAnimation.KeyFrames.Add(new LinearDoubleKeyFrame(1.0, KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(1350))));
+            noticeAnimation.KeyFrames.Add(new LinearDoubleKeyFrame(0.0, KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(1800))));
+
+            MandatoryWatchNotice.BeginAnimation(UIElement.OpacityProperty, noticeAnimation);
         }
 
-        MandatoryWatchNotice.BeginAnimation(UIElement.OpacityProperty, null);
-
-        var anim = new DoubleAnimationUsingKeyFrames
+        if (WindowBorder != null)
         {
-            Duration = TimeSpan.FromMilliseconds(1200)
-        };
-        anim.KeyFrames.Add(new LinearDoubleKeyFrame(0.0, KeyTime.FromTimeSpan(TimeSpan.Zero)));
-        anim.KeyFrames.Add(new LinearDoubleKeyFrame(1.0, KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(200))));
-        anim.KeyFrames.Add(new LinearDoubleKeyFrame(1.0, KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(800))));
-        anim.KeyFrames.Add(new LinearDoubleKeyFrame(0.0, KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(1200))));
+            var brush = WindowBorder.BorderBrush as SolidColorBrush;
+            if (brush == null || brush.IsFrozen)
+            {
+                brush = new SolidColorBrush(Color.FromRgb(0x34, 0x38, 0x4E));
+                WindowBorder.BorderBrush = brush;
+            }
 
-        MandatoryWatchNotice.BeginAnimation(UIElement.OpacityProperty, anim);
+            brush.BeginAnimation(SolidColorBrush.ColorProperty, null);
+
+            var borderPulse = new ColorAnimationUsingKeyFrames
+            {
+                Duration = TimeSpan.FromMilliseconds(1800)
+            };
+            borderPulse.KeyFrames.Add(new LinearColorKeyFrame(Color.FromRgb(0x34, 0x38, 0x4E), KeyTime.FromTimeSpan(TimeSpan.Zero)));
+            borderPulse.KeyFrames.Add(new LinearColorKeyFrame(Color.FromRgb(0xEF, 0x44, 0x44), KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(250))));
+            borderPulse.KeyFrames.Add(new LinearColorKeyFrame(Color.FromRgb(0x8B, 0x5C, 0xF6), KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(800))));
+            borderPulse.KeyFrames.Add(new LinearColorKeyFrame(Color.FromRgb(0xEF, 0x44, 0x44), KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(1350))));
+            borderPulse.KeyFrames.Add(new LinearColorKeyFrame(Color.FromRgb(0x34, 0x38, 0x4E), KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(1800))));
+
+            brush.BeginAnimation(SolidColorBrush.ColorProperty, borderPulse);
+        }
+
+        if (WindowBorder?.Effect is DropShadowEffect shadow && !shadow.IsFrozen)
+        {
+            shadow.BeginAnimation(DropShadowEffect.ColorProperty, null);
+
+            var shadowPulse = new ColorAnimationUsingKeyFrames
+            {
+                Duration = TimeSpan.FromMilliseconds(1800)
+            };
+            shadowPulse.KeyFrames.Add(new LinearColorKeyFrame(Color.FromRgb(0x00, 0x00, 0x00), KeyTime.FromTimeSpan(TimeSpan.Zero)));
+            shadowPulse.KeyFrames.Add(new LinearColorKeyFrame(Color.FromRgb(0xEF, 0x44, 0x44), KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(250))));
+            shadowPulse.KeyFrames.Add(new LinearColorKeyFrame(Color.FromRgb(0x8B, 0x5C, 0xF6), KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(800))));
+            shadowPulse.KeyFrames.Add(new LinearColorKeyFrame(Color.FromRgb(0xEF, 0x44, 0x44), KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(1350))));
+            shadowPulse.KeyFrames.Add(new LinearColorKeyFrame(Color.FromRgb(0x00, 0x00, 0x00), KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(1800))));
+
+            shadow.BeginAnimation(DropShadowEffect.ColorProperty, shadowPulse);
+        }
     }
 
     /// <summary>
@@ -271,7 +324,7 @@ public partial class VideoWindow : Window
     {
         if (!AllowClose && !IsManualTest)
         {
-            FlashMandatoryWatchNotice();
+            PulseMandatoryWatchWarning();
             return;
         }
 
@@ -284,8 +337,8 @@ public partial class VideoWindow : Window
         {
             if (!AllowClose && !IsManualTest)
             {
-                FlashMandatoryWatchNotice();
                 e.Handled = true;
+                PulseMandatoryWatchWarning();
                 return;
             }
 
@@ -299,7 +352,7 @@ public partial class VideoWindow : Window
         if (!AllowClose && !IsManualTest)
         {
             e.Cancel = true;
-            FlashMandatoryWatchNotice();
+            PulseMandatoryWatchWarning();
             return;
         }
 

@@ -35,6 +35,18 @@ public class SettingsWindowTests : IDisposable
         }
     }
 
+    private static void EnsureWpfInitialized()
+    {
+        if (!UriParser.IsKnownScheme("pack"))
+        {
+            _ = System.IO.Packaging.PackUriHelper.UriSchemePack;
+        }
+        if (Application.ResourceAssembly == null)
+        {
+            Application.ResourceAssembly = typeof(SettingsWindow).Assembly;
+        }
+    }
+
     private static void RunInSta(Action action)
     {
         Exception? caught = null;
@@ -42,6 +54,7 @@ public class SettingsWindowTests : IDisposable
         {
             try
             {
+                EnsureWpfInitialized();
                 action();
             }
             catch (Exception ex)
@@ -200,7 +213,7 @@ public class SettingsWindowTests : IDisposable
     }
 
     [Fact]
-    public void SettingsWindow_Footer_HasSaveAndCloseButtonsAndNoDuplicateTestButton()
+    public void SettingsWindow_SegmentedControl_HasThreeTabsAndNoFooterButtons()
     {
         RunInSta(() =>
         {
@@ -212,12 +225,107 @@ public class SettingsWindowTests : IDisposable
             var window = new SettingsWindow(store, videoLib, coordinator, scheduler);
             window.Show();
 
-            Assert.NotNull(window.SaveButton);
-            Assert.NotNull(window.CloseButton);
+            // Verify three segmented control tabs exist
+            Assert.NotNull(window.TabVideosButton);
+            Assert.NotNull(window.TabAppearanceButton);
+            Assert.NotNull(window.TabSystemButton);
 
-            // Verify BottomTestButton is no longer in the window
+            Assert.NotNull(window.TabVideosContent);
+            Assert.NotNull(window.TabAppearanceContent);
+            Assert.NotNull(window.TabSystemContent);
+
+            // Verify old footer buttons are completely removed
+            var saveBtn = window.FindName("SaveButton");
+            Assert.Null(saveBtn);
+
+            var closeBtn = window.FindName("CloseButton");
+            Assert.Null(closeBtn);
+
             var bottomTest = window.FindName("BottomTestButton");
             Assert.Null(bottomTest);
+
+            // Verify tab switching transitions
+            Assert.Equal(0, window.SelectedTabIndex);
+            Assert.Equal(Visibility.Visible, window.TabVideosContent.Visibility);
+            Assert.Equal(Visibility.Collapsed, window.TabAppearanceContent.Visibility);
+            Assert.Equal(Visibility.Collapsed, window.TabSystemContent.Visibility);
+
+            window.SelectTab(1);
+            Assert.Equal(1, window.SelectedTabIndex);
+            Assert.Equal(Visibility.Collapsed, window.TabVideosContent.Visibility);
+            Assert.Equal(Visibility.Visible, window.TabAppearanceContent.Visibility);
+            Assert.Equal(Visibility.Collapsed, window.TabSystemContent.Visibility);
+
+            window.SelectTab(2);
+            Assert.Equal(2, window.SelectedTabIndex);
+            Assert.Equal(Visibility.Collapsed, window.TabVideosContent.Visibility);
+            Assert.Equal(Visibility.Collapsed, window.TabAppearanceContent.Visibility);
+            Assert.Equal(Visibility.Visible, window.TabSystemContent.Visibility);
+
+            window.Close();
+        });
+    }
+
+    [Fact]
+    public void SettingsWindow_AutoSave_SavesSettingsToStoreAndTriggersBadge()
+    {
+        RunInSta(() =>
+        {
+            var store = new SettingsStore(_settingsPath);
+            var videoLib = new VideoLibraryService(store, fileExistsChecker: _ => false);
+            var scheduler = new RandomReminderScheduler();
+            using var coordinator = new OverlayCoordinator(scheduler, videoLib, store);
+
+            var window = new SettingsWindow(store, videoLib, coordinator, scheduler);
+            window.Show();
+
+            Assert.NotNull(window.AutoSaveBadge);
+
+            window.MinIntervalSlider.Value = 22;
+            window.MaxIntervalSlider.Value = 55;
+            window.OpacitySlider.Value = 75;
+            window.VolumeSlider.Value = 90;
+
+            window.TriggerAutoSave(immediate: true);
+
+            Assert.Equal(22, store.CurrentSettings.MinIntervalMinutes);
+            Assert.Equal(55, store.CurrentSettings.MaxIntervalMinutes);
+            Assert.Equal(0.75, store.CurrentSettings.DimmingOpacity, precision: 2);
+            Assert.Equal(0.90, store.CurrentSettings.VideoVolume, precision: 2);
+
+            window.Close();
+        });
+    }
+
+    [Fact]
+    public void SettingsWindow_SkinSelection_UpdatesMascotSkin()
+    {
+        RunInSta(() =>
+        {
+            var store = new SettingsStore(_settingsPath);
+            var videoLib = new VideoLibraryService(store, fileExistsChecker: _ => false);
+            var scheduler = new RandomReminderScheduler();
+            using var coordinator = new OverlayCoordinator(scheduler, videoLib, store);
+
+            var window = new SettingsWindow(store, videoLib, coordinator, scheduler);
+            window.Show();
+
+            Assert.NotNull(window.SkinDynamicOrbButton);
+            Assert.NotNull(window.SkinCyberVisorButton);
+            Assert.NotNull(window.SkinCustomImageButton);
+
+            // Initially DynamicOrb
+            Assert.Equal("DynamicOrb", window.SelectedSkin);
+
+            // Switch to CyberVisor
+            window.SelectSkin("CyberVisor");
+            Assert.Equal("CyberVisor", window.SelectedSkin);
+            Assert.Equal("CyberVisor", store.CurrentSettings.MascotSkin);
+
+            // Switch back to DynamicOrb
+            window.SelectSkin("DynamicOrb");
+            Assert.Equal("DynamicOrb", window.SelectedSkin);
+            Assert.Equal("DynamicOrb", store.CurrentSettings.MascotSkin);
 
             window.Close();
         });

@@ -4,10 +4,12 @@ using System.Linq;
 using System.Reflection;
 using System.Runtime.ExceptionServices;
 using System.Threading;
+using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media.Animation;
 using PersonalProvocateur.App.Models;
 using PersonalProvocateur.App.Services;
+using PersonalProvocateur.App.Storage;
 using PersonalProvocateur.App.UI.Controls;
 using Xunit;
 
@@ -234,9 +236,9 @@ public class MascotControlTests : IDisposable
             var sb = sbField?.GetValue(control) as Storyboard;
             Assert.NotNull(sb);
 
-            // Scale impulse to 1.12 over 100ms
+            // Scale impulse to 1.25 over 100ms (ADR-012)
             var scaleAnim = sb.Children.OfType<DoubleAnimation>()
-                .FirstOrDefault(a => a.From == 1.0 && a.To == 1.12);
+                .FirstOrDefault(a => a.From == 1.0 && a.To == 1.25);
             Assert.NotNull(scaleAnim);
             Assert.Equal(TimeSpan.FromMilliseconds(100), scaleAnim.Duration.TimeSpan);
 
@@ -291,6 +293,140 @@ public class MascotControlTests : IDisposable
             control.RaiseEvent(args);
 
             Assert.True(clicked);
+        });
+    }
+
+    [Fact]
+    public void ApplySkin_DynamicOrb_SwitchesVisibility_AndSetsDefaultSkin()
+    {
+        RunInSta(() =>
+        {
+            var control = new MascotControl(_assetService);
+            control.ApplySkin("DynamicOrb");
+
+            Assert.Equal("DynamicOrb", control.CurrentSkin);
+            Assert.Equal(Visibility.Visible, control.DynamicOrbContainer.Visibility);
+            Assert.Equal(Visibility.Collapsed, control.CyberVisorContainer.Visibility);
+            Assert.Equal(Visibility.Collapsed, control.CustomImageContainer.Visibility);
+            control.StopAllAnimations();
+        });
+    }
+
+    [Fact]
+    public void ApplySkin_CyberVisor_SwitchesVisibility_AndSetsSkin()
+    {
+        RunInSta(() =>
+        {
+            var control = new MascotControl(_assetService);
+            control.ApplySkin("CyberVisor");
+
+            Assert.Equal("CyberVisor", control.CurrentSkin);
+            Assert.Equal(Visibility.Collapsed, control.DynamicOrbContainer.Visibility);
+            Assert.Equal(Visibility.Visible, control.CyberVisorContainer.Visibility);
+            Assert.Equal(Visibility.Collapsed, control.CustomImageContainer.Visibility);
+            control.StopAllAnimations();
+        });
+    }
+
+    [Fact]
+    public void ApplySkin_CustomImage_WithCustomPath_LoadsImageFile()
+    {
+        RunInSta(() =>
+        {
+            var control = new MascotControl(_assetService);
+            var customFilePath = Path.Combine(_tempDir, "custom_avatar.png");
+            
+            // Create a valid 1x1 png image
+            var encoder = new System.Windows.Media.Imaging.PngBitmapEncoder();
+            encoder.Frames.Add(System.Windows.Media.Imaging.BitmapFrame.Create(
+                new System.Windows.Media.Imaging.RenderTargetBitmap(16, 16, 96, 96, System.Windows.Media.PixelFormats.Pbgra32)));
+            using (var fs = File.Create(customFilePath))
+            {
+                encoder.Save(fs);
+            }
+
+            control.ApplySkin("CustomImage", customFilePath);
+
+            Assert.Equal("CustomImage", control.CurrentSkin);
+            Assert.Equal(customFilePath, control.CurrentCustomPath);
+            Assert.Equal(Visibility.Collapsed, control.DynamicOrbContainer.Visibility);
+            Assert.Equal(Visibility.Collapsed, control.CyberVisorContainer.Visibility);
+            Assert.Equal(Visibility.Visible, control.CustomImageContainer.Visibility);
+            Assert.NotNull(control.MascotImage.Source);
+            control.StopAllAnimations();
+        });
+    }
+
+    [Fact]
+    public void ApplySkin_CustomImage_WithoutCustomPath_FallsBackToAssetService()
+    {
+        RunInSta(() =>
+        {
+            var control = new MascotControl(_assetService);
+            control.SetState(MascotState.Idle);
+            control.ApplySkin("CustomImage", null);
+
+            Assert.Equal("CustomImage", control.CurrentSkin);
+            Assert.Equal(Visibility.Visible, control.CustomImageContainer.Visibility);
+            Assert.NotNull(control.MascotImage.Source);
+            control.StopAllAnimations();
+        });
+    }
+
+    [Fact]
+    public void ApplySkin_InvalidSkin_DefaultsToDynamicOrb()
+    {
+        RunInSta(() =>
+        {
+            var control = new MascotControl(_assetService);
+            control.ApplySkin("InvalidSkin_ABC");
+
+            Assert.Equal("DynamicOrb", control.CurrentSkin);
+            Assert.Equal(Visibility.Visible, control.DynamicOrbContainer.Visibility);
+            Assert.Equal(Visibility.Collapsed, control.CyberVisorContainer.Visibility);
+            Assert.Equal(Visibility.Collapsed, control.CustomImageContainer.Visibility);
+            control.StopAllAnimations();
+        });
+    }
+
+    [Fact]
+    public void OnLoaded_PullsSkinPreference_FromSettingsStore()
+    {
+        RunInSta(() =>
+        {
+            var settingsPath = Path.Combine(_tempDir, "settings_test.json");
+            var store = new SettingsStore(settingsPath);
+            store.Update(s => s.MascotSkin = "CyberVisor");
+
+            var control = new MascotControl(_assetService, store);
+            control.RaiseEvent(new RoutedEventArgs(FrameworkElement.LoadedEvent));
+
+            Assert.Equal("CyberVisor", control.CurrentSkin);
+            Assert.Equal(Visibility.Visible, control.CyberVisorContainer.Visibility);
+            Assert.Equal(Visibility.Collapsed, control.DynamicOrbContainer.Visibility);
+            control.StopAllAnimations();
+        });
+    }
+
+    [Fact]
+    public void StopAllAnimations_StopsSkinAnimations_AndResetsTransforms()
+    {
+        RunInSta(() =>
+        {
+            var control = new MascotControl(_assetService);
+            control.ApplySkin("DynamicOrb");
+            control.PlayIdleAnimation();
+
+            control.StopAllAnimations();
+
+            Assert.Equal(1.0, control.MascotScale.ScaleX);
+            Assert.Equal(1.0, control.MascotScale.ScaleY);
+            Assert.Equal(0.0, control.MascotRotate.Angle);
+            Assert.Equal(0.0, control.MascotTranslate.X);
+            Assert.Equal(0.0, control.MascotTranslate.Y);
+            Assert.Equal(1.0, control.OrbCoreScale.ScaleX);
+            Assert.Equal(1.0, control.OrbCoreScale.ScaleY);
+            Assert.Equal(0.25, control.OrbOuterRing.Opacity);
         });
     }
 }

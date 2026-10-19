@@ -22,13 +22,16 @@
             </ResourceDictionary.MergedDictionaries>
         </ResourceDictionary>
     </Window.Resources>
-    <Border Background="#12131A"
-            BorderBrush="#34384E"
-            BorderThickness="1"
+    <Border x:Name="WindowBorder"
+            Background="#12131A"
+            BorderThickness="1.5"
             CornerRadius="16"
             SnapsToDevicePixels="True">
+        <Border.BorderBrush>
+            <SolidColorBrush x:Name="WindowBorderBrush" Color="#34384E" />
+        </Border.BorderBrush>
         <Border.Effect>
-            <DropShadowEffect Color="#000000" BlurRadius="28" ShadowDepth="6" Opacity="0.60" />
+            <DropShadowEffect x:Name="WindowBorderShadow" Color="#000000" BlurRadius="28" ShadowDepth="6" Opacity="0.60" />
         </Border.Effect>
 
         <Grid Background="#12131A" ClipToBounds="True">
@@ -162,33 +165,34 @@
                            Focusable="False" />
             </Grid>
 
-            <!-- Mandatory Watch Notice Overlay -->
+            <!-- Mandatory Watch Notice Overlay (Strict Mandatory Watch Lock, ADR-010) -->
             <Border x:Name="MandatoryWatchNotice"
-                    Grid.Row="0" Grid.RowSpan="3"
+                    Grid.Row="1"
                     HorizontalAlignment="Center"
-                    VerticalAlignment="Center"
+                    VerticalAlignment="Top"
+                    Margin="0,20,0,0"
                     Background="#E6181A24"
                     BorderBrush="#EF4444"
                     BorderThickness="1.5"
                     CornerRadius="14"
-                    Padding="24,14"
+                    Padding="22,12"
                     Opacity="0"
                     IsHitTestVisible="False">
                 <Border.Effect>
                     <DropShadowEffect Color="#EF4444" BlurRadius="24" ShadowDepth="0" Opacity="0.55" />
                 </Border.Effect>
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                    <Path Data="{StaticResource IconAlert}"
+                    <Path Data="{StaticResource IconWarning}"
                           Stroke="#EF4444"
                           StrokeThickness="2"
                           StrokeStartLineCap="Round"
                           StrokeEndLineCap="Round"
                           StrokeLineJoin="Round"
                           Stretch="Uniform"
-                          Width="20" Height="20"
+                          Width="18" Height="18"
                           Margin="0,0,10,0"
                           VerticalAlignment="Center" />
-                    <TextBlock Text="Досмотрите видео до конца!"
+                    <TextBlock Text="Досмотри видео до конца"
                                FontSize="14"
                                FontWeight="SemiBold"
                                Foreground="#F8FAFC"

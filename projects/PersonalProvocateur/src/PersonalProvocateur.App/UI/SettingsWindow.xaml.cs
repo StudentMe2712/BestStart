@@ -12,6 +12,7 @@ using PersonalProvocateur.App.Services;
 using PersonalProvocateur.App.Storage;
 using PersonalProvocateur.App.WindowsInterop;
 using Brush = System.Windows.Media.Brush;
+using Brushes = System.Windows.Media.Brushes;
 using Color = System.Windows.Media.Color;
 using SolidColorBrush = System.Windows.Media.SolidColorBrush;
 using KeyEventArgs = System.Windows.Input.KeyEventArgs;
@@ -22,22 +23,59 @@ using OpenFileDialog = Microsoft.Win32.OpenFileDialog;
 namespace PersonalProvocateur.App.UI;
 
 /// <summary>
-/// Full-featured frameless macOS-styled dashboard window for managing provocation intervals,
-/// dimming, hotkey registration, auto-startup, and the video library.
+/// Minimalist frameless macOS-styled dashboard window featuring Segmented Control tabs,
+/// toggle switches, instant debounced auto-saving, and skin selection (ADR-013).
 /// </summary>
 public partial class SettingsWindow : Window
 {
+    private static readonly Brush ActiveTabBg = CreateFrozenBrush(0xFF, 0x25, 0x29, 0x3A);
+    private static readonly Brush ActiveTabFg = CreateFrozenBrush(0xFF, 0xF3, 0xF4, 0xF6);
+    private static readonly Brush InactiveTabBg = Brushes.Transparent;
+    private static readonly Brush InactiveTabFg = CreateFrozenBrush(0xFF, 0x9C, 0xA3, 0xAF);
+
+    private static readonly Brush SelectedCardBg = CreateFrozenBrush(0x22, 0x8B, 0x5C, 0xF6);
+    private static readonly Brush SelectedCardBorder = CreateFrozenBrush(0xFF, 0x8B, 0x5C, 0xF6);
+    private static readonly Brush NormalCardBg = CreateFrozenBrush(0xFF, 0x13, 0x15, 0x1F);
+    private static readonly Brush NormalCardBorder = CreateFrozenBrush(0xFF, 0x25, 0x29, 0x3A);
+
+    private static Brush CreateFrozenBrush(byte a, byte r, byte g, byte b)
+    {
+        var brush = new SolidColorBrush(Color.FromArgb(a, r, g, b));
+        brush.Freeze();
+        return brush;
+    }
+
     private readonly SettingsStore? _settingsStore;
     private readonly VideoLibraryService? _videoLibrary;
     private readonly OverlayCoordinator? _coordinator;
     private readonly RandomReminderScheduler? _scheduler;
     private readonly DispatcherTimer? _statusTimer;
+    private readonly DispatcherTimer _autoSaveDebounceTimer;
     private DispatcherTimer? _toastTimer;
     private readonly ObservableCollection<VideoItemViewModel> _videos = new();
 
     private bool _isPaused;
+    private bool _isLoading = true;
     private string? _initialTriggerHotkey;
     private string? _initialPanicHotkey;
+    private string _selectedSkin = "DynamicOrb";
+    private string _customMascotPath = string.Empty;
+    private int _selectedTabIndex = 0;
+
+    /// <summary>
+    /// Gets the currently selected tab index (0: Videos, 1: Appearance &amp; Timer, 2: System).
+    /// </summary>
+    public int SelectedTabIndex => _selectedTabIndex;
+
+    /// <summary>
+    /// Gets the currently selected mascot skin ("DynamicOrb", "CyberVisor", "CustomImage").
+    /// </summary>
+    public string SelectedSkin => _selectedSkin;
+
+    /// <summary>
+    /// Gets the path to the custom mascot image if CustomImage skin is selected.
+    /// </summary>
+    public string CustomMascotPath => _customMascotPath;
 
     /// <summary>
     /// Initializes a new instance of <see cref="SettingsWindow"/>.
@@ -57,13 +95,25 @@ public partial class SettingsWindow : Window
 
         VideosListBox.ItemsSource = _videos;
 
-        Loaded += OnLoaded;
-
         _statusTimer = new DispatcherTimer
         {
             Interval = TimeSpan.FromSeconds(1)
         };
         _statusTimer.Tick += (s, e) => RefreshStatusHeader();
+
+        _autoSaveDebounceTimer = new DispatcherTimer
+        {
+            Interval = TimeSpan.FromMilliseconds(250)
+        };
+        _autoSaveDebounceTimer.Tick += (s, e) =>
+        {
+            _autoSaveDebounceTimer.Stop();
+            ExecuteAutoSave();
+        };
+
+        LoadValues();
+
+        Loaded += OnLoaded;
     }
 
     /// <summary>
@@ -75,37 +125,327 @@ public partial class SettingsWindow : Window
 
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
-        LoadValues();
         _statusTimer?.Start();
     }
 
     private void LoadValues()
     {
-        if (_settingsStore == null)
+        _isLoading = true;
+        try
+        {
+            if (_settingsStore != null)
+            {
+                var s = _settingsStore.CurrentSettings;
+                _isPaused = s.IsPaused;
+
+                MinIntervalSlider.Value = s.MinIntervalMinutes;
+                MaxIntervalSlider.Value = s.MaxIntervalMinutes;
+                OpacitySlider.Value = (int)Math.Round(s.DimmingOpacity * 100);
+                VolumeSlider.Value = (int)Math.Round(s.VideoVolume * 100);
+
+                _initialTriggerHotkey = s.TriggerHotkey;
+                _initialPanicHotkey = s.PanicHotkey;
+
+                TriggerHotkeyTextBox.Text = s.TriggerHotkey;
+                PanicHotkeyTextBox.Text = s.PanicHotkey;
+
+                _selectedSkin = s.MascotSkin ?? "DynamicOrb";
+                _customMascotPath = s.CustomMascotPath ?? string.Empty;
+
+                try
+                {
+                    RunOnStartupCheckBox.IsChecked = StartupManager.IsRunOnStartupEnabled();
+                }
+                catch
+                {
+                    RunOnStartupCheckBox.IsChecked = s.RunOnStartup;
+                }
+            }
+            else
+            {
+                _selectedSkin = "DynamicOrb";
+                _customMascotPath = string.Empty;
+            }
+
+            UpdateSkinSelectionUi();
+            SelectTab(0);
+            RefreshVideosList();
+            RefreshStatusHeader();
+            ValidateAllHotkeys();
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    #region Auto-Save Engine (ADR-013)
+
+    /// <summary>
+    /// Triggers automatic saving of all settings to the store.
+    /// When <paramref name="immediate"/> is false, debounces changes by 250 ms.
+    /// </summary>
+    /// <param name="immediate">True to save immediately without debouncing; false for slider debounce.</param>
+    public void TriggerAutoSave(bool immediate = false)
+    {
+        if (_isLoading)
         {
             return;
         }
 
-        var s = _settingsStore.CurrentSettings;
-        _isPaused = s.IsPaused;
-
-        MinIntervalSlider.Value = s.MinIntervalMinutes;
-        MaxIntervalSlider.Value = s.MaxIntervalMinutes;
-        OpacitySlider.Value = (int)Math.Round(s.DimmingOpacity * 100);
-        VolumeSlider.Value = (int)Math.Round(s.VideoVolume * 100);
-
-        _initialTriggerHotkey = s.TriggerHotkey;
-        _initialPanicHotkey = s.PanicHotkey;
-
-        TriggerHotkeyTextBox.Text = s.TriggerHotkey;
-        PanicHotkeyTextBox.Text = s.PanicHotkey;
-
-        RunOnStartupCheckBox.IsChecked = StartupManager.IsRunOnStartupEnabled();
-
-        RefreshVideosList();
-        RefreshStatusHeader();
-        ValidateAllHotkeys();
+        if (immediate)
+        {
+            _autoSaveDebounceTimer.Stop();
+            ExecuteAutoSave();
+        }
+        else
+        {
+            _autoSaveDebounceTimer.Stop();
+            _autoSaveDebounceTimer.Start();
+        }
     }
+
+    private void ExecuteAutoSave()
+    {
+        int min = MinIntervalSlider != null ? (int)MinIntervalSlider.Value : 15;
+        int max = MaxIntervalSlider != null ? (int)MaxIntervalSlider.Value : 45;
+        if (max < min)
+        {
+            max = min;
+        }
+
+        double opacity = OpacitySlider != null ? Math.Clamp(OpacitySlider.Value / 100.0, 0.10, 0.95) : 0.60;
+        double volume = VolumeSlider != null ? Math.Clamp(VolumeSlider.Value / 100.0, 0.0, 1.0) : 0.85;
+
+        string triggerKey = TriggerHotkeyTextBox?.Text?.Trim() ?? "Ctrl+Alt+P";
+        string panicKey = PanicHotkeyTextBox?.Text?.Trim() ?? "Ctrl+Alt+Shift+P";
+        bool runOnStartup = RunOnStartupCheckBox?.IsChecked ?? false;
+        string selectedSkin = _selectedSkin;
+        string customPath = _customMascotPath;
+
+        _settingsStore?.Update(s =>
+        {
+            s.MinIntervalMinutes = min;
+            s.MaxIntervalMinutes = max;
+            s.DimmingOpacity = opacity;
+            s.VideoVolume = volume;
+            if (!string.IsNullOrWhiteSpace(triggerKey))
+            {
+                s.TriggerHotkey = triggerKey;
+            }
+            if (!string.IsNullOrWhiteSpace(panicKey))
+            {
+                s.PanicHotkey = panicKey;
+            }
+            s.RunOnStartup = runOnStartup;
+            s.MascotSkin = selectedSkin;
+            s.CustomMascotPath = customPath ?? string.Empty;
+        });
+
+        try
+        {
+            StartupManager.SetRunOnStartup(runOnStartup);
+        }
+        catch
+        {
+            // Ignore registry errors in test or restricted environments
+        }
+
+        FlashAutoSaveBadge();
+    }
+
+    private void FlashAutoSaveBadge()
+    {
+        if (AutoSaveBadge == null)
+        {
+            return;
+        }
+
+        var anim = new DoubleAnimationUsingKeyFrames();
+        anim.KeyFrames.Add(new LinearDoubleKeyFrame(1.0, KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(200))));
+        anim.KeyFrames.Add(new LinearDoubleKeyFrame(1.0, KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(1000))));
+        anim.KeyFrames.Add(new LinearDoubleKeyFrame(0.0, KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(1500))));
+        AutoSaveBadge.BeginAnimation(UIElement.OpacityProperty, anim);
+    }
+
+    #endregion
+
+    #region Segmented Control & Navigation
+
+    /// <summary>
+    /// Selects the active tab in the macOS Segmented Control (0: Videos, 1: Appearance &amp; Timer, 2: System).
+    /// </summary>
+    /// <param name="index">Tab index.</param>
+    public void SelectTab(int index)
+    {
+        _selectedTabIndex = Math.Clamp(index, 0, 2);
+
+        if (TabVideosButton != null)
+        {
+            TabVideosButton.Background = _selectedTabIndex == 0 ? ActiveTabBg : InactiveTabBg;
+            TabVideosButton.Foreground = _selectedTabIndex == 0 ? ActiveTabFg : InactiveTabFg;
+            TabVideosButton.FontWeight = _selectedTabIndex == 0 ? FontWeights.SemiBold : FontWeights.Medium;
+        }
+
+        if (TabAppearanceButton != null)
+        {
+            TabAppearanceButton.Background = _selectedTabIndex == 1 ? ActiveTabBg : InactiveTabBg;
+            TabAppearanceButton.Foreground = _selectedTabIndex == 1 ? ActiveTabFg : InactiveTabFg;
+            TabAppearanceButton.FontWeight = _selectedTabIndex == 1 ? FontWeights.SemiBold : FontWeights.Medium;
+        }
+
+        if (TabSystemButton != null)
+        {
+            TabSystemButton.Background = _selectedTabIndex == 2 ? ActiveTabBg : InactiveTabBg;
+            TabSystemButton.Foreground = _selectedTabIndex == 2 ? ActiveTabFg : InactiveTabFg;
+            TabSystemButton.FontWeight = _selectedTabIndex == 2 ? FontWeights.SemiBold : FontWeights.Medium;
+        }
+
+        if (TabVideosContent != null)
+        {
+            TabVideosContent.Visibility = _selectedTabIndex == 0 ? Visibility.Visible : Visibility.Collapsed;
+        }
+
+        if (TabAppearanceContent != null)
+        {
+            TabAppearanceContent.Visibility = _selectedTabIndex == 1 ? Visibility.Visible : Visibility.Collapsed;
+        }
+
+        if (TabSystemContent != null)
+        {
+            TabSystemContent.Visibility = _selectedTabIndex == 2 ? Visibility.Visible : Visibility.Collapsed;
+        }
+    }
+
+    private void TabVideos_Click(object sender, RoutedEventArgs e) => SelectTab(0);
+
+    private void TabAppearance_Click(object sender, RoutedEventArgs e) => SelectTab(1);
+
+    private void TabSystem_Click(object sender, RoutedEventArgs e) => SelectTab(2);
+
+    #endregion
+
+    #region Mascot Skin Selection (ADR-012)
+
+    /// <summary>
+    /// Selects the mascot skin ("DynamicOrb", "CyberVisor", "CustomImage"),
+    /// updates UI, applies the skin to the active overlay, and triggers auto-save.
+    /// </summary>
+    /// <param name="skin">Skin identifier.</param>
+    /// <param name="customPath">Optional path to custom PNG image.</param>
+    public void SelectSkin(string skin, string? customPath = null)
+    {
+        if (skin != "CyberVisor" && skin != "CustomImage")
+        {
+            skin = "DynamicOrb";
+        }
+
+        _selectedSkin = skin;
+        if (customPath != null)
+        {
+            _customMascotPath = customPath;
+        }
+
+        UpdateSkinSelectionUi();
+
+        _coordinator?.ActiveOverlayWindow?.Mascot?.ApplySkin(_selectedSkin, _customMascotPath);
+
+        TriggerAutoSave(immediate: true);
+    }
+
+    private void UpdateSkinSelectionUi()
+    {
+        if (SkinDynamicOrbButton != null)
+        {
+            bool isOrb = _selectedSkin == "DynamicOrb";
+            SkinDynamicOrbButton.Background = isOrb ? SelectedCardBg : NormalCardBg;
+            SkinDynamicOrbButton.BorderBrush = isOrb ? SelectedCardBorder : NormalCardBorder;
+            SkinDynamicOrbButton.BorderThickness = new Thickness(isOrb ? 1.5 : 1);
+        }
+
+        if (SkinCyberVisorButton != null)
+        {
+            bool isVisor = _selectedSkin == "CyberVisor";
+            SkinCyberVisorButton.Background = isVisor ? SelectedCardBg : NormalCardBg;
+            SkinCyberVisorButton.BorderBrush = isVisor ? SelectedCardBorder : NormalCardBorder;
+            SkinCyberVisorButton.BorderThickness = new Thickness(isVisor ? 1.5 : 1);
+        }
+
+        if (SkinCustomImageButton != null)
+        {
+            bool isCustom = _selectedSkin == "CustomImage";
+            SkinCustomImageButton.Background = isCustom ? SelectedCardBg : NormalCardBg;
+            SkinCustomImageButton.BorderBrush = isCustom ? SelectedCardBorder : NormalCardBorder;
+            SkinCustomImageButton.BorderThickness = new Thickness(isCustom ? 1.5 : 1);
+
+            if (CustomSkinSubtitleText != null)
+            {
+                if (isCustom && !string.IsNullOrWhiteSpace(_customMascotPath))
+                {
+                    CustomSkinSubtitleText.Text = Path.GetFileName(_customMascotPath);
+                }
+                else
+                {
+                    CustomSkinSubtitleText.Text = "Выбрать файл";
+                }
+            }
+        }
+    }
+
+    private void SkinDynamicOrbButton_Click(object sender, RoutedEventArgs e)
+    {
+        SelectSkin("DynamicOrb");
+    }
+
+    private void SkinCyberVisorButton_Click(object sender, RoutedEventArgs e)
+    {
+        SelectSkin("CyberVisor");
+    }
+
+    private void SkinCustomImageButton_Click(object sender, RoutedEventArgs e)
+    {
+        var dialog = new OpenFileDialog
+        {
+            Title = "Выберите изображение персонажа (PNG)",
+            Filter = "PNG Изображения (*.png)|*.png|Все изображения (*.png;*.jpg;*.jpeg)|*.png;*.jpg;*.jpeg|Все файлы (*.*)|*.*"
+        };
+
+        if (dialog.ShowDialog(this) == true && File.Exists(dialog.FileName))
+        {
+            SelectSkin("CustomImage", dialog.FileName);
+        }
+    }
+
+    #endregion
+
+    #region Sliders & Value Changes
+
+    private void IntervalSliders_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        if (MinIntervalSlider != null && MaxIntervalSlider != null)
+        {
+            if (MinIntervalSlider.Value > MaxIntervalSlider.Value)
+            {
+                MaxIntervalSlider.Value = MinIntervalSlider.Value;
+            }
+        }
+
+        TriggerAutoSave(immediate: false);
+    }
+
+    private void Slider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        TriggerAutoSave(immediate: false);
+    }
+
+    private void RunOnStartupCheckBox_Click(object sender, RoutedEventArgs e)
+    {
+        TriggerAutoSave(immediate: true);
+    }
+
+    #endregion
+
+    #region Status Header & Controls
 
     private void RefreshStatusHeader()
     {
@@ -205,23 +545,25 @@ public partial class SettingsWindow : Window
             VideosListBox.Visibility = Visibility.Visible;
         }
 
-        VideoCountTextBlock.Text = $"Всего роликов: {_videos.Count} (активно: {activeCount}, доступно на диске: {availableCount})";
+        VideoCountTextBlock.Text = $"Всего роликов: {_videos.Count} (активно: {activeCount}, доступно: {availableCount})";
     }
 
-    private void IntervalSliders_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
-    {
-        if (MinIntervalSlider != null && MaxIntervalSlider != null)
-        {
-            if (MinIntervalSlider.Value > MaxIntervalSlider.Value)
-            {
-                MaxIntervalSlider.Value = MinIntervalSlider.Value;
-            }
-        }
-    }
+    #endregion
+
+    #region Hotkeys
 
     private void HotkeyTextBox_TextChanged(object sender, TextChangedEventArgs e)
     {
         ValidateAllHotkeys();
+        if (!_isLoading && TriggerHotkeyTextBox != null && PanicHotkeyTextBox != null)
+        {
+            var triggerStatus = GlobalHotkeyService.CheckHotkeyStatus(TriggerHotkeyTextBox.Text, _initialTriggerHotkey);
+            var panicStatus = GlobalHotkeyService.CheckHotkeyStatus(PanicHotkeyTextBox.Text, _initialPanicHotkey);
+            if (triggerStatus == HotkeyValidationState.Valid && panicStatus == HotkeyValidationState.Valid)
+            {
+                TriggerAutoSave(immediate: true);
+            }
+        }
     }
 
     /// <summary>
@@ -330,6 +672,10 @@ public partial class SettingsWindow : Window
         }
     }
 
+    #endregion
+
+    #region Video Library Actions
+
     private void AddVideoButton_Click(object sender, RoutedEventArgs e)
     {
         var dialog = new OpenFileDialog
@@ -350,6 +696,7 @@ public partial class SettingsWindow : Window
             }
 
             RefreshVideosList();
+            TriggerAutoSave(immediate: true);
             ShowToast("Видео успешно добавлены в библиотеку", isSuccess: true);
         }
     }
@@ -360,6 +707,7 @@ public partial class SettingsWindow : Window
         {
             _videoLibrary?.RemoveVideo(vm.Id);
             RefreshVideosList();
+            TriggerAutoSave(immediate: true);
         }
     }
 
@@ -369,6 +717,7 @@ public partial class SettingsWindow : Window
         {
             _videoLibrary?.ToggleVideo(vm.Id, vm.IsEnabled);
             RefreshVideosList();
+            TriggerAutoSave(immediate: true);
         }
     }
 
@@ -393,6 +742,10 @@ public partial class SettingsWindow : Window
         }
     }
 
+    #endregion
+
+    #region Quick Actions & Window Controls
+
     private void QuickTestButton_Click(object sender, RoutedEventArgs e)
     {
         _coordinator?.TriggerProvocation(isManualTest: true);
@@ -403,67 +756,6 @@ public partial class SettingsWindow : Window
         _isPaused = !_isPaused;
         _coordinator?.SetPaused(_isPaused);
         RefreshStatusHeader();
-    }
-
-    private void SaveButton_Click(object sender, RoutedEventArgs e)
-    {
-        if (_settingsStore == null)
-        {
-            Close();
-            return;
-        }
-
-        int min = (int)MinIntervalSlider.Value;
-        int max = (int)MaxIntervalSlider.Value;
-        if (max < min)
-        {
-            max = min;
-        }
-
-        double opacity = Math.Clamp(OpacitySlider.Value / 100.0, 0.10, 0.95);
-        double volume = Math.Clamp(VolumeSlider.Value / 100.0, 0.0, 1.0);
-
-        string triggerKey = TriggerHotkeyTextBox.Text.Trim();
-        string panicKey = PanicHotkeyTextBox.Text.Trim();
-        bool runOnStartup = RunOnStartupCheckBox.IsChecked ?? false;
-
-        _settingsStore.Update(s =>
-        {
-            s.MinIntervalMinutes = min;
-            s.MaxIntervalMinutes = max;
-            s.DimmingOpacity = opacity;
-            s.VideoVolume = volume;
-            if (!string.IsNullOrWhiteSpace(triggerKey))
-            {
-                s.TriggerHotkey = triggerKey;
-            }
-            if (!string.IsNullOrWhiteSpace(panicKey))
-            {
-                s.PanicHotkey = panicKey;
-            }
-            s.RunOnStartup = runOnStartup;
-        });
-
-        // Apply startup configuration to Windows Registry
-        StartupManager.SetRunOnStartup(runOnStartup);
-
-        // Display floating macOS Toast HUD and smoothly close after delay
-        ShowToast("Настройки сохранены", isSuccess: true, onCompleted: () =>
-        {
-            try
-            {
-                Close();
-            }
-            catch
-            {
-                // Window might already be closed by user
-            }
-        });
-    }
-
-    private void CloseButton_Click(object sender, RoutedEventArgs e)
-    {
-        Close();
     }
 
     private void TitleBar_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
@@ -483,6 +775,10 @@ public partial class SettingsWindow : Window
     {
         Close();
     }
+
+    #endregion
+
+    #region Toast Notifications
 
     /// <summary>
     /// Displays a floating macOS Toast HUD banner with icon and smooth fade/translate animations.
@@ -534,7 +830,7 @@ public partial class SettingsWindow : Window
         {
             EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
         };
-        var slideIn = new DoubleAnimation(20.0, 0.0, TimeSpan.FromMilliseconds(220))
+        var slideIn = new DoubleAnimation(16.0, 0.0, TimeSpan.FromMilliseconds(220))
         {
             EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
         };
@@ -553,7 +849,7 @@ public partial class SettingsWindow : Window
             {
                 EasingFunction = new CubicEase { EasingMode = EasingMode.EaseIn }
             };
-            var slideOut = new DoubleAnimation(0.0, 20.0, TimeSpan.FromMilliseconds(220))
+            var slideOut = new DoubleAnimation(0.0, 16.0, TimeSpan.FromMilliseconds(220))
             {
                 EasingFunction = new CubicEase { EasingMode = EasingMode.EaseIn }
             };
@@ -568,10 +864,13 @@ public partial class SettingsWindow : Window
         _toastTimer.Start();
     }
 
+    #endregion
+
     protected override void OnClosed(EventArgs e)
     {
         _statusTimer?.Stop();
         _toastTimer?.Stop();
+        _autoSaveDebounceTimer?.Stop();
         base.OnClosed(e);
     }
 }

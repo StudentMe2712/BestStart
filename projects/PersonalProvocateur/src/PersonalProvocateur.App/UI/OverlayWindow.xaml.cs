@@ -79,6 +79,12 @@ public partial class OverlayWindow : Window
         // Position mascot strictly at top-center edge
         PositionMascot();
 
+        if (_settingsStore != null)
+        {
+            Mascot.SettingsStore = _settingsStore;
+            Mascot.ApplySkin(_settingsStore.CurrentSettings.MascotSkin, _settingsStore.CurrentSettings.CustomMascotPath);
+        }
+
         // Start entrance peek animation
         Mascot.PlayPeekAnimation();
     }
@@ -119,16 +125,15 @@ public partial class OverlayWindow : Window
     }
 
     /// <summary>
-    /// Handles backdrop click during active video playback (Mandatory Watch Lock).
-    /// Clicking outside the video does NOT close the video; instead, it returns focus
-    /// to the video player and flashes the mandatory watch alert notice.
+    /// Handles backdrop click during active video playback (Strict Mandatory Watch Lock, ADR-010).
+    /// Clicking outside the video does NOT close the video; instead, it delegates to the coordinator
+    /// which refocuses the video player and triggers warning pulse animations.
     /// </summary>
     public void HandleBackdropClick()
     {
         if (_coordinator?.CurrentState == PersonalProvocateur.App.Models.SessionState.VideoPlaying)
         {
-            _coordinator.ActiveVideoWindow?.Activate();
-            _coordinator.ActiveVideoWindow?.FlashMandatoryWatchNotice();
+            _coordinator.OnBackdropClickedDuringVideo();
         }
     }
 
@@ -137,8 +142,7 @@ public partial class OverlayWindow : Window
         if (_coordinator?.CurrentState == PersonalProvocateur.App.Models.SessionState.VideoPlaying)
         {
             e.Handled = true;
-            _coordinator.ActiveVideoWindow?.Activate();
-            _coordinator.ActiveVideoWindow?.FlashMandatoryWatchNotice();
+            _coordinator.OnBackdropClickedDuringVideo();
         }
     }
 

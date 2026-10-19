@@ -6,6 +6,9 @@
     <!-- Exact StreamGeometry vectors from Sprint 5 Specification          -->
     <!-- ================================================================= -->
 
+    <!-- Brand Prism / Logo (ADR-011) -->
+    <StreamGeometry x:Key="IconBrandPrism">M12 2L2 8.5l10 13.5 10-13.5L12 2zm0 3.2l6.5 4.3L12 18.2 5.5 9.5 12 5.2z</StreamGeometry>
+
     <!-- Lightning Bolt / Quick Trigger -->
     <StreamGeometry x:Key="IconBolt">M13 2L3 14h9l-1 8 10-12h-9l1-8z</StreamGeometry>
 

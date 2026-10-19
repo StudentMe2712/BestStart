@@ -313,4 +313,52 @@ public class OverlayWindowTests : IDisposable
             window.SafeClose();
         });
     }
+
+    [Fact]
+    public void OverlayWindow_BackdropClickDuringVideo_CallsOnBackdropClickedDuringVideo_AndDoesNotCloseSession()
+    {
+        RunInSta(() =>
+        {
+            var store = CreateTestSettingsStore();
+            var scheduler = new RandomReminderScheduler();
+            var videoLib = new VideoLibraryService(store, fileExistsChecker: _ => true);
+
+            OverlayWindow? overlay = null;
+            VideoWindow? video = null;
+            using var coordinator = new OverlayCoordinator(
+                scheduler,
+                videoLib,
+                store,
+                overlayWindowFactory: coord => overlay = new OverlayWindow(coord, store),
+                videoWindowFactory: coord => video = new VideoWindow(coord, store),
+                dispatcherInvoker: a => a(),
+                fileExistsChecker: _ => true);
+
+            videoLib.AddVideo("test.mp4", "Test Video");
+
+            coordinator.TriggerProvocation(isManualTest: false);
+            Assert.NotNull(overlay);
+            Assert.Equal(SessionState.MascotOverlayActive, coordinator.CurrentState);
+
+            coordinator.OnMascotClicked();
+            Assert.NotNull(video);
+            Assert.Equal(SessionState.VideoPlaying, coordinator.CurrentState);
+
+            // Click backdrop through overlay window handler
+            overlay.HandleBackdropClick();
+
+            // Strict Mandatory Watch Lock: state MUST remain VideoPlaying, windows MUST remain open
+            Assert.Equal(SessionState.VideoPlaying, coordinator.CurrentState);
+            Assert.False(video.HasCompleted);
+            Assert.False(video.AllowClose);
+
+            // Direct call to coordinator's OnBackdropClickedDuringVideo must also preserve VideoPlaying state
+            coordinator.OnBackdropClickedDuringVideo();
+            Assert.Equal(SessionState.VideoPlaying, coordinator.CurrentState);
+
+            // Clean up by completing session
+            coordinator.CompleteSession();
+            Assert.Equal(SessionState.BackgroundIdle, coordinator.CurrentState);
+        });
+    }
 }

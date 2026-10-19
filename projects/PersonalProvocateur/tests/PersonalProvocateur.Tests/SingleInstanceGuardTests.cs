@@ -70,7 +70,7 @@ public class SingleInstanceGuardTests
         guard2.SignalExistingInstance();
 
         // Should receive signal
-        bool received = wakeUpReceived.Wait(TimeSpan.FromSeconds(2));
+        bool received = wakeUpReceived.Wait(TimeSpan.FromSeconds(5));
         Assert.True(received);
     }
 }

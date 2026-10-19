@@ -147,7 +147,7 @@ public sealed class SingleInstanceGuard : IDisposable
         try
         {
             var app = System.Windows.Application.Current;
-            if (app?.Dispatcher != null && !app.Dispatcher.CheckAccess())
+            if (app?.Dispatcher != null && app.Dispatcher.Thread != null && app.Dispatcher.Thread.IsAlive && !app.Dispatcher.CheckAccess())
             {
                 app.Dispatcher.BeginInvoke(action);
             }

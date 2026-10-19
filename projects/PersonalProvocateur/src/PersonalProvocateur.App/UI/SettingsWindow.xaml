@@ -2,15 +2,15 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Настройки — Personal Provocateur"
-        Width="780"
-        Height="720"
+        Width="640"
+        Height="520"
         MinWidth="640"
-        MinHeight="560"
+        MinHeight="520"
         WindowStartupLocation="CenterScreen"
         WindowStyle="None"
         AllowsTransparency="True"
         Background="Transparent"
-        ResizeMode="CanResize"
+        ResizeMode="CanResizeWithGrip"
         UseLayoutRounding="True"
         SnapsToDevicePixels="True"
         TextOptions.TextFormattingMode="Ideal"
@@ -23,11 +23,33 @@
                 <ResourceDictionary Source="Theme/Icons.xaml" />
                 <ResourceDictionary Source="Theme/DarkTheme.xaml" />
             </ResourceDictionary.MergedDictionaries>
+
+            <Style x:Key="SkinCardButtonStyle" TargetType="Button">
+                <Setter Property="Background" Value="#13151F" />
+                <Setter Property="BorderBrush" Value="#25293A" />
+                <Setter Property="BorderThickness" Value="1" />
+                <Setter Property="Padding" Value="10,8" />
+                <Setter Property="Cursor" Value="Hand" />
+                <Setter Property="SnapsToDevicePixels" Value="True" />
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="Button">
+                            <Border Background="{TemplateBinding Background}"
+                                    BorderBrush="{TemplateBinding BorderBrush}"
+                                    BorderThickness="{TemplateBinding BorderThickness}"
+                                    CornerRadius="10"
+                                    Padding="{TemplateBinding Padding}">
+                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            </Border>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
         </ResourceDictionary>
     </Window.Resources>
 
     <!-- Outer margin creates space so DropShadowEffect is never clipped -->
-    <Grid Margin="18">
+    <Grid Margin="16">
         <!-- Root Frameless Window Container (macOS Dark Obsidian Aesthetic) -->
         <Border Background="#0B0C10"
                 BorderBrush="#25293A"
@@ -41,9 +63,9 @@
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" /> <!-- 0: Custom TitleBar -->
-                    <RowDefinition Height="Auto" /> <!-- 1: Status Bar -->
-                    <RowDefinition Height="*" />    <!-- 2: Scrollable Content -->
-                    <RowDefinition Height="Auto" /> <!-- 3: Bottom Action Bar -->
+                    <RowDefinition Height="Auto" /> <!-- 1: Compact Status / Header Bar -->
+                    <RowDefinition Height="Auto" /> <!-- 2: macOS Segmented Control -->
+                    <RowDefinition Height="*" />    <!-- 3: Tab Content (Videos / Appearance / System) -->
                 </Grid.RowDefinitions>
 
                 <!-- 0. Custom macOS-Style TitleBar (Draggable) -->
@@ -52,7 +74,7 @@
                         CornerRadius="16,16,0,0"
                         BorderBrush="#25293A"
                         BorderThickness="0,0,0,1"
-                        Padding="16,10,12,10"
+                        Padding="14,8,10,8"
                         MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
                     <Grid>
                         <Grid.ColumnDefinitions>
@@ -63,19 +85,34 @@
 
                         <!-- Left: App Icon Badge & Header -->
                         <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
-                            <!-- App Badge (Purple circle with 'P') -->
-                            <Border Width="26" Height="26"
-                                    CornerRadius="13"
-                                    Background="{StaticResource AccentBrush}"
+                            <!-- macOS Squircle Badge (ADR-011) -->
+                            <Border Width="28" Height="28"
+                                    CornerRadius="7"
+                                    BorderBrush="#40FFFFFF"
+                                    BorderThickness="1"
                                     Margin="0,0,10,0"
-                                    VerticalAlignment="Center">
-                                <TextBlock Text="P"
-                                           Foreground="#FFFFFF"
-                                           FontWeight="Bold"
-                                           FontSize="13"
-                                           HorizontalAlignment="Center"
-                                           VerticalAlignment="Center"
-                                           Margin="0,-1,0,0" />
+                                    VerticalAlignment="Center"
+                                    ClipToBounds="True">
+                                <Border.Background>
+                                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                        <GradientStop Color="#1E1B4B" Offset="0.0" />
+                                        <GradientStop Color="#6D28D9" Offset="1.0" />
+                                    </LinearGradientBrush>
+                                </Border.Background>
+                                <Grid>
+                                    <Path Data="{StaticResource IconBrandPrism}"
+                                          Fill="#A78BFA"
+                                          Stroke="#C4B5FD"
+                                          StrokeThickness="0.5"
+                                          Stretch="Uniform"
+                                          Margin="5"
+                                          VerticalAlignment="Center"
+                                          HorizontalAlignment="Center" />
+                                    <Image Source="pack://application:,,,/Assets/logo.png"
+                                           Stretch="Uniform"
+                                           Margin="3"
+                                           RenderOptions.BitmapScalingMode="HighQuality" />
+                                </Grid>
                             </Border>
 
                             <TextBlock Text="Personal Provocateur"
@@ -96,9 +133,40 @@
                             </Border>
                         </StackPanel>
 
+                        <!-- Center/Right: Auto-Save Badge (ADR-013) -->
+                        <Border x:Name="AutoSaveBadge"
+                                Grid.Column="1"
+                                HorizontalAlignment="Right"
+                                VerticalAlignment="Center"
+                                Margin="0,0,12,0"
+                                CornerRadius="10"
+                                Background="#1A10B981"
+                                BorderBrush="#10B981"
+                                BorderThickness="1"
+                                Padding="8,3"
+                                Opacity="0"
+                                SnapsToDevicePixels="True">
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <Path Data="{StaticResource IconCheck}"
+                                      Stroke="#10B981"
+                                      StrokeThickness="2"
+                                      StrokeStartLineCap="Round"
+                                      StrokeEndLineCap="Round"
+                                      Width="10" Height="10"
+                                      Stretch="Uniform"
+                                      Margin="0,0,5,0"
+                                      VerticalAlignment="Center" />
+                                <TextBlock Text="Сохранено"
+                                           Foreground="#10B981"
+                                           FontSize="11"
+                                           FontWeight="SemiBold"
+                                           VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Border>
+
                         <!-- Right: Window Controls (Minimize & Close) -->
                         <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
-                            <Button x:Name="WindowMinimizeButton"
+                            <Button x:Name="TitleBarMinimizeButton"
                                     Width="30" Height="26"
                                     Background="Transparent"
                                     BorderThickness="0"
@@ -131,7 +199,7 @@
                                 </Button.Template>
                             </Button>
 
-                            <Button x:Name="WindowCloseButton"
+                            <Button x:Name="TitleBarCloseButton"
                                     Width="30" Height="26"
                                     Background="Transparent"
                                     BorderThickness="0"
@@ -168,27 +236,28 @@
                     </Grid>
                 </Border>
 
-                <!-- 1. Window Header & Quick Status / Actions Bar -->
-                <Border Grid.Row="1" Margin="20,16,20,12" Background="{StaticResource CardBrush}" BorderBrush="{StaticResource CardBorderBrush}" BorderThickness="1" CornerRadius="12" Padding="18,14">
+                <!-- 1. Compact Status / Header Bar -->
+                <Border Grid.Row="1"
+                        Margin="18,10,18,8"
+                        Background="{StaticResource CardBrush}"
+                        BorderBrush="{StaticResource CardBorderBrush}"
+                        BorderThickness="1"
+                        CornerRadius="10"
+                        Padding="14,8">
                     <Grid>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
 
-                        <!-- Left: Title & Status -->
+                        <!-- Left: Status Capsule & Next Trigger -->
                         <StackPanel VerticalAlignment="Center">
                             <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                <TextBlock Text="Состояние провокатора"
-                                           Style="{StaticResource HeaderTextStyle}"
-                                           FontSize="17"
-                                           Margin="0,0,12,0"
-                                           VerticalAlignment="Center" />
-
                                 <!-- Status Badge -->
                                 <Border x:Name="StatusBadgeBorder"
                                         Style="{StaticResource SuccessBadgeStyle}"
-                                        VerticalAlignment="Center">
+                                        VerticalAlignment="Center"
+                                        Margin="0,0,10,0">
                                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                                         <Ellipse x:Name="StatusBadgeDot"
                                                  Width="6" Height="6"
@@ -203,24 +272,24 @@
                                                    VerticalAlignment="Center" />
                                     </StackPanel>
                                 </Border>
-                            </StackPanel>
 
-                            <!-- Next Trigger Info -->
-                            <StackPanel Orientation="Horizontal" Margin="0,6,0,0" VerticalAlignment="Center">
-                                <Path Data="{StaticResource IconClock}"
-                                      Stroke="{StaticResource TextSecondaryBrush}"
-                                      StrokeThickness="2"
-                                      StrokeStartLineCap="Round"
-                                      StrokeEndLineCap="Round"
-                                      Width="13" Height="13"
-                                      Stretch="Uniform"
-                                      Margin="0,0,6,0"
-                                      VerticalAlignment="Center" />
-                                <TextBlock x:Name="NextTriggerTextBlock"
-                                           Text="Следующее появление: рассчитывается..."
-                                           Style="{StaticResource SubheaderTextStyle}"
-                                           FontSize="13"
-                                           VerticalAlignment="Center" />
+                                <!-- Next Trigger Info -->
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                    <Path Data="{StaticResource IconClock}"
+                                          Stroke="{StaticResource TextSecondaryBrush}"
+                                          StrokeThickness="2"
+                                          StrokeStartLineCap="Round"
+                                          StrokeEndLineCap="Round"
+                                          Width="12" Height="12"
+                                          Stretch="Uniform"
+                                          Margin="0,0,5,0"
+                                          VerticalAlignment="Center" />
+                                    <TextBlock x:Name="NextTriggerTextBlock"
+                                               Text="Следующее появление: рассчитывается..."
+                                               Style="{StaticResource SubheaderTextStyle}"
+                                               FontSize="12"
+                                               VerticalAlignment="Center" />
+                                </StackPanel>
                             </StackPanel>
                         </StackPanel>
 
@@ -229,7 +298,7 @@
                             <Button x:Name="QuickTestButton"
                                     ToolTip="Мгновенно запустить оверлей с персонажем"
                                     Style="{StaticResource PrimaryButtonStyle}"
-                                    Padding="12,7"
+                                    Padding="10,6"
                                     FontSize="12"
                                     Margin="0,0,8,0"
                                     Click="QuickTestButton_Click">
@@ -238,18 +307,18 @@
                                           Fill="#FFFFFF"
                                           Stroke="#FFFFFF"
                                           StrokeThickness="1"
-                                          Width="13" Height="13"
+                                          Width="12" Height="12"
                                           Stretch="Uniform"
-                                          Margin="0,0,6,0"
+                                          Margin="0,0,5,0"
                                           VerticalAlignment="Center" />
-                                    <TextBlock Text="Проверить сейчас" VerticalAlignment="Center" />
+                                    <TextBlock Text="Тест" VerticalAlignment="Center" />
                                 </StackPanel>
                             </Button>
 
                             <Button x:Name="QuickPauseButton"
                                     ToolTip="Приостановить или возобновить случайные напоминания"
                                     Style="{StaticResource SecondaryButtonStyle}"
-                                    Padding="12,7"
+                                    Padding="10,6"
                                     FontSize="12"
                                     Click="QuickPauseButton_Click">
                                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
@@ -258,9 +327,9 @@
                                           Fill="{StaticResource TextPrimaryBrush}"
                                           Stroke="{StaticResource TextPrimaryBrush}"
                                           StrokeThickness="1"
-                                          Width="13" Height="13"
+                                          Width="12" Height="12"
                                           Stretch="Uniform"
-                                          Margin="0,0,6,0"
+                                          Margin="0,0,5,0"
                                           VerticalAlignment="Center" />
                                     <TextBlock x:Name="QuickPauseText"
                                                Text="Пауза"
@@ -271,260 +340,468 @@
                     </Grid>
                 </Border>
 
-                <!-- 2. Scrollable Settings Content -->
-                <ScrollViewer Grid.Row="2"
-                              VerticalScrollBarVisibility="Auto"
-                              HorizontalScrollBarVisibility="Disabled"
-                              Margin="20,0,20,12">
-                    <StackPanel Margin="0,0,4,0">
-
-                        <!-- SECTION 1: Video Library -->
-                        <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,16">
-                            <StackPanel>
-                                <Grid Margin="0,0,0,12">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="Auto" />
-                                    </Grid.ColumnDefinitions>
-
-                                    <StackPanel>
+                <!-- 2. macOS Segmented Control (Tabs Switcher) -->
+                <Border Grid.Row="2"
+                        Background="#13151F"
+                        BorderBrush="#25293A"
+                        BorderThickness="1"
+                        CornerRadius="10"
+                        Padding="3"
+                        Margin="18,0,18,10"
+                        HorizontalAlignment="Center">
+                    <StackPanel Orientation="Horizontal">
+                        <!-- Tab 1: Video -->
+                        <Button x:Name="TabVideosButton"
+                                Click="TabVideos_Click"
+                                Cursor="Hand"
+                                Padding="16,6"
+                                Background="#25293A"
+                                BorderThickness="0"
+                                Foreground="{StaticResource TextPrimaryBrush}"
+                                FontWeight="SemiBold"
+                                FontSize="12">
+                            <Button.Template>
+                                <ControlTemplate TargetType="Button">
+                                    <Border Background="{TemplateBinding Background}" CornerRadius="8" Padding="{TemplateBinding Padding}">
                                         <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                                             <Path Data="{StaticResource IconVideo}"
-                                                  Stroke="{StaticResource AccentBrush}"
-                                                  StrokeThickness="2"
+                                                  Stroke="{TemplateBinding Foreground}"
+                                                  StrokeThickness="1.8"
                                                   StrokeStartLineCap="Round"
                                                   StrokeEndLineCap="Round"
                                                   StrokeLineJoin="Round"
-                                                  Width="16" Height="16"
-                                                  Stretch="Uniform"
-                                                  Margin="0,0,8,0"
-                                                  VerticalAlignment="Center" />
-                                            <TextBlock Text="Библиотека видео"
-                                                       Style="{StaticResource HeaderTextStyle}"
-                                                       FontSize="15"
-                                                       VerticalAlignment="Center" />
-                                        </StackPanel>
-                                        <TextBlock Text="Случайные ролики воспроизводятся после клика по персонажу"
-                                                   Style="{StaticResource SubheaderTextStyle}"
-                                                   Margin="0,3,0,0" />
-                                    </StackPanel>
-
-                                    <Button x:Name="AddVideoButton"
-                                            Grid.Column="1"
-                                            Style="{StaticResource PrimaryButtonStyle}"
-                                            Padding="14,7"
-                                            FontSize="12"
-                                            Click="AddVideoButton_Click">
-                                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                            <Path Data="{StaticResource IconPlus}"
-                                                  Stroke="#FFFFFF"
-                                                  StrokeThickness="2"
-                                                  StrokeStartLineCap="Round"
-                                                  StrokeEndLineCap="Round"
-                                                  Width="12" Height="12"
+                                                  Width="13" Height="13"
                                                   Stretch="Uniform"
                                                   Margin="0,0,6,0"
                                                   VerticalAlignment="Center" />
-                                            <TextBlock Text="Добавить MP4..." VerticalAlignment="Center" />
+                                            <TextBlock Text="Видео"
+                                                       Foreground="{TemplateBinding Foreground}"
+                                                       FontSize="12"
+                                                       FontWeight="{TemplateBinding FontWeight}"
+                                                       VerticalAlignment="Center" />
                                         </StackPanel>
-                                    </Button>
-                                </Grid>
+                                    </Border>
+                                </ControlTemplate>
+                            </Button.Template>
+                        </Button>
 
-                                <!-- Empty State Notice (shown when 0 videos) -->
-                                <Border x:Name="EmptyVideosBorder"
-                                        Background="{StaticResource BackgroundBrush}"
-                                        BorderBrush="{StaticResource CardBorderBrush}"
-                                        BorderThickness="1"
-                                        CornerRadius="8"
-                                        Padding="24,20"
-                                        Margin="0,0,0,10"
-                                        Visibility="Collapsed">
-                                    <StackPanel HorizontalAlignment="Center">
-                                        <Path Data="{StaticResource IconVideo}"
-                                              Stroke="{StaticResource CardBorderBrush}"
-                                              StrokeThickness="2"
-                                              StrokeStartLineCap="Round"
-                                              StrokeEndLineCap="Round"
-                                              StrokeLineJoin="Round"
-                                              Width="36" Height="36"
-                                              Stretch="Uniform"
-                                              HorizontalAlignment="Center"
-                                              Margin="0,0,0,10" />
-                                        <TextBlock Text="В библиотеке пока нет видео"
-                                                   Style="{StaticResource HeaderTextStyle}"
-                                                   FontSize="15"
-                                                   HorizontalAlignment="Center"
-                                                   Margin="0,0,0,4" />
-                                        <TextBlock Text="Добавьте .mp4 файлы, чтобы провокатор воспроизводил их после клика!"
-                                                   Style="{StaticResource SubheaderTextStyle}"
-                                                   HorizontalAlignment="Center"
-                                                   TextAlignment="Center"
-                                                   Margin="0,0,0,14" />
-                                        <Button Style="{StaticResource PrimaryButtonStyle}"
-                                                HorizontalAlignment="Center"
-                                                Padding="14,7"
-                                                FontSize="12"
-                                                Click="AddVideoButton_Click">
-                                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                                <Path Data="{StaticResource IconPlus}"
-                                                      Stroke="#FFFFFF"
-                                                      StrokeThickness="2"
-                                                      StrokeStartLineCap="Round"
-                                                      StrokeEndLineCap="Round"
-                                                      Width="12" Height="12"
-                                                      Stretch="Uniform"
-                                                      Margin="0,0,6,0"
-                                                      VerticalAlignment="Center" />
-                                                <TextBlock Text="Выбрать .mp4 файлы" VerticalAlignment="Center" />
-                                            </StackPanel>
-                                        </Button>
-                                    </StackPanel>
-                                </Border>
+                        <!-- Tab 2: Appearance & Timer -->
+                        <Button x:Name="TabAppearanceButton"
+                                Click="TabAppearance_Click"
+                                Cursor="Hand"
+                                Padding="16,6"
+                                Background="Transparent"
+                                BorderThickness="0"
+                                Foreground="{StaticResource TextSecondaryBrush}"
+                                FontWeight="Medium"
+                                FontSize="12"
+                                Margin="4,0,0,0">
+                            <Button.Template>
+                                <ControlTemplate TargetType="Button">
+                                    <Border Background="{TemplateBinding Background}" CornerRadius="8" Padding="{TemplateBinding Padding}">
+                                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                            <Path Data="{StaticResource IconClock}"
+                                                  Stroke="{TemplateBinding Foreground}"
+                                                  StrokeThickness="1.8"
+                                                  StrokeStartLineCap="Round"
+                                                  StrokeEndLineCap="Round"
+                                                  Width="13" Height="13"
+                                                  Stretch="Uniform"
+                                                  Margin="0,0,6,0"
+                                                  VerticalAlignment="Center" />
+                                            <TextBlock Text="Образ и таймер"
+                                                       Foreground="{TemplateBinding Foreground}"
+                                                       FontSize="12"
+                                                       FontWeight="{TemplateBinding FontWeight}"
+                                                       VerticalAlignment="Center" />
+                                        </StackPanel>
+                                    </Border>
+                                </ControlTemplate>
+                            </Button.Template>
+                        </Button>
 
-                                <!-- Video Items List -->
-                                <ListBox x:Name="VideosListBox"
-                                         MinHeight="120"
-                                         MaxHeight="240"
-                                         Background="{StaticResource BackgroundBrush}"
-                                         BorderBrush="{StaticResource CardBorderBrush}"
-                                         BorderThickness="1"
-                                         Padding="4">
-                                    <ListBox.ItemTemplate>
-                                        <DataTemplate>
-                                            <Border Background="{StaticResource CardBrush}"
-                                                    BorderBrush="{StaticResource CardBorderBrush}"
-                                                    BorderThickness="1"
-                                                    CornerRadius="6"
-                                                    Padding="10,8"
-                                                    Margin="2,3">
-                                                <Grid>
-                                                    <Grid.ColumnDefinitions>
-                                                        <ColumnDefinition Width="Auto" />
-                                                        <ColumnDefinition Width="*" />
-                                                        <ColumnDefinition Width="Auto" />
-                                                        <ColumnDefinition Width="Auto" />
-                                                    </Grid.ColumnDefinitions>
+                        <!-- Tab 3: System -->
+                        <Button x:Name="TabSystemButton"
+                                Click="TabSystem_Click"
+                                Cursor="Hand"
+                                Padding="16,6"
+                                Background="Transparent"
+                                BorderThickness="0"
+                                Foreground="{StaticResource TextSecondaryBrush}"
+                                FontWeight="Medium"
+                                FontSize="12"
+                                Margin="4,0,0,0">
+                            <Button.Template>
+                                <ControlTemplate TargetType="Button">
+                                    <Border Background="{TemplateBinding Background}" CornerRadius="8" Padding="{TemplateBinding Padding}">
+                                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                            <Path Data="{StaticResource IconSettings}"
+                                                  Stroke="{TemplateBinding Foreground}"
+                                                  StrokeThickness="1.8"
+                                                  StrokeLineJoin="Round"
+                                                  Width="13" Height="13"
+                                                  Stretch="Uniform"
+                                                  Margin="0,0,6,0"
+                                                  VerticalAlignment="Center" />
+                                            <TextBlock Text="Система"
+                                                       Foreground="{TemplateBinding Foreground}"
+                                                       FontSize="12"
+                                                       FontWeight="{TemplateBinding FontWeight}"
+                                                       VerticalAlignment="Center" />
+                                        </StackPanel>
+                                    </Border>
+                                </ControlTemplate>
+                            </Button.Template>
+                        </Button>
+                    </StackPanel>
+                </Border>
 
-                                                    <!-- macOS Toggle Switch IsEnabled -->
-                                                    <CheckBox IsChecked="{Binding IsEnabled}"
-                                                              Style="{StaticResource MacOsToggleSwitchStyle}"
-                                                              VerticalAlignment="Center"
-                                                              Margin="0,0,10,0"
-                                                              ToolTip="Включить / исключить ролик из ротации"
-                                                              Click="VideoCheckBox_Click" />
+                <!-- 3. TAB 1: VIDEOS CONTENT -->
+                <Border x:Name="TabVideosContent"
+                        Grid.Row="3"
+                        Margin="18,0,18,14"
+                        Visibility="Visible">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
 
-                                                    <!-- Title, Path & Status Badge -->
-                                                    <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,0,12,0">
-                                                        <StackPanel Orientation="Horizontal">
-                                                            <TextBlock Text="{Binding Title}"
-                                                                       Foreground="{StaticResource TextPrimaryBrush}"
-                                                                       FontWeight="SemiBold"
-                                                                       FontSize="13"
-                                                                       VerticalAlignment="Center" />
+                        <!-- Subheader: Count + Add Button -->
+                        <Grid Grid.Row="0" Margin="0,0,0,10">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
 
-                                                            <!-- Availability Badge Tag -->
-                                                            <Border CornerRadius="10"
-                                                                    Padding="8,2"
-                                                                    Margin="8,0,0,0"
-                                                                    Background="{Binding AvailabilityBackground}"
-                                                                    VerticalAlignment="Center">
-                                                                <TextBlock Text="{Binding AvailabilityText}"
-                                                                           Foreground="{Binding AvailabilityForeground}"
-                                                                           FontSize="11"
-                                                                           FontWeight="SemiBold" />
-                                                            </Border>
-                                                        </StackPanel>
+                            <TextBlock x:Name="VideoCountTextBlock"
+                                       Text="Всего роликов: 0 (активно: 0)"
+                                       Style="{StaticResource SubheaderTextStyle}"
+                                       FontSize="12"
+                                       VerticalAlignment="Center" />
 
-                                                        <TextBlock Text="{Binding FilePath}"
-                                                                   Foreground="{StaticResource TextSecondaryBrush}"
-                                                                   FontSize="11"
-                                                                   TextTrimming="CharacterEllipsis"
-                                                                   ToolTip="{Binding FilePath}"
-                                                                   Margin="0,3,0,0" />
-                                                    </StackPanel>
-
-                                                    <!-- Test Single Video Button -->
-                                                    <Button Grid.Column="2"
-                                                            ToolTip="Воспроизвести этот ролик прямо сейчас"
-                                                            Style="{StaticResource SecondaryButtonStyle}"
-                                                            Padding="10,4"
-                                                            FontSize="12"
-                                                            Margin="0,0,6,0"
-                                                            VerticalAlignment="Center"
-                                                            Click="TestSingleVideo_Click">
-                                                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                                            <Path Data="{DynamicResource IconPlay}"
-                                                                  Fill="{StaticResource TextPrimaryBrush}"
-                                                                  Stroke="{StaticResource TextPrimaryBrush}"
-                                                                  StrokeThickness="1"
-                                                                  Width="10" Height="10"
-                                                                  Stretch="Uniform"
-                                                                  Margin="0,0,5,0"
-                                                                  VerticalAlignment="Center" />
-                                                            <TextBlock Text="Тест" VerticalAlignment="Center" />
-                                                        </StackPanel>
-                                                    </Button>
-
-                                                    <!-- Remove Video Button -->
-                                                    <Button Grid.Column="3"
-                                                            ToolTip="Удалить из библиотеки"
-                                                            Style="{StaticResource DangerButtonStyle}"
-                                                            Padding="8,5"
-                                                            FontSize="12"
-                                                            VerticalAlignment="Center"
-                                                            Click="RemoveVideoButton_Click">
-                                                        <Path Data="{DynamicResource IconTrash}"
-                                                              Stroke="#FFFFFF"
-                                                              StrokeThickness="2"
-                                                              StrokeStartLineCap="Round"
-                                                              StrokeEndLineCap="Round"
-                                                              StrokeLineJoin="Round"
-                                                              Width="12" Height="12"
-                                                              Stretch="Uniform"
-                                                              VerticalAlignment="Center" />
-                                                    </Button>
-                                                </Grid>
-                                            </Border>
-                                        </DataTemplate>
-                                    </ListBox.ItemTemplate>
-                                </ListBox>
-
-                                <TextBlock x:Name="VideoCountTextBlock"
-                                           Text="Всего роликов: 0 (активно: 0)"
-                                           Style="{StaticResource SubheaderTextStyle}"
-                                           FontSize="12"
-                                           Margin="2,8,0,0" />
-                            </StackPanel>
-                        </Border>
-
-                        <!-- SECTION 2: Schedule & Screen -->
-                        <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,16">
-                            <StackPanel>
-                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,0,14">
-                                    <Path Data="{StaticResource IconClock}"
-                                          Stroke="{StaticResource AccentBrush}"
+                            <Button x:Name="AddVideoButton"
+                                    Grid.Column="1"
+                                    Style="{StaticResource PrimaryButtonStyle}"
+                                    Padding="12,6"
+                                    FontSize="12"
+                                    Click="AddVideoButton_Click">
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                    <Path Data="{StaticResource IconPlus}"
+                                          Stroke="#FFFFFF"
                                           StrokeThickness="2"
                                           StrokeStartLineCap="Round"
                                           StrokeEndLineCap="Round"
-                                          Width="16" Height="16"
+                                          Width="11" Height="11"
                                           Stretch="Uniform"
-                                          Margin="0,0,8,0"
+                                          Margin="0,0,5,0"
                                           VerticalAlignment="Center" />
-                                    <TextBlock Text="Расписание и экран"
-                                               Style="{StaticResource HeaderTextStyle}"
-                                               FontSize="15"
-                                               VerticalAlignment="Center" />
+                                    <TextBlock Text="Добавить MP4..." VerticalAlignment="Center" />
                                 </StackPanel>
+                            </Button>
+                        </Grid>
 
+                        <!-- Video Items List -->
+                        <ListBox x:Name="VideosListBox"
+                                 Grid.Row="1"
+                                 Background="{StaticResource CardBrush}"
+                                 BorderBrush="{StaticResource CardBorderBrush}"
+                                 BorderThickness="1"
+                                 Padding="4"
+                                 ScrollViewer.VerticalScrollBarVisibility="Auto"
+                                 ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Background="#1A1C28"
+                                            BorderBrush="{StaticResource CardBorderBrush}"
+                                            BorderThickness="1"
+                                            CornerRadius="8"
+                                            Padding="10,8"
+                                            Margin="2,2">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+
+                                            <!-- macOS Toggle Switch IsEnabled -->
+                                            <CheckBox IsChecked="{Binding IsEnabled}"
+                                                      Style="{StaticResource MacOsToggleSwitchStyle}"
+                                                      VerticalAlignment="Center"
+                                                      Margin="0,0,10,0"
+                                                      ToolTip="Включить / исключить ролик из ротации"
+                                                      Click="VideoCheckBox_Click" />
+
+                                            <!-- Title, Path & Status Badge -->
+                                            <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,0,10,0">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <TextBlock Text="{Binding Title}"
+                                                               Foreground="{StaticResource TextPrimaryBrush}"
+                                                               FontWeight="SemiBold"
+                                                               FontSize="12"
+                                                               VerticalAlignment="Center" />
+
+                                                    <!-- Availability Badge Tag -->
+                                                    <Border CornerRadius="8"
+                                                            Padding="6,1"
+                                                            Margin="8,0,0,0"
+                                                            Background="{Binding AvailabilityBackground}"
+                                                            VerticalAlignment="Center">
+                                                        <TextBlock Text="{Binding AvailabilityText}"
+                                                                   Foreground="{Binding AvailabilityForeground}"
+                                                                   FontSize="10"
+                                                                   FontWeight="SemiBold" />
+                                                    </Border>
+                                                </StackPanel>
+
+                                                <TextBlock Text="{Binding FilePath}"
+                                                           Foreground="{StaticResource TextSecondaryBrush}"
+                                                           FontSize="11"
+                                                           TextTrimming="CharacterEllipsis"
+                                                           ToolTip="{Binding FilePath}"
+                                                           Margin="0,2,0,0" />
+                                            </StackPanel>
+
+                                            <!-- Test Single Video Button -->
+                                            <Button Grid.Column="2"
+                                                    ToolTip="Воспроизвести этот ролик прямо сейчас"
+                                                    Style="{StaticResource SecondaryButtonStyle}"
+                                                    Padding="8,4"
+                                                    FontSize="11"
+                                                    Margin="0,0,6,0"
+                                                    VerticalAlignment="Center"
+                                                    Click="TestSingleVideo_Click">
+                                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                    <Path Data="{DynamicResource IconPlay}"
+                                                          Fill="{StaticResource TextPrimaryBrush}"
+                                                          Stroke="{StaticResource TextPrimaryBrush}"
+                                                          StrokeThickness="1"
+                                                          Width="9" Height="9"
+                                                          Stretch="Uniform"
+                                                          Margin="0,0,4,0"
+                                                          VerticalAlignment="Center" />
+                                                    <TextBlock Text="Тест" VerticalAlignment="Center" />
+                                                </StackPanel>
+                                            </Button>
+
+                                            <!-- Remove Video Button (turning red on hover) -->
+                                            <Button Grid.Column="3"
+                                                    ToolTip="Удалить из библиотеки"
+                                                    Padding="7,5"
+                                                    Background="Transparent"
+                                                    BorderThickness="0"
+                                                    Cursor="Hand"
+                                                    VerticalAlignment="Center"
+                                                    Click="RemoveVideoButton_Click">
+                                                <Button.Template>
+                                                    <ControlTemplate TargetType="Button">
+                                                        <Border x:Name="delBorder"
+                                                                Background="{TemplateBinding Background}"
+                                                                CornerRadius="6"
+                                                                Padding="{TemplateBinding Padding}">
+                                                            <Path x:Name="delIcon"
+                                                                  Data="{DynamicResource IconTrash}"
+                                                                  Stroke="{StaticResource TextSecondaryBrush}"
+                                                                  StrokeThickness="1.8"
+                                                                  StrokeStartLineCap="Round"
+                                                                  StrokeEndLineCap="Round"
+                                                                  StrokeLineJoin="Round"
+                                                                  Width="12" Height="12"
+                                                                  Stretch="Uniform"
+                                                                  VerticalAlignment="Center" />
+                                                        </Border>
+                                                        <ControlTemplate.Triggers>
+                                                            <Trigger Property="IsMouseOver" Value="True">
+                                                                <Setter TargetName="delBorder" Property="Background" Value="#EF4444" />
+                                                                <Setter TargetName="delIcon" Property="Stroke" Value="#FFFFFF" />
+                                                            </Trigger>
+                                                            <Trigger Property="IsPressed" Value="True">
+                                                                <Setter TargetName="delBorder" Property="Background" Value="#DC2626" />
+                                                                <Setter TargetName="delIcon" Property="Stroke" Value="#FFFFFF" />
+                                                            </Trigger>
+                                                        </ControlTemplate.Triggers>
+                                                    </ControlTemplate>
+                                                </Button.Template>
+                                            </Button>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+
+                        <!-- Empty State Notice (shown when 0 videos) -->
+                        <Border x:Name="EmptyVideosBorder"
+                                Grid.Row="1"
+                                Background="{StaticResource CardBrush}"
+                                BorderBrush="{StaticResource CardBorderBrush}"
+                                BorderThickness="1"
+                                CornerRadius="10"
+                                Padding="24,20"
+                                Visibility="Collapsed">
+                            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                                <Path Data="{StaticResource IconVideo}"
+                                      Stroke="{StaticResource CardBorderBrush}"
+                                      StrokeThickness="2"
+                                      StrokeStartLineCap="Round"
+                                      StrokeEndLineCap="Round"
+                                      StrokeLineJoin="Round"
+                                      Width="32" Height="32"
+                                      Stretch="Uniform"
+                                      HorizontalAlignment="Center"
+                                      Margin="0,0,0,10" />
+                                <TextBlock Text="В библиотеке пока нет видео"
+                                           Style="{StaticResource HeaderTextStyle}"
+                                           FontSize="14"
+                                           HorizontalAlignment="Center"
+                                           Margin="0,0,0,4" />
+                                <TextBlock Text="Добавьте .mp4 файлы, чтобы провокатор воспроизводил их после клика!"
+                                           Style="{StaticResource SubheaderTextStyle}"
+                                           FontSize="12"
+                                           HorizontalAlignment="Center"
+                                           TextAlignment="Center"
+                                           Margin="0,0,0,12" />
+                                <Button Style="{StaticResource PrimaryButtonStyle}"
+                                        HorizontalAlignment="Center"
+                                        Padding="12,6"
+                                        FontSize="12"
+                                        Click="AddVideoButton_Click">
+                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                        <Path Data="{StaticResource IconPlus}"
+                                              Stroke="#FFFFFF"
+                                              StrokeThickness="2"
+                                              StrokeStartLineCap="Round"
+                                              StrokeEndLineCap="Round"
+                                              Width="11" Height="11"
+                                              Stretch="Uniform"
+                                              Margin="0,0,5,0"
+                                              VerticalAlignment="Center" />
+                                        <TextBlock Text="Выбрать .mp4 файлы" VerticalAlignment="Center" />
+                                    </StackPanel>
+                                </Button>
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+                </Border>
+
+                <!-- 3. TAB 2: APPEARANCE & TIMER CONTENT -->
+                <Border x:Name="TabAppearanceContent"
+                        Grid.Row="3"
+                        Margin="18,0,18,14"
+                        Visibility="Collapsed">
+                    <StackPanel>
+                        <!-- Mascot Skin Selection Cards (ADR-012) -->
+                        <Grid Margin="0,0,0,10">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="8" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="8" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+
+                            <!-- Card 1: Dynamic Orb -->
+                            <Button x:Name="SkinDynamicOrbButton"
+                                    Grid.Column="0"
+                                    Style="{StaticResource SkinCardButtonStyle}"
+                                    BorderBrush="#8B5CF6"
+                                    BorderThickness="1.5"
+                                    Click="SkinDynamicOrbButton_Click">
+                                <StackPanel HorizontalAlignment="Center">
+                                    <Border Width="24" Height="24" CornerRadius="12" Margin="0,0,0,5"
+                                            BorderBrush="#A78BFA" BorderThickness="1">
+                                        <Border.Background>
+                                            <RadialGradientBrush GradientOrigin="0.4,0.4">
+                                                <GradientStop Color="#C4B5FD" Offset="0.0"/>
+                                                <GradientStop Color="#8B5CF6" Offset="0.5"/>
+                                                <GradientStop Color="#1E1B4B" Offset="1.0"/>
+                                            </RadialGradientBrush>
+                                        </Border.Background>
+                                    </Border>
+                                    <TextBlock Text="AI Ядро"
+                                               Foreground="{StaticResource TextPrimaryBrush}"
+                                               FontWeight="SemiBold"
+                                               FontSize="12"
+                                               HorizontalAlignment="Center" />
+                                    <TextBlock Text="Dynamic Island"
+                                               Foreground="{StaticResource TextSecondaryBrush}"
+                                               FontSize="10"
+                                               HorizontalAlignment="Center"
+                                               Margin="0,1,0,0" />
+                                </StackPanel>
+                            </Button>
+
+                            <!-- Card 2: Cyber Visor -->
+                            <Button x:Name="SkinCyberVisorButton"
+                                    Grid.Column="2"
+                                    Style="{StaticResource SkinCardButtonStyle}"
+                                    Click="SkinCyberVisorButton_Click">
+                                <StackPanel HorizontalAlignment="Center">
+                                    <Border Width="28" Height="20" CornerRadius="5" Background="#050508" BorderBrush="#00F0FF" BorderThickness="1" Margin="0,2,0,5">
+                                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                            <Rectangle Width="6" Height="2" Fill="#00F0FF" RadiusX="1" RadiusY="1" Margin="0,0,3,0"/>
+                                            <Rectangle Width="6" Height="2" Fill="#00F0FF" RadiusX="1" RadiusY="1"/>
+                                        </StackPanel>
+                                    </Border>
+                                    <TextBlock Text="Кибер-Визор"
+                                               Foreground="{StaticResource TextPrimaryBrush}"
+                                               FontWeight="SemiBold"
+                                               FontSize="12"
+                                               HorizontalAlignment="Center" />
+                                    <TextBlock Text="Светящиеся глаза"
+                                               Foreground="{StaticResource TextSecondaryBrush}"
+                                               FontSize="10"
+                                               HorizontalAlignment="Center"
+                                               Margin="0,1,0,0" />
+                                </StackPanel>
+                            </Button>
+
+                            <!-- Card 3: Custom PNG -->
+                            <Button x:Name="SkinCustomImageButton"
+                                    Grid.Column="4"
+                                    Style="{StaticResource SkinCardButtonStyle}"
+                                    Click="SkinCustomImageButton_Click">
+                                <StackPanel HorizontalAlignment="Center">
+                                    <Border Width="24" Height="24" CornerRadius="5" Background="#1C1F2E" BorderBrush="#374151" BorderThickness="1" Margin="0,0,0,5">
+                                        <Path Data="{StaticResource IconPlus}"
+                                              Stroke="{StaticResource TextSecondaryBrush}"
+                                              StrokeThickness="1.8"
+                                              Width="11" Height="11"
+                                              Stretch="Uniform"
+                                              HorizontalAlignment="Center"
+                                              VerticalAlignment="Center"/>
+                                    </Border>
+                                    <TextBlock Text="Свой PNG..."
+                                               Foreground="{StaticResource TextPrimaryBrush}"
+                                               FontWeight="SemiBold"
+                                               FontSize="12"
+                                               HorizontalAlignment="Center" />
+                                    <TextBlock x:Name="CustomSkinSubtitleText"
+                                               Text="Выбрать файл"
+                                               Foreground="{StaticResource TextSecondaryBrush}"
+                                               FontSize="10"
+                                               HorizontalAlignment="Center"
+                                               TextTrimming="CharacterEllipsis"
+                                               MaxWidth="100"
+                                               Margin="0,1,0,0" />
+                                </StackPanel>
+                            </Button>
+                        </Grid>
+
+                        <!-- Sliders Card -->
+                        <Border Style="{StaticResource CardBorderStyle}" Padding="16,12">
+                            <StackPanel>
                                 <!-- Min Interval Slider -->
-                                <Grid Margin="0,0,0,12">
+                                <Grid Margin="0,0,0,8">
                                     <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="200" />
+                                        <ColumnDefinition Width="175" />
                                         <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="70" />
+                                        <ColumnDefinition Width="65" />
                                     </Grid.ColumnDefinitions>
                                     <TextBlock Text="Мин. интервал появления:"
                                                Foreground="{StaticResource TextSecondaryBrush}"
+                                               FontSize="12"
                                                VerticalAlignment="Center" />
                                     <Slider x:Name="MinIntervalSlider"
                                             Grid.Column="1"
@@ -535,26 +812,28 @@
                                             TickFrequency="5"
                                             IsSnapToTickEnabled="True"
                                             VerticalAlignment="Center"
-                                            Margin="12,0"
+                                            Margin="10,0"
                                             ValueChanged="IntervalSliders_ValueChanged" />
-                                    <TextBlock x:Name="MinIntervalValueText"
+                                    <TextBlock x:Name="MinIntervalText"
                                                Grid.Column="2"
                                                Text="{Binding ElementName=MinIntervalSlider, Path=Value, StringFormat='{}{0:0} мин'}"
                                                Foreground="{StaticResource TextPrimaryBrush}"
                                                FontWeight="SemiBold"
+                                               FontSize="12"
                                                VerticalAlignment="Center"
                                                HorizontalAlignment="Right" />
                                 </Grid>
 
                                 <!-- Max Interval Slider -->
-                                <Grid Margin="0,0,0,12">
+                                <Grid Margin="0,0,0,8">
                                     <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="200" />
+                                        <ColumnDefinition Width="175" />
                                         <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="70" />
+                                        <ColumnDefinition Width="65" />
                                     </Grid.ColumnDefinitions>
                                     <TextBlock Text="Макс. интервал появления:"
                                                Foreground="{StaticResource TextSecondaryBrush}"
+                                               FontSize="12"
                                                VerticalAlignment="Center" />
                                     <Slider x:Name="MaxIntervalSlider"
                                             Grid.Column="1"
@@ -565,26 +844,28 @@
                                             TickFrequency="10"
                                             IsSnapToTickEnabled="True"
                                             VerticalAlignment="Center"
-                                            Margin="12,0"
+                                            Margin="10,0"
                                             ValueChanged="IntervalSliders_ValueChanged" />
-                                    <TextBlock x:Name="MaxIntervalValueText"
+                                    <TextBlock x:Name="MaxIntervalText"
                                                Grid.Column="2"
                                                Text="{Binding ElementName=MaxIntervalSlider, Path=Value, StringFormat='{}{0:0} мин'}"
                                                Foreground="{StaticResource TextPrimaryBrush}"
                                                FontWeight="SemiBold"
+                                               FontSize="12"
                                                VerticalAlignment="Center"
                                                HorizontalAlignment="Right" />
                                 </Grid>
 
                                 <!-- Dimming Opacity Slider -->
-                                <Grid Margin="0,0,0,12">
+                                <Grid Margin="0,0,0,8">
                                     <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="200" />
+                                        <ColumnDefinition Width="175" />
                                         <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="70" />
+                                        <ColumnDefinition Width="65" />
                                     </Grid.ColumnDefinitions>
                                     <TextBlock Text="Затемнение экрана:"
                                                Foreground="{StaticResource TextSecondaryBrush}"
+                                               FontSize="12"
                                                VerticalAlignment="Center" />
                                     <Slider x:Name="OpacitySlider"
                                             Grid.Column="1"
@@ -595,11 +876,14 @@
                                             TickFrequency="5"
                                             IsSnapToTickEnabled="True"
                                             VerticalAlignment="Center"
-                                            Margin="12,0" />
-                                    <TextBlock Grid.Column="2"
+                                            Margin="10,0"
+                                            ValueChanged="Slider_ValueChanged" />
+                                    <TextBlock x:Name="OpacityText"
+                                               Grid.Column="2"
                                                Text="{Binding ElementName=OpacitySlider, Path=Value, StringFormat='{}{0:0}%'}"
                                                Foreground="{StaticResource TextPrimaryBrush}"
                                                FontWeight="SemiBold"
+                                               FontSize="12"
                                                VerticalAlignment="Center"
                                                HorizontalAlignment="Right" />
                                 </Grid>
@@ -607,12 +891,13 @@
                                 <!-- Video Volume Slider -->
                                 <Grid>
                                     <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="200" />
+                                        <ColumnDefinition Width="175" />
                                         <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="70" />
+                                        <ColumnDefinition Width="65" />
                                     </Grid.ColumnDefinitions>
                                     <TextBlock Text="Громкость видеоплеера:"
                                                Foreground="{StaticResource TextSecondaryBrush}"
+                                               FontSize="12"
                                                VerticalAlignment="Center" />
                                     <Slider x:Name="VolumeSlider"
                                             Grid.Column="1"
@@ -623,119 +908,119 @@
                                             TickFrequency="5"
                                             IsSnapToTickEnabled="True"
                                             VerticalAlignment="Center"
-                                            Margin="12,0" />
-                                    <TextBlock Grid.Column="2"
+                                            Margin="10,0"
+                                            ValueChanged="Slider_ValueChanged" />
+                                    <TextBlock x:Name="VolumeText"
+                                               Grid.Column="2"
                                                Text="{Binding ElementName=VolumeSlider, Path=Value, StringFormat='{}{0:0}%'}"
                                                Foreground="{StaticResource TextPrimaryBrush}"
                                                FontWeight="SemiBold"
+                                               FontSize="12"
                                                VerticalAlignment="Center"
                                                HorizontalAlignment="Right" />
                                 </Grid>
                             </StackPanel>
                         </Border>
+                    </StackPanel>
+                </Border>
 
-                        <!-- SECTION 3: Hotkeys & System -->
-                        <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,8">
+                <!-- 3. TAB 3: SYSTEM CONTENT -->
+                <Border x:Name="TabSystemContent"
+                        Grid.Row="3"
+                        Margin="18,0,18,14"
+                        Visibility="Collapsed">
+                    <StackPanel>
+                        <!-- Hotkeys Card -->
+                        <Border Style="{StaticResource CardBorderStyle}" Padding="16,12" Margin="0,0,0,10">
                             <StackPanel>
-                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,0,14">
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,0,10">
                                     <Path Data="{StaticResource IconSettings}"
                                           Stroke="{StaticResource AccentBrush}"
                                           StrokeThickness="2"
                                           StrokeLineJoin="Round"
-                                          Width="16" Height="16"
+                                          Width="14" Height="14"
                                           Stretch="Uniform"
                                           Margin="0,0,8,0"
                                           VerticalAlignment="Center" />
-                                    <TextBlock Text="Горячие клавиши и система"
+                                    <TextBlock Text="Горячие клавиши"
                                                Style="{StaticResource HeaderTextStyle}"
-                                               FontSize="15"
+                                               FontSize="14"
                                                VerticalAlignment="Center" />
                                 </StackPanel>
 
                                 <!-- Trigger Hotkey -->
-                                <Grid Margin="0,0,0,10">
+                                <Grid Margin="0,0,0,8">
                                     <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="200" />
+                                        <ColumnDefinition Width="175" />
                                         <ColumnDefinition Width="*" />
                                     </Grid.ColumnDefinitions>
                                     <TextBlock Text="Хоткей вызова:"
                                                Foreground="{StaticResource TextSecondaryBrush}"
+                                               FontSize="12"
                                                VerticalAlignment="Center" />
                                     <StackPanel Grid.Column="1">
                                         <TextBox x:Name="TriggerHotkeyTextBox"
                                                  PreviewKeyDown="HotkeyTextBox_PreviewKeyDown"
-                                                 TextChanged="HotkeyTextBox_TextChanged" />
+                                                 TextChanged="HotkeyTextBox_TextChanged"
+                                                 FontSize="12"
+                                                 Padding="8,5" />
                                         <TextBlock x:Name="TriggerHotkeyStatusText"
                                                    Text="Сочетание доступно"
                                                    Foreground="{StaticResource SuccessBrush}"
                                                    FontSize="11"
-                                                   Margin="2,4,0,0" />
+                                                   Margin="2,3,0,0" />
                                     </StackPanel>
                                 </Grid>
 
                                 <!-- Panic Hotkey -->
-                                <Grid Margin="0,0,0,14">
+                                <Grid>
                                     <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="200" />
+                                        <ColumnDefinition Width="175" />
                                         <ColumnDefinition Width="*" />
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Text="Хоткей сброса (паника):"
+                                    <TextBlock Text="Хоткей паники (сброс):"
                                                Foreground="{StaticResource TextSecondaryBrush}"
+                                               FontSize="12"
                                                VerticalAlignment="Center" />
                                     <StackPanel Grid.Column="1">
                                         <TextBox x:Name="PanicHotkeyTextBox"
                                                  PreviewKeyDown="HotkeyTextBox_PreviewKeyDown"
-                                                 TextChanged="HotkeyTextBox_TextChanged" />
+                                                 TextChanged="HotkeyTextBox_TextChanged"
+                                                 FontSize="12"
+                                                 Padding="8,5" />
                                         <TextBlock x:Name="PanicHotkeyStatusText"
                                                    Text="Сочетание доступно"
                                                    Foreground="{StaticResource SuccessBrush}"
                                                    FontSize="11"
-                                                   Margin="2,4,0,0" />
+                                                   Margin="2,3,0,0" />
                                     </StackPanel>
                                 </Grid>
-
-                                <!-- Startup with Windows CheckBox -->
-                                <Border BorderBrush="{StaticResource CardBorderBrush}" BorderThickness="0,1,0,0" Padding="0,10,0,0">
-                                    <CheckBox x:Name="RunOnStartupCheckBox"
-                                              Style="{StaticResource MacOsToggleSwitchStyle}"
-                                              Content="Запускать приложение вместе с Windows" />
-                                </Border>
                             </StackPanel>
                         </Border>
 
-                    </StackPanel>
-                </ScrollViewer>
-
-                <!-- 3. Bottom Action Bar (Clean: No duplicate overlay test button) -->
-                <Border Grid.Row="3"
-                        Background="#12131C"
-                        CornerRadius="0,0,16,16"
-                        BorderBrush="#25293A"
-                        BorderThickness="0,1,0,0"
-                        Padding="20,14">
-                    <StackPanel HorizontalAlignment="Right" Orientation="Horizontal">
-                        <Button x:Name="SaveButton"
-                                Style="{StaticResource PrimaryButtonStyle}"
-                                Click="SaveButton_Click">
-                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                <Path Data="{StaticResource IconCheck}"
-                                      Stroke="#FFFFFF"
-                                      StrokeThickness="2.5"
-                                      StrokeStartLineCap="Round"
-                                      StrokeEndLineCap="Round"
-                                      StrokeLineJoin="Round"
-                                      Width="13" Height="13"
-                                      Stretch="Uniform"
-                                      Margin="0,0,6,0"
-                                      VerticalAlignment="Center" />
-                                <TextBlock Text="Сохранить настройки" VerticalAlignment="Center" />
-                            </StackPanel>
-                        </Button>
-                        <Button x:Name="CloseButton"
-                                Content="Закрыть"
-                                Style="{StaticResource SecondaryButtonStyle}"
-                                Margin="10,0,0,0"
-                                Click="CloseButton_Click" />
+                        <!-- Windows Startup Card -->
+                        <Border Style="{StaticResource CardBorderStyle}" Padding="16,12">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel VerticalAlignment="Center" Margin="0,0,12,0">
+                                    <TextBlock Text="Запускать вместе с Windows"
+                                               Style="{StaticResource HeaderTextStyle}"
+                                               FontSize="13" />
+                                    <TextBlock Text="Запуск в фоновом режиме при старте системы"
+                                               Style="{StaticResource SubheaderTextStyle}"
+                                               FontSize="11"
+                                               Margin="0,3,0,0" />
+                                </StackPanel>
+                                <CheckBox x:Name="RunOnStartupCheckBox"
+                                          Grid.Column="1"
+                                          Style="{StaticResource MacOsToggleSwitchStyle}"
+                                          VerticalAlignment="Center"
+                                          Click="RunOnStartupCheckBox_Click" />
+                            </Grid>
+                        </Border>
                     </StackPanel>
                 </Border>
 
@@ -744,21 +1029,21 @@
                         Grid.RowSpan="4"
                         HorizontalAlignment="Center"
                         VerticalAlignment="Bottom"
-                        Margin="0,0,0,40"
+                        Margin="0,0,0,24"
                         Background="#161925"
                         BorderBrush="{StaticResource SuccessBrush}"
                         BorderThickness="1"
-                        CornerRadius="20"
-                        Padding="18,10"
+                        CornerRadius="18"
+                        Padding="16,8"
                         Opacity="0"
                         Visibility="Collapsed"
                         IsHitTestVisible="False"
                         SnapsToDevicePixels="True">
                     <Border.Effect>
-                        <DropShadowEffect Color="#000000" BlurRadius="24" ShadowDepth="6" Opacity="0.75" />
+                        <DropShadowEffect Color="#000000" BlurRadius="20" ShadowDepth="4" Opacity="0.7" />
                     </Border.Effect>
                     <Border.RenderTransform>
-                        <TranslateTransform x:Name="ToastTransform" Y="20" />
+                        <TranslateTransform x:Name="ToastTransform" Y="16" />
                     </Border.RenderTransform>
                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                         <Path x:Name="ToastIcon"
@@ -768,14 +1053,14 @@
                               StrokeStartLineCap="Round"
                               StrokeEndLineCap="Round"
                               StrokeLineJoin="Round"
-                              Width="16" Height="16"
+                              Width="14" Height="14"
                               Stretch="Uniform"
-                              Margin="0,0,10,0"
+                              Margin="0,0,8,0"
                               VerticalAlignment="Center" />
                         <TextBlock x:Name="ToastMessageTextBlock"
                                    Text="Настройки сохранены"
                                    Foreground="{StaticResource TextPrimaryBrush}"
-                                   FontSize="13"
+                                   FontSize="12"
                                    FontWeight="SemiBold"
                                    VerticalAlignment="Center" />
                     </StackPanel>

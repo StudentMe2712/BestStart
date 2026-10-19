@@ -17,4 +17,11 @@
     <InternalsVisibleTo Include="PersonalProvocateur.Tests" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Resource Include="Assets\**\*.png" />
+    <None Update="Assets\**\*.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
 </Project>

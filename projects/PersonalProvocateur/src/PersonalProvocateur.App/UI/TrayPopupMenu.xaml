@@ -39,33 +39,69 @@
         </Border.RenderTransform>
 
         <StackPanel>
-            <!-- App Header & Status Indicator -->
-            <Border Background="#0B0C10" CornerRadius="8" Padding="12,10" Margin="0,0,0,8" BorderBrush="#232738" BorderThickness="1">
-                <StackPanel>
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="Auto" />
-                        </Grid.ColumnDefinitions>
+            <!-- App Header & Status Indicator with macOS Squircle Badge (ADR-011) -->
+            <Border Background="#0B0C10" CornerRadius="10" Padding="10,10" Margin="0,0,0,8" BorderBrush="#232738" BorderThickness="1">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <!-- macOS Squircle Badge (ADR-011) -->
+                    <Border Grid.Column="0"
+                            Width="28" Height="28"
+                            CornerRadius="7"
+                            BorderBrush="#40FFFFFF"
+                            BorderThickness="1"
+                            Margin="0,0,10,0"
+                            VerticalAlignment="Center"
+                            ClipToBounds="True">
+                        <Border.Background>
+                            <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                <GradientStop Color="#1E1B4B" Offset="0.0" />
+                                <GradientStop Color="#6D28D9" Offset="1.0" />
+                            </LinearGradientBrush>
+                        </Border.Background>
+                        <Grid>
+                            <!-- Fallback IconBrandPrism Vector -->
+                            <Path Data="{StaticResource IconBrandPrism}"
+                                  Fill="#A78BFA"
+                                  Stroke="#C4B5FD"
+                                  StrokeThickness="0.5"
+                                  Stretch="Uniform"
+                                  Margin="5"
+                                  VerticalAlignment="Center"
+                                  HorizontalAlignment="Center" />
+                            <!-- Brand Logo Image (ADR-011) -->
+                            <Image Source="pack://application:,,,/Assets/logo.png"
+                                   Stretch="Uniform"
+                                   Margin="3"
+                                   RenderOptions.BitmapScalingMode="HighQuality" />
+                        </Grid>
+                    </Border>
+
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
                         <TextBlock Text="Personal Provocateur"
                                    FontWeight="SemiBold"
                                    FontSize="13"
                                    Foreground="#F8FAFC"
                                    VerticalAlignment="Center" />
-                        <Ellipse x:Name="StatusDot"
-                                 Grid.Column="1"
-                                 Width="8"
-                                 Height="8"
-                                 Fill="#8B5CF6"
-                                 VerticalAlignment="Center" />
-                    </Grid>
+                        <TextBlock x:Name="NextTriggerTextBlock"
+                                   Text="Следующий: --:--"
+                                   FontSize="11"
+                                   Foreground="#94A3B8"
+                                   Margin="0,2,0,0" />
+                    </StackPanel>
 
-                    <TextBlock x:Name="NextTriggerTextBlock"
-                               Text="Следующий: --:--"
-                               FontSize="11"
-                               Foreground="#94A3B8"
-                               Margin="0,4,0,0" />
-                </StackPanel>
+                    <Ellipse x:Name="StatusDot"
+                             Grid.Column="2"
+                             Width="8"
+                             Height="8"
+                             Fill="#8B5CF6"
+                             VerticalAlignment="Center"
+                             Margin="4,0,0,0" />
+                </Grid>
             </Border>
 
             <!-- Menu Actions with Vector Icons -->

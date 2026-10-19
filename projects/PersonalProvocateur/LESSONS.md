@@ -7,6 +7,20 @@ Add entries with the `/lesson` command, or by hand. Newest on top.
 
 ## Log
 
+### 2026-10-19 — WPF static Freezable brushes and cross-STA-thread unit test execution
+- **Problem:** `InvalidOperationException: Cannot use a DependencyObject that belongs to a different thread than its parent Freezable` when assigning `static readonly Brush` fields to UI elements in tests running across multiple STA threads.
+- **Root cause:** WPF `Brush` (and other `Freezable` types) instantiated statically on one STA thread are bound to that thread by default. If another test runs in a new STA thread and accesses or assigns these static brushes to controls, WPF throws thread ownership exceptions.
+- **Fix:** Always call `.Freeze()` on static brushes (e.g., via helper `CreateFrozenBrush(...)`), or use frozen brushes from `Brushes.*`. Once frozen, a Freezable is thread-safe and can be accessed across any thread.
+- **Rule:** All static `Brush`, `Pen`, or `Freezable` definitions in WPF components MUST be frozen (`brush.Freeze()`) to permit safe cross-STA-thread usage in test runners and background threads.
+- **Scope:** this-project
+
+### 2026-10-19 — WPF BAML Package stream concurrency in xUnit test suites
+- **Problem:** Intermittent `NullReferenceException: Object reference not set to an instance of an object at System.IO.Packaging.PackagePart.IsStreamClosed(Stream s)` during `Application.LoadComponent` in unit tests loading UserControls or Windows.
+- **Root cause:** WPF's internal `System.IO.Packaging.PackagePart` stream collection is not thread-safe. Concurrent instantiation of XAML components across parallel xUnit test threads creates race conditions when accessing BAML package streams.
+- **Fix:** Added `[assembly: CollectionBehavior(DisableTestParallelization = true)]` to `tests/PersonalProvocateur.Tests/AssemblyInfo.cs` to ensure single-threaded sequential execution of WPF window/control test fixtures.
+- **Rule:** For test suites containing WPF UI components or BAML loading, always disable parallelization via `CollectionBehavior` to prevent `PackagePart` internal collection corruption.
+- **Scope:** this-project
+
 ### 2026-10-19 — WPF Window Loaded reflection ambiguity and Mandatory Watch Lock close guard
 - **Problem:** 1) `AmbiguousMatchException: Ambiguous match found for 'OverlayWindow Void OnLoaded(Object, RoutedEventArgs)'` when querying `GetMethod("OnLoaded", ...)` via reflection in tests. 2) Closing windows in `OverlayCoordinator.CompleteSession()` being cancelled when `VideoWindow` has closing protection.
 - **Root cause:** 1) Base `FrameworkElement` defines non-public loaded lifecycle methods that clash with window event handlers when reflected without explicit type signatures. 2) Closing guard in `OnClosing` blocks `Window.Close()` unless `AllowClose = true` is explicitly granted beforehand.
