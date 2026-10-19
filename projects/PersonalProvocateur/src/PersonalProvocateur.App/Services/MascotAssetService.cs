@@ -428,27 +428,27 @@ public class MascotAssetService
     {
         if (state == MascotState.Attention)
         {
-            // Raised waving paws
-            dc.DrawEllipse(bodyBrush, pen, new Point(68, 142), 16, 20);
-            dc.DrawEllipse(bodyBrush, pen, new Point(252, 142), 16, 20);
+            // Raised waving paws from top notch
+            dc.DrawEllipse(bodyBrush, pen, new Point(80, 108), 16, 20);
+            dc.DrawEllipse(bodyBrush, pen, new Point(240, 108), 16, 20);
         }
         else if (state == MascotState.Clicked)
         {
             // Victory celebration paws
-            dc.DrawEllipse(bodyBrush, pen, new Point(64, 136), 18, 18);
-            dc.DrawEllipse(bodyBrush, pen, new Point(256, 136), 18, 18);
+            dc.DrawEllipse(bodyBrush, pen, new Point(72, 94), 18, 18);
+            dc.DrawEllipse(bodyBrush, pen, new Point(248, 94), 18, 18);
         }
         else if (state == MascotState.Peek)
         {
-            // Peeking paws (gripping edge)
-            dc.DrawEllipse(bodyBrush, pen, new Point(94, 212), 16, 14);
-            dc.DrawEllipse(bodyBrush, pen, new Point(246, 174), 16, 18);
+            // Peeking paws gripping the top capsule rim
+            dc.DrawEllipse(bodyBrush, pen, new Point(96, 106), 16, 14);
+            dc.DrawEllipse(bodyBrush, pen, new Point(224, 106), 16, 14);
         }
         else
         {
-            // Relaxed casual paws
-            dc.DrawEllipse(bodyBrush, pen, new Point(78, 202), 16, 16);
-            dc.DrawEllipse(bodyBrush, pen, new Point(242, 202), 16, 16);
+            // Relaxed paws holding onto the top notch capsule
+            dc.DrawEllipse(bodyBrush, pen, new Point(100, 108), 15, 14);
+            dc.DrawEllipse(bodyBrush, pen, new Point(220, 108), 15, 14);
         }
     }
 
@@ -512,7 +512,7 @@ public class MascotAssetService
 
         if (state == MascotState.Attention)
         {
-            // Widely opened glowing eyes with double highlight
+            // Widely opened glowing eyes looking down at user screen
             var leftCenter = new Point(120, 140);
             var rightCenter = new Point(200, 140);
 
@@ -520,19 +520,19 @@ public class MascotAssetService
             dc.DrawEllipse(scleraBrush, scleraPen, leftCenter, 22, 24);
             dc.DrawEllipse(scleraBrush, scleraPen, rightCenter, 22, 24);
 
-            // Glowing cyan/violet irises
-            dc.DrawEllipse(glowBrush, null, leftCenter, 16, 17);
-            dc.DrawEllipse(glowBrush, null, rightCenter, 16, 17);
+            // Glowing cyan/violet irises looking downwards
+            dc.DrawEllipse(glowBrush, null, new Point(120, 144), 16, 17);
+            dc.DrawEllipse(glowBrush, null, new Point(200, 144), 16, 17);
 
-            // Pupils
-            dc.DrawEllipse(pupilBrush, null, leftCenter, 11, 12);
-            dc.DrawEllipse(pupilBrush, null, rightCenter, 11, 12);
+            // Pupils looking downwards
+            dc.DrawEllipse(pupilBrush, null, new Point(120, 147), 11, 12);
+            dc.DrawEllipse(pupilBrush, null, new Point(200, 147), 11, 12);
 
             // Specular highlights
-            dc.DrawEllipse(highlightBrush, null, new Point(116, 134), 5, 5);
-            dc.DrawEllipse(highlightBrush, null, new Point(124, 144), 3, 3);
-            dc.DrawEllipse(highlightBrush, null, new Point(196, 134), 5, 5);
-            dc.DrawEllipse(highlightBrush, null, new Point(204, 144), 3, 3);
+            dc.DrawEllipse(highlightBrush, null, new Point(116, 137), 5, 5);
+            dc.DrawEllipse(highlightBrush, null, new Point(124, 147), 3, 3);
+            dc.DrawEllipse(highlightBrush, null, new Point(196, 137), 5, 5);
+            dc.DrawEllipse(highlightBrush, null, new Point(204, 147), 3, 3);
 
             // Perked eyebrows
             var browPen = new Pen(new SolidColorBrush(Color.FromRgb(0x4C, 0x1D, 0x95)), 3.0)
@@ -581,17 +581,17 @@ public class MascotAssetService
             squintGeom.Freeze();
             dc.DrawGeometry(null, squintPen, squintGeom);
 
-            // Right eye: wide open, looking right towards user
+            // Right eye: wide open, looking downwards towards user screen
             var rightCenter = new Point(208, 144);
             dc.DrawEllipse(scleraBrush, scleraPen, rightCenter, 20, 22);
-            dc.DrawEllipse(glowBrush, null, new Point(212, 144), 14, 15);
-            dc.DrawEllipse(pupilBrush, null, new Point(214, 144), 10, 11);
-            dc.DrawEllipse(highlightBrush, null, new Point(211, 138), 5, 5);
-            dc.DrawEllipse(highlightBrush, null, new Point(217, 147), 3, 3);
+            dc.DrawEllipse(glowBrush, null, new Point(210, 148), 14, 15);
+            dc.DrawEllipse(pupilBrush, null, new Point(212, 150), 10, 11);
+            dc.DrawEllipse(highlightBrush, null, new Point(208, 142), 5, 5);
+            dc.DrawEllipse(highlightBrush, null, new Point(215, 151), 3, 3);
             return;
         }
 
-        // Default: Idle (Relaxed, sly, provocative glance)
+        // Default: Idle (Relaxed, sly, peeking downward at the workspace)
         var idleLeft = new Point(124, 144);
         var idleRight = new Point(196, 144);
 
@@ -599,19 +599,19 @@ public class MascotAssetService
         dc.DrawEllipse(scleraBrush, scleraPen, idleLeft, 19, 21);
         dc.DrawEllipse(scleraBrush, scleraPen, idleRight, 19, 21);
 
-        // Glowing purple/blue irises
-        dc.DrawEllipse(glowBrush, null, new Point(126, 144), 13, 14);
-        dc.DrawEllipse(glowBrush, null, new Point(198, 144), 13, 14);
+        // Glowing purple/blue irises looking downward
+        dc.DrawEllipse(glowBrush, null, new Point(125, 148), 13, 14);
+        dc.DrawEllipse(glowBrush, null, new Point(197, 148), 13, 14);
 
-        // Pupils slightly looking right/forward
-        dc.DrawEllipse(pupilBrush, null, new Point(128, 144), 9, 10);
-        dc.DrawEllipse(pupilBrush, null, new Point(200, 144), 9, 10);
+        // Pupils looking downward at screen
+        dc.DrawEllipse(pupilBrush, null, new Point(126, 150), 9, 10);
+        dc.DrawEllipse(pupilBrush, null, new Point(198, 150), 9, 10);
 
         // Specular highlights
-        dc.DrawEllipse(highlightBrush, null, new Point(126, 139), 4, 4);
-        dc.DrawEllipse(highlightBrush, null, new Point(198, 139), 4, 4);
-        dc.DrawEllipse(highlightBrush, null, new Point(131, 147), 2, 2);
-        dc.DrawEllipse(highlightBrush, null, new Point(203, 147), 2, 2);
+        dc.DrawEllipse(highlightBrush, null, new Point(124, 142), 4, 4);
+        dc.DrawEllipse(highlightBrush, null, new Point(196, 142), 4, 4);
+        dc.DrawEllipse(highlightBrush, null, new Point(129, 151), 2, 2);
+        dc.DrawEllipse(highlightBrush, null, new Point(201, 151), 2, 2);
 
         // Sly half-lidded eyelids
         var eyelidBrush = new SolidColorBrush(Color.FromRgb(0x8B, 0x5C, 0xF6));

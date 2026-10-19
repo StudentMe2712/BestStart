@@ -2,6 +2,7 @@ using System;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Threading;
 using PersonalProvocateur.App.Models;
@@ -117,7 +118,7 @@ public partial class MascotControl : UserControl
     }
 
     /// <summary>
-    /// Plays the peek entrance animation (smooth slide-in from bottom with spring back-ease),
+    /// Plays the peek entrance animation (smooth slide-in from top screen edge with spring back-ease),
     /// automatically transitioning to <see cref="PlayIdleAnimation"/> upon completion.
     /// </summary>
     public void PlayPeekAnimation()
@@ -127,19 +128,33 @@ public partial class MascotControl : UserControl
         SetState(MascotState.Peek);
         SetSpeechText("Ку-ку! 👀");
 
+        MascotTranslate.Y = -260.0;
+        MascotTranslate.X = 0.0;
+        Opacity = 0.0;
+
         var sb = new Storyboard();
 
         var slideAnim = new DoubleAnimation
         {
-            From = 120.0,
+            From = -260.0,
             To = 0.0,
-            Duration = TimeSpan.FromMilliseconds(500),
-            EasingFunction = new BackEase { Amplitude = 0.5, EasingMode = EasingMode.EaseOut }
+            Duration = TimeSpan.FromMilliseconds(520),
+            EasingFunction = new BackEase { Amplitude = 0.35, EasingMode = EasingMode.EaseOut }
         };
-
         Storyboard.SetTarget(slideAnim, MascotTranslate);
-        Storyboard.SetTargetProperty(slideAnim, new PropertyPath(System.Windows.Media.TranslateTransform.YProperty));
+        Storyboard.SetTargetProperty(slideAnim, new PropertyPath(TranslateTransform.YProperty));
         sb.Children.Add(slideAnim);
+
+        var opacityAnim = new DoubleAnimation
+        {
+            From = 0.0,
+            To = 1.0,
+            Duration = TimeSpan.FromMilliseconds(520),
+            EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
+        };
+        Storyboard.SetTarget(opacityAnim, this);
+        Storyboard.SetTargetProperty(opacityAnim, new PropertyPath(UIElement.OpacityProperty));
+        sb.Children.Add(opacityAnim);
 
         sb.Completed += (s, e) =>
         {
@@ -154,7 +169,7 @@ public partial class MascotControl : UserControl
     }
 
     /// <summary>
-    /// Plays the ambient idle animation (subtle vertical breathing and gentle rocking),
+    /// Plays the ambient idle animation (delicate vertical floating at top edge 0..6px),
     /// starting the 6–8s attention timer.
     /// </summary>
     public void PlayIdleAnimation()
@@ -164,38 +179,42 @@ public partial class MascotControl : UserControl
         SetState(MascotState.Idle);
         SetRandomSpeech(MascotState.Idle);
 
+        Opacity = 1.0;
         MascotTranslate.Y = 0.0;
         MascotTranslate.X = 0.0;
+        MascotScale.ScaleX = 1.0;
+        MascotScale.ScaleY = 1.0;
+        MascotRotate.Angle = 0.0;
 
         var sb = new Storyboard();
 
-        // Subtle vertical breathing (ScaleY from 1.0 to 1.05)
+        // Subtle vertical floating at top edge (0 to 6px)
+        var floatAnim = new DoubleAnimation
+        {
+            From = 0.0,
+            To = 6.0,
+            Duration = TimeSpan.FromMilliseconds(1400),
+            AutoReverse = true,
+            RepeatBehavior = RepeatBehavior.Forever,
+            EasingFunction = new SineEase { EasingMode = EasingMode.EaseInOut }
+        };
+        Storyboard.SetTarget(floatAnim, MascotTranslate);
+        Storyboard.SetTargetProperty(floatAnim, new PropertyPath(TranslateTransform.YProperty));
+        sb.Children.Add(floatAnim);
+
+        // Subtle breathing (ScaleY from 1.0 to 1.03)
         var breatheAnim = new DoubleAnimation
         {
             From = 1.0,
-            To = 1.05,
-            Duration = TimeSpan.FromMilliseconds(1300),
+            To = 1.03,
+            Duration = TimeSpan.FromMilliseconds(1400),
             AutoReverse = true,
             RepeatBehavior = RepeatBehavior.Forever,
             EasingFunction = new SineEase { EasingMode = EasingMode.EaseInOut }
         };
         Storyboard.SetTarget(breatheAnim, MascotScale);
-        Storyboard.SetTargetProperty(breatheAnim, new PropertyPath(System.Windows.Media.ScaleTransform.ScaleYProperty));
+        Storyboard.SetTargetProperty(breatheAnim, new PropertyPath(ScaleTransform.ScaleYProperty));
         sb.Children.Add(breatheAnim);
-
-        // Gentle rocking (RotateTransform from -2° to +2°)
-        var rockAnim = new DoubleAnimation
-        {
-            From = -2.0,
-            To = 2.0,
-            Duration = TimeSpan.FromMilliseconds(1600),
-            AutoReverse = true,
-            RepeatBehavior = RepeatBehavior.Forever,
-            EasingFunction = new SineEase { EasingMode = EasingMode.EaseInOut }
-        };
-        Storyboard.SetTarget(rockAnim, MascotRotate);
-        Storyboard.SetTargetProperty(rockAnim, new PropertyPath(System.Windows.Media.RotateTransform.AngleProperty));
-        sb.Children.Add(rockAnim);
 
         _activeStoryboard = sb;
         sb.Begin();
@@ -216,32 +235,32 @@ public partial class MascotControl : UserControl
 
         var sb = new Storyboard();
 
-        // Bouncing jump (TranslateY up to -25)
+        // Bouncing jump downwards from notch (TranslateY 0 to 16)
         var bounceAnim = new DoubleAnimation
         {
             From = 0.0,
-            To = -25.0,
-            Duration = TimeSpan.FromMilliseconds(260),
+            To = 16.0,
+            Duration = TimeSpan.FromMilliseconds(220),
             AutoReverse = true,
             RepeatBehavior = new RepeatBehavior(3),
             EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut }
         };
         Storyboard.SetTarget(bounceAnim, MascotTranslate);
-        Storyboard.SetTargetProperty(bounceAnim, new PropertyPath(System.Windows.Media.TranslateTransform.YProperty));
+        Storyboard.SetTargetProperty(bounceAnim, new PropertyPath(TranslateTransform.YProperty));
         sb.Children.Add(bounceAnim);
 
         // Energetic rocking shake
         var shakeAnim = new DoubleAnimation
         {
-            From = -6.0,
-            To = 6.0,
-            Duration = TimeSpan.FromMilliseconds(130),
+            From = -4.0,
+            To = 4.0,
+            Duration = TimeSpan.FromMilliseconds(120),
             AutoReverse = true,
             RepeatBehavior = new RepeatBehavior(6),
             EasingFunction = new SineEase { EasingMode = EasingMode.EaseInOut }
         };
         Storyboard.SetTarget(shakeAnim, MascotRotate);
-        Storyboard.SetTargetProperty(shakeAnim, new PropertyPath(System.Windows.Media.RotateTransform.AngleProperty));
+        Storyboard.SetTargetProperty(shakeAnim, new PropertyPath(RotateTransform.AngleProperty));
         sb.Children.Add(shakeAnim);
 
         sb.Completed += (s, e) =>
@@ -257,8 +276,8 @@ public partial class MascotControl : UserControl
     }
 
     /// <summary>
-    /// Plays the click response animation (scale impulse to 1.20 and back, victory speech),
-    /// invoking the callback upon completion.
+    /// Plays the click response animation (short scale impulse to 1.12 in 100ms, then smooth upward slide
+    /// to -260 over 220ms with Opacity fading to 0), invoking the callback upon completion.
     /// </summary>
     /// <param name="onCompleted">Action invoked after the click animation concludes.</param>
     public void PlayClickAnimation(Action onCompleted)
@@ -270,29 +289,56 @@ public partial class MascotControl : UserControl
 
         var sb = new Storyboard();
 
+        // Short scale impulse (to 1.12 in 100ms)
         var scaleXAnim = new DoubleAnimation
         {
             From = 1.0,
-            To = 1.20,
-            Duration = TimeSpan.FromMilliseconds(140),
+            To = 1.12,
+            Duration = TimeSpan.FromMilliseconds(100),
             AutoReverse = true,
             EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut }
         };
         Storyboard.SetTarget(scaleXAnim, MascotScale);
-        Storyboard.SetTargetProperty(scaleXAnim, new PropertyPath(System.Windows.Media.ScaleTransform.ScaleXProperty));
+        Storyboard.SetTargetProperty(scaleXAnim, new PropertyPath(ScaleTransform.ScaleXProperty));
         sb.Children.Add(scaleXAnim);
 
         var scaleYAnim = new DoubleAnimation
         {
             From = 1.0,
-            To = 1.20,
-            Duration = TimeSpan.FromMilliseconds(140),
+            To = 1.12,
+            Duration = TimeSpan.FromMilliseconds(100),
             AutoReverse = true,
             EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut }
         };
         Storyboard.SetTarget(scaleYAnim, MascotScale);
-        Storyboard.SetTargetProperty(scaleYAnim, new PropertyPath(System.Windows.Media.ScaleTransform.ScaleYProperty));
+        Storyboard.SetTargetProperty(scaleYAnim, new PropertyPath(ScaleTransform.ScaleYProperty));
         sb.Children.Add(scaleYAnim);
+
+        // Smooth exit upwards: MascotTranslate.Y from 0 to -260 over 220ms
+        var exitAnim = new DoubleAnimation
+        {
+            From = 0.0,
+            To = -260.0,
+            BeginTime = TimeSpan.FromMilliseconds(100),
+            Duration = TimeSpan.FromMilliseconds(220),
+            EasingFunction = new CubicEase { EasingMode = EasingMode.EaseIn }
+        };
+        Storyboard.SetTarget(exitAnim, MascotTranslate);
+        Storyboard.SetTargetProperty(exitAnim, new PropertyPath(TranslateTransform.YProperty));
+        sb.Children.Add(exitAnim);
+
+        // Fade Opacity from 1.0 to 0.0
+        var opacityAnim = new DoubleAnimation
+        {
+            From = 1.0,
+            To = 0.0,
+            BeginTime = TimeSpan.FromMilliseconds(100),
+            Duration = TimeSpan.FromMilliseconds(220),
+            EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseIn }
+        };
+        Storyboard.SetTarget(opacityAnim, this);
+        Storyboard.SetTargetProperty(opacityAnim, new PropertyPath(UIElement.OpacityProperty));
+        sb.Children.Add(opacityAnim);
 
         sb.Completed += (s, e) =>
         {
@@ -332,11 +378,12 @@ public partial class MascotControl : UserControl
             _activeStoryboard = null;
         }
 
-        MascotScale.BeginAnimation(System.Windows.Media.ScaleTransform.ScaleXProperty, null);
-        MascotScale.BeginAnimation(System.Windows.Media.ScaleTransform.ScaleYProperty, null);
-        MascotRotate.BeginAnimation(System.Windows.Media.RotateTransform.AngleProperty, null);
-        MascotTranslate.BeginAnimation(System.Windows.Media.TranslateTransform.XProperty, null);
-        MascotTranslate.BeginAnimation(System.Windows.Media.TranslateTransform.YProperty, null);
+        BeginAnimation(UIElement.OpacityProperty, null);
+        MascotScale.BeginAnimation(ScaleTransform.ScaleXProperty, null);
+        MascotScale.BeginAnimation(ScaleTransform.ScaleYProperty, null);
+        MascotRotate.BeginAnimation(RotateTransform.AngleProperty, null);
+        MascotTranslate.BeginAnimation(TranslateTransform.XProperty, null);
+        MascotTranslate.BeginAnimation(TranslateTransform.YProperty, null);
     }
 
     /// <summary>
@@ -347,6 +394,7 @@ public partial class MascotControl : UserControl
     {
         StopRunningAnimations();
 
+        Opacity = 1.0;
         MascotScale.ScaleX = 1.0;
         MascotScale.ScaleY = 1.0;
         MascotRotate.Angle = 0.0;

@@ -1,8 +1,11 @@
 using System;
 using System.IO;
+using System.Linq;
+using System.Reflection;
 using System.Runtime.ExceptionServices;
 using System.Threading;
 using System.Windows.Input;
+using System.Windows.Media.Animation;
 using PersonalProvocateur.App.Models;
 using PersonalProvocateur.App.Services;
 using PersonalProvocateur.App.UI.Controls;
@@ -148,6 +151,34 @@ public class MascotControlTests : IDisposable
     }
 
     [Fact]
+    public void PlayPeekAnimation_SetsPeekState_AndConfiguresTopSlideParameters()
+    {
+        RunInSta(() =>
+        {
+            var control = new MascotControl(_assetService);
+            control.PlayPeekAnimation();
+
+            Assert.Equal(MascotState.Peek, control.CurrentState);
+            Assert.Equal("Ку-ку! 👀", control.SpeechBubbleText.Text);
+
+            var sbField = typeof(MascotControl).GetField("_activeStoryboard", BindingFlags.Instance | BindingFlags.NonPublic);
+            var sb = sbField?.GetValue(control) as Storyboard;
+            Assert.NotNull(sb);
+
+            var slideAnim = sb.Children.OfType<DoubleAnimation>()
+                .FirstOrDefault(a => a.From == -260.0 && a.To == 0.0);
+            Assert.NotNull(slideAnim);
+            Assert.Equal(TimeSpan.FromMilliseconds(520), slideAnim.Duration.TimeSpan);
+
+            var opacityAnim = sb.Children.OfType<DoubleAnimation>()
+                .FirstOrDefault(a => a.From == 0.0 && a.To == 1.0);
+            Assert.NotNull(opacityAnim);
+
+            control.StopAllAnimations();
+        });
+    }
+
+    [Fact]
     public void PlayIdleAnimation_SetsIdleState_AndDoesNotThrow()
     {
         RunInSta(() =>
@@ -182,6 +213,43 @@ public class MascotControlTests : IDisposable
             control.PlayClickAnimation(() => callbackInvoked = true);
             Assert.Equal(MascotState.Clicked, control.CurrentState);
             Assert.False(callbackInvoked);
+
+            control.StopAllAnimations();
+        });
+    }
+
+    [Fact]
+    public void PlayClickAnimation_SetsClickedState_AndAnimatesUpwardExit()
+    {
+        RunInSta(() =>
+        {
+            var control = new MascotControl(_assetService);
+            bool callbackInvoked = false;
+
+            control.PlayClickAnimation(() => callbackInvoked = true);
+            Assert.Equal(MascotState.Clicked, control.CurrentState);
+            Assert.False(callbackInvoked);
+
+            var sbField = typeof(MascotControl).GetField("_activeStoryboard", BindingFlags.Instance | BindingFlags.NonPublic);
+            var sb = sbField?.GetValue(control) as Storyboard;
+            Assert.NotNull(sb);
+
+            // Scale impulse to 1.12 over 100ms
+            var scaleAnim = sb.Children.OfType<DoubleAnimation>()
+                .FirstOrDefault(a => a.From == 1.0 && a.To == 1.12);
+            Assert.NotNull(scaleAnim);
+            Assert.Equal(TimeSpan.FromMilliseconds(100), scaleAnim.Duration.TimeSpan);
+
+            // Smooth exit upwards: MascotTranslate.Y from 0 to -260 over 220ms
+            var exitAnim = sb.Children.OfType<DoubleAnimation>()
+                .FirstOrDefault(a => a.From == 0.0 && a.To == -260.0);
+            Assert.NotNull(exitAnim);
+            Assert.Equal(TimeSpan.FromMilliseconds(220), exitAnim.Duration.TimeSpan);
+
+            // Opacity fade to 0.0
+            var opacityAnim = sb.Children.OfType<DoubleAnimation>()
+                .FirstOrDefault(a => a.From == 1.0 && a.To == 0.0);
+            Assert.NotNull(opacityAnim);
 
             control.StopAllAnimations();
         });

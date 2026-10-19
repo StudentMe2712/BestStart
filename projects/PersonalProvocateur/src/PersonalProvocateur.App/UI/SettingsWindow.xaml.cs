@@ -1,6 +1,9 @@
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Windows;
+using System.Windows.Input;
+using System.Windows.Media;
+using System.Windows.Media.Animation;
 using System.Windows.Threading;
 using Microsoft.Win32;
 using PersonalProvocateur.App.Models;
@@ -14,8 +17,8 @@ using SolidColorBrush = System.Windows.Media.SolidColorBrush;
 namespace PersonalProvocateur.App.UI;
 
 /// <summary>
-/// Full-featured dashboard window for managing provocation intervals, dimming,
-/// hotkey registration, auto-startup, and the video library.
+/// Full-featured frameless macOS-styled dashboard window for managing provocation intervals,
+/// dimming, hotkey registration, auto-startup, and the video library.
 /// </summary>
 public partial class SettingsWindow : Window
 {
@@ -24,6 +27,7 @@ public partial class SettingsWindow : Window
     private readonly OverlayCoordinator? _coordinator;
     private readonly RandomReminderScheduler? _scheduler;
     private readonly DispatcherTimer? _statusTimer;
+    private DispatcherTimer? _toastTimer;
     private readonly ObservableCollection<VideoItemViewModel> _videos = new();
 
     private bool _isPaused;
@@ -100,23 +104,45 @@ public partial class SettingsWindow : Window
 
     private void RefreshStatusHeader()
     {
-        // 1. Status badge & quick pause button
+        if (StatusBadgeBorder == null || StatusBadgeText == null || QuickPauseText == null)
+        {
+            return;
+        }
+
         if (_isPaused)
         {
             StatusBadgeBorder.Background = new SolidColorBrush(Color.FromArgb(0x1A, 0xF5, 0x9E, 0x0B));
             StatusBadgeBorder.BorderBrush = new SolidColorBrush(Color.FromRgb(0xF5, 0x9E, 0x0B));
+            if (StatusBadgeDot != null)
+            {
+                StatusBadgeDot.Fill = new SolidColorBrush(Color.FromRgb(0xF5, 0x9E, 0x0B));
+            }
             StatusBadgeText.Foreground = new SolidColorBrush(Color.FromRgb(0xF5, 0x9E, 0x0B));
-            StatusBadgeText.Text = "⏸ На паузе";
-            QuickPauseButton.Content = "▶ Возобновить";
+            StatusBadgeText.Text = "На паузе";
+
+            if (QuickPauseIcon != null && TryFindResource("IconPlay") is Geometry playGeom)
+            {
+                QuickPauseIcon.Data = playGeom;
+            }
+            QuickPauseText.Text = "Возобновить";
             NextTriggerTextBlock.Text = "Таймер остановлен (на паузе)";
         }
         else
         {
             StatusBadgeBorder.Background = new SolidColorBrush(Color.FromArgb(0x1A, 0x10, 0xB9, 0x81));
             StatusBadgeBorder.BorderBrush = new SolidColorBrush(Color.FromRgb(0x10, 0xB9, 0x81));
+            if (StatusBadgeDot != null)
+            {
+                StatusBadgeDot.Fill = new SolidColorBrush(Color.FromRgb(0x10, 0xB9, 0x81));
+            }
             StatusBadgeText.Foreground = new SolidColorBrush(Color.FromRgb(0x10, 0xB9, 0x81));
-            StatusBadgeText.Text = "● Активен";
-            QuickPauseButton.Content = "⏸ Пауза";
+            StatusBadgeText.Text = "Активен";
+
+            if (QuickPauseIcon != null && TryFindResource("IconPause") is Geometry pauseGeom)
+            {
+                QuickPauseIcon.Data = pauseGeom;
+            }
+            QuickPauseText.Text = "Пауза";
 
             var next = _scheduler?.NextTriggerTimeLocal ?? _coordinator?.Scheduler?.NextTriggerTimeLocal;
             if (next.HasValue)
@@ -206,19 +232,19 @@ public partial class SettingsWindow : Window
         switch (status)
         {
             case HotkeyValidationState.Valid:
-                statusBlock.Text = "✓ Сочетание доступно";
+                statusBlock.Text = "Сочетание доступно";
                 statusBlock.Foreground = new SolidColorBrush(Color.FromRgb(0x10, 0xB9, 0x81));
                 break;
             case HotkeyValidationState.OccupiedByAnotherApp:
-                statusBlock.Text = "⚠️ Сочетание занято другой программой";
+                statusBlock.Text = "Сочетание занято другой программой";
                 statusBlock.Foreground = new SolidColorBrush(Color.FromRgb(0xEF, 0x44, 0x44));
                 break;
             case HotkeyValidationState.InvalidFormat:
-                statusBlock.Text = "⚠️ Некорректный формат (например: Ctrl+Alt+P)";
+                statusBlock.Text = "Некорректный формат (например: Ctrl+Alt+P)";
                 statusBlock.Foreground = new SolidColorBrush(Color.FromRgb(0xF5, 0x9E, 0x0B));
                 break;
             case HotkeyValidationState.Empty:
-                statusBlock.Text = "⚠️ Введите сочетание клавиш";
+                statusBlock.Text = "Введите сочетание клавиш";
                 statusBlock.Foreground = new SolidColorBrush(Color.FromRgb(0xF5, 0x9E, 0x0B));
                 break;
         }
@@ -244,6 +270,7 @@ public partial class SettingsWindow : Window
             }
 
             RefreshVideosList();
+            ShowToast("Видео успешно добавлены в библиотеку", isSuccess: true);
         }
     }
 
@@ -271,12 +298,7 @@ public partial class SettingsWindow : Window
         {
             if (!File.Exists(vm.FilePath))
             {
-                System.Windows.MessageBox.Show(
-                    this,
-                    $"Файл не найден на диске:\n{vm.FilePath}",
-                    "Ошибка воспроизведения",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Warning);
+                ShowToast($"Файл не найден на диске: {Path.GetFileName(vm.FilePath)}", isSuccess: false);
                 return;
             }
 
@@ -345,14 +367,18 @@ public partial class SettingsWindow : Window
         // Apply startup configuration to Windows Registry
         StartupManager.SetRunOnStartup(runOnStartup);
 
-        System.Windows.MessageBox.Show(
-            this,
-            "Настройки успешно сохранены!",
-            "Personal Provocateur",
-            MessageBoxButton.OK,
-            MessageBoxImage.Information);
-
-        Close();
+        // Display floating macOS Toast HUD and smoothly close after delay
+        ShowToast("Настройки успешно сохранены", isSuccess: true, onCompleted: () =>
+        {
+            try
+            {
+                Close();
+            }
+            catch
+            {
+                // Window might already be closed by user
+            }
+        });
     }
 
     private void CloseButton_Click(object sender, RoutedEventArgs e)
@@ -360,9 +386,99 @@ public partial class SettingsWindow : Window
         Close();
     }
 
+    private void TitleBar_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (e.ChangedButton == MouseButton.Left)
+        {
+            DragMove();
+        }
+    }
+
+    private void WindowMinimizeButton_Click(object sender, RoutedEventArgs e)
+    {
+        WindowState = WindowState.Minimized;
+    }
+
+    private void WindowCloseButton_Click(object sender, RoutedEventArgs e)
+    {
+        Close();
+    }
+
+    /// <summary>
+    /// Displays a floating macOS Toast HUD banner with icon and smooth fade animation.
+    /// </summary>
+    /// <param name="message">Notification message text.</param>
+    /// <param name="isSuccess">True for green success indicator; false for red warning indicator.</param>
+    /// <param name="onCompleted">Optional callback invoked after the toast finishes its display cycle.</param>
+    public void ShowToast(string message, bool isSuccess = true, Action? onCompleted = null)
+    {
+        if (ToastHudBorder == null || ToastMessageTextBlock == null)
+        {
+            onCompleted?.Invoke();
+            return;
+        }
+
+        _toastTimer?.Stop();
+
+        ToastMessageTextBlock.Text = message;
+
+        if (isSuccess)
+        {
+            if (TryFindResource("SuccessBrush") is Brush successBrush)
+            {
+                ToastHudBorder.BorderBrush = successBrush;
+                if (ToastIcon != null)
+                {
+                    ToastIcon.Fill = successBrush;
+                }
+            }
+            if (ToastIcon != null && TryFindResource("IconCheckCircle") is Geometry checkGeom)
+            {
+                ToastIcon.Data = checkGeom;
+            }
+        }
+        else
+        {
+            if (TryFindResource("DangerBrush") is Brush dangerBrush)
+            {
+                ToastHudBorder.BorderBrush = dangerBrush;
+                if (ToastIcon != null)
+                {
+                    ToastIcon.Fill = dangerBrush;
+                }
+            }
+            if (ToastIcon != null && TryFindResource("IconAlert") is Geometry alertGeom)
+            {
+                ToastIcon.Data = alertGeom;
+            }
+        }
+
+        ToastHudBorder.Visibility = Visibility.Visible;
+        var fadeIn = new DoubleAnimation(0.0, 1.0, TimeSpan.FromMilliseconds(200));
+        ToastHudBorder.BeginAnimation(UIElement.OpacityProperty, fadeIn);
+
+        _toastTimer = new DispatcherTimer
+        {
+            Interval = TimeSpan.FromSeconds(2.2)
+        };
+        _toastTimer.Tick += (s, e) =>
+        {
+            _toastTimer.Stop();
+            var fadeOut = new DoubleAnimation(1.0, 0.0, TimeSpan.FromMilliseconds(300));
+            fadeOut.Completed += (_, _) =>
+            {
+                ToastHudBorder.Visibility = Visibility.Collapsed;
+                onCompleted?.Invoke();
+            };
+            ToastHudBorder.BeginAnimation(UIElement.OpacityProperty, fadeOut);
+        };
+        _toastTimer.Start();
+    }
+
     protected override void OnClosed(EventArgs e)
     {
         _statusTimer?.Stop();
+        _toastTimer?.Stop();
         base.OnClosed(e);
     }
 }
@@ -372,10 +488,17 @@ public partial class SettingsWindow : Window
 /// </summary>
 public class VideoItemViewModel
 {
-    private static readonly Brush AvailableBg = new SolidColorBrush(Color.FromArgb(0x1A, 0x10, 0xB9, 0x81));
-    private static readonly Brush AvailableFg = new SolidColorBrush(Color.FromRgb(0x10, 0xB9, 0x81));
-    private static readonly Brush MissingBg = new SolidColorBrush(Color.FromArgb(0x1A, 0xEF, 0x44, 0x44));
-    private static readonly Brush MissingFg = new SolidColorBrush(Color.FromRgb(0xEF, 0x44, 0x44));
+    private static readonly Brush AvailableBg = CreateFrozenBrush(0x1A, 0x10, 0xB9, 0x81);
+    private static readonly Brush AvailableFg = CreateFrozenBrush(0xFF, 0x10, 0xB9, 0x81);
+    private static readonly Brush MissingBg = CreateFrozenBrush(0x1A, 0xEF, 0x44, 0x44);
+    private static readonly Brush MissingFg = CreateFrozenBrush(0xFF, 0xEF, 0x44, 0x44);
+
+    private static Brush CreateFrozenBrush(byte a, byte r, byte g, byte b)
+    {
+        var brush = new SolidColorBrush(Color.FromArgb(a, r, g, b));
+        brush.Freeze();
+        return brush;
+    }
 
     public VideoItem Item { get; }
     public bool IsAvailable { get; }

@@ -78,74 +78,8 @@ public class OverlayWindowTests : IDisposable
         }
     }
 
-    [Theory]
-    [InlineData(1920, 1080)]
-    [InlineData(2560, 1440)]
-    [InlineData(3840, 2160)]
-    [InlineData(1366, 768)]
-    [InlineData(1280, 720)]
-    [InlineData(800, 600)]
-    public void CalculateSafeMascotPosition_StaysWithinSafeBounds(double screenWidth, double screenHeight)
-    {
-        const double mascotWidth = 260.0;
-        const double mascotHeight = 260.0;
-        const double minEdgeMargin = 60.0;
-        const double minTopMargin = 80.0;
-        const double minBottomMargin = 120.0;
-
-        for (int seed = 0; seed < 100; seed++)
-        {
-            var rng = new Random(seed);
-            var (left, top) = OverlayWindow.CalculateSafeMascotPosition(
-                screenWidth,
-                screenHeight,
-                mascotWidth,
-                mascotHeight,
-                rng);
-
-            // Left edge safe margin
-            Assert.True(left >= minEdgeMargin, $"Left {left} < {minEdgeMargin} for screen {screenWidth}x{screenHeight}");
-
-            // Right edge safe margin (screenWidth - left - mascotWidth >= minEdgeMargin)
-            double rightRemaining = screenWidth - (left + mascotWidth);
-            Assert.True(rightRemaining >= minEdgeMargin || left <= minEdgeMargin + 20,
-                $"Right remaining {rightRemaining} < {minEdgeMargin} for screen {screenWidth}x{screenHeight}");
-
-            // Top edge safe margin
-            Assert.True(top >= minTopMargin, $"Top {top} < {minTopMargin} for screen {screenWidth}x{screenHeight}");
-
-            // Bottom edge safe margin (accounting for taskbar)
-            double bottomRemaining = screenHeight - (top + mascotHeight);
-            Assert.True(bottomRemaining >= minBottomMargin || top <= minTopMargin + 20,
-                $"Bottom remaining {bottomRemaining} < {minBottomMargin} for screen {screenWidth}x{screenHeight}");
-        }
-    }
-
     [Fact]
-    public void CalculateSafeMascotPosition_AllCandidateZonesCovered()
-    {
-        const double screenWidth = 1920.0;
-        const double screenHeight = 1080.0;
-        var zonesHit = new bool[5];
-
-        for (int i = 0; i < 50; i++)
-        {
-            var rng = new Random(i * 37 + 11);
-            var (left, top) = OverlayWindow.CalculateSafeMascotPosition(screenWidth, screenHeight, 260, 260, rng);
-
-            // Classify which zone was generated
-            if (left > 1400 && top > 600) zonesHit[0] = true; // Bottom-Right
-            else if (left < 200 && top > 600) zonesHit[1] = true; // Bottom-Left
-            else if (left >= 600 && left <= 1100 && top > 600) zonesHit[2] = true; // Bottom-Center
-            else if (left > 1400 && top <= 600) zonesHit[3] = true; // Right-Side
-            else if (left < 200 && top <= 600) zonesHit[4] = true; // Left-Side
-        }
-
-        Assert.All(zonesHit, hit => Assert.True(hit));
-    }
-
-    [Fact]
-    public void OverlayWindow_Instantiation_InitializesMascotControlAndCanvas()
+    public void OverlayWindow_Instantiation_InitializesTopCenterMascotControl()
     {
         RunInSta(() =>
         {
@@ -156,11 +90,12 @@ public class OverlayWindowTests : IDisposable
 
             var window = new OverlayWindow(coordinator, store);
 
-            Assert.NotNull(window.MascotCanvas);
             Assert.NotNull(window.Mascot);
             Assert.False(window.CanClose);
             Assert.False(window.IsClickHandled);
-            Assert.Equal(Visibility.Visible, window.MascotCanvas.Visibility);
+            Assert.Equal(System.Windows.HorizontalAlignment.Center, window.Mascot.HorizontalAlignment);
+            Assert.Equal(System.Windows.VerticalAlignment.Top, window.Mascot.VerticalAlignment);
+            Assert.Equal(new Thickness(0), window.Mascot.Margin);
             Assert.Equal(Visibility.Collapsed, window.EmptyLibraryNotice.Visibility);
 
             window.SafeClose();
@@ -168,7 +103,7 @@ public class OverlayWindowTests : IDisposable
     }
 
     [Fact]
-    public void PositionMascot_SetsCanvasLeftAndTopWithinSafeBounds()
+    public void PositionMascot_EnsuresTopCenterAlignment()
     {
         RunInSta(() =>
         {
@@ -177,25 +112,70 @@ public class OverlayWindowTests : IDisposable
             var videoLib = new VideoLibraryService(store);
             using var coordinator = new OverlayCoordinator(scheduler, videoLib, store);
 
-            var window = new OverlayWindow(coordinator, store)
-            {
-                Width = 1920,
-                Height = 1080
-            };
+            var window = new OverlayWindow(coordinator, store);
+            window.PositionMascot();
 
-            window.PositionMascot(new Random(42));
-
-            double left = Canvas.GetLeft(window.Mascot);
-            double top = Canvas.GetTop(window.Mascot);
-
-            Assert.False(double.IsNaN(left));
-            Assert.False(double.IsNaN(top));
-            Assert.True(left >= 60.0);
-            Assert.True(top >= 80.0);
-            Assert.True(left + 260.0 <= 1920.0 - 60.0);
-            Assert.True(top + 260.0 <= 1080.0 - 120.0);
+            Assert.Equal(System.Windows.HorizontalAlignment.Center, window.Mascot.HorizontalAlignment);
+            Assert.Equal(System.Windows.VerticalAlignment.Top, window.Mascot.VerticalAlignment);
+            Assert.Equal(new Thickness(0), window.Mascot.Margin);
 
             window.SafeClose();
+        });
+    }
+
+    [Theory]
+    [InlineData(1920, 1080)]
+    [InlineData(2560, 1440)]
+    [InlineData(3840, 2160)]
+    [InlineData(1366, 768)]
+    [InlineData(1280, 720)]
+    public void CalculateSafeMascotPosition_CalculatesTopCenterCoordinates(double screenWidth, double screenHeight)
+    {
+        const double mascotWidth = 260.0;
+        const double mascotHeight = 260.0;
+
+        var (left, top) = OverlayWindow.CalculateSafeMascotPosition(screenWidth, screenHeight, mascotWidth, mascotHeight);
+
+        Assert.Equal(0.0, top);
+        double expectedLeft = (screenWidth - mascotWidth) / 2.0;
+        Assert.Equal(expectedLeft, left);
+    }
+
+    [Fact]
+    public void BackdropClick_DuringVideoPlaying_DismissesSession()
+    {
+        RunInSta(() =>
+        {
+            var store = CreateTestSettingsStore();
+            var scheduler = new RandomReminderScheduler();
+            var videoLib = new VideoLibraryService(store, fileExistsChecker: _ => true);
+
+            OverlayWindow? overlay = null;
+            using var coordinator = new OverlayCoordinator(
+                scheduler,
+                videoLib,
+                store,
+                overlayWindowFactory: coord => overlay = new OverlayWindow(coord, store),
+                videoWindowFactory: coord => new VideoWindow(coord, store),
+                dispatcherInvoker: a => a(),
+                fileExistsChecker: _ => true);
+
+            coordinator.TriggerProvocation(isManualTest: true);
+            Assert.NotNull(overlay);
+            Assert.Equal(SessionState.MascotOverlayActive, coordinator.CurrentState);
+
+            // Backdrop click while mascot is active does not dismiss
+            overlay.HandleBackdropClick();
+            Assert.Equal(SessionState.MascotOverlayActive, coordinator.CurrentState);
+
+            // Transition to video playing
+            videoLib.AddVideo("sample.mp4", "Sample Video");
+            coordinator.OnMascotClicked();
+            Assert.Equal(SessionState.VideoPlaying, coordinator.CurrentState);
+
+            // Now click on backdrop dismisses active video session
+            overlay.HandleBackdropClick();
+            Assert.Equal(SessionState.BackgroundIdle, coordinator.CurrentState);
         });
     }
 
@@ -258,7 +238,7 @@ public class OverlayWindowTests : IDisposable
     }
 
     [Fact]
-    public void ShowEmptyLibraryNotice_HidesMascotCanvas_StopsAnimations_AndShowsNotice()
+    public void ShowEmptyLibraryNotice_HidesMascot_StopsAnimations_AndShowsNotice()
     {
         RunInSta(() =>
         {
@@ -272,7 +252,7 @@ public class OverlayWindowTests : IDisposable
 
             window.ShowEmptyLibraryNotice();
 
-            Assert.Equal(Visibility.Collapsed, window.MascotCanvas.Visibility);
+            Assert.Equal(Visibility.Collapsed, window.Mascot.Visibility);
             Assert.Equal(Visibility.Visible, window.EmptyLibraryNotice.Visibility);
             Assert.Equal(1.0, window.Mascot.MascotScale.ScaleX);
             Assert.Equal(1.0, window.Mascot.MascotScale.ScaleY);

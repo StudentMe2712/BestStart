@@ -485,11 +485,11 @@ public class OverlayCoordinatorTests : IDisposable
             using var coordinator = new OverlayCoordinator(scheduler, videoLib, store);
 
             var window = new OverlayWindow(coordinator, store);
-            Assert.Equal(System.Windows.Visibility.Visible, window.MascotCanvas.Visibility);
+            Assert.Equal(System.Windows.Visibility.Visible, window.Mascot.Visibility);
             Assert.Equal(System.Windows.Visibility.Collapsed, window.EmptyLibraryNotice.Visibility);
 
             window.ShowEmptyLibraryNotice();
-            Assert.Equal(System.Windows.Visibility.Collapsed, window.MascotCanvas.Visibility);
+            Assert.Equal(System.Windows.Visibility.Collapsed, window.Mascot.Visibility);
             Assert.Equal(System.Windows.Visibility.Visible, window.EmptyLibraryNotice.Visibility);
 
             window.SafeClose();
@@ -578,11 +578,11 @@ public class OverlayCoordinatorTests : IDisposable
 
             coordinator.TriggerProvocation(isManualTest: true);
             Assert.NotNull(overlayWin);
-            Assert.Equal(System.Windows.Visibility.Visible, overlayWin.MascotCanvas.Visibility);
+            Assert.Equal(System.Windows.Visibility.Visible, overlayWin.Mascot.Visibility);
 
             coordinator.OnMascotClicked();
 
-            Assert.Equal(System.Windows.Visibility.Collapsed, overlayWin.MascotCanvas.Visibility);
+            Assert.Equal(System.Windows.Visibility.Collapsed, overlayWin.Mascot.Visibility);
             Assert.Equal(System.Windows.Visibility.Visible, overlayWin.EmptyLibraryNotice.Visibility);
 
             overlayWin.SafeClose();
@@ -649,7 +649,7 @@ public class OverlayCoordinatorTests : IDisposable
 
             coordinator.OnVideoPlaybackFailed(onlyVideo);
             Assert.NotNull(overlayWin);
-            Assert.Equal(System.Windows.Visibility.Collapsed, overlayWin.MascotCanvas.Visibility);
+            Assert.Equal(System.Windows.Visibility.Collapsed, overlayWin.Mascot.Visibility);
             Assert.Equal(System.Windows.Visibility.Visible, overlayWin.EmptyLibraryNotice.Visibility);
 
             overlayWin.SafeClose();

@@ -1,5 +1,7 @@
 using System.Windows;
 using System.Windows.Media;
+using System.Windows.Shapes;
+using Brush = System.Windows.Media.Brush;
 using Color = System.Windows.Media.Color;
 using Size = System.Windows.Size;
 using PersonalProvocateur.App.Models;
@@ -76,8 +78,8 @@ public partial class TrayPopupMenu : Window
         RefreshStatus();
 
         Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
-        double targetWidth = DesiredSize.Width > 0 ? DesiredSize.Width : 260;
-        double targetHeight = DesiredSize.Height > 0 ? DesiredSize.Height : 240;
+        double targetWidth = DesiredSize.Width > 0 ? DesiredSize.Width : 280;
+        double targetHeight = DesiredSize.Height > 0 ? DesiredSize.Height : 260;
 
         var workArea = SystemParameters.WorkArea;
 
@@ -116,6 +118,7 @@ public partial class TrayPopupMenu : Window
         if (_coordinator == null || _scheduler == null)
         {
             NextTriggerTextBlock.Text = "Следующий: --:--";
+            SetPauseResumeState(false);
             return;
         }
 
@@ -123,25 +126,58 @@ public partial class TrayPopupMenu : Window
         {
             StatusDot.Fill = new SolidColorBrush(Color.FromRgb(0x8B, 0x5C, 0xF6));
             NextTriggerTextBlock.Text = "Статус: Оверлей активен";
-            PauseResumeButton.Content = "⏸ Приостановить";
+            SetPauseResumeState(false);
         }
         else if (_scheduler.IsPaused)
         {
             StatusDot.Fill = new SolidColorBrush(Color.FromRgb(0xEF, 0x44, 0x44));
             NextTriggerTextBlock.Text = "Статус: На паузе";
-            PauseResumeButton.Content = "▶ Возобновить";
+            SetPauseResumeState(true);
         }
         else if (_scheduler.NextTriggerTimeLocal.HasValue)
         {
             StatusDot.Fill = new SolidColorBrush(Color.FromRgb(0x10, 0xB9, 0x81));
             NextTriggerTextBlock.Text = $"Следующий: {_scheduler.NextTriggerTimeLocal.Value:HH:mm:ss}";
-            PauseResumeButton.Content = "⏸ Приостановить";
+            SetPauseResumeState(false);
         }
         else
         {
             StatusDot.Fill = new SolidColorBrush(Color.FromRgb(0x94, 0xA3, 0xB8));
             NextTriggerTextBlock.Text = "Статус: Ожидание...";
-            PauseResumeButton.Content = "⏸ Приостановить";
+            SetPauseResumeState(false);
+        }
+    }
+
+    private void SetPauseResumeState(bool isPaused)
+    {
+        if (PauseResumeIcon == null || PauseResumeText == null)
+        {
+            return;
+        }
+
+        if (isPaused)
+        {
+            if (TryFindResource("IconPlay") is Geometry playGeom)
+            {
+                PauseResumeIcon.Data = playGeom;
+            }
+            if (TryFindResource("AccentBrush") is Brush accentBrush)
+            {
+                PauseResumeIcon.Fill = accentBrush;
+            }
+            PauseResumeText.Text = "Возобновить";
+        }
+        else
+        {
+            if (TryFindResource("IconPause") is Geometry pauseGeom)
+            {
+                PauseResumeIcon.Data = pauseGeom;
+            }
+            if (TryFindResource("TextSecondaryBrush") is Brush secondaryBrush)
+            {
+                PauseResumeIcon.Fill = secondaryBrush;
+            }
+            PauseResumeText.Text = "Приостановить";
         }
     }
 

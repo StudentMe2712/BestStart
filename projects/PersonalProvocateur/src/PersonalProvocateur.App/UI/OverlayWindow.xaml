@@ -10,31 +10,36 @@
         Background="Transparent"
         Focusable="False"
         KeyboardNavigation.TabNavigation="None"
+        UseLayoutRounding="True"
+        SnapsToDevicePixels="True"
+        TextOptions.TextFormattingMode="Ideal"
+        TextOptions.TextRenderingMode="ClearType"
+        FontFamily="Segoe UI Variable Display, Segoe UI, sans-serif"
         Left="0" Top="0">
     <Window.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="Theme/Icons.xaml" />
                 <ResourceDictionary Source="Theme/DarkTheme.xaml" />
             </ResourceDictionary.MergedDictionaries>
         </ResourceDictionary>
     </Window.Resources>
-    <Grid x:Name="RootGrid" Focusable="False">
+    <Grid x:Name="RootGrid" Focusable="False" MouseLeftButtonDown="DimmingLayer_MouseLeftButtonDown">
         <!-- Dimming Background Layer -->
         <Rectangle x:Name="DimmingRectangle"
                    HorizontalAlignment="Stretch"
                    VerticalAlignment="Stretch"
                    Fill="#99000000"
-                   Focusable="False" />
+                   Focusable="False"
+                   MouseLeftButtonDown="DimmingLayer_MouseLeftButtonDown" />
 
-        <!-- Interactive 2D Mascot Provocateur (Clickable Canvas) -->
-        <Canvas x:Name="MascotCanvas"
-                HorizontalAlignment="Stretch"
-                VerticalAlignment="Stretch"
-                Focusable="False">
-            <controls:MascotControl x:Name="Mascot"
-                                    Focusable="False"
-                                    MouseLeftButtonUp="Mascot_MouseLeftButtonUp" />
-        </Canvas>
+        <!-- Interactive 2D Mascot Provocateur (Top-Center Notch Companion) -->
+        <controls:MascotControl x:Name="Mascot"
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Top"
+                                Margin="0,0,0,0"
+                                Focusable="False"
+                                MouseLeftButtonUp="Mascot_MouseLeftButtonUp" />
 
         <!-- Empty Library Notification Overlay (Shown if video library is empty) -->
         <Border x:Name="EmptyLibraryNotice"
@@ -51,13 +56,20 @@
                 <DropShadowEffect Color="#EF4444" BlurRadius="25" ShadowDepth="0" Opacity="0.5" />
             </Border.Effect>
             <StackPanel HorizontalAlignment="Center" Focusable="False">
-                <TextBlock Text="⚠️ Внимание"
-                           FontSize="20"
-                           FontWeight="Bold"
-                           Foreground="#EF4444"
-                           HorizontalAlignment="Center"
-                           Margin="0,0,0,12"
-                           Focusable="False" />
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,12" Focusable="False">
+                    <Path Data="{StaticResource IconAlert}"
+                          Fill="{StaticResource DangerBrush}"
+                          Stretch="Uniform"
+                          Width="20" Height="20"
+                          Margin="0,0,8,0"
+                          VerticalAlignment="Center" />
+                    <TextBlock Text="Внимание"
+                               FontSize="20"
+                               FontWeight="Bold"
+                               Foreground="{StaticResource DangerBrush}"
+                               VerticalAlignment="Center"
+                               Focusable="False" />
+                </StackPanel>
 
                 <TextBlock Text="Библиотека видео пуста или файлы недоступны."
                            FontSize="15"

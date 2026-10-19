@@ -1,69 +1,87 @@
 <UserControl x:Class="PersonalProvocateur.App.UI.Controls.MascotControl"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             Width="260" Height="260"
-             RenderTransformOrigin="0.5, 0.85"
+             Width="280" Height="260"
+             RenderTransformOrigin="0.5, 0.0"
              Cursor="Hand"
              Focusable="False"
              IsTabStop="False"
              KeyboardNavigation.IsTabStop="False"
              Background="Transparent">
-    <Grid Focusable="False" KeyboardNavigation.IsTabStop="False">
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="*" />
-        </Grid.RowDefinitions>
+    <Grid x:Name="RootLayout"
+          Focusable="False"
+          KeyboardNavigation.IsTabStop="False"
+          RenderTransformOrigin="0.5, 0.0">
+        <Grid.RenderTransform>
+            <TransformGroup>
+                <ScaleTransform x:Name="MascotScale" ScaleX="1.0" ScaleY="1.0" />
+                <RotateTransform x:Name="MascotRotate" Angle="0" />
+                <TranslateTransform x:Name="MascotTranslate" X="0" Y="0" />
+            </TransformGroup>
+        </Grid.RenderTransform>
 
-        <!-- Speech Bubble over mascot -->
-        <Border x:Name="SpeechBubbleBorder"
-                Grid.Row="0"
+        <!-- macOS Dynamic Island / Claude Top-Center Notch Capsule -->
+        <Border x:Name="NotchCapsule"
                 HorizontalAlignment="Center"
                 VerticalAlignment="Top"
-                Background="#1E1B2E"
-                BorderBrush="#8B5CF6"
-                BorderThickness="1.5"
-                CornerRadius="14"
-                Padding="12,6"
-                Margin="0,0,0,4"
+                Background="#181A24"
+                BorderBrush="#34384E"
+                BorderThickness="1,0,1,1"
+                CornerRadius="0,0,24,24"
+                Padding="16,6,16,12"
                 Focusable="False"
                 KeyboardNavigation.IsTabStop="False">
             <Border.Effect>
-                <DropShadowEffect Color="#8B5CF6" BlurRadius="12" ShadowDepth="0" Opacity="0.5" />
+                <DropShadowEffect Color="#8B5CF6" BlurRadius="22" ShadowDepth="4" Opacity="0.40" Direction="270" />
             </Border.Effect>
-            <TextBlock x:Name="SpeechBubbleText"
-                       Text="Ну давай, кликни!"
-                       Foreground="#F8FAFC"
-                       FontSize="13"
-                       FontWeight="SemiBold"
-                       TextAlignment="Center"
-                       TextWrapping="Wrap"
-                       MaxWidth="230"
-                       Focusable="False"
-                       KeyboardNavigation.IsTabStop="False" />
+
+            <StackPanel HorizontalAlignment="Center" Focusable="False">
+                <!-- Top Notch Grip Accent -->
+                <Border Width="38" Height="4"
+                        Background="#34384E"
+                        CornerRadius="2"
+                        HorizontalAlignment="Center"
+                        Margin="0,0,0,4"
+                        Focusable="False" />
+
+                <!-- Character Sprite Container -->
+                <Grid x:Name="MascotContainer"
+                      HorizontalAlignment="Center"
+                      VerticalAlignment="Center"
+                      Focusable="False"
+                      KeyboardNavigation.IsTabStop="False">
+                    <Image x:Name="MascotImage"
+                           Width="164"
+                           Height="164"
+                           Stretch="Uniform"
+                           Focusable="False"
+                           KeyboardNavigation.IsTabStop="False" />
+                </Grid>
+
+                <!-- Speech Bubble in Dark Glass Aesthetic -->
+                <Border x:Name="SpeechBubbleBorder"
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Top"
+                        Background="#10111A"
+                        BorderBrush="#8B5CF6"
+                        BorderThickness="1"
+                        CornerRadius="12"
+                        Padding="14,6"
+                        Margin="0,4,0,0"
+                        Focusable="False"
+                        KeyboardNavigation.IsTabStop="False">
+                    <TextBlock x:Name="SpeechBubbleText"
+                               Text="Ну давай, кликни!"
+                               Foreground="#F8FAFC"
+                               FontSize="12"
+                               FontWeight="SemiBold"
+                               TextAlignment="Center"
+                               TextWrapping="Wrap"
+                               MaxWidth="220"
+                               Focusable="False"
+                               KeyboardNavigation.IsTabStop="False" />
+                </Border>
+            </StackPanel>
         </Border>
-
-        <!-- Mascot Character Container with Transforms -->
-        <Grid Grid.Row="1"
-              x:Name="MascotContainer"
-              RenderTransformOrigin="0.5, 0.85"
-              HorizontalAlignment="Center"
-              VerticalAlignment="Center"
-              Focusable="False"
-              KeyboardNavigation.IsTabStop="False">
-            <Grid.RenderTransform>
-                <TransformGroup>
-                    <ScaleTransform x:Name="MascotScale" ScaleX="1.0" ScaleY="1.0" />
-                    <RotateTransform x:Name="MascotRotate" Angle="0" />
-                    <TranslateTransform x:Name="MascotTranslate" X="0" Y="0" />
-                </TransformGroup>
-            </Grid.RenderTransform>
-
-            <Image x:Name="MascotImage"
-                   Width="190"
-                   Height="190"
-                   Stretch="Uniform"
-                   Focusable="False"
-                   KeyboardNavigation.IsTabStop="False" />
-        </Grid>
     </Grid>
 </UserControl>

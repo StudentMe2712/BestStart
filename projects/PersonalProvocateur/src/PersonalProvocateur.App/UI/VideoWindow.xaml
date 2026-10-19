@@ -8,23 +8,38 @@
         ShowInTaskbar="False"
         WindowStartupLocation="CenterScreen"
         Background="#12131A"
+        UseLayoutRounding="True"
+        SnapsToDevicePixels="True"
+        TextOptions.TextFormattingMode="Ideal"
+        TextOptions.TextRenderingMode="ClearType"
+        FontFamily="Segoe UI Variable Display, Segoe UI, sans-serif"
         KeyDown="Window_KeyDown">
     <Window.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="Theme/Icons.xaml" />
                 <ResourceDictionary Source="Theme/DarkTheme.xaml" />
             </ResourceDictionary.MergedDictionaries>
         </ResourceDictionary>
     </Window.Resources>
-    <Border BorderBrush="#8B5CF6" BorderThickness="2" SnapsToDevicePixels="True">
-        <Grid Background="#12131A">
+    <Border Background="#12131A"
+            BorderBrush="#34384E"
+            BorderThickness="1"
+            CornerRadius="16"
+            SnapsToDevicePixels="True">
+        <Border.Effect>
+            <DropShadowEffect Color="#000000" BlurRadius="28" ShadowDepth="6" Opacity="0.60" />
+        </Border.Effect>
+
+        <Grid Background="#12131A" ClipToBounds="True">
             <Grid.RowDefinitions>
                 <RowDefinition Height="46" />
                 <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
 
-            <!-- Top Header Bar -->
-            <Grid Grid.Row="0" Background="#1C1D26">
+            <!-- Top Header Bar with Floating Close Button -->
+            <Grid Grid.Row="0" Background="#181A24">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="*" />
@@ -51,28 +66,36 @@
                            HorizontalAlignment="Center"
                            Margin="16,0" />
 
+                <!-- Floating Close Button -->
                 <Button x:Name="CloseButton"
                         Grid.Column="2"
-                        Content="✕"
-                        Width="46"
-                        Height="46"
-                        FontSize="15"
-                        FontWeight="Bold"
+                        Width="32"
+                        Height="32"
+                        Margin="0,0,12,0"
                         Foreground="#94A3B8"
-                        Background="Transparent"
+                        Background="#26293A"
                         BorderThickness="0"
                         Cursor="Hand"
                         Click="CloseButton_Click"
                         ToolTip="Закрыть видео (Esc)">
                     <Button.Template>
                         <ControlTemplate TargetType="Button">
-                            <Border x:Name="border" Background="{TemplateBinding Background}">
-                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            <Border x:Name="border"
+                                    Background="{TemplateBinding Background}"
+                                    CornerRadius="16"
+                                    SnapsToDevicePixels="True">
+                                <Path x:Name="closeIcon"
+                                      Data="{StaticResource IconClose}"
+                                      Fill="{TemplateBinding Foreground}"
+                                      Stretch="Uniform"
+                                      Width="11" Height="11"
+                                      HorizontalAlignment="Center"
+                                      VerticalAlignment="Center" />
                             </Border>
                             <ControlTemplate.Triggers>
                                 <Trigger Property="IsMouseOver" Value="True">
                                     <Setter TargetName="border" Property="Background" Value="#EF4444" />
-                                    <Setter Property="Foreground" Value="#FFFFFF" />
+                                    <Setter TargetName="closeIcon" Property="Fill" Value="#FFFFFF" />
                                 </Trigger>
                             </ControlTemplate.Triggers>
                         </ControlTemplate>
@@ -92,6 +115,29 @@
                               MediaEnded="Player_MediaEnded"
                               MediaFailed="Player_MediaFailed" />
             </Grid>
+
+            <!-- Bottom Playback Progress Bar (Purple accent fill) -->
+            <ProgressBar x:Name="PlaybackProgressBar"
+                         Grid.Row="2"
+                         Height="4"
+                         Minimum="0"
+                         Maximum="100"
+                         Value="0"
+                         Background="#181A24"
+                         Foreground="#8B5CF6"
+                         BorderThickness="0">
+                <ProgressBar.Template>
+                    <ControlTemplate TargetType="ProgressBar">
+                        <Grid Background="{TemplateBinding Background}">
+                            <Border x:Name="PART_Track" />
+                            <Border x:Name="PART_Indicator"
+                                    HorizontalAlignment="Left"
+                                    Background="{TemplateBinding Foreground}"
+                                    CornerRadius="0,2,2,0" />
+                        </Grid>
+                    </ControlTemplate>
+                </ProgressBar.Template>
+            </ProgressBar>
         </Grid>
     </Border>
 </Window>

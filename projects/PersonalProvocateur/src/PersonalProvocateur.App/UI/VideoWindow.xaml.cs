@@ -1,7 +1,9 @@
+using System;
 using System.ComponentModel;
 using System.IO;
 using System.Windows;
 using System.Windows.Input;
+using System.Windows.Threading;
 using PersonalProvocateur.App.Services;
 using PersonalProvocateur.App.Storage;
 
@@ -14,6 +16,12 @@ public partial class VideoWindow : Window
 {
     private readonly OverlayCoordinator? _coordinator;
     private readonly SettingsStore? _settingsStore;
+    private readonly DispatcherTimer _playbackWatchdogTimer;
+
+    /// <summary>
+    /// Gets the playback watchdog timer instance.
+    /// </summary>
+    public DispatcherTimer PlaybackWatchdogTimer => _playbackWatchdogTimer;
 
     /// <summary>
     /// Initializes a new instance of <see cref="VideoWindow"/>.
@@ -26,6 +34,12 @@ public partial class VideoWindow : Window
 
         _coordinator = coordinator;
         _settingsStore = settingsStore;
+
+        _playbackWatchdogTimer = new DispatcherTimer
+        {
+            Interval = TimeSpan.FromMilliseconds(200)
+        };
+        _playbackWatchdogTimer.Tick += OnPlaybackWatchdogTick;
 
         Loaded += OnLoaded;
         Microsoft.Win32.SystemEvents.DisplaySettingsChanged += OnDisplaySettingsChanged;
@@ -80,6 +94,9 @@ public partial class VideoWindow : Window
         double volume = _settingsStore?.CurrentSettings?.VideoVolume ?? 0.85;
         Player.Volume = Math.Clamp(volume, 0.0, 1.0);
 
+        PlaybackProgressBar.Value = 0;
+        _playbackWatchdogTimer.Start();
+
         try
         {
             var absolutePath = Path.GetFullPath(filePath);
@@ -88,23 +105,53 @@ public partial class VideoWindow : Window
         }
         catch
         {
+            _playbackWatchdogTimer.Stop();
             // If URI creation or initial play fails, complete session gracefully
             _coordinator?.OnVideoPlaybackFailed(filePath);
         }
     }
 
+    /// <summary>
+    /// Checks playback progress, updates the progress bar, and enforces 100% reliable
+    /// auto-completion when the video reaches its natural duration (ADR-008).
+    /// </summary>
+    public void CheckPlaybackProgress()
+    {
+        if (Player.NaturalDuration.HasTimeSpan && Player.NaturalDuration.TimeSpan.TotalSeconds > 0)
+        {
+            double totalSeconds = Player.NaturalDuration.TimeSpan.TotalSeconds;
+            double currentSeconds = Player.Position.TotalSeconds;
+            double progress = Math.Clamp((currentSeconds / totalSeconds) * 100.0, 0.0, 100.0);
+            PlaybackProgressBar.Value = progress;
+
+            if (Player.Position >= Player.NaturalDuration.TimeSpan - TimeSpan.FromMilliseconds(150))
+            {
+                _playbackWatchdogTimer.Stop();
+                _coordinator?.CompleteSession();
+            }
+        }
+    }
+
+    private void OnPlaybackWatchdogTick(object? sender, EventArgs e)
+    {
+        CheckPlaybackProgress();
+    }
+
     private void Player_MediaOpened(object sender, RoutedEventArgs e)
     {
+        _playbackWatchdogTimer.Start();
         Player.Play();
     }
 
     private void Player_MediaEnded(object sender, RoutedEventArgs e)
     {
+        _playbackWatchdogTimer.Stop();
         _coordinator?.CompleteSession();
     }
 
     private void Player_MediaFailed(object? sender, ExceptionRoutedEventArgs e)
     {
+        _playbackWatchdogTimer.Stop();
         // Automatically switch to next video or cleanly complete without crashing
         string failedPath = Player.Source?.LocalPath ?? string.Empty;
         if (_coordinator != null)
@@ -119,6 +166,7 @@ public partial class VideoWindow : Window
 
     private void CloseButton_Click(object sender, RoutedEventArgs e)
     {
+        _playbackWatchdogTimer.Stop();
         _coordinator?.CompleteSession();
     }
 
@@ -126,6 +174,7 @@ public partial class VideoWindow : Window
     {
         if (e.Key == Key.Escape)
         {
+            _playbackWatchdogTimer.Stop();
             _coordinator?.CompleteSession();
             e.Handled = true;
         }
@@ -133,6 +182,7 @@ public partial class VideoWindow : Window
 
     protected override void OnClosing(CancelEventArgs e)
     {
+        _playbackWatchdogTimer.Stop();
         try
         {
             Player.Stop();
@@ -148,6 +198,7 @@ public partial class VideoWindow : Window
 
     protected override void OnClosed(EventArgs e)
     {
+        _playbackWatchdogTimer.Stop();
         Microsoft.Win32.SystemEvents.DisplaySettingsChanged -= OnDisplaySettingsChanged;
         base.OnClosed(e);
     }

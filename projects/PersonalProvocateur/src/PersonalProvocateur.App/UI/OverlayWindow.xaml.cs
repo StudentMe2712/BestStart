@@ -74,32 +74,28 @@ public partial class OverlayWindow : Window
     }
 
     /// <summary>
-    /// Positions the mascot control at a randomized safe position on the overlay canvas.
+    /// Positions the mascot control at the top-center edge of the screen (macOS notch companion style).
     /// </summary>
-    /// <param name="random">Optional random generator for deterministic testing.</param>
+    /// <param name="random">Optional random generator for test compatibility.</param>
     public void PositionMascot(Random? random = null)
     {
-        double screenWidth = Width > 0 ? Width : SystemParameters.PrimaryScreenWidth;
-        double screenHeight = Height > 0 ? Height : SystemParameters.PrimaryScreenHeight;
-
-        double mascotWidth = !double.IsNaN(Mascot.Width) && Mascot.Width > 0 ? Mascot.Width : 260.0;
-        double mascotHeight = !double.IsNaN(Mascot.Height) && Mascot.Height > 0 ? Mascot.Height : 260.0;
-
-        var (left, top) = CalculateSafeMascotPosition(screenWidth, screenHeight, mascotWidth, mascotHeight, random);
-        Canvas.SetLeft(Mascot, left);
-        Canvas.SetTop(Mascot, top);
+        if (Mascot != null)
+        {
+            Mascot.HorizontalAlignment = System.Windows.HorizontalAlignment.Center;
+            Mascot.VerticalAlignment = System.Windows.VerticalAlignment.Top;
+            Mascot.Margin = new Thickness(0);
+        }
     }
 
     /// <summary>
-    /// Calculates a random safe spawn position for the mascot on screen,
-    /// respecting margins from screen edges and the Windows taskbar.
+    /// Calculates the top-center safe spawn position for the mascot on screen.
     /// </summary>
     /// <param name="screenWidth">Width of the target display.</param>
     /// <param name="screenHeight">Height of the target display.</param>
     /// <param name="mascotWidth">Width of the mascot control (default 260).</param>
     /// <param name="mascotHeight">Height of the mascot control (default 260).</param>
     /// <param name="random">Optional random generator for deterministic testing.</param>
-    /// <returns>A tuple with safe (Left, Top) coordinates.</returns>
+    /// <returns>A tuple with safe (Left, Top) coordinates centered at the top.</returns>
     public static (double Left, double Top) CalculateSafeMascotPosition(
         double screenWidth,
         double screenHeight,
@@ -107,65 +103,29 @@ public partial class OverlayWindow : Window
         double mascotHeight = 260,
         Random? random = null)
     {
-        var rng = random ?? Random.Shared;
-
-        // Minimum safe boundaries:
-        // Left/Right: min 60-100 px (80 px used as default baseline margin)
-        // Top: min 80 px
-        // Bottom (Taskbar): min 120-160 px (140 px used as baseline margin)
-        double minSafeLeft = 80.0;
-        double maxSafeLeft = Math.Max(minSafeLeft, screenWidth - mascotWidth - 80.0);
-        double minSafeTop = 80.0;
-        double maxSafeTop = Math.Max(minSafeTop, screenHeight - mascotHeight - 140.0);
-
-        // Select from 5 safe candidate spawn zones:
-        // 0: Bottom-Right corner
-        // 1: Bottom-Left corner
-        // 2: Bottom-Center area
-        // 3: Right-Side edge
-        // 4: Left-Side edge
-        int zone = rng.Next(5);
-
-        double x, y;
-        switch (zone)
-        {
-            case 0: // Bottom-Right
-                x = screenWidth - mascotWidth - NextDouble(rng, 70.0, 130.0);
-                y = screenHeight - mascotHeight - NextDouble(rng, 120.0, 160.0);
-                break;
-            case 1: // Bottom-Left
-                x = NextDouble(rng, 70.0, 130.0);
-                y = screenHeight - mascotHeight - NextDouble(rng, 120.0, 160.0);
-                break;
-            case 2: // Bottom-Center
-                double centerX = (screenWidth - mascotWidth) / 2.0;
-                x = centerX + NextDouble(rng, -100.0, 100.0);
-                y = screenHeight - mascotHeight - NextDouble(rng, 120.0, 160.0);
-                break;
-            case 3: // Right-Side
-                x = screenWidth - mascotWidth - NextDouble(rng, 70.0, 110.0);
-                y = NextDouble(rng, 100.0, Math.Max(100.0, screenHeight - mascotHeight - 160.0));
-                break;
-            default: // Left-Side
-                x = NextDouble(rng, 70.0, 110.0);
-                y = NextDouble(rng, 100.0, Math.Max(100.0, screenHeight - mascotHeight - 160.0));
-                break;
-        }
-
-        x = Math.Clamp(x, minSafeLeft, maxSafeLeft);
-        y = Math.Clamp(y, minSafeTop, maxSafeTop);
-
-        return (x, y);
+        double left = Math.Max(0.0, (screenWidth - mascotWidth) / 2.0);
+        double top = 0.0;
+        return (left, top);
     }
 
-    private static double NextDouble(Random rng, double min, double max)
+    /// <summary>
+    /// Handles backdrop click dismissing the active session if a video is currently playing.
+    /// </summary>
+    public void HandleBackdropClick()
     {
-        if (min >= max)
+        if (_coordinator?.CurrentState == PersonalProvocateur.App.Models.SessionState.VideoPlaying)
         {
-            return min;
+            _coordinator.CompleteSession();
         }
+    }
 
-        return min + (rng.NextDouble() * (max - min));
+    private void DimmingLayer_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (_coordinator?.CurrentState == PersonalProvocateur.App.Models.SessionState.VideoPlaying)
+        {
+            e.Handled = true;
+            _coordinator.CompleteSession();
+        }
     }
 
     /// <summary>
@@ -204,7 +164,10 @@ public partial class OverlayWindow : Window
     public void ShowEmptyLibraryNotice()
     {
         Mascot?.StopAllAnimations();
-        MascotCanvas.Visibility = Visibility.Collapsed;
+        if (Mascot != null)
+        {
+            Mascot.Visibility = Visibility.Collapsed;
+        }
         EmptyLibraryNotice.Visibility = Visibility.Visible;
     }
 
