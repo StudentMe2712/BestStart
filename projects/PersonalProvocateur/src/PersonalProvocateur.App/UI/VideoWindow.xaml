@@ -1,0 +1,97 @@
+<Window x:Class="PersonalProvocateur.App.UI.VideoWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Personal Provocateur Video"
+        WindowStyle="None"
+        AllowsTransparency="False"
+        Topmost="True"
+        ShowInTaskbar="False"
+        WindowStartupLocation="CenterScreen"
+        Background="#12131A"
+        KeyDown="Window_KeyDown">
+    <Window.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="Theme/DarkTheme.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </Window.Resources>
+    <Border BorderBrush="#8B5CF6" BorderThickness="2" SnapsToDevicePixels="True">
+        <Grid Background="#12131A">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="46" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+
+            <!-- Top Header Bar -->
+            <Grid Grid.Row="0" Background="#1C1D26">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" Margin="16,0,0,0">
+                    <Ellipse Width="10" Height="10" Fill="#8B5CF6" Margin="0,0,8,0" />
+                    <TextBlock Text="Мотивационная провокация"
+                               FontSize="12"
+                               FontWeight="SemiBold"
+                               Foreground="#8B5CF6"
+                               VerticalAlignment="Center" />
+                </StackPanel>
+
+                <TextBlock x:Name="VideoTitleTextBlock"
+                           Grid.Column="1"
+                           Text="Воспроизведение..."
+                           FontSize="14"
+                           FontWeight="Medium"
+                           Foreground="#F8FAFC"
+                           TextTrimming="CharacterEllipsis"
+                           VerticalAlignment="Center"
+                           HorizontalAlignment="Center"
+                           Margin="16,0" />
+
+                <Button x:Name="CloseButton"
+                        Grid.Column="2"
+                        Content="✕"
+                        Width="46"
+                        Height="46"
+                        FontSize="15"
+                        FontWeight="Bold"
+                        Foreground="#94A3B8"
+                        Background="Transparent"
+                        BorderThickness="0"
+                        Cursor="Hand"
+                        Click="CloseButton_Click"
+                        ToolTip="Закрыть видео (Esc)">
+                    <Button.Template>
+                        <ControlTemplate TargetType="Button">
+                            <Border x:Name="border" Background="{TemplateBinding Background}">
+                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="border" Property="Background" Value="#EF4444" />
+                                    <Setter Property="Foreground" Value="#FFFFFF" />
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Button.Template>
+                </Button>
+            </Grid>
+
+            <!-- Video Player -->
+            <Grid Grid.Row="1" Background="#000000">
+                <MediaElement x:Name="Player"
+                              LoadedBehavior="Manual"
+                              UnloadedBehavior="Stop"
+                              Stretch="Uniform"
+                              HorizontalAlignment="Stretch"
+                              VerticalAlignment="Stretch"
+                              MediaOpened="Player_MediaOpened"
+                              MediaEnded="Player_MediaEnded"
+                              MediaFailed="Player_MediaFailed" />
+            </Grid>
+        </Grid>
+    </Border>
+</Window>

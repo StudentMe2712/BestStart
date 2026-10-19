@@ -13,4 +13,8 @@
     <AssemblyName>PersonalProvocateur.App</AssemblyName>
   </PropertyGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="PersonalProvocateur.Tests" />
+  </ItemGroup>
+
 </Project>
