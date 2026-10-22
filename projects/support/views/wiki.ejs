@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="ru" id="htmlRoot">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wiki - ИТС-Ком</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="/css/wiki-page.css">
+	<link rel="icon" type="image/png" href="/favicon.png">
+    <meta name="app-user" content="<%= user.username %>">
+    <script>(function(){var m=document.querySelector('meta[name="app-user"]');var u=m&&m.getAttribute('content');var k=u?'ui_theme_'+u:'ui_theme';var t=localStorage.getItem(k);if(t)document.documentElement.setAttribute('data-theme',t);})()</script>
+</head>
+<body class="wiki-page-body">
+    <% const displayName = user.username === 'admin' ? 'Администратор' : user.username; %>
+    <% const avatarLetter = displayName.charAt(0).toUpperCase(); %>
+    <%
+    let prevOrg = null, nextOrg = null;
+    if (currentOrg && organizations && organizations.length > 0) {
+        const idx = organizations.findIndex(function(o) { return o.id === currentOrg.id; });
+        if (idx > 0) prevOrg = organizations[idx - 1];
+        if (idx >= 0 && idx < organizations.length - 1) nextOrg = organizations[idx + 1];
+    }
+    %>
+
+    <header class="home-topbar">
+        <div class="home-topbar__brand">
+            <a href="/" class="home-brand-link">
+                <img src="/logo.png" alt="ИТС-Ком" class="home-brand-logo">
+                <span class="home-brand-name">ИТС-Ком</span>
+            </a>
+        </div>
+        <nav class="home-topbar__nav" aria-label="Основная навигация">
+            <a href="/" class="home-topbar__nav-link" data-i18n="nav.home">Главная</a>
+            <a href="/wiki" class="home-topbar__nav-link is-active">Wiki</a>
+        </nav>
+        <div class="home-topbar__account">
+            <button class="theme-toggle-btn" id="themeToggle" type="button" aria-label="Переключить тему">
+                <svg class="theme-icon theme-icon--sun" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="4" stroke="currentColor" stroke-width="1.5"/><path d="M10 2V4M10 16V18M2 10H4M16 10H18M4.22 4.22L5.64 5.64M14.36 14.36L15.78 15.78M15.78 4.22L14.36 5.64M5.64 14.36L4.22 15.78" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                <svg class="theme-icon theme-icon--moon" viewBox="0 0 20 20" fill="none"><path d="M17 11C16.4 15 12.8 18 8.5 17.5C4.2 17 1 13.3 1.5 9C2 4.7 5.8 1.8 10 2.5C8.5 4.5 8.5 8 11 10C13.5 12 16.5 11.5 17 11Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+            <button class="home-account-button" type="button" id="homeAccountToggle" aria-expanded="false" aria-controls="homeAccountMenu">
+                <span class="home-account-avatar"><%= avatarLetter %></span>
+                <span class="home-account-name"><%= displayName %></span>
+                <span class="home-account-caret" aria-hidden="true">
+                    <svg viewBox="0 0 20 20" fill="none"><path d="M5 7.5L10 12.5L15 7.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </span>
+            </button>
+            <div class="home-account-menu" id="homeAccountMenu">
+                <a href="/profile" class="home-account-menu__item is-highlighted">
+                    <span class="home-account-menu__icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none"><path d="M12 13C14.7614 13 17 10.7614 17 8C17 5.23858 14.7614 3 12 3C9.23858 3 7 5.23858 7 8C7 10.7614 9.23858 13 12 13Z" stroke="currentColor" stroke-width="2"/><path d="M4 21C4.8 17.8 7.5 16 12 16C16.5 16 19.2 17.8 20 21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                    </span>
+                    <span data-i18n="nav.profile">Профиль</span>
+                </a>
+                <a href="/logout" class="home-account-menu__item">
+                    <span class="home-account-menu__icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none"><path d="M10 17L15 12L10 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M15 12H4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M13 4H18C19.1046 4 20 4.89543 20 6V18C20 19.1046 19.1046 20 18 20H13" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                    </span>
+                    <span data-i18n="nav.logout.short">Выйти</span>
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <div class="wiki-layout">
+
+        <!-- ===== SIDEBAR ===== -->
+        <aside class="wiki-sidebar" id="wikiSidebar">
+            <div class="wiki-sidebar-top">
+                <div class="wiki-sidebar-title-row">
+                    <span class="wiki-sidebar-title" data-i18n="wiki.sidebar.title">Оглавление</span>
+                    <span class="wiki-count-badge" id="wikiCountBadge" title="Количество серверов"><%= organizations ? organizations.length : 0 %></span>
+                </div>
+                <button class="wiki-new-btn" id="addOrgBtn"
+                        data-i18n-title="wiki.sidebar.newBtn" title="Новая wiki-страница">+</button>
+            </div>
+            <div class="wiki-search-wrap">
+                <svg class="wiki-search-icon" viewBox="0 0 16 16" fill="none">
+                    <circle cx="6.5" cy="6.5" r="5" stroke="currentColor" stroke-width="1.4"/>
+                    <line x1="10.5" y1="10.5" x2="14" y2="14" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+                </svg>
+                <input type="text" class="wiki-search-input" id="wikiSearch"
+                       placeholder="Поиск серверов..." data-i18n-placeholder="wiki.search.placeholder" autocomplete="off">
+                <button type="button" class="wiki-search-clear" id="wikiSearchClear" aria-label="Очистить поиск" title="Очистить">&times;</button>
+            </div>
+            <div class="wiki-search-summary" id="wikiSearchSummary" style="display: none;"></div>
+            <ul class="wiki-list" id="wikiOrgList">
+                <% if (organizations && organizations.length > 0) { %>
+                    <% organizations.forEach(function(org) { %>
+                        <%
+                            const orgNameLower = (org.name || '').toLowerCase();
+                            const orgContentLower = (org.content || '').toLowerCase();
+                            const isDev = /dev|тест|vds|test/i.test(orgNameLower) || /dev|тест|vds|test/i.test(orgContentLower);
+                            const envType = isDev ? 'DEV' : 'PROD';
+                        %>
+                        <li class="wiki-list-item" data-name="<%= orgNameLower %>" data-env="<%= envType.toLowerCase() %>">
+                            <a href="/wiki/organization/<%= org.id %>"
+                               class="wiki-list-link<%= currentOrg && currentOrg.id === org.id ? ' is-active' : '' %>">
+                                <span class="wiki-active-bar" aria-hidden="true"></span>
+                                <svg class="wiki-list-chevron" viewBox="0 0 8 12" fill="none" width="7" height="11">
+                                    <path d="M1.5 1.5L6 6L1.5 10.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                                </svg>
+                                <span class="wiki-list-name"><%= org.name %></span>
+                                <span class="wiki-badge-env wiki-badge-env--<%= envType.toLowerCase() %>"><%= envType %></span>
+                            </a>
+                        </li>
+                    <% }); %>
+                    <li class="wiki-list-empty" id="wikiSearchNoResults" style="display: none;" data-i18n="wiki.sidebar.noResults">Ничего не найдено</li>
+                <% } else { %>
+                    <li class="wiki-list-empty" data-i18n="wiki.sidebar.empty">Нет организаций</li>
+                <% } %>
+            </ul>
+        </aside>
+        <div class="wiki-resize-handle" id="wikiResizeHandle"></div>
+
+        <!-- ===== MAIN ===== -->
+        <main class="wiki-main">
+            <% if (!currentOrg) { %>
+                <div class="wiki-welcome">
+                    <p data-i18n-html="wiki.welcome">Выберите организацию из списка слева или нажмите <strong>+</strong> для создания новой.</p>
+                </div>
+            <% } else { %>
+
+                <!-- ORG HEADER -->
+                <div class="org-page-header">
+                    <div class="org-header-left">
+                        <div class="org-avatar">
+                            <svg viewBox="0 0 44 44" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <circle cx="22" cy="22" r="22" fill="#dde3ea"/>
+                                <circle cx="22" cy="17" r="8" fill="#9baab8"/>
+                                <path d="M6 40C6 31.163 13.163 24 22 24C30.837 24 38 31.163 38 40" fill="#9baab8"/>
+                            </svg>
+                        </div>
+                        <div class="org-header-info">
+                            <%
+                                const curNameLower = (currentOrg.name || '').toLowerCase();
+                                const curContentLower = (currentOrg.content || '').toLowerCase();
+                                const curIsDev = /dev|тест|vds|test/i.test(curNameLower) || /dev|тест|vds|test/i.test(curContentLower);
+                                const curEnvType = curIsDev ? 'DEV' : 'PROD';
+                            %>
+                            <div class="org-title-row">
+                                <h2 class="org-title" id="orgTitle"><%= currentOrg.name %></h2>
+                                <span class="org-header-env-badge wiki-badge-env wiki-badge-env--<%= curEnvType.toLowerCase() %>"><%= curEnvType %></span>
+                            </div>
+                            <div class="org-subtitle"><%= currentOrg.name %> • <%= displayName %></div>
+                        </div>
+                    </div>
+                    <div class="org-header-right">
+                        <button class="org-action-btn" id="editBtnTop" data-i18n="wiki.edit.btn">Редактировать</button>
+                        <div class="org-more-wrap">
+                            <button class="org-action-btn" id="moreBtnTop"><span data-i18n="wiki.more.btn">Ещё</span> <span class="more-caret">▾</span></button>
+                            <div class="org-more-dropdown" id="moreMenu">
+                                <a href="/api/export/pdf/<%= currentOrg.id %>" class="more-item" data-i18n="wiki.more.pdf">📄 Экспорт PDF</a>
+                                <a href="/api/export/txt/<%= currentOrg.id %>" class="more-item" data-i18n="wiki.more.txt">📝 Экспорт TXT</a>
+                                <button class="more-item more-item-danger" id="deleteBtnMore" data-i18n="wiki.more.delete">🗑 Удалить</button>
+                            </div>
+                        </div>
+                        <div class="org-nav-arrows">
+                            <% if (prevOrg) { %>
+                                <a href="/wiki/organization/<%= prevOrg.id %>" class="org-nav-btn" title="Предыдущая">‹</a>
+                            <% } else { %>
+                                <span class="org-nav-btn org-nav-btn--disabled">‹</span>
+                            <% } %>
+                            <% if (nextOrg) { %>
+                                <a href="/wiki/organization/<%= nextOrg.id %>" class="org-nav-btn" title="Следующая">›</a>
+                            <% } else { %>
+                                <span class="org-nav-btn org-nav-btn--disabled">›</span>
+                            <% } %>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- CONTENT SECTION -->
+                <div class="content-section">
+                    <div class="content-header-bar">
+                        <div class="content-header-bar__titles">
+                            <h3 class="content-section-title" id="contentSectionTitle" data-i18n="wiki.content.title">Картотека сервера</h3>
+                            <span class="content-section-subtitle" id="contentSectionSubtitle">Smart Server Viewer</span>
+                        </div>
+                        <div class="content-header-bar__actions" id="smartViewerActions">
+                            <button class="smart-action-btn-summary" id="copyAllSummaryBtn" type="button" title="Скопировать все реквизиты">
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect></svg>
+                                <span>Скопировать все реквизиты</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Smart Server Viewer (Shown in view mode) -->
+                    <div class="smart-viewer" id="smartServerViewer"></div>
+
+                    <!-- Editor outer (Shown in edit mode) -->
+                    <div class="editor-outer" id="editorOuter" style="display: none;">
+
+                        <!-- Toolbar (hidden in view mode) -->
+                        <div class="editor-toolbar" id="editorToolbar">
+                            <select class="editor-format-select" id="formatSelect">
+                                <option value="p"  data-i18n="toolbar.paragraph">Абзац</option>
+                                <option value="h1" data-i18n="toolbar.h1">Заголовок 1</option>
+                                <option value="h2" data-i18n="toolbar.h2">Заголовок 2</option>
+                                <option value="h3" data-i18n="toolbar.h3">Заголовок 3</option>
+                            </select>
+                            <div class="tb-sep"></div>
+                            <button class="tb-btn" data-cmd="bold" title="Жирный"><b>B</b></button>
+                            <button class="tb-btn" data-cmd="italic" title="Курсив"><i>I</i></button>
+                            <button class="tb-btn" data-cmd="underline" title="Подчёркнутый"><u>U</u></button>
+                            <button class="tb-btn" data-cmd="strikeThrough" title="Зачёркнутый"><s>S</s></button>
+                            <div class="tb-sep"></div>
+                            <button class="tb-btn" data-cmd="insertUnorderedList" title="Маркированный список">
+                                <svg width="15" height="13" viewBox="0 0 15 13"><circle cx="1.5" cy="2" r="1.5" fill="currentColor"/><rect x="4" y="1" width="11" height="2" fill="currentColor" rx="1"/><circle cx="1.5" cy="6.5" r="1.5" fill="currentColor"/><rect x="4" y="5.5" width="11" height="2" fill="currentColor" rx="1"/><circle cx="1.5" cy="11" r="1.5" fill="currentColor"/><rect x="4" y="10" width="11" height="2" fill="currentColor" rx="1"/></svg>
+                            </button>
+                            <button class="tb-btn" data-cmd="insertOrderedList" title="Нумерованный список">
+                                <svg width="15" height="13" viewBox="0 0 15 13"><text x="0" y="4" font-size="5" fill="currentColor" font-family="sans-serif">1.</text><rect x="6" y="1" width="9" height="2" fill="currentColor" rx="1"/><text x="0" y="8.5" font-size="5" fill="currentColor" font-family="sans-serif">2.</text><rect x="6" y="5.5" width="9" height="2" fill="currentColor" rx="1"/><text x="0" y="13" font-size="5" fill="currentColor" font-family="sans-serif">3.</text><rect x="6" y="10" width="9" height="2" fill="currentColor" rx="1"/></svg>
+                            </button>
+                            <button class="tb-btn" data-cmd="indent" title="Отступ">
+                                <svg width="15" height="13" viewBox="0 0 15 13"><rect x="0" y="0" width="15" height="2" fill="currentColor" rx="1"/><rect x="4" y="5.5" width="11" height="2" fill="currentColor" rx="1"/><rect x="0" y="11" width="15" height="2" fill="currentColor" rx="1"/><polygon points="0,5.5 0,9.5 3.5,7.5" fill="currentColor"/></svg>
+                            </button>
+                            <div class="tb-sep"></div>
+                            <button class="tb-btn" data-cmd="justifyLeft" title="По левому краю">
+                                <svg width="15" height="12" viewBox="0 0 15 12"><rect x="0" y="0" width="15" height="2" fill="currentColor" rx="1"/><rect x="0" y="5" width="10" height="2" fill="currentColor" rx="1"/><rect x="0" y="10" width="15" height="2" fill="currentColor" rx="1"/></svg>
+                            </button>
+                            <button class="tb-btn" data-cmd="justifyCenter" title="По центру">
+                                <svg width="15" height="12" viewBox="0 0 15 12"><rect x="0" y="0" width="15" height="2" fill="currentColor" rx="1"/><rect x="2.5" y="5" width="10" height="2" fill="currentColor" rx="1"/><rect x="0" y="10" width="15" height="2" fill="currentColor" rx="1"/></svg>
+                            </button>
+                            <button class="tb-btn" data-cmd="justifyRight" title="По правому краю">
+                                <svg width="15" height="12" viewBox="0 0 15 12"><rect x="0" y="0" width="15" height="2" fill="currentColor" rx="1"/><rect x="5" y="5" width="10" height="2" fill="currentColor" rx="1"/><rect x="0" y="10" width="15" height="2" fill="currentColor" rx="1"/></svg>
+                            </button>
+                            <button class="tb-btn" data-cmd="justifyFull" title="По ширине">
+                                <svg width="15" height="12" viewBox="0 0 15 12"><rect x="0" y="0" width="15" height="2" fill="currentColor" rx="1"/><rect x="0" y="5" width="15" height="2" fill="currentColor" rx="1"/><rect x="0" y="10" width="15" height="2" fill="currentColor" rx="1"/></svg>
+                            </button>
+                            <div class="tb-sep"></div>
+                            <button class="tb-btn" id="linkBtn" title="Вставить ссылку">
+                                <svg width="15" height="15" viewBox="0 0 15 15" fill="none"><path d="M6 9L9 6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><path d="M7.5 4L8.5 3C9.5 2 11 2 12 3C13 4 13 5.5 12 6.5L11 7.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><path d="M8 11L7 12C6 13 4.5 13 3.5 12C2.5 11 2.5 9.5 3.5 8.5L4.5 7.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+                            </button>
+                            <div class="tb-sep"></div>
+                            <button class="tb-btn" data-cmd="undo" title="Отменить">
+                                <svg width="15" height="15" viewBox="0 0 15 15" fill="none"><path d="M2.5 8.5C2.5 5.462 4.962 3 8 3C11.038 3 13.5 5.462 13.5 8.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><path d="M2.5 5.5V8.5H5.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                            </button>
+                            <button class="tb-btn" data-cmd="redo" title="Повторить">
+                                <svg width="15" height="15" viewBox="0 0 15 15" fill="none"><path d="M12.5 8.5C12.5 5.462 10.038 3 7 3C3.962 3 1.5 5.462 1.5 8.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><path d="M12.5 5.5V8.5H9.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                            </button>
+                        </div>
+
+                        <!-- Editor body -->
+                        <div class="editor-body" id="orgEditor" contenteditable="false" spellcheck="true"></div>
+                    </div>
+                </div>
+
+                <!-- BOTTOM BAR (shown in edit mode) -->
+                <div class="editor-bottom-bar" id="editorBottomBar" style="display: none;">
+                    <div class="editor-bottom-bar__left">
+                        <button class="btn-save-main" id="saveBtn" data-i18n="wiki.save.btn">Сохранить</button>
+                        <button class="btn-cancel-edit" id="cancelEditBtn" type="button" data-i18n="wiki.cancel.btn">Отмена</button>
+                    </div>
+                    <div class="editor-bar-status">
+                        <span class="draft-status" id="draftStatus"></span>
+                        <% if (currentOrg.updated_at) { %>
+                            <span class="last-modified" id="lastModified"><span data-i18n="wiki.last.modified">Последнее изменение:</span> <%= displayName %> (<%= user.username %>) <%= new Date(currentOrg.updated_at).toLocaleString('ru-RU', {day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit'}) %></span>
+                        <% } %>
+                    </div>
+                </div>
+
+                <input type="hidden" id="orgNameInput" value="<%= currentOrg.name %>">
+                <input type="hidden" id="currentOrgId" value="<%= currentOrg.id %>">
+
+            <% } %>
+        </main>
+
+    </div>
+
+    <footer class="wiki-footer">
+        <div class="footer-content">
+            Powered by <a href="#" class="footer-link">_thedaulet</a> © 2026 Astana
+        </div>
+    </footer>
+
+    <!-- Modal: create org -->
+    <div class="modal" id="addOrgModal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 data-i18n="wiki.modal.create.title">Новая организация</h2>
+                <button class="modal-close" id="closeModal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="newOrgName" data-i18n="wiki.modal.create.name.label">Название организации:</label>
+                    <input type="text" id="newOrgName" class="form-input"
+                           placeholder="Введите название"
+                           data-i18n-placeholder="wiki.modal.create.name.placeholder">
+                </div>
+                <div class="form-group">
+                    <label for="newOrgContent" data-i18n="wiki.modal.create.content.label">Содержимое (опционально):</label>
+                    <textarea id="newOrgContent" class="form-textarea" rows="6"
+                              placeholder="Введите содержимое"
+                              data-i18n-placeholder="wiki.modal.create.content.placeholder"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-success" id="createOrgBtn" data-i18n="wiki.modal.create.btn">Создать</button>
+                <button class="btn btn-secondary" id="cancelModalBtn" data-i18n="wiki.modal.cancel.btn">Отмена</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: delete org -->
+    <div class="modal" id="deleteOrgModal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 data-i18n="wiki.modal.delete.title">Удалить организацию</h2>
+                <button class="modal-close" id="closeDeleteModal">&times;</button>
+            </div>
+            <div class="modal-body" id="deleteModalBody">
+                <% if (!currentOrg && organizations && organizations.length > 0) { %>
+                    <p data-i18n="wiki.modal.delete.select">Выберите организацию для удаления:</p>
+                    <select id="deleteOrgSelect" class="form-input" style="width: 100%; margin-top: 10px;">
+                        <option value="">-- Выберите организацию --</option>
+                        <% organizations.forEach(function(org) { %>
+                            <option value="<%= org.id %>"><%= org.name %></option>
+                        <% }); %>
+                    </select>
+                <% } else if (currentOrg) { %>
+                    <p><span data-i18n="wiki.modal.delete.confirm">Вы уверены, что хотите удалить организацию</span> <strong id="deleteOrgName"><%= currentOrg.name %></strong>?</p>
+                    <input type="hidden" id="deleteOrgId" value="<%= currentOrg.id %>">
+                <% } else { %>
+                    <p data-i18n="wiki.modal.delete.none">Нет организаций для удаления.</p>
+                <% } %>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-danger" id="confirmDeleteBtn" data-i18n="wiki.modal.delete.btn">Удалить</button>
+                <button class="btn btn-secondary" id="cancelDeleteBtn" data-i18n="wiki.modal.cancel.btn">Отмена</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Floating Toast Container -->
+    <div class="floating-toast-container" id="floatingToastContainer" aria-live="polite" aria-atomic="true"></div>
+
+    <script>
+        var initialContent = <%- currentOrg ? JSON.stringify(currentOrg.content || '').replace(/<\//g, '<\\/') : '""' %>;
+    </script>
+    <script src="/js/i18n.js"></script>
+    <script src="/js/main.js"></script>
+    <script>
+        (function () {
+            const toggle = document.getElementById('homeAccountToggle');
+            const menu = document.getElementById('homeAccountMenu');
+            if (!toggle || !menu) return;
+            toggle.addEventListener('click', function (e) {
+                e.stopPropagation();
+                const isOpen = menu.classList.toggle('is-open');
+                toggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+            });
+            document.addEventListener('click', function (e) {
+                if (!menu.contains(e.target) && !toggle.contains(e.target)) {
+                    menu.classList.remove('is-open');
+                    toggle.setAttribute('aria-expanded', 'false');
+                }
+            });
+        })();
+
+        /* ── Resizable sidebar ── */
+        (function () {
+            var sidebar = document.getElementById('wikiSidebar');
+            var handle  = document.getElementById('wikiResizeHandle');
+            if (!sidebar || !handle) return;
+
+            var STORAGE_KEY = 'wiki_sidebar_width';
+            var MIN_W = 160;
+            var MAX_W = 520;
+
+            function setW(w) {
+                sidebar.style.width    = w + 'px';
+                sidebar.style.minWidth = w + 'px';
+            }
+
+            var saved = parseInt(localStorage.getItem(STORAGE_KEY), 10);
+            if (saved && saved >= MIN_W && saved <= MAX_W) setW(saved);
+
+            var startX, startW;
+
+            handle.addEventListener('mousedown', function (e) {
+                e.preventDefault();
+                startX = e.clientX;
+                startW = sidebar.offsetWidth;
+                handle.classList.add('is-dragging');
+                document.body.style.cursor     = 'col-resize';
+                document.body.style.userSelect = 'none';
+                document.addEventListener('mousemove', onMove);
+                document.addEventListener('mouseup',   onUp);
+            });
+
+            function onMove(e) {
+                setW(Math.min(Math.max(startW + (e.clientX - startX), MIN_W), MAX_W));
+            }
+
+            function onUp() {
+                handle.classList.remove('is-dragging');
+                document.body.style.cursor     = '';
+                document.body.style.userSelect = '';
+                localStorage.setItem(STORAGE_KEY, sidebar.offsetWidth);
+                document.removeEventListener('mousemove', onMove);
+                document.removeEventListener('mouseup',   onUp);
+            }
+        })();
+    </script>
+</body>
+</html>

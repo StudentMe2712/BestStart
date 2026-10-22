@@ -1,0 +1,41 @@
+{
+  "name": "internal-wiki",
+  "version": "1.0.0",
+  "description": "Локальный Wiki-сайт для внутренней сети",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js",
+    "testdb": "node testdb.js",
+    "migrate": "node migrate.js",
+    "test:e2e:home": "node test-e2e-home.js",
+    "test:e2e:wiki": "node test-e2e-wiki.js"
+  },
+  "keywords": [
+    "wiki",
+    "internal",
+    "documentation"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "bcrypt": "^6.0.0",
+    "body-parser": "^1.20.3",
+    "connect-pg-simple": "^10.0.0",
+    "dompurify": "^3.3.0",
+    "dotenv": "^16.6.1",
+    "ejs": "^3.1.10",
+    "express": "^4.21.2",
+    "express-mysql-session": "^3.0.3",
+    "express-session": "^1.18.2",
+    "jsdom": "^23.2.0",
+    "marked": "^11.2.0",
+    "mysql2": "^3.15.3",
+    "pg": "^8.16.3",
+    "puppeteer": "^21.11.0",
+    "sqlite3": "^5.1.7"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2"
+  }
+}

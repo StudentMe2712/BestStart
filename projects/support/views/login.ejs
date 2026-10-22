@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="ru" id="htmlRoot">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="ИТС-Ком — Корпоративный портал управления серверами и Wiki-документацией">
+    <title>Вход — ИТС-Ком</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="/css/login.css">
+    <link rel="icon" type="image/png" href="/favicon.png">
+    <script>
+        (function() {
+            var theme = localStorage.getItem('ui_theme') || localStorage.getItem('ui_theme_admin');
+            if (theme) {
+                document.documentElement.setAttribute('data-theme', theme);
+            }
+        })();
+    </script>
+</head>
+<body class="auth-body">
+    <!-- Верхняя панель навигации -->
+    <header class="home-topbar home-topbar--public">
+        <div class="home-topbar__brand">
+            <a href="/" class="home-brand-link" title="ИТС-Ком">
+                <img src="/logo.png" alt="ИТС-Ком" class="home-brand-logo">
+                <span class="home-brand-name">ИТС-Ком</span>
+            </a>
+        </div>
+        <nav class="home-topbar__nav" aria-label="Основная навигация">
+            <a href="/" class="home-topbar__nav-link" data-i18n="nav.home">Главная</a>
+            <a href="/wiki" class="home-topbar__nav-link">Wiki</a>
+        </nav>
+        <div class="home-topbar__public-actions">
+            <button class="theme-toggle-btn" id="themeToggle" type="button" aria-label="Переключить тему" title="Переключить тему">
+                <svg class="theme-icon theme-icon--sun" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="4" stroke="currentColor" stroke-width="1.5"/><path d="M10 2V4M10 16V18M2 10H4M16 10H18M4.22 4.22L5.64 5.64M14.36 14.36L15.78 15.78M15.78 4.22L14.36 5.64M5.64 14.36L4.22 15.78" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                <svg class="theme-icon theme-icon--moon" viewBox="0 0 20 20" fill="none"><path d="M17 11C16.4 15 12.8 18 8.5 17.5C4.2 17 1 13.3 1.5 9C2 4.7 5.8 1.8 10 2.5C8.5 4.5 8.5 8 11 10C13.5 12 16.5 11.5 17 11Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+            <a href="/register" class="home-topbar__public-link" data-i18n="nav.register">Регистрация</a>
+        </div>
+    </header>
+
+    <!-- Основной контейнер экрана с атмосферным свечением -->
+    <main class="login-container">
+        <div class="auth-ambient-glow" aria-hidden="true"></div>
+
+        <!-- Премиальная карточка 420px -->
+        <div class="login-box" role="region" aria-labelledby="loginTitle">
+            <!-- Заголовок карточки с логотипом -->
+            <div class="login-card__header">
+                <div class="login-card__logo-wrap">
+                    <img src="/logo.png" alt="ИТС-Ком" class="login-card__logo">
+                </div>
+                <h1 id="loginTitle" class="login-card__title">ИТС-Ком</h1>
+                <p class="login-card__subtitle" data-i18n="login.subtitle">Вход в систему</p>
+            </div>
+
+            <!-- Блок отображения ошибки -->
+            <% if (typeof error !== 'undefined' && error) { %>
+                <div class="alert-banner alert-banner--error" role="alert" aria-live="assertive">
+                    <svg class="alert-banner__icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                        <circle cx="10" cy="10" r="8.5"/>
+                        <line x1="10" y1="6.5" x2="10" y2="10.5"/>
+                        <circle cx="10" cy="14" r="0.75" fill="currentColor"/>
+                    </svg>
+                    <div class="alert-banner__message"><%= error %></div>
+                </div>
+            <% } %>
+
+            <!-- Форма авторизации -->
+            <form id="loginForm" action="/login" method="POST" class="login-form" novalidate>
+                <!-- Поле логина с встроенной SVG-иконкой -->
+                <div class="form-group">
+                    <label for="username" class="form-label" data-i18n="login.username.label">Логин</label>
+                    <div class="input-wrapper">
+                        <span class="input-icon" aria-hidden="true">
+                            <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8">
+                                <path d="M10 10a4 4 0 100-8 4 4 0 000 8z" stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="M3.5 17.5a6.5 6.5 0 0113 0" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                        </span>
+                        <input
+                            type="text"
+                            id="username"
+                            name="username"
+                            class="form-input with-left-icon"
+                            placeholder="логин"
+                            data-i18n-placeholder="login.username.ph"
+                            autocomplete="username"
+                            required
+                        >
+                    </div>
+                </div>
+
+                <!-- Поле пароля с встроенной SVG-иконкой и кнопкой-глазком -->
+                <div class="form-group">
+                    <div class="form-label-row">
+                        <label for="password" class="form-label" data-i18n="login.password">Пароль</label>
+                        <a href="#" class="forgot-password" data-i18n="login.forgot">Восстановление пароля</a>
+                    </div>
+                    <div class="input-wrapper">
+                        <span class="input-icon" aria-hidden="true">
+                            <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8">
+                                <rect x="4" y="9" width="12" height="9" rx="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="M7 9V6a3 3 0 016 0v3" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                        </span>
+                        <input
+                            type="password"
+                            id="password"
+                            name="password"
+                            class="form-input with-left-icon with-right-btn"
+                            placeholder="••••••••"
+                            autocomplete="current-password"
+                            required
+                        >
+                        <button
+                            type="button"
+                            id="passwordToggleBtn"
+                            class="password-toggle-btn"
+                            aria-label="Показать пароль"
+                            title="Показать или скрыть пароль"
+                        >
+                            <svg class="eye-show" viewBox="0 0 20 20" fill="none" stroke="currentColor">
+                                <path d="M1.5 10s3-5.5 8.5-5.5 8.5 5.5 8.5 5.5-3 5.5-8.5 5.5S1.5 10 1.5 10z" stroke-linecap="round" stroke-linejoin="round"/>
+                                <circle cx="10" cy="10" r="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                            <svg class="eye-hide" viewBox="0 0 20 20" fill="none" stroke="currentColor" style="display:none;">
+                                <path d="M2.5 2.5l15 15" stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="M8.5 8.5a2.5 2.5 0 003.5 3.5" stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="M5.5 5.5C3.5 7 2 10 2 10s3 5.5 8 5.5c2 0 3.7-.6 5-1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="M9.5 4.5c.2 0 .3 0 .5 0 5 0 8 5.5 8 5.5s-.8 1.4-2.2 2.8" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Чекбокс "Оставаться в системе" -->
+                <div class="form-group checkbox-group">
+                    <label class="checkbox-label" for="remember">
+                        <input type="checkbox" name="remember" id="remember">
+                        <span class="checkbox-text" data-i18n="login.remember">Оставаться в системе</span>
+                    </label>
+                </div>
+
+                <!-- Кнопка отправки формы -->
+                <button type="submit" id="submitBtn" class="btn-login" data-i18n="login.btn">Войти</button>
+
+                <!-- Информационный бейдж с автозаполнением admin / admin -->
+                <div class="quick-creds-container">
+                    <button
+                        type="button"
+                        id="quickCredsBadge"
+                        class="quick-creds-badge"
+                        title="Нажмите для быстрой подстановки admin / admin"
+                        aria-label="Автозаполнение учетных данных локального администратора"
+                    >
+                        <span class="quick-creds-badge__icon" aria-hidden="true">
+                            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6">
+                                <circle cx="6" cy="6" r="3.5" stroke-linecap="round"/>
+                                <path d="M8.5 8.5L13.5 13.5M11.5 11.5L13 10M10 13L11.5 14.5" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                        </span>
+                        <span class="quick-creds-badge__label" data-i18n="login.quickHint">Локальный доступ:</span>
+                        <span class="quick-creds-badge__creds">admin / admin</span>
+                        <span class="quick-creds-badge__action" data-i18n="login.quickFill">Заполнить</span>
+                    </button>
+                </div>
+
+                <!-- Подвал формы со ссылкой на регистрацию -->
+                <div class="form-footer">
+                    <span data-i18n="login.noAccount">Нет аккаунта?</span>
+                    <a href="/register" class="link-register" data-i18n="login.register">Зарегистрироваться</a>
+                </div>
+            </form>
+
+            <!-- Корпоративная отметка безопасности -->
+            <div class="login-security-note">
+                <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+                    <path d="M8 1.5L3 3.5v4.5c0 3.2 2.1 6.1 5 6.8 2.9-.7 5-3.6 5-6.8V3.5L8 1.5z" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M6 8l1.5 1.5L10.5 6" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                <span>Защищенный внутренний портал ИТС-Ком</span>
+            </div>
+        </div>
+    </main>
+
+    <!-- Скрипты интернационализации и логики формы -->
+    <script src="/js/i18n.js"></script>
+    <script>
+        (function() {
+            var usernameInput = document.getElementById('username');
+            var passwordInput = document.getElementById('password');
+            var toggleBtn = document.getElementById('passwordToggleBtn');
+            var quickCreds = document.getElementById('quickCredsBadge');
+            var loginForm = document.getElementById('loginForm');
+
+            // 1. Автофокус
+            if (usernameInput) {
+                if (!usernameInput.value) {
+                    usernameInput.focus();
+                } else if (passwordInput) {
+                    passwordInput.focus();
+                }
+            }
+
+            // 2. Интерактивная кнопка-глазок (show/hide password)
+            if (toggleBtn && passwordInput) {
+                var eyeShow = toggleBtn.querySelector('.eye-show');
+                var eyeHide = toggleBtn.querySelector('.eye-hide');
+
+                toggleBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    var isPassword = passwordInput.getAttribute('type') === 'password';
+                    passwordInput.setAttribute('type', isPassword ? 'text' : 'password');
+
+                    if (isPassword) {
+                        eyeShow.style.display = 'none';
+                        eyeHide.style.display = 'block';
+                        toggleBtn.setAttribute('aria-label', 'Скрыть пароль');
+                    } else {
+                        eyeShow.style.display = 'block';
+                        eyeHide.style.display = 'none';
+                        toggleBtn.setAttribute('aria-label', 'Показать пароль');
+                    }
+                    passwordInput.focus();
+                });
+            }
+
+            // 3. Подсказка локального входа (автозаполнение admin / admin)
+            if (quickCreds && usernameInput && passwordInput) {
+                quickCreds.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    usernameInput.value = 'admin';
+                    passwordInput.value = 'admin';
+
+                    // Добавляем акцентную подсветку полей
+                    usernameInput.classList.remove('input-filled-flash');
+                    passwordInput.classList.remove('input-filled-flash');
+                    void usernameInput.offsetWidth; // Триггер reflow для перезапуска CSS-анимации
+                    usernameInput.classList.add('input-filled-flash');
+                    passwordInput.classList.add('input-filled-flash');
+
+                    // Визуальный отклик на кнопке бейджа
+                    var actionEl = quickCreds.querySelector('.quick-creds-badge__action');
+                    if (actionEl) {
+                        var originalText = actionEl.getAttribute('data-orig-text') || actionEl.textContent;
+                        actionEl.setAttribute('data-orig-text', originalText);
+                        var doneText = (window.ITS_I18n && window.ITS_I18n.t) ? window.ITS_I18n.t('login.quickDone') : '✓ Заполнено!';
+                        actionEl.textContent = doneText;
+                        actionEl.classList.add('is-done');
+
+                        setTimeout(function() {
+                            actionEl.textContent = originalText;
+                            actionEl.classList.remove('is-done');
+                        }, 1600);
+                    }
+
+                    // Переводим фокус на кнопку отправки для удобного быстрого входа по Enter
+                    var submitBtn = document.getElementById('submitBtn');
+                    if (submitBtn) {
+                        submitBtn.focus();
+                    }
+                });
+            }
+
+            // 4. Валидация перед отправкой
+            if (loginForm) {
+                loginForm.addEventListener('submit', function(e) {
+                    if (!usernameInput.value.trim()) {
+                        e.preventDefault();
+                        usernameInput.focus();
+                        return;
+                    }
+                    if (!passwordInput.value) {
+                        e.preventDefault();
+                        passwordInput.focus();
+                        return;
+                    }
+                });
+            }
+        })();
+    </script>
+</body>
+</html>

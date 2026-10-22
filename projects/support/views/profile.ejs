@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="ru" id="htmlRoot">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Профиль — ИТС-Ком</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="/css/profile.css">
+    <meta name="app-user" content="<%= user.username %>">
+	<link rel="icon" type="image/png" href="/favicon.png">
+    <script>(function(){var m=document.querySelector('meta[name="app-user"]');var u=m&&m.getAttribute('content');var k=u?'ui_theme_'+u:'ui_theme';var t=localStorage.getItem(k);if(t)document.documentElement.setAttribute('data-theme',t);})()</script>
+</head>
+<body class="home-body profile-body">
+    <% const displayName = user.username === 'admin' ? 'Администратор' : user.username; %>
+    <% const avatarLetter = displayName.charAt(0).toUpperCase(); %>
+
+    <header class="home-topbar">
+        <div class="home-topbar__brand">
+            <a href="/" class="home-brand-link">
+                <img src="/logo.png" alt="ИТС-Ком" class="home-brand-logo">
+                <span class="home-brand-name">ИТС-Ком</span>
+            </a>
+        </div>
+
+        <nav class="home-topbar__nav" aria-label="Основная навигация">
+            <a href="/" class="home-topbar__nav-link">Главная</a>
+            <a href="/wiki" class="home-topbar__nav-link">Wiki</a>
+        </nav>
+
+        <div class="home-topbar__account">
+            <button class="theme-toggle-btn" id="themeToggle" type="button" aria-label="Переключить тему">
+                <svg class="theme-icon theme-icon--sun" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="4" stroke="currentColor" stroke-width="1.5"/><path d="M10 2V4M10 16V18M2 10H4M16 10H18M4.22 4.22L5.64 5.64M14.36 14.36L15.78 15.78M15.78 4.22L14.36 5.64M5.64 14.36L4.22 15.78" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                <svg class="theme-icon theme-icon--moon" viewBox="0 0 20 20" fill="none"><path d="M17 11C16.4 15 12.8 18 8.5 17.5C4.2 17 1 13.3 1.5 9C2 4.7 5.8 1.8 10 2.5C8.5 4.5 8.5 8 11 10C13.5 12 16.5 11.5 17 11Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+            <button class="home-account-button" type="button" id="homeAccountToggle"
+                    aria-expanded="false" aria-controls="homeAccountMenu">
+                <span class="home-account-avatar"><%= avatarLetter %></span>
+                <span class="home-account-name"><%= displayName %></span>
+                <span class="home-account-caret" aria-hidden="true">
+                    <svg viewBox="0 0 20 20" fill="none">
+                        <path d="M5 7.5L10 12.5L15 7.5" stroke="currentColor" stroke-width="2"
+                              stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </span>
+            </button>
+            <div class="home-account-menu" id="homeAccountMenu">
+                <a href="/profile" class="home-account-menu__item is-highlighted is-current-page">
+                    <span class="home-account-menu__icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none">
+                            <path d="M12 13C14.7614 13 17 10.7614 17 8C17 5.23858 14.7614 3 12 3C9.23858 3 7 5.23858 7 8C7 10.7614 9.23858 13 12 13Z" stroke="currentColor" stroke-width="2"/>
+                            <path d="M4 21C4.8 17.8 7.5 16 12 16C16.5 16 19.2 17.8 20 21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        </svg>
+                    </span>
+                    <span>Профиль</span>
+                </a>
+                <a href="/logout" class="home-account-menu__item">
+                    <span class="home-account-menu__icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none">
+                            <path d="M10 17L15 12L10 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M15 12H4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                            <path d="M13 4H18C19.1046 4 20 4.89543 20 6V18C20 19.1046 19.1046 20 18 20H13" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        </svg>
+                    </span>
+                    <span>Выйти</span>
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <div class="profile-page">
+        <div class="profile-card">
+
+            <!-- ── Header ── -->
+            <div class="profile-card-header">
+                <svg class="profile-header-wave" viewBox="0 0 300 150" preserveAspectRatio="none" aria-hidden="true">
+                    <path d="M300 0 L300 150 L180 150 C220 120 260 90 240 50 C220 10 180 20 200 0 Z" fill="rgba(255,255,255,0.05)"/>
+                    <path d="M300 0 L300 150 L240 150 C280 110 310 70 290 35 C270 0 230 10 260 0 Z" fill="rgba(255,255,255,0.04)"/>
+                </svg>
+
+                <label class="profile-avatar-wrap" for="profileAvatarInput" title="Загрузить фото">
+                    <span class="profile-avatar-circle">
+                        <img id="profileAvatarImg" class="profile-avatar-img" src="" alt="Фото профиля">
+                        <span class="profile-avatar-letter" id="profileAvatarLetter"><%= avatarLetter %></span>
+                    </span>
+                    <span class="profile-avatar-edit" aria-hidden="true">
+                        <svg viewBox="0 0 14 14" fill="none">
+                            <path d="M9.5 1.5L12.5 4.5L5 12L2 12L2 9L9.5 1.5Z" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </span>
+                    <button type="button" class="profile-avatar-remove" id="profileAvatarRemove" style="display:none" aria-label="Удалить фото">
+                        <svg viewBox="0 0 10 10" fill="none">
+                            <path d="M2 2L8 8M8 2L2 8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                        </svg>
+                    </button>
+                    <input type="file" id="profileAvatarInput" class="profile-avatar-input" accept="image/*" aria-label="Загрузить фото профиля">
+                </label>
+
+                <div class="profile-header-info">
+                    <h1 class="profile-header-username"><%= user.username %></h1>
+                </div>
+            </div>
+
+            <!-- ── Body ── -->
+            <div class="profile-card-body">
+                <h2 class="profile-section-title" data-i18n="section.account">Информация об аккаунте</h2>
+
+                <div class="profile-info-table">
+
+                    <!-- Логин -->
+                    <div class="profile-info-row">
+                        <span class="profile-info-icon" aria-hidden="true">
+                            <svg viewBox="0 0 20 20" fill="none">
+                                <path d="M10 11C12.2091 11 14 9.20914 14 7C14 4.79086 12.2091 3 10 3C7.79086 3 6 4.79086 6 7C6 9.20914 7.79086 11 10 11Z" stroke="currentColor" stroke-width="1.5"/>
+                                <path d="M3 17C3 14.2386 6.13401 12 10 12C13.866 12 17 14.2386 17 17" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                            </svg>
+                        </span>
+                        <span class="profile-info-label" data-i18n="field.login">Логин</span>
+                        <span class="profile-info-value">
+                            <span class="profile-info-value--mono"><%= user.username %></span>
+                        </span>
+                    </div>
+
+                    <!-- Email (editable) -->
+                    <div class="profile-info-row" id="emailRow">
+                        <span class="profile-info-icon" aria-hidden="true">
+                            <svg viewBox="0 0 20 20" fill="none">
+                                <rect x="2" y="4" width="16" height="12" rx="2" stroke="currentColor" stroke-width="1.5"/>
+                                <path d="M2 7L10 12L18 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                            </svg>
+                        </span>
+                        <span class="profile-info-label" data-i18n="field.email">Email</span>
+
+                        <!-- View mode -->
+                        <span class="profile-email-display" id="emailDisplay">
+                            <span id="emailText" class="profile-info-value">
+                                <% if (userDetails && userDetails.email) { %>
+                                    <%= userDetails.email %>
+                                <% } else { %>
+                                    <span class="profile-info-value--muted" data-i18n="email.none">Не указан</span>
+                                <% } %>
+                            </span>
+                            <button type="button" class="profile-field-edit-btn" id="emailEditBtn" data-i18n-title="email.editHint" title="Редактировать email">
+                                <svg viewBox="0 0 14 14" fill="none">
+                                    <path d="M9.5 1.5L12.5 4.5L5 12L2 12L2 9L9.5 1.5Z" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+                                </svg>
+                            </button>
+                        </span>
+
+                        <!-- Edit mode -->
+                        <span class="profile-email-edit-area" id="emailEditArea">
+                            <input type="email" id="emailInput" class="profile-email-input"
+                                   placeholder="email@example.com"
+                                   value="<%= (userDetails && userDetails.email) ? userDetails.email : '' %>">
+                            <button type="button" class="profile-email-save-btn" id="emailSaveBtn">
+                                <span data-i18n="btn.save">Сохранить</span>
+                            </button>
+                            <button type="button" class="profile-email-cancel-btn" id="emailCancelBtn">
+                                <span data-i18n="btn.cancel">Отменить</span>
+                            </button>
+                        </span>
+                    </div>
+
+                    <!-- Язык интерфейса -->
+                    <div class="profile-info-row">
+                        <span class="profile-info-icon" aria-hidden="true">
+                            <svg viewBox="0 0 20 20" fill="none">
+                                <circle cx="10" cy="10" r="8" stroke="currentColor" stroke-width="1.5"/>
+                                <path d="M10 2C10 2 7.5 5.5 7.5 10C7.5 14.5 10 18 10 18" stroke="currentColor" stroke-width="1.5"/>
+                                <path d="M10 2C10 2 12.5 5.5 12.5 10C12.5 14.5 10 18 10 18" stroke="currentColor" stroke-width="1.5"/>
+                                <path d="M2.5 10H17.5" stroke="currentColor" stroke-width="1.5"/>
+                            </svg>
+                        </span>
+                        <span class="profile-info-label" data-i18n="field.lang">Язык интерфейса</span>
+                        <span class="profile-info-value">
+                            <div class="profile-lang-dropdown" id="langDropdown">
+                                <button type="button" class="profile-lang-trigger" id="langTrigger" aria-haspopup="listbox" aria-expanded="false">
+                                    <span class="profile-lang-flag" id="langFlag">🇷🇺</span>
+                                    <span class="profile-lang-label" id="langLabel">Русский</span>
+                                    <svg class="profile-lang-caret" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+                                        <path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                                    </svg>
+                                </button>
+                                <div class="profile-lang-menu" id="langMenu" role="listbox">
+                                    <button type="button" class="profile-lang-option" data-value="ru" role="option">
+                                        <span class="profile-lang-option-flag">🇷🇺</span>
+                                        <span>Русский</span>
+                                    </button>
+                                    <button type="button" class="profile-lang-option" data-value="kk" role="option">
+                                        <span class="profile-lang-option-flag">🇰🇿</span>
+                                        <span>Қазақша</span>
+                                    </button>
+                                    <button type="button" class="profile-lang-option" data-value="en" role="option">
+                                        <span class="profile-lang-option-flag">🇬🇧</span>
+                                        <span>English</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </span>
+                    </div>
+
+                    <!-- Дата регистрации -->
+                    <% if (userDetails && userDetails.created_at) { %>
+                    <div class="profile-info-row">
+                        <span class="profile-info-icon" aria-hidden="true">
+                            <svg viewBox="0 0 20 20" fill="none">
+                                <rect x="2" y="4" width="16" height="14" rx="2" stroke="currentColor" stroke-width="1.5"/>
+                                <path d="M6 2V5M14 2V5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                                <path d="M2 8H18" stroke="currentColor" stroke-width="1.5"/>
+                            </svg>
+                        </span>
+                        <span class="profile-info-label" data-i18n="field.created">Дата регистрации</span>
+                        <span class="profile-info-value">
+                            <%= new Date(userDetails.created_at).toLocaleString('ru-RU', {
+                                day: '2-digit', month: '2-digit', year: 'numeric',
+                                hour: '2-digit', minute: '2-digit'
+                            }) %>
+                        </span>
+                    </div>
+                    <% } %>
+
+                    <!-- Последний вход -->
+                    <% if (userDetails && userDetails.last_login) { %>
+                    <div class="profile-info-row">
+                        <span class="profile-info-icon" aria-hidden="true">
+                            <svg viewBox="0 0 20 20" fill="none">
+                                <path d="M8 10H17M17 10L14 7M17 10L14 13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="M11 5V4C11 3 10 2 9 2H4C3 2 2 3 2 4V16C2 17 3 18 4 18H9C10 18 11 17 11 16V15" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                            </svg>
+                        </span>
+                        <span class="profile-info-label" data-i18n="field.lastLogin">Последний вход</span>
+                        <span class="profile-info-value">
+                            <%= new Date(userDetails.last_login).toLocaleString('ru-RU', {
+                                day: '2-digit', month: '2-digit', year: 'numeric',
+                                hour: '2-digit', minute: '2-digit'
+                            }) %>
+                        </span>
+                    </div>
+                    <% } %>
+
+                </div>
+
+                <!-- Save notice -->
+                <div class="profile-save-notice" id="profileSaveNotice"></div>
+
+                <!-- Actions -->
+                <div class="profile-actions">
+                    <a href="/" class="profile-action-btn profile-action-btn--ghost">
+                        <svg viewBox="0 0 16 16" fill="none">
+                            <path d="M10 13L5 8L10 3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                        <span data-i18n="btn.home">Главная</span>
+                    </a>
+                    <a href="/logout" class="profile-action-btn profile-action-btn--danger">
+                        <svg viewBox="0 0 16 16" fill="none">
+                            <path d="M6 13H3C2.44772 13 2 12.5523 2 12V4C2 3.44772 2.44772 3 3 3H6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+                            <path d="M10.5 11L14 8L10.5 5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M14 8H6.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+                        </svg>
+                        <span data-i18n="btn.logout">Выйти из системы</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/js/i18n.js"></script>
+    <script>
+    (function () {
+
+        /* ── Language dropdown ─────────────────────────────── */
+        var langData    = { ru: { flag: '🇷🇺', label: 'Русский' }, kk: { flag: '🇰🇿', label: 'Қазақша' }, en: { flag: '🇬🇧', label: 'English' } };
+        var langDropdown = document.getElementById('langDropdown');
+        var langTrigger  = document.getElementById('langTrigger');
+        var langMenu     = document.getElementById('langMenu');
+        var langFlag     = document.getElementById('langFlag');
+        var langLabel    = document.getElementById('langLabel');
+        var currentLang  = localStorage.getItem('ui_lang') || 'ru';
+
+        function setLang(lang) {
+            currentLang = lang;
+            localStorage.setItem('ui_lang', lang);
+            langFlag.textContent  = langData[lang].flag;
+            langLabel.textContent = langData[lang].label;
+            document.querySelectorAll('.profile-lang-option').forEach(function (btn) {
+                btn.classList.toggle('is-active', btn.dataset.value === lang);
+            });
+            if (window.ITS_I18n) window.ITS_I18n.apply(lang);
+        }
+        function openLangMenu()  { langMenu.classList.add('is-open');    langTrigger.setAttribute('aria-expanded', 'true');  }
+        function closeLangMenu() { langMenu.classList.remove('is-open'); langTrigger.setAttribute('aria-expanded', 'false'); }
+
+        setLang(currentLang);
+
+        langTrigger.addEventListener('click', function (e) {
+            e.stopPropagation();
+            langMenu.classList.contains('is-open') ? closeLangMenu() : openLangMenu();
+        });
+        langMenu.querySelectorAll('.profile-lang-option').forEach(function (btn) {
+            btn.addEventListener('click', function () { setLang(this.dataset.value); closeLangMenu(); });
+        });
+        document.addEventListener('click', function (e) { if (!langDropdown.contains(e.target)) closeLangMenu(); });
+        document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeLangMenu(); });
+
+        /* ── Dropdown menu ─────────────────────────────────── */
+        var toggle = document.getElementById('homeAccountToggle');
+        var menu   = document.getElementById('homeAccountMenu');
+        toggle.addEventListener('click', function (e) {
+            e.stopPropagation();
+            var isOpen = menu.classList.toggle('is-open');
+            toggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+        });
+        document.addEventListener('click', function (e) {
+            if (!menu.contains(e.target) && !toggle.contains(e.target)) {
+                menu.classList.remove('is-open');
+                toggle.setAttribute('aria-expanded', 'false');
+            }
+        });
+
+        /* ── Avatar upload ─────────────────────────────────── */
+        var avatarInput  = document.getElementById('profileAvatarInput');
+        var avatarImg    = document.getElementById('profileAvatarImg');
+        var avatarLetter = document.getElementById('profileAvatarLetter');
+        var avatarRemove = document.getElementById('profileAvatarRemove');
+        var avatarKey    = 'profile_avatar_<%= user.username %>';
+
+        function showAvatar(src) {
+            avatarImg.src = src;
+            avatarImg.style.display = 'block';
+            avatarLetter.style.display = 'none';
+            avatarRemove.style.display = 'flex';
+        }
+
+        function clearAvatar() {
+            localStorage.removeItem(avatarKey);
+            avatarImg.src = '';
+            avatarImg.style.display = 'none';
+            avatarLetter.style.display = '';
+            avatarRemove.style.display = 'none';
+            var topbarAvatar = document.querySelector('.home-account-avatar');
+            if (topbarAvatar) topbarAvatar.innerHTML = '<%= avatarLetter %>';
+        }
+
+        var savedAvatar = localStorage.getItem(avatarKey);
+        if (savedAvatar) showAvatar(savedAvatar);
+
+        avatarInput.addEventListener('change', function () {
+            var file = this.files[0];
+            if (!file) return;
+            var reader = new FileReader();
+            reader.onload = function (e) {
+                localStorage.setItem(avatarKey, e.target.result);
+                showAvatar(e.target.result);
+                /* Sync topbar avatar immediately without reload */
+                var topbarAvatar = document.querySelector('.home-account-avatar');
+                if (topbarAvatar) {
+                    topbarAvatar.innerHTML = '';
+                    var topImg = document.createElement('img');
+                    topImg.src = e.target.result;
+                    topImg.alt = '';
+                    topImg.style.cssText = 'width:100%;height:100%;object-fit:cover;border-radius:50%;display:block;';
+                    topbarAvatar.appendChild(topImg);
+                }
+            };
+            reader.readAsDataURL(file);
+        });
+
+        avatarRemove.addEventListener('click', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            clearAvatar();
+        });
+
+        /* ── Email inline edit ─────────────────────────────── */
+        var emailDisplay  = document.getElementById('emailDisplay');
+        var emailEditArea = document.getElementById('emailEditArea');
+        var emailEditBtn  = document.getElementById('emailEditBtn');
+        var emailInput    = document.getElementById('emailInput');
+        var emailSaveBtn  = document.getElementById('emailSaveBtn');
+        var emailCancelBtn= document.getElementById('emailCancelBtn');
+        var emailText     = document.getElementById('emailText');
+        var saveNotice    = document.getElementById('profileSaveNotice');
+
+        function enterEmailEdit() {
+            emailDisplay.style.display  = 'none';
+            emailEditArea.style.display = 'flex';
+            emailInput.focus();
+            emailInput.select();
+        }
+
+        function exitEmailEdit() {
+            emailEditArea.style.display = 'none';
+            emailDisplay.style.display  = 'flex';
+        }
+
+        function showNotice(msg, isError) {
+            saveNotice.textContent = msg;
+            saveNotice.className = 'profile-save-notice ' + (isError ? 'is-error' : 'is-success');
+            clearTimeout(saveNotice._timer);
+            saveNotice._timer = setTimeout(function () {
+                saveNotice.className = 'profile-save-notice';
+                saveNotice.textContent = '';
+            }, 3500);
+        }
+
+        emailEditBtn.addEventListener('click', function () { enterEmailEdit(); });
+
+        emailCancelBtn.addEventListener('click', function () { exitEmailEdit(); });
+
+        emailInput.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter')  emailSaveBtn.click();
+            if (e.key === 'Escape') exitEmailEdit();
+        });
+
+        emailSaveBtn.addEventListener('click', async function () {
+            var val = emailInput.value.trim();
+
+            if (val && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val)) {
+                showNotice(window.ITS_I18n ? window.ITS_I18n.t('email.err.format') : 'Неверный формат email', true);
+                emailInput.focus();
+                return;
+            }
+
+            emailSaveBtn.disabled = true;
+            var origText = emailSaveBtn.textContent;
+            emailSaveBtn.textContent = '...';
+
+            try {
+                var resp = await fetch('/api/profile', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: val || null })
+                });
+                var data = await resp.json();
+
+                if (!resp.ok) {
+                    showNotice(data.error || (window.ITS_I18n ? window.ITS_I18n.t('email.err.save') : 'Ошибка сохранения'), true);
+                    emailSaveBtn.disabled = false;
+                    emailSaveBtn.textContent = origText;
+                    return;
+                }
+
+                /* Update displayed value without page reload */
+                if (val) {
+                    emailText.innerHTML = val;
+                } else {
+                    emailText.innerHTML = '<span class="profile-info-value--muted" data-i18n="email.none">'
+                        + (window.ITS_I18n ? window.ITS_I18n.t('email.none') : 'Не указан') + '</span>';
+                }
+                emailInput.value = val;
+                exitEmailEdit();
+                showNotice(window.ITS_I18n ? window.ITS_I18n.t('email.saved') : 'Email сохранён', false);
+
+            } catch (err) {
+                showNotice(window.ITS_I18n ? window.ITS_I18n.t('email.err.conn') : 'Ошибка соединения', true);
+                emailSaveBtn.disabled = false;
+                emailSaveBtn.textContent = origText;
+            }
+
+            emailSaveBtn.disabled = false;
+            emailSaveBtn.textContent = origText;
+        });
+
+    })();
+    </script>
+</body>
+</html>

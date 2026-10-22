@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="ru" id="htmlRoot">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Регистрация - ИТС-Ком</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="/css/login.css">
+	<link rel="icon" type="image/png" href="/favicon.png">
+    <script>(function(){var t=localStorage.getItem('ui_theme');if(t)document.documentElement.setAttribute('data-theme',t);})()</script>
+</head>
+<body class="auth-body">
+    <header class="home-topbar home-topbar--public">
+        <div class="home-topbar__brand">
+            <a href="/" class="home-brand-link">
+                <img src="/logo.png" alt="ИТС-Ком" class="home-brand-logo">
+                <span class="home-brand-name">ИТС-Ком</span>
+            </a>
+        </div>
+        <nav class="home-topbar__nav" aria-label="Основная навигация">
+            <a href="/" class="home-topbar__nav-link" data-i18n="nav.home">Главная</a>
+            <a href="/wiki" class="home-topbar__nav-link">Wiki</a>
+        </nav>
+        <div class="home-topbar__public-actions">
+            <button class="theme-toggle-btn" id="themeToggle" type="button" aria-label="Переключить тему">
+                <svg class="theme-icon theme-icon--sun" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="4" stroke="currentColor" stroke-width="1.5"/><path d="M10 2V4M10 16V18M2 10H4M16 10H18M4.22 4.22L5.64 5.64M14.36 14.36L15.78 15.78M15.78 4.22L14.36 5.64M5.64 14.36L4.22 15.78" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                <svg class="theme-icon theme-icon--moon" viewBox="0 0 20 20" fill="none"><path d="M17 11C16.4 15 12.8 18 8.5 17.5C4.2 17 1 13.3 1.5 9C2 4.7 5.8 1.8 10 2.5C8.5 4.5 8.5 8 11 10C13.5 12 16.5 11.5 17 11Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+            <a href="/login" class="home-topbar__public-link" data-i18n="nav.login">Войти</a>
+        </div>
+    </header>
+
+    <div class="login-container">
+        <div class="login-box">
+            <h2 data-i18n="register.title">Регистрация нового пользователя</h2>
+            <form id="registerForm" action="/register" method="POST">
+                <div class="form-group">
+                    <label class="form-label" data-i18n="register.login.label">Логин</label>
+                    <input
+                        type="text"
+                        id="username"
+                        name="username"
+                        class="form-input"
+                        placeholder="Введите логин (минимум 3 символа)"
+                        data-i18n-placeholder="register.login.ph"
+                        required
+                        minlength="3"
+                    >
+                    <small class="form-hint" data-i18n="register.login.hint">Будет использоваться для входа в систему</small>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" data-i18n="register.pass.label">Пароль</label>
+                    <input
+                        type="password"
+                        id="password"
+                        name="password"
+                        class="form-input"
+                        placeholder="Введите пароль (минимум 5 символов)"
+                        data-i18n-placeholder="register.pass.ph"
+                        required
+                        minlength="5"
+                    >
+                    <small class="form-hint" data-i18n="register.pass.hint">Минимум 5 символов</small>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" data-i18n="register.confirm.label">Подтверждение пароля</label>
+                    <input
+                        type="password"
+                        id="confirmPassword"
+                        name="confirmPassword"
+                        class="form-input"
+                        placeholder="Повторите пароль"
+                        data-i18n-placeholder="register.confirm.ph"
+                        required
+                    >
+                </div>
+
+                <% if (typeof error !== 'undefined' && error) { %>
+                    <div class="error-message">
+                        <%= error %>
+                    </div>
+                <% } %>
+
+                <% if (typeof success !== 'undefined' && success) { %>
+                    <div class="success-message">
+                        <%= success %>
+                    </div>
+                <% } %>
+
+                <button type="submit" class="btn-login" data-i18n="register.btn">Зарегистрироваться</button>
+
+                <div class="form-footer">
+                    <span data-i18n="register.hasAccount">Уже есть аккаунт?</span>
+                    <a href="/login" class="link" data-i18n="register.login">Войти</a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="/js/i18n.js"></script>
+    <script>
+        const form = document.getElementById('registerForm');
+        const password = document.getElementById('password');
+        const confirmPassword = document.getElementById('confirmPassword');
+
+        form.addEventListener('submit', function(e) {
+            if (password.value !== confirmPassword.value) {
+                e.preventDefault();
+                alert(window.ITS_I18n ? window.ITS_I18n.t('register.mismatch') : 'Пароли не совпадают!');
+                confirmPassword.focus();
+                return false;
+            }
+        });
+
+        document.getElementById('username').focus();
+    </script>
+</body>
+</html>
