@@ -143,9 +143,30 @@
                         <div class="org-more-wrap">
                             <button class="org-action-btn" id="moreBtnTop"><span data-i18n="wiki.more.btn">Ещё</span> <span class="more-caret">▾</span></button>
                             <div class="org-more-dropdown" id="moreMenu">
-                                <a href="/api/export/pdf/<%= currentOrg.id %>" class="more-item" data-i18n="wiki.more.pdf">📄 Экспорт PDF</a>
-                                <a href="/api/export/txt/<%= currentOrg.id %>" class="more-item" data-i18n="wiki.more.txt">📝 Экспорт TXT</a>
-                                <button class="more-item more-item-danger" id="deleteBtnMore" data-i18n="wiki.more.delete">🗑 Удалить</button>
+                                <a href="/api/export/pdf/<%= currentOrg.id %>" target="_blank" class="more-item" data-i18n="wiki.more.pdf">
+                                    <svg class="more-item-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                                        <polyline points="14 2 14 8 20 8"/>
+                                        <path d="M10 12h2a1 1 0 0 1 1 1v1a1 1 0 0 1-1 1h-2v-4z"/>
+                                    </svg>
+                                    <span>Экспорт PDF</span>
+                                </a>
+                                <a href="/api/export/txt/<%= currentOrg.id %>" class="more-item" data-i18n="wiki.more.txt">
+                                    <svg class="more-item-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                                        <polyline points="14 2 14 8 20 8"/>
+                                        <line x1="16" y1="13" x2="8" y2="13"/>
+                                        <line x1="16" y1="17" x2="8" y2="17"/>
+                                    </svg>
+                                    <span>Экспорт TXT</span>
+                                </a>
+                                <button type="button" class="more-item more-item-danger" id="deleteBtnMore" data-i18n="wiki.more.delete">
+                                    <svg class="more-item-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <polyline points="3 6 5 6 21 6"/>
+                                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                                    </svg>
+                                    <span>Удалить</span>
+                                </button>
                             </div>
                         </div>
                         <div class="org-nav-arrows">
@@ -305,8 +326,6 @@
                         </section>
                     </div>
                 </div>
-                    </section>
-                </div>
 
                 <!-- BOTTOM BAR (shown in edit mode) -->
                 <div class="editor-bottom-bar" id="editorBottomBar" style="display: none;">
@@ -406,23 +425,16 @@
                 <input type="hidden" id="dbId" value="">
                 <div class="modal-body">
                     <div class="form-group">
-                        <label for="dbName">Информационная база:</label>
+                        <label class="form-label" for="dbName">Информационная база:</label>
                         <input type="text" id="dbName" name="dbName" class="form-input" required placeholder="Например: Бухгалтерия (ЦБ)">
                     </div>
                     <div class="form-group">
-                        <label for="dbDescription">Описание:</label>
-                        <input type="text" id="dbDescription" name="dbDescription" class="form-input" list="dbDescriptionPresets" placeholder="Например: 3.0.73.1 (БК), подсистема Строительство">
-                        <datalist id="dbDescriptionPresets">
-                            <option value="3.0.73.1 (БК), подсистема Строительство">Бухгалтерия для Казахстана</option>
-                            <option value="3.1.28.12 (ЗУП), типовая">Зарплата и управление персоналом</option>
-                            <option value="2.4.14.8 (ERP), модуль WMS">Управление предприятием</option>
-                            <option value="2.0.42.1 (УТ)">Управление торговлей</option>
-                            <option value="1.3.19.1 (УПП)">Управление производственным предприятием</option>
-                        </datalist>
-                        <small class="form-hint">Свободный текст: конфигурация, релиз, специфика, доработки и расширения</small>
+                        <label class="form-label" for="dbDescription">Описание</label>
+                        <input type="text" id="dbDescription" name="description" class="form-input" 
+                               placeholder="Например: 3.0.73.1 (БК), подсистема Строительство" required>
                     </div>
                     <div class="form-group">
-                        <label for="dbDate">Дата:</label>
+                        <label class="form-label" for="dbDate">Дата:</label>
                         <input type="date" id="dbDate" name="dbDate" class="form-input" required>
                     </div>
                 </div>

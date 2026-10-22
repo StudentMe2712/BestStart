@@ -29,8 +29,6 @@
         }
 
         const groups = (typeof groupedOrganizations !== 'undefined' && Array.isArray(groupedOrganizations)) ? groupedOrganizations : [];
-        const orgsTotal = typeof totalOrgs !== 'undefined' ? totalOrgs : groups.length;
-        const basesTotal = typeof totalBases !== 'undefined' ? totalBases : groups.reduce((acc, g) => acc + (g.count || 0), 0);
     %>
 
     <!-- Topbar Navigation -->
@@ -77,59 +75,11 @@
     <!-- Main Container -->
     <main class="events-main">
         <div class="events-container">
-            <!-- Header section -->
+            <!-- Header section (clean & minimal) -->
             <div class="events-header">
                 <div class="events-header__info">
                     <h1 class="events-title">Журнал релизов 1С</h1>
-                    <p class="events-subtitle">Хронологический регистр обновлений конфигураций клиентов</p>
-                </div>
-
-                <!-- Upper Toolbar Controls -->
-                <div class="events-toolbar">
-                    <!-- Quick action buttons -->
-                    <div class="events-tree-actions">
-                        <button type="button" class="events-action-btn" id="btnExpandAll" title="Развернуть все группы">
-                            <span class="btn-icon">▾</span> Развернуть все
-                        </button>
-                        <button type="button" class="events-action-btn" id="btnCollapseAll" title="Свернуть все группы">
-                            <span class="btn-icon">▸</span> Свернуть все
-                        </button>
-                    </div>
-
-                    <!-- Live Instant Search Field -->
-                    <div class="events-search-box">
-                        <span class="events-search-icon" aria-hidden="true">
-                            <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8">
-                                <circle cx="8.5" cy="8.5" r="5.5" stroke-linecap="round" stroke-linejoin="round"/>
-                                <line x1="12.5" y1="12.5" x2="16.5" y2="16.5" stroke-linecap="round"/>
-                            </svg>
-                        </span>
-                        <input
-                            type="text"
-                            id="eventsSearchInput"
-                            class="events-search-input"
-                            placeholder="Поиск по компании, базе, описанию..."
-                            autocomplete="off"
-                            aria-label="Живой поиск по событиям"
-                        >
-                    </div>
-
-                    <!-- Informational Badge -->
-                    <div class="events-badge-pill" id="eventsStatsBadge">
-                        Всего: <strong id="statsTotalOrgs"><%= orgsTotal %></strong> компаний, <strong id="statsTotalBases"><%= basesTotal %></strong> баз 1С
-                    </div>
-
-                    <!-- Company Filter Select (compatible with existing workflows) -->
-                    <div class="events-select-wrap">
-                        <select id="orgFilter" class="events-org-select" aria-label="Фильтр по организации">
-                            <option value="">Все организации (<%= basesTotal %>)</option>
-                            <% if (organizations && organizations.length > 0) { %>
-                                <% organizations.forEach(function(org) { %>
-                                    <option value="<%= org.id %>"><%= org.name %></option>
-                                <% }); %>
-                            <% } %>
-                        </select>
-                    </div>
+                    <p class="events-subtitle">Реестр информационных баз организаций-клиентов</p>
                 </div>
             </div>
 
@@ -147,29 +97,42 @@
                         </thead>
                         <tbody id="eventsTableBody">
                             <% if (groups && groups.length > 0) { %>
-                                <% groups.forEach(function(group) { %>
+                                <% groups.forEach(function(group) { 
+                                    const hasBases = group.databases && group.databases.length > 0;
+                                %>
                                     <!-- Строка 1-го уровня (родительская группа) — Организация -->
-                                    <tr class="events-group-row is-expanded" data-org-id="<%= group.id %>" data-name="<%= group.name %>" data-count="<%= group.count %>" tabindex="0" role="button" aria-expanded="true">
+                                    <tr class="events-group-row is-collapsed <%= !hasBases ? 'is-empty' : '' %>" 
+                                        data-org-id="<%= group.id %>" 
+                                        data-name="<%= group.name %>" 
+                                        data-count="<%= group.count %>" 
+                                        <%= hasBases ? 'tabindex="0" role="button" aria-expanded="false"' : 'aria-expanded="false"' %>>
                                         <td class="col-org" colspan="4">
                                             <div class="events-group-cell">
-                                                <span class="events-chevron" aria-hidden="true">▾</span>
-                                                <span class="events-folder-icon" aria-hidden="true">🏢</span>
+                                                <% if (hasBases) { %>
+                                                    <span class="tree-node-1c-toggle" aria-hidden="true">[+]</span>
+                                                <% } else { %>
+                                                    <span class="tree-node-1c-spacer" aria-hidden="true"></span>
+                                                <% } %>
                                                 <a href="/wiki/organization/<%= group.id %>" class="events-group-title events-org-link" onclick="event.stopPropagation();" title="Открыть Wiki компании">
                                                     <span class="events-org-name"><%= group.name %></span>
                                                     <span class="events-link-arrow">↗</span>
                                                 </a>
-                                                <span class="events-count-badge"><%= getBasesCountStr(group.count) %></span>
+                                                <% if (hasBases) { %>
+                                                    <span class="events-count-badge"><%= getBasesCountStr(group.count) %></span>
+                                                <% } else { %>
+                                                    <span class="events-count-badge events-count-badge--zero">0 баз</span>
+                                                <% } %>
                                             </div>
                                         </td>
                                     </tr>
 
                                     <!-- Строки 2-го уровня (дочерние строки) — Информационные базы этой организации -->
-                                    <% if (group.databases && group.databases.length > 0) { %>
+                                    <% if (hasBases) { %>
                                         <% group.databases.forEach(function(db) { 
                                             const formattedDate = db.updated_at ? new Date(db.updated_at).toLocaleDateString('ru-RU') : '—';
                                             const dbDesc = db.description || db.release || '—';
                                         %>
-                                            <tr class="events-child-row" data-parent-org-id="<%= group.id %>" data-db-id="<%= db.id %>" data-db-name="<%= db.name %>" data-desc="<%= dbDesc %>">
+                                            <tr class="events-child-row" style="display: none;" data-parent-org-id="<%= group.id %>" data-db-id="<%= db.id %>" data-db-name="<%= db.name %>" data-desc="<%= dbDesc %>">
                                                 <td class="col-org">
                                                     <span class="tree-indent" aria-hidden="true">
                                                         <span class="tree-branch">└─</span>
@@ -186,17 +149,6 @@
                                                 </td>
                                             </tr>
                                         <% }); %>
-                                    <% } else { %>
-                                        <tr class="events-child-row events-child-row--empty" data-parent-org-id="<%= group.id %>">
-                                            <td class="col-org">
-                                                <span class="tree-indent" aria-hidden="true">
-                                                    <span class="tree-branch">└─</span>
-                                                </span>
-                                            </td>
-                                            <td class="col-db" colspan="3">
-                                                <span class="events-db-empty-hint">Базы 1С еще не привязаны к этой организации</span>
-                                            </td>
-                                        </tr>
                                     <% } %>
                                 <% }); %>
                             <% } %>
@@ -220,7 +172,7 @@
         </div>
     </footer>
 
-    <!-- Theme & Account & Hierarchical Tree Scripts -->
+    <!-- Theme & Account & Strict 1C Tree Scripts -->
     <script>
         // User account menu toggle
         (function () {
@@ -256,55 +208,45 @@
             });
         })();
 
-        // Hierarchical Tree Engine (Accordion, Expand/Collapse All, Live Search, Org Filter)
+        // Strict 1C Tree Engine (Default collapsed, [+] / [-] toggle)
         (function () {
-            const tableWrap = document.getElementById('eventsTableWrap');
-            const tableBody = document.getElementById('eventsTableBody');
-            const emptyState = document.getElementById('eventsEmptyState');
-            const emptyText = document.getElementById('emptyStateText');
-            const emptySubtext = document.getElementById('emptyStateSubtext');
-            const btnExpandAll = document.getElementById('btnExpandAll');
-            const btnCollapseAll = document.getElementById('btnCollapseAll');
-            const searchInput = document.getElementById('eventsSearchInput');
-            const orgFilter = document.getElementById('orgFilter');
+            const groupRows = document.querySelectorAll('.events-group-row');
 
-            if (!tableBody) return;
-
-            // Helper to toggle a single group row
             function setGroupState(groupRow, shouldExpand) {
                 const orgId = groupRow.getAttribute('data-org-id');
-                const chevron = groupRow.querySelector('.events-chevron');
-                
+                const toggle = groupRow.querySelector('.tree-node-1c-toggle');
+                if (!toggle) return;
+
                 if (shouldExpand) {
                     groupRow.classList.add('is-expanded');
                     groupRow.classList.remove('is-collapsed');
                     groupRow.setAttribute('aria-expanded', 'true');
-                    if (chevron) chevron.textContent = '▾';
+                    toggle.textContent = '[-]';
                 } else {
                     groupRow.classList.remove('is-expanded');
                     groupRow.classList.add('is-collapsed');
                     groupRow.setAttribute('aria-expanded', 'false');
-                    if (chevron) chevron.textContent = '▸';
+                    toggle.textContent = '[+]';
                 }
 
                 const childRows = document.querySelectorAll(`.events-child-row[data-parent-org-id="${orgId}"]`);
-                childRows.forEach(row => {
+                childRows.forEach(function (row) {
                     row.style.display = shouldExpand ? '' : 'none';
                 });
             }
 
             function toggleGroup(groupRow) {
+                if (groupRow.classList.contains('is-empty')) return;
                 const isExpanded = groupRow.classList.contains('is-expanded');
                 setGroupState(groupRow, !isExpanded);
             }
 
-            // Group Row Click Handler
-            const groupRows = document.querySelectorAll('.events-group-row');
-            groupRows.forEach(row => {
+            groupRows.forEach(function (row) {
                 row.addEventListener('click', function (e) {
                     if (e.target.closest('a')) return;
                     toggleGroup(row);
                 });
+
                 row.addEventListener('keydown', function (e) {
                     if (e.key === 'Enter' || e.key === ' ') {
                         if (e.target.closest('a')) return;
@@ -313,114 +255,6 @@
                     }
                 });
             });
-
-            // Expand All
-            if (btnExpandAll) {
-                btnExpandAll.addEventListener('click', function () {
-                    groupRows.forEach(row => setGroupState(row, true));
-                });
-            }
-
-            // Collapse All
-            if (btnCollapseAll) {
-                btnCollapseAll.addEventListener('click', function () {
-                    groupRows.forEach(row => setGroupState(row, false));
-                });
-            }
-
-            // Live Search & Filter Coordinator
-            function applyFilters() {
-                const query = (searchInput ? searchInput.value : '').trim().toLowerCase();
-                const selectedOrgId = orgFilter ? orgFilter.value : '';
-                let visibleGroupsCount = 0;
-                let visibleBasesCount = 0;
-
-                groupRows.forEach(gRow => {
-                    const orgId = gRow.getAttribute('data-org-id');
-                    const orgName = (gRow.getAttribute('data-name') || '').toLowerCase();
-                    const childRows = document.querySelectorAll(`.events-child-row[data-parent-org-id="${orgId}"]`);
-
-                    // Check company filter
-                    if (selectedOrgId && orgId !== selectedOrgId) {
-                        gRow.style.display = 'none';
-                        childRows.forEach(c => c.style.display = 'none');
-                        return;
-                    }
-
-                    // If no search query
-                    if (!query) {
-                        gRow.style.display = '';
-                        visibleGroupsCount++;
-                        const isExp = gRow.classList.contains('is-expanded');
-                        childRows.forEach(c => {
-                            c.style.display = isExp ? '' : 'none';
-                            if (isExp && !c.classList.contains('events-child-row--empty')) {
-                                visibleBasesCount++;
-                            }
-                        });
-                        return;
-                    }
-
-                    // Searching
-                    const groupMatches = orgName.includes(query);
-                    let matchingChildren = 0;
-
-                    childRows.forEach(cRow => {
-                        const dbName = (cRow.getAttribute('data-db-name') || '').toLowerCase();
-                        const dbDesc = (cRow.getAttribute('data-desc') || '').toLowerCase();
-                        const childMatches = dbName.includes(query) || dbDesc.includes(query);
-
-                        if (groupMatches || childMatches) {
-                            cRow.style.display = '';
-                            if (!cRow.classList.contains('events-child-row--empty')) {
-                                visibleBasesCount++;
-                            }
-                            matchingChildren++;
-                        } else {
-                            cRow.style.display = 'none';
-                        }
-                    });
-
-                    if (groupMatches || matchingChildren > 0) {
-                        gRow.style.display = '';
-                        // Auto-expand matching groups
-                        gRow.classList.add('is-expanded');
-                        gRow.classList.remove('is-collapsed');
-                        gRow.setAttribute('aria-expanded', 'true');
-                        const chevron = gRow.querySelector('.events-chevron');
-                        if (chevron) chevron.textContent = '▾';
-                        visibleGroupsCount++;
-                    } else {
-                        gRow.style.display = 'none';
-                    }
-                });
-
-                if (visibleGroupsCount > 0) {
-                    if (tableWrap) tableWrap.style.display = '';
-                    if (emptyState) emptyState.style.display = 'none';
-                } else {
-                    if (tableWrap) tableWrap.style.display = 'none';
-                    if (emptyState) {
-                        emptyState.style.display = '';
-                        if (emptyText) {
-                            emptyText.textContent = query
-                                ? `По запросу «${query}» ничего не найдено`
-                                : 'Для выбранной организации нет зафиксированных релизов 1С';
-                        }
-                        if (emptySubtext) {
-                            emptySubtext.textContent = 'Попробуйте изменить параметры поиска или фильтрации';
-                        }
-                    }
-                }
-            }
-
-            if (searchInput) {
-                searchInput.addEventListener('input', applyFilters);
-            }
-
-            if (orgFilter) {
-                orgFilter.addEventListener('change', applyFilters);
-            }
         })();
     </script>
 </body>

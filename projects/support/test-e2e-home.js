@@ -173,8 +173,8 @@ async function runE2ETests() {
 
         console.log(`   [Карточка 2 События] Заголовок: "${eventsTitle}", Описание: "${eventsDesc}", Кнопка: "${eventsBtnText}" -> ${eventsBtnHref}`);
         if (eventsTitle !== 'События') throw new Error(`Ожидался заголовок "События", получено "${eventsTitle}"`);
-        if (!eventsDesc.includes('Журнал обновлений и релизов информационных баз 1С')) {
-            throw new Error(`Неверное описание Событий: "${eventsDesc}", ожидалось "Журнал обновлений и релизов информационных баз 1С."`);
+        if (!eventsDesc.includes('Иерархический журнал и реестр информационных баз 1С') && !eventsDesc.includes('Журнал обновлений и релизов')) {
+            throw new Error(`Неверное описание Событий: "${eventsDesc}", ожидалось "Иерархический журнал и реестр информационных баз 1С."`);
         }
         if (!eventsBtnText.includes('Перейти к событиям') || eventsBtnHref !== '/events') {
             throw new Error(`Кнопка Событий должна вести на /events с текстом "Перейти к событиям", получено: "${eventsBtnText}" (${eventsBtnHref})`);

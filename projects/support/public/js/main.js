@@ -912,6 +912,8 @@ if (wikiSearch && wikiOrgList) {
         if (dbIdInput) dbIdInput.value = '';
         var altId = document.getElementById('db1cId');
         if (altId) altId.value = '';
+        if (dbNameInput) dbNameInput.value = '';
+        if (dbDescInput) dbDescInput.value = '';
         if (dbDateInput) dbDateInput.value = getTodayString();
         if (dbModalTitle) dbModalTitle.textContent = 'Добавить базу 1С';
         dbModal.style.display = 'flex';

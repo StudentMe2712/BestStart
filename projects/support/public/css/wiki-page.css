@@ -423,7 +423,8 @@ body.wiki-page-body {
 }
 
 .more-item {
-    display: block;
+    display: flex;
+    align-items: center;
     width: 100%;
     text-align: left;
     padding: 9px 14px;
@@ -434,7 +435,7 @@ body.wiki-page-body {
     border: none;
     cursor: pointer;
     font-family: inherit;
-    transition: background 0.12s;
+    transition: background 0.12s, color 0.12s;
     line-height: 1.4;
 }
 
@@ -442,13 +443,22 @@ body.wiki-page-body {
     background: #f2f6fb;
 }
 
+.more-item-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    margin-right: 8px;
+    color: inherit;
+}
+
 .more-item-danger {
-    color: #c0392b;
+    color: #ef4444;
 }
 
 .more-item-danger:hover {
     background: #fff0ee;
-    color: #a33020;
+    color: #ef4444;
 }
 
 /* Nav arrows */
@@ -1014,7 +1024,8 @@ body.wiki-page-body {
 /* Form elements */
 .form-group { margin-bottom: 12px; }
 
-.form-group label {
+.form-group label,
+.form-label {
     display: block;
     font-size: 12.5px;
     font-weight: 500;
@@ -1202,6 +1213,15 @@ body.wiki-page-body {
 
 [data-theme="dark"] .more-item:hover {
     background: #1e2c40;
+}
+
+[data-theme="dark"] .more-item-danger {
+    color: #ef4444;
+}
+
+[data-theme="dark"] .more-item-danger:hover {
+    background: rgba(239, 68, 68, 0.15);
+    color: #ef4444;
 }
 
 

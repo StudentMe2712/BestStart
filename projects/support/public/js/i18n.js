@@ -62,9 +62,9 @@
             'wiki.edit.btn':             'Редактировать',
             'wiki.view.btn':             'Просмотр',
             'wiki.more.btn':             'Ещё',
-            'wiki.more.pdf':             '📄 Экспорт PDF',
-            'wiki.more.txt':             '📝 Экспорт TXT',
-            'wiki.more.delete':          '🗑 Удалить',
+            'wiki.more.pdf':             'Экспорт PDF',
+            'wiki.more.txt':             'Экспорт TXT',
+            'wiki.more.delete':          'Удалить',
             'wiki.save.btn':             'Сохранить',
             'wiki.save.saving':          'Сохранение...',
             'wiki.last.modified':        'Последнее изменение:',
@@ -196,9 +196,9 @@
             'wiki.edit.btn':             'Өңдеу',
             'wiki.view.btn':             'Қарау',
             'wiki.more.btn':             'Толығырақ',
-            'wiki.more.pdf':             '📄 PDF экспорт',
-            'wiki.more.txt':             '📝 TXT экспорт',
-            'wiki.more.delete':          '🗑 Жою',
+            'wiki.more.pdf':             'PDF экспорт',
+            'wiki.more.txt':             'TXT экспорт',
+            'wiki.more.delete':          'Жою',
             'wiki.save.btn':             'Сақтау',
             'wiki.save.saving':          'Сақталуда...',
             'wiki.last.modified':        'Соңғы өзгерту:',
@@ -330,9 +330,9 @@
             'wiki.edit.btn':             'Edit',
             'wiki.view.btn':             'View',
             'wiki.more.btn':             'More',
-            'wiki.more.pdf':             '📄 Export PDF',
-            'wiki.more.txt':             '📝 Export TXT',
-            'wiki.more.delete':          '🗑 Delete',
+            'wiki.more.pdf':             'Export PDF',
+            'wiki.more.txt':             'Export TXT',
+            'wiki.more.delete':          'Delete',
             'wiki.save.btn':             'Save',
             'wiki.save.saving':          'Saving...',
             'wiki.last.modified':        'Last modified:',
@@ -428,7 +428,14 @@
 
         document.querySelectorAll('[data-i18n]').forEach(function (el) {
             var key = el.getAttribute('data-i18n');
-            if (dict[key] !== undefined) el.textContent = dict[key];
+            if (dict[key] !== undefined) {
+                var span = el.querySelector(':scope > span') || el.querySelector('span');
+                if (span && el.querySelector('svg')) {
+                    span.textContent = dict[key];
+                } else {
+                    el.textContent = dict[key];
+                }
+            }
         });
 
         document.querySelectorAll('[data-i18n-html]').forEach(function (el) {
