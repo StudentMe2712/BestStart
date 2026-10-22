@@ -6,7 +6,7 @@ process.env.PORT = String(TEST_PORT);
 
 async function runE2ETests() {
     console.log('====================================================');
-    console.log('  🧪 E2E ТЕСТИРОВАНИЕ ГЛАВНОЙ СТРАНИЦЫ (ЭТАП 2 СПРИНТА 2)');
+    console.log('  🧪 E2E ТЕСТИРОВАНИЕ ГЛАВНОЙ СТРАНИЦЫ (ЭТАП 4 СПРИНТА 3)');
     console.log('====================================================\n');
 
     // 1. Запуск сервера с in-memory stub DB
@@ -122,6 +122,13 @@ async function runE2ETests() {
             throw new Error(`Ожидалось ровно 2 карточки, получено: ${widgets.length}`);
         }
 
+        // Проверка полного отсутствия списков буллетов (.command-widget__features = 0)
+        const featureLists = await page.$$('.command-widget__features, .feature-item, .feature-bullet');
+        console.log(`   - Количество элементов буллетов (.command-widget__features): ${featureLists.length}`);
+        if (featureLists.length > 0) {
+            throw new Error(`Списки буллетов (.command-widget__features) должны быть полностью удалены! Найдено: ${featureLists.length}`);
+        }
+
         // Карточка 1: Wiki
         const wikiCard = await page.$('.command-widget--wiki');
         if (!wikiCard) throw new Error('Не найдена карточка .command-widget--wiki');
@@ -133,7 +140,7 @@ async function runE2ETests() {
         const wikiBtnHref = await wikiBtn.evaluate(el => el.getAttribute('href'));
         const wikiSvg = await wikiCard.$('.command-widget__icon-wrap svg');
 
-        console.log(`   [Карточка 1 Wiki] Заголовок: "${wikiTitle}", Бейдж: "${wikiBadge}", Кнопка: "${wikiBtnText}" -> ${wikiBtnHref}`);
+        console.log(`   [Карточка 1 Wiki] Заголовок: "${wikiTitle}", Бейдж: "${wikiBadge}", Описание: "${wikiDesc}", Кнопка: "${wikiBtnText}" -> ${wikiBtnHref}`);
         if (wikiTitle !== 'Wiki') throw new Error(`Ожидался заголовок "Wiki", получено "${wikiTitle}"`);
         if (!wikiDesc.includes('Технические параметры серверов, доступы и конфигурации')) {
             throw new Error(`Неверное описание Wiki: "${wikiDesc}"`);
@@ -151,22 +158,26 @@ async function runE2ETests() {
         if (!eventsCard) throw new Error('Не найдена карточка .command-widget--events');
         const eventsTitle = await eventsCard.$eval('.command-widget__title', el => el.textContent.trim());
         const eventsDesc = await eventsCard.$eval('.command-widget__desc', el => el.textContent.trim());
-        const eventsBadge = await eventsCard.$eval('.widget-badge', el => el.textContent.trim());
-        const eventsBtn = await eventsCard.$('.command-widget__btn--disabled');
+        const eventsBadges = await eventsCard.$$('.widget-badge');
+        for (const badge of eventsBadges) {
+            const bText = await badge.evaluate(el => el.textContent.trim());
+            if (bText.includes('В разработке')) {
+                throw new Error('Бейдж "В разработке" должен быть удален из карточки События');
+            }
+        }
+        const eventsBtn = await eventsCard.$('#btnOpenEvents, .command-widget__btn--primary');
+        if (!eventsBtn) throw new Error('Отсутствует активная кнопка перехода к событиям (#btnOpenEvents)');
         const eventsBtnText = await eventsBtn.evaluate(el => el.textContent.trim());
-        const eventsBtnDisabled = await eventsBtn.evaluate(el => el.disabled);
+        const eventsBtnHref = await eventsBtn.evaluate(el => el.getAttribute('href'));
         const eventsSvg = await eventsCard.$('.command-widget__icon-wrap svg');
 
-        console.log(`   [Карточка 2 События] Заголовок: "${eventsTitle}", Бейдж: "${eventsBadge}", Кнопка: "${eventsBtnText}" (disabled=${eventsBtnDisabled})`);
+        console.log(`   [Карточка 2 События] Заголовок: "${eventsTitle}", Описание: "${eventsDesc}", Кнопка: "${eventsBtnText}" -> ${eventsBtnHref}`);
         if (eventsTitle !== 'События') throw new Error(`Ожидался заголовок "События", получено "${eventsTitle}"`);
-        if (!eventsDesc.includes('Журнал изменений инфраструктуры и сроков лицензий')) {
-            throw new Error(`Неверное описание Событий: "${eventsDesc}"`);
+        if (!eventsDesc.includes('Журнал обновлений и релизов информационных баз 1С')) {
+            throw new Error(`Неверное описание Событий: "${eventsDesc}", ожидалось "Журнал обновлений и релизов информационных баз 1С."`);
         }
-        if (!eventsBadge.includes('В разработке')) {
-            throw new Error(`Ожидался бейдж "В разработке", получено "${eventsBadge}"`);
-        }
-        if (!eventsBtnText.includes('Скоро') || !eventsBtnDisabled) {
-            throw new Error(`Ожидалась кнопка-заглушка "Скоро" (disabled), получено "${eventsBtnText}" (disabled=${eventsBtnDisabled})`);
+        if (!eventsBtnText.includes('Перейти к событиям') || eventsBtnHref !== '/events') {
+            throw new Error(`Кнопка Событий должна вести на /events с текстом "Перейти к событиям", получено: "${eventsBtnText}" (${eventsBtnHref})`);
         }
         if (!eventsSvg) throw new Error('Отсутствует векторная SVG-иконка в карточке События');
 
@@ -202,7 +213,7 @@ async function runE2ETests() {
         console.log('✓ Адаптивность и центрирование (1000-1100px) успешно подтверждены!');
 
         console.log('\n====================================================');
-        console.log('  🎉 ВСЕ E2E ТЕСТЫ ЭТАПА 2 УСПЕШНО ПРОЙДЕНЫ (8/8)!');
+        console.log('  🎉 ВСЕ E2E ТЕСТЫ ЭТАПА 4 УСПЕШНО ПРОЙДЕНЫ (8/8)!');
         console.log('====================================================\n');
 
     } finally {

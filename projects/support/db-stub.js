@@ -141,6 +141,88 @@ const organizationsDB = {
     }
 };
 
+let databases1C = [
+    {
+        id: 1,
+        org_id: 1,
+        name: 'Бухгалтерия для Казахстана (Прод)',
+        release: '3.0.73.1 (БК)',
+        updated_at: new Date('2026-10-15T10:00:00.000Z')
+    },
+    {
+        id: 2,
+        org_id: 1,
+        name: 'Зарплата и управление персоналом',
+        release: '3.1.28.12 (ЗУП)',
+        updated_at: new Date('2026-10-18T14:30:00.000Z')
+    },
+    {
+        id: 3,
+        org_id: 2,
+        name: 'Управление предприятием (ERP)',
+        release: '2.4.14.8 (ERP)',
+        updated_at: new Date('2026-10-10T09:15:00.000Z')
+    },
+    {
+        id: 4,
+        org_id: 3,
+        name: 'Бухгалтерия (ЦБ)',
+        release: '3.0.72.5 (БК)',
+        updated_at: new Date('2026-10-12T11:45:00.000Z')
+    }
+];
+let nextDb1CId = 10;
+
+async function initDatabases1CTable() {
+    console.log(`✓ [Stub DB] Загружено баз 1С: ${databases1C.length}`);
+}
+
+const databases1CDB = {
+    getByOrgId: async (orgId) => {
+        return databases1C
+            .filter(d => d.org_id === Number(orgId))
+            .sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at));
+    },
+    getAllRecentUpdates: async () => {
+        return databases1C
+            .map(d => {
+                const org = organizations.find(o => o.id === d.org_id);
+                return {
+                    ...d,
+                    org_name: org ? org.name : `Организация #${d.org_id}`
+                };
+            })
+            .sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at));
+    },
+    create: async ({ org_id, name, release, updated_at }) => {
+        const id = nextDb1CId++;
+        const newDb = {
+            id,
+            org_id: Number(org_id),
+            name: name ? name.trim() : '',
+            release: release ? release.trim() : '',
+            updated_at: updated_at ? new Date(updated_at) : new Date()
+        };
+        databases1C.push(newDb);
+        return newDb;
+    },
+    update: async (id, { name, release, updated_at }) => {
+        const db = databases1C.find(d => d.id === Number(id));
+        if (db) {
+            if (name !== undefined) db.name = name.trim();
+            if (release !== undefined) db.release = release.trim();
+            db.updated_at = updated_at ? new Date(updated_at) : new Date();
+            return 1;
+        }
+        return 0;
+    },
+    delete: async (id) => {
+        const before = databases1C.length;
+        databases1C = databases1C.filter(d => d.id !== Number(id));
+        return before - databases1C.length;
+    }
+};
+
 module.exports = {
     pool: mockPool,
     initDatabase,
@@ -150,5 +232,7 @@ module.exports = {
     updateProfile,
     getAllUsers,
     initOrganizationTable,
-    organizationsDB
+    organizationsDB,
+    initDatabases1CTable,
+    databases1CDB
 };

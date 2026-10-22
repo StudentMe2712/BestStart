@@ -1103,14 +1103,14 @@ body {
     background: var(--bg-surface);
     border: 1px solid var(--border-subtle);
     border-radius: var(--radius-xl);
-    padding: 34px 32px 30px;
+    padding: 32px 32px 28px;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
     box-shadow: var(--shadow-sm);
     transition: transform var(--transition-fast), box-shadow var(--transition-fast), border-color var(--transition-fast);
     position: relative;
-    min-height: 340px;
+    min-height: 250px;
     box-sizing: border-box;
     width: 100%;
 }
@@ -2790,6 +2790,11 @@ body {
     border-color: rgba(255, 255, 255, 0.08);
 }
 
+[data-theme="dark"] .command-widget:hover {
+    border-color: rgba(255, 255, 255, 0.18);
+    box-shadow: 0 12px 32px -4px rgba(0, 0, 0, 0.5);
+}
+
 [data-theme="dark"] .zabbix-activity-feed {
     background: #0e1522;
     border-color: rgba(255, 255, 255, 0.07);
@@ -2977,4 +2982,276 @@ body {
 
 [data-theme="dark"] ::-webkit-scrollbar-thumb:hover {
     background: #3d5570;
+}
+
+/* ============================================================
+   EVENTS PAGE — Журнал релизов 1С (Спринт 3 Этап 3)
+   ============================================================ */
+
+.events-main {
+    min-height: calc(100vh - 120px);
+    padding: 36px 20px 60px;
+}
+
+.events-container {
+    max-width: 1080px;
+    margin: 0 auto;
+}
+
+.events-header {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 24px;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+}
+
+.events-header__info {
+    flex: 1;
+    min-width: 280px;
+}
+
+.events-title {
+    margin: 0;
+    font-size: 26px;
+    font-weight: 700;
+    color: #0f172a;
+    letter-spacing: -0.02em;
+}
+
+.events-subtitle {
+    margin: 6px 0 0;
+    font-size: 14px;
+    color: #64748b;
+}
+
+.events-filter-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: #ffffff;
+    padding: 6px 14px;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+.events-filter-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: #475569;
+}
+
+.events-select-wrap {
+    position: relative;
+}
+
+.events-org-select {
+    appearance: none;
+    -webkit-appearance: none;
+    background: #f8fafc url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E") no-repeat right 10px center;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    padding: 6px 32px 6px 12px;
+    font-size: 13px;
+    font-weight: 500;
+    color: #1e293b;
+    cursor: pointer;
+    outline: none;
+    transition: all 0.15s ease;
+    min-width: 200px;
+}
+
+.events-org-select:focus {
+    border-color: #2563eb;
+    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
+}
+
+.events-card {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
+    overflow: hidden;
+}
+
+.events-table-wrap {
+    overflow-x: auto;
+}
+
+.events-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    text-align: left;
+}
+
+.events-table th {
+    background: #f8fafc;
+    color: #475569;
+    font-weight: 600;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding: 12px 18px;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.events-table td {
+    padding: 14px 18px;
+    border-bottom: 1px solid #f1f5f9;
+    vertical-align: middle;
+    color: #1e293b;
+}
+
+.events-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.events-table tbody tr:hover td {
+    background: #f8fafc;
+}
+
+.events-table .col-org {
+    width: 28%;
+}
+
+.events-table .col-db {
+    width: 34%;
+}
+
+.events-table .col-release {
+    width: 22%;
+}
+
+.events-table .col-date {
+    width: 16%;
+    text-align: right;
+}
+
+.events-org-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: #1e293b;
+    text-decoration: none;
+    font-weight: 600;
+    transition: color 0.15s ease;
+}
+
+.events-org-link:hover {
+    color: #2563eb;
+}
+
+.events-link-arrow {
+    font-size: 11px;
+    opacity: 0.5;
+    transition: transform 0.15s ease, opacity 0.15s ease;
+}
+
+.events-org-link:hover .events-link-arrow {
+    transform: translate(1px, -1px);
+    opacity: 1;
+}
+
+.events-db-name {
+    font-weight: 500;
+    color: #334155;
+}
+
+.events-date-val {
+    color: #64748b;
+    font-size: 13px;
+}
+
+.events-empty-state {
+    padding: 48px 24px;
+    text-align: center;
+}
+
+.events-empty-state .empty-state-icon {
+    font-size: 36px;
+    margin-bottom: 10px;
+}
+
+.events-empty-state .empty-state-text {
+    font-size: 15px;
+    font-weight: 600;
+    color: #334155;
+    margin-bottom: 6px;
+}
+
+.events-empty-state .empty-state-subtext {
+    font-size: 13px;
+    color: #64748b;
+}
+
+/* Dark mode for Events */
+[data-theme="dark"] .events-title {
+    color: #f8fafc;
+}
+
+[data-theme="dark"] .events-subtitle {
+    color: #94a3b8;
+}
+
+[data-theme="dark"] .events-filter-bar {
+    background: #141f2e;
+    border-color: #1e293b;
+}
+
+[data-theme="dark"] .events-filter-label {
+    color: #94a3b8;
+}
+
+[data-theme="dark"] .events-org-select {
+    background-color: #0f172a;
+    border-color: #1e293b;
+    color: #f8fafc;
+}
+
+[data-theme="dark"] .events-card {
+    background: #141f2e;
+    border-color: #1e293b;
+    box-shadow: none;
+}
+
+[data-theme="dark"] .events-table th {
+    background: #0f172a;
+    color: #94a3b8;
+    border-color: #1e293b;
+}
+
+[data-theme="dark"] .events-table td {
+    color: #cbd5e1;
+    border-color: #1e293b;
+}
+
+[data-theme="dark"] .events-table tbody tr:hover td {
+    background: #1a273b;
+}
+
+[data-theme="dark"] .events-org-link {
+    color: #f8fafc;
+}
+
+[data-theme="dark"] .events-org-link:hover {
+    color: #60a5fa;
+}
+
+[data-theme="dark"] .events-db-name {
+    color: #cbd5e1;
+}
+
+[data-theme="dark"] .events-date-val {
+    color: #94a3b8;
+}
+
+[data-theme="dark"] .events-empty-state .empty-state-text {
+    color: #cbd5e1;
+}
+
+[data-theme="dark"] .events-empty-state .empty-state-subtext {
+    color: #64748b;
 }

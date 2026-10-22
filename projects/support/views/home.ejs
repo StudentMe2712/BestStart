@@ -25,6 +25,7 @@
         <nav class="home-topbar__nav" aria-label="Основная навигация">
             <a href="/" class="home-topbar__nav-link is-active" data-i18n="nav.home">Главная</a>
             <a href="/wiki" class="home-topbar__nav-link">Wiki</a>
+            <a href="/events" class="home-topbar__nav-link">События</a>
         </nav>
 
         <div class="home-topbar__account">
@@ -121,22 +122,8 @@
                     <div class="command-widget__body">
                         <h2 class="command-widget__title" data-i18n="home.widget.wiki.title">Wiki</h2>
                         <p class="command-widget__desc" data-i18n="home.widget.wiki.desc">
-                            Технические параметры серверов, доступы и конфигурации
+                            Технические параметры серверов, доступы и конфигурации.
                         </p>
-                        <div class="command-widget__features">
-                            <div class="feature-item">
-                                <span class="feature-bullet" aria-hidden="true">●</span>
-                                <span>Инфраструктура клиентов и доступы AnyDesk / RDP</span>
-                            </div>
-                            <div class="feature-item">
-                                <span class="feature-bullet" aria-hidden="true">●</span>
-                                <span>Учетные записи, базы данных MS SQL и 1C</span>
-                            </div>
-                            <div class="feature-item">
-                                <span class="feature-bullet" aria-hidden="true">●</span>
-                                <span>Параметры удаленного управления iLO / IPMI</span>
-                            </div>
-                        </div>
                     </div>
 
                     <div class="command-widget__footer">
@@ -159,38 +146,20 @@
                                 <path d="M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01"/>
                             </svg>
                         </div>
-                        <div class="command-widget__badges">
-                            <span class="widget-badge widget-badge--warning" data-i18n="home.widget.events.badge">
-                                В разработке
-                            </span>
-                        </div>
                     </div>
 
                     <div class="command-widget__body">
                         <h2 class="command-widget__title" data-i18n="home.widget.events.title">События</h2>
                         <p class="command-widget__desc" data-i18n="home.widget.events.desc">
-                            Журнал изменений инфраструктуры и сроков лицензий
+                            Журнал обновлений и релизов информационных баз 1С.
                         </p>
-                        <div class="command-widget__features">
-                            <div class="feature-item">
-                                <span class="feature-bullet" aria-hidden="true">●</span>
-                                <span>Мониторинг доступности и телеметрия Zabbix</span>
-                            </div>
-                            <div class="feature-item">
-                                <span class="feature-bullet" aria-hidden="true">●</span>
-                                <span>Сроки действия лицензий и SSL-сертификатов</span>
-                            </div>
-                            <div class="feature-item">
-                                <span class="feature-bullet" aria-hidden="true">●</span>
-                                <span>Журнал регламентных и технических работ</span>
-                            </div>
-                        </div>
                     </div>
 
                     <div class="command-widget__footer">
-                        <button type="button" class="command-widget__btn command-widget__btn--disabled" disabled aria-disabled="true" data-i18n="home.widget.events.soon">
-                            Скоро
-                        </button>
+                        <a href="/events" class="command-widget__btn command-widget__btn--primary" id="btnOpenEvents">
+                            <span data-i18n="home.widget.events.btn">Перейти к событиям</span>
+                            <span class="btn-arrow" aria-hidden="true">→</span>
+                        </a>
                     </div>
                 </article>
             </div>

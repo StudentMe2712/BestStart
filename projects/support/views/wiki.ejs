@@ -34,6 +34,7 @@
         <nav class="home-topbar__nav" aria-label="Основная навигация">
             <a href="/" class="home-topbar__nav-link" data-i18n="nav.home">Главная</a>
             <a href="/wiki" class="home-topbar__nav-link is-active">Wiki</a>
+            <a href="/events" class="home-topbar__nav-link">События</a>
         </nav>
         <div class="home-topbar__account">
             <button class="theme-toggle-btn" id="themeToggle" type="button" aria-label="Переключить тему">
@@ -89,13 +90,8 @@
             <ul class="wiki-list" id="wikiOrgList">
                 <% if (organizations && organizations.length > 0) { %>
                     <% organizations.forEach(function(org) { %>
-                        <%
-                            const orgNameLower = (org.name || '').toLowerCase();
-                            const orgContentLower = (org.content || '').toLowerCase();
-                            const isDev = /dev|тест|vds|test/i.test(orgNameLower) || /dev|тест|vds|test/i.test(orgContentLower);
-                            const envType = isDev ? 'DEV' : 'PROD';
-                        %>
-                        <li class="wiki-list-item" data-name="<%= orgNameLower %>" data-env="<%= envType.toLowerCase() %>">
+                        <% const orgNameLower = (org.name || '').toLowerCase(); %>
+                        <li class="wiki-list-item" data-name="<%= orgNameLower %>">
                             <a href="/wiki/organization/<%= org.id %>"
                                class="wiki-list-link<%= currentOrg && currentOrg.id === org.id ? ' is-active' : '' %>">
                                 <span class="wiki-active-bar" aria-hidden="true"></span>
@@ -103,7 +99,6 @@
                                     <path d="M1.5 1.5L6 6L1.5 10.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
                                 </svg>
                                 <span class="wiki-list-name"><%= org.name %></span>
-                                <span class="wiki-badge-env wiki-badge-env--<%= envType.toLowerCase() %>"><%= envType %></span>
                             </a>
                         </li>
                     <% }); %>
@@ -134,17 +129,13 @@
                             </svg>
                         </div>
                         <div class="org-header-info">
+                            <h2 class="org-title" id="orgTitle"><%= currentOrg.name %></h2>
                             <%
-                                const curNameLower = (currentOrg.name || '').toLowerCase();
-                                const curContentLower = (currentOrg.content || '').toLowerCase();
-                                const curIsDev = /dev|тест|vds|test/i.test(curNameLower) || /dev|тест|vds|test/i.test(curContentLower);
-                                const curEnvType = curIsDev ? 'DEV' : 'PROD';
+                                const lastModifiedDate = currentOrg.updated_at 
+                                    ? new Date(currentOrg.updated_at).toLocaleString('ru-RU', {day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit'}) 
+                                    : 'Не указано';
                             %>
-                            <div class="org-title-row">
-                                <h2 class="org-title" id="orgTitle"><%= currentOrg.name %></h2>
-                                <span class="org-header-env-badge wiki-badge-env wiki-badge-env--<%= curEnvType.toLowerCase() %>"><%= curEnvType %></span>
-                            </div>
-                            <div class="org-subtitle"><%= currentOrg.name %> • <%= displayName %></div>
+                            <div class="org-subtitle" id="orgSubtitle">Последнее изменение: <%= lastModifiedDate %><% if (displayName) { %> • <%= displayName %><% } %></div>
                         </div>
                     </div>
                     <div class="org-header-right">
@@ -174,19 +165,6 @@
 
                 <!-- CONTENT SECTION -->
                 <div class="content-section">
-                    <div class="content-header-bar">
-                        <div class="content-header-bar__titles">
-                            <h3 class="content-section-title" id="contentSectionTitle" data-i18n="wiki.content.title">Параметры сервера</h3>
-                            <span class="content-section-subtitle" id="contentSectionSubtitle">Заметки и реквизиты</span>
-                        </div>
-                        <div class="content-header-bar__actions" id="wikiContentActions">
-                            <button class="wiki-copy-all-btn" id="copyAllBtn" type="button" title="Скопировать все реквизиты">
-                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect></svg>
-                                <span>📋 Скопировать все реквизиты</span>
-                            </button>
-                        </div>
-                    </div>
-
                     <!-- Clean Content Sheet (Shown in view mode) -->
                     <div class="wiki-sheet wiki-content-sheet" id="wikiSheet"></div>
 
@@ -245,6 +223,67 @@
                         <!-- Editor body -->
                         <div class="editor-body" id="orgEditor" contenteditable="false" spellcheck="true"></div>
                     </div>
+
+                    <!-- 1C Databases Registry Section -->
+                    <section class="wiki-databases-section" id="wikiDatabasesSection">
+                        <div class="wiki-databases-header">
+                            <div class="wiki-databases-title-wrap">
+                                <span class="wiki-databases-icon" aria-hidden="true">🗄️</span>
+                                <h3 class="wiki-databases-title">Информационные базы 1С</h3>
+                                <span class="wiki-databases-count" id="db1cCountBadge"><%= (typeof databases !== 'undefined' && databases) ? databases.length : 0 %></span>
+                            </div>
+                            <button type="button" class="btn-add-database" id="addDatabaseBtn">
+                                <span class="btn-icon">+</span>
+                                <span>Добавить базу</span>
+                            </button>
+                        </div>
+
+                        <!-- Table -->
+                        <div class="wiki-databases-table-wrap" id="db1cTableWrap" style="<%= (typeof databases !== 'undefined' && databases && databases.length > 0) ? '' : 'display: none;' %>">
+                            <table class="wiki-databases-table" id="db1cTable">
+                                <thead>
+                                    <tr>
+                                        <th class="db-col-name">Наименование базы</th>
+                                        <th class="db-col-release">Релиз конфигурации</th>
+                                        <th class="db-col-date">Дата обновления</th>
+                                        <th class="db-col-actions">Действия</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="db1cTableBody">
+                                    <% if (typeof databases !== 'undefined' && databases && databases.length > 0) { %>
+                                        <% databases.forEach(function(db) { %>
+                                            <% 
+                                                const formattedDate = db.updated_at ? new Date(db.updated_at).toLocaleDateString('ru-RU') : '—';
+                                                const isoDate = db.updated_at ? new Date(db.updated_at).toISOString().split('T')[0] : '';
+                                            %>
+                                            <tr data-id="<%= db.id %>">
+                                                <td class="db-name-cell">
+                                                    <span class="db-name-text"><%= db.name %></span>
+                                                </td>
+                                                <td class="db-release-cell">
+                                                    <span class="db-release-badge"><%= db.release || '—' %></span>
+                                                </td>
+                                                <td class="db-date-cell">
+                                                    <%= formattedDate %>
+                                                </td>
+                                                <td class="db-actions-cell">
+                                                    <button type="button" class="btn-db-action btn-db-edit" title="Редактировать базу" data-id="<%= db.id %>" data-name="<%= db.name %>" data-release="<%= db.release %>" data-date="<%= isoDate %>">✏️</button>
+                                                    <button type="button" class="btn-db-action btn-db-delete" title="Удалить базу" data-id="<%= db.id %>" data-name="<%= db.name %>">🗑</button>
+                                                </td>
+                                            </tr>
+                                        <% }); %>
+                                    <% } %>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- Empty State -->
+                        <div class="wiki-databases-empty" id="db1cEmptyState" style="<%= (typeof databases !== 'undefined' && databases && databases.length > 0) ? 'display: none;' : '' %>">
+                            <div class="empty-state-icon">📂</div>
+                            <div class="empty-state-text">Информационные базы 1С пока не добавлены</div>
+                            <div class="empty-state-subtext">Нажмите «+ Добавить базу», чтобы зафиксировать конфигурацию и релиз</div>
+                        </div>
+                    </section>
                 </div>
 
                 <!-- BOTTOM BAR (shown in edit mode) -->
@@ -333,11 +372,51 @@
         </div>
     </div>
 
+    <!-- Modal: Add/Edit 1C Database -->
+    <div class="modal" id="db1cModal" style="display: none;">
+        <div class="modal-content db-modal-content">
+            <div class="modal-header">
+                <h2 id="db1cModalTitle">Добавить базу 1С</h2>
+                <button type="button" class="modal-close" id="closeDb1cModal">&times;</button>
+            </div>
+            <form id="db1cForm">
+                <input type="hidden" id="db1cId" value="">
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="db1cName">Наименование базы:</label>
+                        <input type="text" id="db1cName" class="form-input" required placeholder="Например: Бухгалтерия для Казахстана (Прод)">
+                    </div>
+                    <div class="form-group">
+                        <label for="db1cRelease">Релиз конфигурации:</label>
+                        <input type="text" id="db1cRelease" class="form-input" list="db1cReleasePresets" placeholder="3.0.73.1 (БК)" required>
+                        <datalist id="db1cReleasePresets">
+                            <option value="3.0.73.1 (БК)">Бухгалтерия для Казахстана (БК)</option>
+                            <option value="3.1.28.12 (ЗУП)">Зарплата и управление персоналом (ЗУП)</option>
+                            <option value="2.4.14.8 (ERP)">Управление предприятием (ERP)</option>
+                            <option value="2.0.42.1 (УТ)">Управление торговлей (УТ)</option>
+                            <option value="1.3.19.1 (УПП)">Управление производственным предприятием (УПП)</option>
+                        </datalist>
+                        <small class="form-hint">Выберите из шаблонов или введите по образцу: x.x.xx.x (Конфигурация)</small>
+                    </div>
+                    <div class="form-group">
+                        <label for="db1cDate">Дата обновления:</label>
+                        <input type="date" id="db1cDate" class="form-input" required>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-success" id="saveDb1cBtn">Сохранить</button>
+                    <button type="button" class="btn btn-secondary" id="cancelDb1cBtn">Отмена</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- Floating Toast Container -->
     <div class="floating-toast-container" id="floatingToastContainer" aria-live="polite" aria-atomic="true"></div>
 
     <script>
         var initialContent = <%- currentOrg ? JSON.stringify(currentOrg.content || '').replace(/<\//g, '<\\/') : '""' %>;
+        var initialDatabases = <%- (typeof databases !== 'undefined' && databases) ? JSON.stringify(databases).replace(/<\//g, '<\\/') : '[]' %>;
     </script>
     <script src="/js/i18n.js"></script>
     <script src="/js/main.js"></script>

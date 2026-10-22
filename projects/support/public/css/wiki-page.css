@@ -240,44 +240,6 @@ body.wiki-page-body {
     flex: 1;
 }
 
-/* Environment Badges */
-.wiki-badge-env {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 9.5px;
-    font-weight: 700;
-    line-height: 1;
-    padding: 2px 5px;
-    border-radius: 4px;
-    letter-spacing: 0.04em;
-    flex-shrink: 0;
-    text-transform: uppercase;
-}
-
-.wiki-badge-env--prod {
-    background: rgba(16, 185, 129, 0.18);
-    color: #34d399;
-    border: 1px solid rgba(16, 185, 129, 0.35);
-}
-
-.wiki-badge-env--dev {
-    background: rgba(99, 102, 241, 0.2);
-    color: #a5b4fc;
-    border: 1px solid rgba(99, 102, 241, 0.4);
-}
-
-.wiki-list-link.is-active .wiki-badge-env--prod {
-    background: rgba(16, 185, 129, 0.28);
-    color: #6ee7b7;
-    border-color: rgba(16, 185, 129, 0.5);
-}
-
-.wiki-list-link.is-active .wiki-badge-env--dev {
-    background: rgba(99, 102, 241, 0.3);
-    color: #c7d2fe;
-    border-color: rgba(99, 102, 241, 0.55);
-}
 
 .wiki-list-empty {
     padding: 12px 14px;
@@ -393,12 +355,6 @@ body.wiki-page-body {
     text-overflow: ellipsis;
 }
 
-.org-header-env-badge {
-    font-size: 11px;
-    padding: 3px 8px;
-    border-radius: 5px;
-    letter-spacing: 0.05em;
-}
 
 .org-subtitle {
     font-size: 12px;
@@ -545,83 +501,8 @@ body.wiki-page-body {
    ============================================================ */
 
 .content-section {
-    padding: 20px 28px 0;
+    padding: 24px 28px;
     flex: 1;
-}
-
-.content-header-bar {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 18px;
-    padding-bottom: 12px;
-    border-bottom: 1px solid #edf0f4;
-    flex-wrap: wrap;
-    gap: 12px;
-}
-
-.content-header-bar__titles {
-    display: flex;
-    align-items: baseline;
-    gap: 10px;
-}
-
-.content-section-title {
-    font-size: 16px;
-    font-weight: 700;
-    color: #1a2c3e;
-    margin: 0;
-    line-height: 1.2;
-}
-
-.content-section-subtitle {
-    font-size: 12px;
-    color: #64748b;
-    font-weight: 500;
-}
-
-.content-header-bar__actions {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-/* ── Copy All Button ── */
-.wiki-copy-all-btn,
-.smart-action-btn-summary {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    padding: 8px 16px;
-    background: #ffffff;
-    border: 1px solid #cbd5e1;
-    border-radius: 8px;
-    font-size: 13px;
-    font-weight: 600;
-    color: #1e293b;
-    cursor: pointer;
-    font-family: inherit;
-    transition: all 0.15s ease;
-    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
-}
-
-.wiki-copy-all-btn:hover,
-.smart-action-btn-summary:hover {
-    background: #f8fafc;
-    border-color: #2563eb;
-    color: #2563eb;
-}
-
-.wiki-copy-all-btn:active,
-.smart-action-btn-summary:active {
-    transform: translateY(1px);
-}
-
-.wiki-copy-all-btn.is-copied,
-.smart-action-btn-summary.is-copied {
-    background: #ecfdf5 !important;
-    border-color: #10b981 !important;
-    color: #059669 !important;
 }
 
 /* ── Clean Wiki Sheet (Monospace 15px line-height 1.6) ── */
@@ -1323,44 +1204,6 @@ body.wiki-page-body {
     background: #1e2c40;
 }
 
-[data-theme="dark"] .content-header-bar {
-    border-color: #1e293b;
-}
-
-[data-theme="dark"] .content-section-title {
-    color: #f8fafc;
-}
-
-[data-theme="dark"] .content-section-subtitle {
-    color: #94a3b8;
-}
-
-[data-theme="dark"] .smart-action-btn-summary {
-    background: #141f2e;
-    border-color: #1e293b;
-    color: #cbd5e1;
-}
-
-[data-theme="dark"] .wiki-copy-all-btn,
-[data-theme="dark"] .smart-action-btn-summary {
-    background: #141f2e;
-    border-color: #1e293b;
-    color: #f1f5f9;
-}
-
-[data-theme="dark"] .wiki-copy-all-btn:hover,
-[data-theme="dark"] .smart-action-btn-summary:hover {
-    background: #1e2c40;
-    border-color: #3b82f6;
-    color: #60a5fa;
-}
-
-[data-theme="dark"] .wiki-copy-all-btn.is-copied,
-[data-theme="dark"] .smart-action-btn-summary.is-copied {
-    background: rgba(16, 185, 129, 0.2) !important;
-    border-color: #10b981 !important;
-    color: #34d399 !important;
-}
 
 [data-theme="dark"] .wiki-sheet,
 [data-theme="dark"] .wiki-content-sheet {
@@ -1536,4 +1379,303 @@ body.wiki-page-body {
 [data-theme="dark"] .wiki-footer {
     background: #0f172a;
     border-color: #1e293b;
+}
+
+/* ============================================================
+   1C DATABASES REGISTRY (Спринт 3 Этап 3)
+   ============================================================ */
+
+.wiki-databases-section {
+    margin-top: 28px;
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 24px;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+}
+
+.wiki-databases-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 18px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.wiki-databases-title-wrap {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.wiki-databases-icon {
+    font-size: 20px;
+    line-height: 1;
+}
+
+.wiki-databases-title {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 700;
+    color: #0f172a;
+    letter-spacing: -0.01em;
+}
+
+.wiki-databases-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 22px;
+    height: 22px;
+    padding: 0 7px;
+    border-radius: 12px;
+    background: #f1f5f9;
+    color: #475569;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.btn-add-database {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: #2563eb;
+    color: #ffffff;
+    border: none;
+    border-radius: 6px;
+    padding: 7px 14px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s ease, transform 0.1s ease;
+}
+
+.btn-add-database:hover {
+    background: #1d4ed8;
+}
+
+.btn-add-database:active {
+    transform: translateY(1px);
+}
+
+.wiki-databases-table-wrap {
+    overflow-x: auto;
+}
+
+.wiki-databases-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    font-size: 13px;
+    text-align: left;
+}
+
+.wiki-databases-table th {
+    background: #f8fafc;
+    color: #475569;
+    font-weight: 600;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding: 10px 14px;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.wiki-databases-table td {
+    padding: 12px 14px;
+    border-bottom: 1px solid #f1f5f9;
+    vertical-align: middle;
+    color: #1e293b;
+}
+
+.wiki-databases-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.wiki-databases-table tbody tr:hover td {
+    background: #f8fafc;
+}
+
+.db-col-name {
+    width: 40%;
+}
+
+.db-col-release {
+    width: 28%;
+}
+
+.db-col-date {
+    width: 20%;
+}
+
+.db-col-actions {
+    width: 12%;
+    text-align: right;
+}
+
+.db-name-text {
+    font-weight: 600;
+    color: #0f172a;
+}
+
+.db-release-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 9px;
+    background: #eef2ff;
+    color: #3730a3;
+    border: 1px solid #c7d2fe;
+    border-radius: 4px;
+    font-family: 'JetBrains Mono', Consolas, monospace;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+}
+
+.db-date-cell {
+    color: #64748b;
+    font-size: 13px;
+}
+
+.db-actions-cell {
+    text-align: right;
+    white-space: nowrap;
+}
+
+.btn-db-action {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    border-radius: 5px;
+    border: 1px solid #e2e8f0;
+    background: #ffffff;
+    cursor: pointer;
+    font-size: 13px;
+    margin-left: 4px;
+    transition: all 0.15s ease;
+}
+
+.btn-db-action:hover {
+    background: #f1f5f9;
+    border-color: #cbd5e1;
+    transform: translateY(-1px);
+}
+
+.btn-db-delete:hover {
+    background: #fef2f2;
+    border-color: #fecaca;
+}
+
+.wiki-databases-empty {
+    padding: 36px 20px;
+    text-align: center;
+    background: #f8fafc;
+    border: 1px dashed #cbd5e1;
+    border-radius: 8px;
+}
+
+.wiki-databases-empty .empty-state-icon {
+    font-size: 32px;
+    margin-bottom: 8px;
+}
+
+.wiki-databases-empty .empty-state-text {
+    font-size: 14px;
+    font-weight: 600;
+    color: #334155;
+    margin-bottom: 4px;
+}
+
+.wiki-databases-empty .empty-state-subtext {
+    font-size: 12px;
+    color: #64748b;
+}
+
+.form-hint {
+    display: block;
+    font-size: 11px;
+    color: #64748b;
+    margin-top: 5px;
+}
+
+/* Dark mode for 1C Databases Registry */
+[data-theme="dark"] .wiki-databases-section {
+    background: #141f2e;
+    border-color: #1e293b;
+    box-shadow: none;
+}
+
+[data-theme="dark"] .wiki-databases-header {
+    border-color: #1e293b;
+}
+
+[data-theme="dark"] .wiki-databases-title {
+    color: #f8fafc;
+}
+
+[data-theme="dark"] .wiki-databases-count {
+    background: #1e293b;
+    color: #94a3b8;
+}
+
+[data-theme="dark"] .wiki-databases-table th {
+    background: #0f172a;
+    color: #94a3b8;
+    border-color: #1e293b;
+}
+
+[data-theme="dark"] .wiki-databases-table td {
+    color: #cbd5e1;
+    border-color: #1e293b;
+}
+
+[data-theme="dark"] .wiki-databases-table tbody tr:hover td {
+    background: #1a273b;
+}
+
+[data-theme="dark"] .db-name-text {
+    color: #f8fafc;
+}
+
+[data-theme="dark"] .db-release-badge {
+    background: #1e1b4b;
+    color: #c7d2fe;
+    border-color: #3730a3;
+}
+
+[data-theme="dark"] .db-date-cell {
+    color: #94a3b8;
+}
+
+[data-theme="dark"] .btn-db-action {
+    background: #1a273b;
+    border-color: #1e293b;
+    color: #cbd5e1;
+}
+
+[data-theme="dark"] .btn-db-action:hover {
+    background: #1e2c40;
+    border-color: #334155;
+}
+
+[data-theme="dark"] .btn-db-delete:hover {
+    background: #450a0a;
+    border-color: #7f1d1d;
+}
+
+[data-theme="dark"] .wiki-databases-empty {
+    background: #0f172a;
+    border-color: #1e293b;
+}
+
+[data-theme="dark"] .wiki-databases-empty .empty-state-text {
+    color: #cbd5e1;
+}
+
+[data-theme="dark"] .wiki-databases-empty .empty-state-subtext,
+[data-theme="dark"] .form-hint {
+    color: #64748b;
 }

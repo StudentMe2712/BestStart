@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="ru" id="htmlRoot">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Журнал релизов 1С — ИТС-Ком</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="/css/wiki-page.css">
+    <link rel="icon" type="image/png" href="/favicon.png">
+    <meta name="app-user" content="<%= user ? user.username : 'admin' %>">
+    <script>(function(){var m=document.querySelector('meta[name="app-user"]');var u=m&&m.getAttribute('content');var k=u?'ui_theme_'+u:'ui_theme';var t=localStorage.getItem(k);if(t)document.documentElement.setAttribute('data-theme',t);})()</script>
+</head>
+<body class="home-body events-page-body">
+    <% 
+        const username = user ? user.username : 'admin';
+        const displayName = username === 'admin' ? 'Администратор' : username;
+        const avatarLetter = displayName.charAt(0).toUpperCase();
+    %>
+
+    <!-- Topbar Navigation -->
+    <header class="home-topbar">
+        <div class="home-topbar__brand">
+            <a href="/" class="home-brand-link" title="ИТС-Ком">
+                <span class="home-brand-name">ИТС-Ком</span>
+            </a>
+        </div>
+        <nav class="home-topbar__nav" aria-label="Основная навигация">
+            <a href="/" class="home-topbar__nav-link" data-i18n="nav.home">Главная</a>
+            <a href="/wiki" class="home-topbar__nav-link">Wiki</a>
+            <a href="/events" class="home-topbar__nav-link is-active">События</a>
+        </nav>
+        <div class="home-topbar__account">
+            <button class="theme-toggle-btn" id="themeToggle" type="button" aria-label="Переключить тему" title="Переключить тему">
+                <svg class="theme-icon theme-icon--sun" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="4" stroke="currentColor" stroke-width="1.5"/><path d="M10 2V4M10 16V18M2 10H4M16 10H18M4.22 4.22L5.64 5.64M14.36 14.36L15.78 15.78M15.78 4.22L14.36 5.64M5.64 14.36L4.22 15.78" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                <svg class="theme-icon theme-icon--moon" viewBox="0 0 20 20" fill="none"><path d="M17 11C16.4 15 12.8 18 8.5 17.5C4.2 17 1 13.3 1.5 9C2 4.7 5.8 1.8 10 2.5C8.5 4.5 8.5 8 11 10C13.5 12 16.5 11.5 17 11Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+            <button class="home-account-button" type="button" id="homeAccountToggle" aria-expanded="false" aria-controls="homeAccountMenu">
+                <span class="home-account-avatar"><%= avatarLetter %></span>
+                <span class="home-account-name"><%= displayName %></span>
+                <span class="home-account-caret" aria-hidden="true">
+                    <svg viewBox="0 0 20 20" fill="none"><path d="M5 7.5L10 12.5L15 7.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </span>
+            </button>
+            <div class="home-account-menu" id="homeAccountMenu">
+                <a href="/profile" class="home-account-menu__item is-highlighted">
+                    <span class="home-account-menu__icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none"><path d="M12 13C14.7614 13 17 10.7614 17 8C17 5.23858 14.7614 3 12 3C9.23858 3 7 5.23858 7 8C7 10.7614 9.23858 13 12 13Z" stroke="currentColor" stroke-width="2"/><path d="M4 21C4.8 17.8 7.5 16 12 16C16.5 16 19.2 17.8 20 21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                    </span>
+                    <span data-i18n="nav.profile">Профиль</span>
+                </a>
+                <a href="/logout" class="home-account-menu__item">
+                    <span class="home-account-menu__icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none"><path d="M10 17L15 12L10 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M15 12H4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M13 4H18C19.1046 4 20 4.89543 20 6V18C20 19.1046 19.1046 20 18 20H13" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                    </span>
+                    <span data-i18n="nav.logout.short">Выйти</span>
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="events-main">
+        <div class="events-container">
+            <!-- Header section -->
+            <div class="events-header">
+                <div class="events-header__info">
+                    <h1 class="events-title">Журнал релизов 1С</h1>
+                    <p class="events-subtitle">Хронологический регистр обновлений конфигураций клиентов</p>
+                </div>
+
+                <!-- Filter Controls -->
+                <div class="events-filter-bar">
+                    <label for="orgFilter" class="events-filter-label">Компания:</label>
+                    <div class="events-select-wrap">
+                        <select id="orgFilter" class="events-org-select">
+                            <option value="">Все организации (<%= updates ? updates.length : 0 %>)</option>
+                            <% if (organizations && organizations.length > 0) { %>
+                                <% organizations.forEach(function(org) { %>
+                                    <option value="<%= org.id %>"><%= org.name %></option>
+                                <% }); %>
+                            <% } %>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Events Table Card -->
+            <div class="events-card">
+                <div class="events-table-wrap" id="eventsTableWrap" style="<%= (updates && updates.length > 0) ? '' : 'display: none;' %>">
+                    <table class="events-table" id="eventsTable">
+                        <thead>
+                            <tr>
+                                <th class="col-org">Организация</th>
+                                <th class="col-db">Информационная база 1С</th>
+                                <th class="col-release">Установленный релиз</th>
+                                <th class="col-date">Дата обновления</th>
+                            </tr>
+                        </thead>
+                        <tbody id="eventsTableBody">
+                            <% if (updates && updates.length > 0) { %>
+                                <% updates.forEach(function(item) { %>
+                                    <% 
+                                        const formattedDate = item.updated_at ? new Date(item.updated_at).toLocaleDateString('ru-RU') : '—';
+                                    %>
+                                    <tr data-org-id="<%= item.org_id %>">
+                                        <td class="col-org">
+                                            <a href="/wiki/organization/<%= item.org_id %>" class="events-org-link">
+                                                <span class="events-org-name"><%= item.org_name %></span>
+                                                <span class="events-link-arrow">↗</span>
+                                            </a>
+                                        </td>
+                                        <td class="col-db">
+                                            <span class="events-db-name"><%= item.name %></span>
+                                        </td>
+                                        <td class="col-release">
+                                            <span class="db-release-badge"><%= item.release || '—' %></span>
+                                        </td>
+                                        <td class="col-date">
+                                            <span class="events-date-val"><%= formattedDate %></span>
+                                        </td>
+                                    </tr>
+                                <% }); %>
+                            <% } %>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Empty State -->
+                <div class="events-empty-state" id="eventsEmptyState" style="<%= (updates && updates.length > 0) ? 'display: none;' : '' %>">
+                    <div class="empty-state-icon">📋</div>
+                    <div class="empty-state-text" id="emptyStateText">Записи об обновлениях конфигураций 1С отсутствуют</div>
+                    <div class="empty-state-subtext">Обновления баз данных фиксируются автоматически при ведении Wiki клиентов</div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="wiki-footer">
+        <div class="footer-content">
+            Powered by <a href="#" class="footer-link">_thedaulet</a> © 2026 Astana
+        </div>
+    </footer>
+
+    <!-- Theme & Account & Filter Script -->
+    <script>
+        // User account menu toggle
+        (function () {
+            const toggle = document.getElementById('homeAccountToggle');
+            const menu = document.getElementById('homeAccountMenu');
+            if (!toggle || !menu) return;
+            toggle.addEventListener('click', function (e) {
+                e.stopPropagation();
+                const isOpen = menu.classList.toggle('is-open');
+                toggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+            });
+            document.addEventListener('click', function (e) {
+                if (!menu.contains(e.target) && !toggle.contains(e.target)) {
+                    menu.classList.remove('is-open');
+                    toggle.setAttribute('aria-expanded', 'false');
+                }
+            });
+        })();
+
+        // Theme toggle
+        (function () {
+            const btn = document.getElementById('themeToggle');
+            if (!btn) return;
+            const meta = document.querySelector('meta[name="app-user"]');
+            const user = meta ? meta.getAttribute('content') : 'admin';
+            const storageKey = user ? ('ui_theme_' + user) : 'ui_theme';
+
+            btn.addEventListener('click', function () {
+                const current = document.documentElement.getAttribute('data-theme') || 'light';
+                const next = current === 'dark' ? 'light' : 'dark';
+                document.documentElement.setAttribute('data-theme', next);
+                localStorage.setItem(storageKey, next);
+            });
+        })();
+
+        // Instant Client-side filtering by company
+        (function () {
+            const filter = document.getElementById('orgFilter');
+            const tableWrap = document.getElementById('eventsTableWrap');
+            const tableBody = document.getElementById('eventsTableBody');
+            const emptyState = document.getElementById('eventsEmptyState');
+            const emptyText = document.getElementById('emptyStateText');
+
+            if (!filter || !tableBody) return;
+
+            const allRows = Array.from(tableBody.querySelectorAll('tr'));
+
+            filter.addEventListener('change', function () {
+                const selectedOrgId = filter.value;
+                let visibleCount = 0;
+
+                allRows.forEach(function (row) {
+                    const rowOrgId = row.getAttribute('data-org-id');
+                    if (!selectedOrgId || rowOrgId === selectedOrgId) {
+                        row.style.display = '';
+                        visibleCount++;
+                    } else {
+                        row.style.display = 'none';
+                    }
+                });
+
+                if (visibleCount > 0) {
+                    if (tableWrap) tableWrap.style.display = '';
+                    if (emptyState) emptyState.style.display = 'none';
+                } else {
+                    if (tableWrap) tableWrap.style.display = 'none';
+                    if (emptyState) {
+                        emptyState.style.display = '';
+                        if (emptyText) {
+                            emptyText.textContent = 'Для выбранной организации нет зафиксированных релизов 1С';
+                        }
+                    }
+                }
+            });
+        })();
+    </script>
+</body>
+</html>

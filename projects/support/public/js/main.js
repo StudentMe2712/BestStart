@@ -37,15 +37,10 @@ const draftStatus            = document.getElementById('draftStatus');
 const formatSelect           = document.getElementById('formatSelect');
 const linkBtn                = document.getElementById('linkBtn');
 const wikiSheet              = document.getElementById('wikiSheet');
-const wikiContentActions     = document.getElementById('wikiContentActions');
-const copyAllBtn             = document.getElementById('copyAllBtn') || document.getElementById('copyContentBtn') || document.getElementById('copyAllSummaryBtn');
-const contentSectionSubtitle = document.getElementById('contentSectionSubtitle');
 const floatingToastContainer = document.getElementById('floatingToastContainer');
 
 // Backwards compatibility aliases
 const smartServerViewer      = wikiSheet;
-const smartViewerActions     = wikiContentActions;
-const copyAllSummaryBtn      = copyAllBtn;
 
 // ── More menu ──────────────────────────────────────────────
 const moreBtnTop = document.getElementById('moreBtnTop');
@@ -238,7 +233,6 @@ function renderWikiSheet(rawContent) {
     var clean = cleanHtmlToText(rawContent).trim();
 
     if (!clean) {
-        if (copyAllBtn) copyAllBtn.style.display = 'none';
         wikiSheet.innerHTML =
             '<div class="wiki-empty-state" id="wikiEmptyState">' +
                 '<div class="wiki-empty-state__icon-wrap">' +
@@ -266,8 +260,6 @@ function renderWikiSheet(rawContent) {
         }
         return;
     }
-
-    if (copyAllBtn) copyAllBtn.style.display = 'inline-flex';
 
     var lines = clean.split('\n');
     var html = '<div class="wiki-lines-container">';
@@ -324,58 +316,6 @@ function renderWikiSheet(rawContent) {
 }
 
 /* ============================================================
-   COPY ALL REQUISITES
-   ============================================================ */
-
-if (copyAllBtn) {
-    copyAllBtn.addEventListener('click', async function() {
-        var baseContent = typeof initialContent !== 'undefined' ? initialContent : '';
-        if (orgEditor && !baseContent) baseContent = orgEditor.innerHTML;
-        var text = cleanHtmlToText(baseContent).trim();
-
-        if (!text) {
-            showToast('Нет данных для копирования');
-            return;
-        }
-
-        var copied = false;
-        if (navigator.clipboard && window.isSecureContext) {
-            try {
-                await navigator.clipboard.writeText(text);
-                copied = true;
-            } catch (e) {}
-        }
-        if (!copied) {
-            try {
-                var ta = document.createElement('textarea');
-                ta.value = text;
-                ta.style.position = 'fixed';
-                ta.style.left = '-9999px';
-                document.body.appendChild(ta);
-                ta.focus();
-                ta.select();
-                document.execCommand('copy');
-                document.body.removeChild(ta);
-                copied = true;
-            } catch (err) {}
-        }
-
-        copyAllBtn.classList.add('is-copied');
-        var originalHtml = copyAllBtn.innerHTML;
-        copyAllBtn.innerHTML =
-            '<svg width="15" height="15" viewBox="0 0 20 20" fill="none"><path d="M5 10L8 13L15 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> ' +
-            '<span>✓ Скопировано!</span>';
-
-        setTimeout(function() {
-            copyAllBtn.classList.remove('is-copied');
-            copyAllBtn.innerHTML = originalHtml;
-        }, 1500);
-
-        showToast('✓ Реквизиты скопированы в буфер обмена!');
-    });
-}
-
-/* ============================================================
    EDITOR — MODE TOGGLE (EDIT / VIEW / CANCEL)
    ============================================================ */
 
@@ -384,7 +324,6 @@ function enterEditMode() {
     isEditMode = true;
 
     if (wikiSheet) wikiSheet.style.display = 'none';
-    if (wikiContentActions) wikiContentActions.style.display = 'none';
 
     if (editorOuter) {
         editorOuter.style.display = 'block';
@@ -398,10 +337,6 @@ function enterEditMode() {
 
     orgEditor.contentEditable = 'true';
     orgEditor.focus();
-
-    if (contentSectionSubtitle) {
-        contentSectionSubtitle.textContent = 'Редактирование параметров';
-    }
 
     if (editBtnTop) {
         editBtnTop.textContent = _t('wiki.view.btn') || 'Просмотр';
@@ -426,11 +361,6 @@ function exitEditMode() {
     }
 
     if (wikiSheet) wikiSheet.style.display = 'block';
-    if (wikiContentActions) wikiContentActions.style.display = 'flex';
-
-    if (contentSectionSubtitle) {
-        contentSectionSubtitle.textContent = 'Заметки и реквизиты';
-    }
 
     if (editBtnTop) {
         editBtnTop.textContent = _t('wiki.edit.btn') || 'Редактировать';
@@ -618,6 +548,25 @@ if (saveBtn) {
             initialContent = content;
             renderWikiSheet(content);
 
+            // Update subtitle and lastModified timestamps
+            var orgSubtitle = document.getElementById('orgSubtitle');
+            var lastModified = document.getElementById('lastModified');
+            var now = new Date();
+            var dateStr = now.toLocaleString('ru-RU', {
+                day: '2-digit', month: '2-digit', year: 'numeric',
+                hour: '2-digit', minute: '2-digit'
+            });
+            var metaUser = document.querySelector('meta[name="app-user"]');
+            var authorName = metaUser ? metaUser.getAttribute('content') : '';
+            if (authorName === 'admin') authorName = 'Администратор';
+
+            if (orgSubtitle) {
+                orgSubtitle.textContent = 'Последнее изменение: ' + dateStr + (authorName ? ' • ' + authorName : '');
+            }
+            if (lastModified) {
+                lastModified.innerHTML = '<span data-i18n="wiki.last.modified">Последнее изменение:</span> ' + (authorName || '') + ' ' + dateStr;
+            }
+
             // Exit edit mode smoothly back to Sheet
             exitEditMode();
             showToast('✓ Параметры сервера успешно сохранены!');
@@ -803,11 +752,10 @@ if (wikiSearch && wikiOrgList) {
 
         allItems.forEach(function(item) {
             var nameAttr = item.getAttribute('data-name') || '';
-            var envAttr = item.getAttribute('data-env') || '';
             var nameEl = item.querySelector('.wiki-list-name');
             var text = (nameEl ? nameEl.textContent : nameAttr).toLowerCase();
 
-            var matches = !query || text.includes(query) || nameAttr.includes(query) || envAttr.includes(query);
+            var matches = !query || text.includes(query) || nameAttr.includes(query);
             if (matches) {
                 item.style.display = '';
                 visibleCount++;
@@ -839,3 +787,203 @@ if (wikiSearch && wikiOrgList) {
         });
     }
 }
+
+/* ============================================================
+   1C DATABASES REGISTRY (AJAX CRUD — Спринт 3 Этап 3)
+   ============================================================ */
+
+(function initDatabases1C() {
+    var addDbBtn       = document.getElementById('addDatabaseBtn');
+    var dbModal        = document.getElementById('db1cModal');
+    var closeDbModal   = document.getElementById('closeDb1cModal');
+    var cancelDbModal  = document.getElementById('cancelDb1cBtn');
+    var dbForm         = document.getElementById('db1cForm');
+    var dbIdInput      = document.getElementById('db1cId');
+    var dbNameInput    = document.getElementById('db1cName');
+    var dbReleaseInput = document.getElementById('db1cRelease');
+    var dbDateInput    = document.getElementById('db1cDate');
+    var dbModalTitle   = document.getElementById('db1cModalTitle');
+    var tableWrap      = document.getElementById('db1cTableWrap');
+    var tableBody      = document.getElementById('db1cTableBody');
+    var emptyState     = document.getElementById('db1cEmptyState');
+    var countBadge     = document.getElementById('db1cCountBadge');
+    var orgIdInput     = document.getElementById('currentOrgId');
+
+    if (!dbModal || !orgIdInput) return;
+
+    var orgId = orgIdInput.value;
+
+    function getTodayString() {
+        var d = new Date();
+        var month = '' + (d.getMonth() + 1);
+        var day = '' + d.getDate();
+        var year = d.getFullYear();
+        if (month.length < 2) month = '0' + month;
+        if (day.length < 2) day = '0' + day;
+        return [year, month, day].join('-');
+    }
+
+    function openModalForAdd() {
+        if (!dbForm) return;
+        dbForm.reset();
+        dbIdInput.value = '';
+        dbDateInput.value = getTodayString();
+        dbModalTitle.textContent = 'Добавить базу 1С';
+        dbModal.style.display = 'flex';
+        setTimeout(function() { dbNameInput.focus(); }, 50);
+    }
+
+    function openModalForEdit(data) {
+        if (!dbForm) return;
+        dbIdInput.value = data.id || '';
+        dbNameInput.value = data.name || '';
+        dbReleaseInput.value = data.release || '';
+        dbDateInput.value = data.date || getTodayString();
+        dbModalTitle.textContent = 'Редактировать базу 1С';
+        dbModal.style.display = 'flex';
+        setTimeout(function() { dbNameInput.focus(); }, 50);
+    }
+
+    function closeModal() {
+        if (dbModal) dbModal.style.display = 'none';
+    }
+
+    function updateViewCounts() {
+        if (!tableBody || !countBadge) return;
+        var rows = tableBody.querySelectorAll('tr');
+        var count = rows.length;
+        countBadge.textContent = String(count);
+        if (count > 0) {
+            if (tableWrap) tableWrap.style.display = '';
+            if (emptyState) emptyState.style.display = 'none';
+        } else {
+            if (tableWrap) tableWrap.style.display = 'none';
+            if (emptyState) emptyState.style.display = '';
+        }
+    }
+
+    function formatDateRu(dateStr) {
+        if (!dateStr) return '—';
+        var d = new Date(dateStr);
+        if (isNaN(d.getTime())) return dateStr;
+        return d.toLocaleDateString('ru-RU');
+    }
+
+    function createRowHtml(db) {
+        var formattedDate = formatDateRu(db.updated_at);
+        var isoDate = db.updated_at ? new Date(db.updated_at).toISOString().split('T')[0] : '';
+        return '<td class="db-name-cell"><span class="db-name-text">' + escapeHtmlText(db.name) + '</span></td>' +
+               '<td class="db-release-cell"><span class="db-release-badge">' + escapeHtmlText(db.release || '—') + '</span></td>' +
+               '<td class="db-date-cell">' + formattedDate + '</td>' +
+               '<td class="db-actions-cell">' +
+               '  <button type="button" class="btn-db-action btn-db-edit" title="Редактировать базу" data-id="' + db.id + '" data-name="' + escapeHtmlText(db.name) + '" data-release="' + escapeHtmlText(db.release || '') + '" data-date="' + isoDate + '">✏️</button>' +
+               '  <button type="button" class="btn-db-action btn-db-delete" title="Удалить базу" data-id="' + db.id + '" data-name="' + escapeHtmlText(db.name) + '">🗑</button>' +
+               '</td>';
+    }
+
+    if (addDbBtn) {
+        addDbBtn.addEventListener('click', openModalForAdd);
+    }
+
+    if (closeDbModal) closeDbModal.addEventListener('click', closeModal);
+    if (cancelDbModal) cancelDbModal.addEventListener('click', closeModal);
+
+    window.addEventListener('click', function(e) {
+        if (e.target === dbModal) closeModal();
+    });
+
+    // Delegated edit & delete clicks
+    if (tableBody) {
+        tableBody.addEventListener('click', async function(e) {
+            var editBtn = e.target.closest('.btn-db-edit');
+            var deleteBtn = e.target.closest('.btn-db-delete');
+
+            if (editBtn) {
+                var data = {
+                    id: editBtn.getAttribute('data-id'),
+                    name: editBtn.getAttribute('data-name'),
+                    release: editBtn.getAttribute('data-release'),
+                    date: editBtn.getAttribute('data-date')
+                };
+                openModalForEdit(data);
+                return;
+            }
+
+            if (deleteBtn) {
+                var id = deleteBtn.getAttribute('data-id');
+                var name = deleteBtn.getAttribute('data-name') || 'базу';
+                if (!confirm('Удалить информационную базу "' + name + '"?')) return;
+
+                try {
+                    var res = await fetch('/api/databases/' + id, { method: 'DELETE' });
+                    var result = await res.json();
+                    if (!res.ok) {
+                        alert(result.error || 'Ошибка удаления базы');
+                        return;
+                    }
+                    var row = deleteBtn.closest('tr');
+                    if (row) row.remove();
+                    updateViewCounts();
+                    showToast('База 1С успешно удалена');
+                } catch (err) {
+                    console.error('Ошибка удаления базы 1С:', err);
+                    alert('Ошибка соединения с сервером');
+                }
+            }
+        });
+    }
+
+    // Submit form (Create or Update)
+    if (dbForm) {
+        dbForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            var id = dbIdInput.value;
+            var name = dbNameInput.value.trim();
+            var release = dbReleaseInput.value.trim();
+            var updated_at = dbDateInput.value;
+
+            if (!name) {
+                alert('Введите наименование базы');
+                return;
+            }
+
+            try {
+                var isEdit = Boolean(id);
+                var url = isEdit ? ('/api/databases/' + id) : ('/api/organizations/' + orgId + '/databases');
+                var method = isEdit ? 'PUT' : 'POST';
+
+                var res = await fetch(url, {
+                    method: method,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name: name, release: release, updated_at: updated_at })
+                });
+
+                var data = await res.json();
+                if (!res.ok) {
+                    alert(data.error || 'Ошибка сохранения базы');
+                    return;
+                }
+
+                if (isEdit) {
+                    var existingRow = tableBody.querySelector('tr[data-id="' + id + '"]');
+                    if (existingRow) {
+                        existingRow.innerHTML = createRowHtml({ id: id, name: name, release: release, updated_at: updated_at });
+                    }
+                    showToast('База 1С успешно обновлена');
+                } else {
+                    var newRow = document.createElement('tr');
+                    newRow.setAttribute('data-id', data.id);
+                    newRow.innerHTML = createRowHtml({ id: data.id, name: name, release: release, updated_at: updated_at });
+                    tableBody.insertBefore(newRow, tableBody.firstChild);
+                    showToast('База 1С успешно добавлена');
+                }
+
+                closeModal();
+                updateViewCounts();
+            } catch (err) {
+                console.error('Ошибка сохранения базы 1С:', err);
+                alert('Ошибка соединения с сервером');
+            }
+        });
+    }
+})();

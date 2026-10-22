@@ -130,9 +130,135 @@ const organizationsDB = {
     }
 };
 
+// Инициализация таблицы баз 1С
+async function initDatabases1CTable() {
+    let connection;
+    try {
+        connection = await pool.getConnection();
+        await connection.query(`
+            CREATE TABLE IF NOT EXISTS organization_databases_1c (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                org_id INT NOT NULL,
+                name VARCHAR(255) NOT NULL,
+                release_version VARCHAR(100) NOT NULL DEFAULT '',
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                FOREIGN KEY (org_id) REFERENCES organizations(id) ON DELETE CASCADE
+            )
+        `);
+        console.log('✓ Таблица organization_databases_1c готова');
+    } catch (err) {
+        console.error('Ошибка инициализации таблицы баз 1С:', err.message);
+        throw err;
+    } finally {
+        if (connection) connection.release();
+    }
+}
+
+// Функции для работы с базами 1С
+const databases1CDB = {
+    // Получить все базы 1С организации
+    getByOrgId: async (orgId) => {
+        let connection;
+        try {
+            connection = await pool.getConnection();
+            const [rows] = await connection.query(
+                'SELECT id, org_id, name, release_version AS `release`, updated_at FROM organization_databases_1c WHERE org_id = ? ORDER BY updated_at DESC',
+                [orgId]
+            );
+            return rows;
+        } catch (err) {
+            console.error(`Ошибка получения баз 1С для организации ${orgId}:`, err.message);
+            throw err;
+        } finally {
+            if (connection) connection.release();
+        }
+    },
+
+    // Получить все последние обновления для журнала Событий
+    getAllRecentUpdates: async () => {
+        let connection;
+        try {
+            connection = await pool.getConnection();
+            const [rows] = await connection.query(`
+                SELECT d.id, d.org_id, o.name AS org_name, d.name, d.release_version AS \`release\`, d.updated_at
+                FROM organization_databases_1c d
+                JOIN organizations o ON d.org_id = o.id
+                ORDER BY d.updated_at DESC
+            `);
+            return rows;
+        } catch (err) {
+            console.error('Ошибка получения журнала обновлений 1С:', err.message);
+            throw err;
+        } finally {
+            if (connection) connection.release();
+        }
+    },
+
+    // Добавить базу 1С
+    create: async ({ org_id, name, release, updated_at }) => {
+        let connection;
+        try {
+            connection = await pool.getConnection();
+            const dateVal = updated_at ? new Date(updated_at) : new Date();
+            const [result] = await connection.query(
+                'INSERT INTO organization_databases_1c (org_id, name, release_version, updated_at) VALUES (?, ?, ?, ?)',
+                [org_id, name ? name.trim() : '', release ? release.trim() : '', dateVal]
+            );
+            return {
+                id: result.insertId,
+                org_id: Number(org_id),
+                name: name ? name.trim() : '',
+                release: release ? release.trim() : '',
+                updated_at: dateVal
+            };
+        } catch (err) {
+            console.error(`Ошибка создания базы 1С ${name}:`, err.message);
+            throw err;
+        } finally {
+            if (connection) connection.release();
+        }
+    },
+
+    // Обновить базу 1С
+    update: async (id, { name, release, updated_at }) => {
+        let connection;
+        try {
+            connection = await pool.getConnection();
+            const dateVal = updated_at ? new Date(updated_at) : new Date();
+            const [result] = await connection.query(
+                'UPDATE organization_databases_1c SET name = ?, release_version = ?, updated_at = ? WHERE id = ?',
+                [name ? name.trim() : '', release ? release.trim() : '', dateVal, id]
+            );
+            return result.affectedRows;
+        } catch (err) {
+            console.error(`Ошибка обновления базы 1С ${id}:`, err.message);
+            throw err;
+        } finally {
+            if (connection) connection.release();
+        }
+    },
+
+    // Удалить базу 1С
+    delete: async (id) => {
+        let connection;
+        try {
+            connection = await pool.getConnection();
+            const [result] = await connection.query('DELETE FROM organization_databases_1c WHERE id = ?', [id]);
+            return result.affectedRows;
+        } catch (err) {
+            console.error(`Ошибка удаления базы 1С ${id}:`, err.message);
+            throw err;
+        } finally {
+            if (connection) connection.release();
+        }
+    }
+};
+
 module.exports = {
     initOrganizationTable,
-    organizationsDB
+    organizationsDB,
+    initDatabases1CTable,
+    databases1CDB
 };
 
 

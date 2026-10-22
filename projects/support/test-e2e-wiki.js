@@ -72,10 +72,11 @@ async function runWikiE2ETests() {
             throw new Error(`Бейдж счетчика должен быть 25, получено: ${countBadge}`);
         }
 
-        const prodBadges = await page.$$('.wiki-badge-env--prod');
-        if (prodBadges.length === 0) {
-            throw new Error('Бейджи PROD не найдены в списке серверов');
+        const prodBadges = await page.$$('.wiki-badge-env');
+        if (prodBadges.length > 0) {
+            throw new Error(`Обнаружены бейджи PROD/DEV в списке серверов (${prodBadges.length} шт.), они должны быть удалены!`);
         }
+        console.log(`   ✓ Бейджи контура PROD/DEV полностью удалены из сайдбара`);
 
         // Resize разделитель
         const resizeHandle = await page.$('#wikiResizeHandle');
@@ -166,27 +167,25 @@ async function runWikiE2ETests() {
         }
         console.log(`   ✓ Жесткие сетки и поля со статусом «Не указано» полностью отсутствуют!`);
 
-        // 7. Проверка кнопки «📋 Скопировать все реквизиты» и появления тоста
-        console.log(`[7/8] Проверка кнопки «📋 Скопировать все реквизиты» (#copyAllBtn)...`);
+        // 7. Проверка удаления #copyAllBtn и работа копирования строки
+        console.log(`[7/8] Проверка отсутствия #copyAllBtn и копирования строки (.wiki-line-copy-btn)...`);
         const copyAllBtn = await page.$('#copyAllBtn');
-        if (!copyAllBtn) {
-            throw new Error('Кнопка #copyAllBtn не найдена в шапке карточки');
+        if (copyAllBtn) {
+            throw new Error('Кнопка #copyAllBtn обнаружена, хотя должна быть удалена в Спринте 3!');
         }
+        console.log(`   ✓ Кнопка #copyAllBtn («Скопировать все реквизиты») удалена`);
 
-        await page.click('#copyAllBtn');
-        await page.waitForSelector('.floating-toast.is-show', { timeout: 2000 });
-        const toastMsg = await page.$eval('.floating-toast.is-show', el => el.textContent.trim());
-        console.log(`   - Появился всплывающий тост: "${toastMsg}"`);
-        if (!toastMsg.includes('Реквизиты скопированы')) {
-            throw new Error(`Неверный текст тоста: ${toastMsg}`);
+        const lineCopyBtn = await page.$('.wiki-line-copy-btn');
+        if (lineCopyBtn) {
+            await lineCopyBtn.click();
+            await page.waitForSelector('.floating-toast.is-show', { timeout: 2000 });
+            const toastMsg = await page.$eval('.floating-toast.is-show', el => el.textContent.trim());
+            console.log(`   - Появился всплывающий тост: "${toastMsg}"`);
+            if (!toastMsg.includes('скопирован')) {
+                throw new Error(`Неверный текст тоста: ${toastMsg}`);
+            }
+            console.log(`   ✓ Копирование строки и всплывающий тост работают штатно!`);
         }
-
-        const isCopiedState = await page.$eval('#copyAllBtn', el => el.classList.contains('is-copied') || el.innerText.includes('Скопировано'));
-        console.log(`   - Кнопка кратковременно изменила статус (is-copied/Скопировано): ${isCopiedState}`);
-        if (!isCopiedState) {
-            throw new Error('Кнопка #copyAllBtn не переключилась в состояние успешного копирования');
-        }
-        console.log(`   ✓ Кнопка копирования всех реквизитов и всплывающий тост работают безупречно!`);
 
         // 8. Проверка Empty State и режима редактирования
         console.log(`[8/8] Проверка Empty State (/wiki/organization/4) и перехода в режим редактирования...`);
