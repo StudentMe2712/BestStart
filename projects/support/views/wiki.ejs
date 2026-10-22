@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Wiki - ИТС-Ком</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/css/style.css">
     <link rel="stylesheet" href="/css/wiki-page.css">
 	<link rel="icon" type="image/png" href="/favicon.png">
@@ -24,8 +27,7 @@
 
     <header class="home-topbar">
         <div class="home-topbar__brand">
-            <a href="/" class="home-brand-link">
-                <img src="/logo.png" alt="ИТС-Ком" class="home-brand-logo">
+            <a href="/" class="home-brand-link" title="ИТС-Ком">
                 <span class="home-brand-name">ИТС-Ком</span>
             </a>
         </div>
@@ -174,19 +176,19 @@
                 <div class="content-section">
                     <div class="content-header-bar">
                         <div class="content-header-bar__titles">
-                            <h3 class="content-section-title" id="contentSectionTitle" data-i18n="wiki.content.title">Картотека сервера</h3>
-                            <span class="content-section-subtitle" id="contentSectionSubtitle">Smart Server Viewer</span>
+                            <h3 class="content-section-title" id="contentSectionTitle" data-i18n="wiki.content.title">Параметры сервера</h3>
+                            <span class="content-section-subtitle" id="contentSectionSubtitle">Заметки и реквизиты</span>
                         </div>
-                        <div class="content-header-bar__actions" id="smartViewerActions">
-                            <button class="smart-action-btn-summary" id="copyAllSummaryBtn" type="button" title="Скопировать все реквизиты">
+                        <div class="content-header-bar__actions" id="wikiContentActions">
+                            <button class="wiki-copy-all-btn" id="copyAllBtn" type="button" title="Скопировать все реквизиты">
                                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect></svg>
-                                <span>Скопировать все реквизиты</span>
+                                <span>📋 Скопировать все реквизиты</span>
                             </button>
                         </div>
                     </div>
 
-                    <!-- Smart Server Viewer (Shown in view mode) -->
-                    <div class="smart-viewer" id="smartServerViewer"></div>
+                    <!-- Clean Content Sheet (Shown in view mode) -->
+                    <div class="wiki-sheet wiki-content-sheet" id="wikiSheet"></div>
 
                     <!-- Editor outer (Shown in edit mode) -->
                     <div class="editor-outer" id="editorOuter" style="display: none;">

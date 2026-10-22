@@ -6,10 +6,10 @@ process.env.PORT = String(TEST_PORT);
 
 async function runE2ETests() {
     console.log('====================================================');
-    console.log('  🧪 E2E ТЕСТИРОВАНИЕ КОМАНДНОГО ДАШБОРДА (ЭТАП 3)');
+    console.log('  🧪 E2E ТЕСТИРОВАНИЕ ГЛАВНОЙ СТРАНИЦЫ (ЭТАП 2 СПРИНТА 2)');
     console.log('====================================================\n');
 
-    // 1. Запуск сервера с stub DB
+    // 1. Запуск сервера с in-memory stub DB
     const { serverInstance } = require('./server');
     await new Promise(resolve => setTimeout(resolve, 800));
 
@@ -17,7 +17,7 @@ async function runE2ETests() {
     let browser;
 
     try {
-        console.log(`[1/7] Запуск Headless Chrome (Puppeteer)...`);
+        console.log(`[1/8] Запуск Headless Chrome (Puppeteer)...`);
         const chromePath = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
         browser = await puppeteer.launch({
             headless: 'new',
@@ -31,8 +31,8 @@ async function runE2ETests() {
         const page = await browser.newPage();
         await page.setViewport({ width: 1920, height: 1080 });
 
-        // Авторизация
-        console.log(`[2/7] Авторизация в системе через /login (admin / admin)...`);
+        // 2. Авторизация
+        console.log(`[2/8] Авторизация в системе через /login (admin / admin)...`);
         await page.goto(`${BASE_URL}/login`, { waitUntil: 'networkidle0' });
         await page.type('#username', 'admin');
         await page.type('#password', 'admin');
@@ -47,140 +47,146 @@ async function runE2ETests() {
             throw new Error(`Ожидался переход на главную страницу, но получен URL: ${currentUrl}`);
         }
 
-        // 3. Проверка Приветственной панели (Hero Bar)
-        console.log(`[3/7] Проверка Приветственной панели (Hero Bar)...`);
+        // 3. Проверка Topbar (минималистичный бренд без картинок)
+        console.log(`[3/8] Проверка верхней панели навигации (topbar)...`);
+        const brandName = await page.$eval('.home-brand-name', el => el.textContent.trim());
+        const topbarImages = await page.$$('.home-topbar img');
+        const themeBtn = await page.$('#themeToggle');
+        const accountBtn = await page.$('#homeAccountToggle');
+
+        console.log(`   - Текстовый бренд: "${brandName}"`);
+        console.log(`   - Количество <img> в topbar: ${topbarImages.length}`);
+        if (brandName !== 'ИТС-Ком') throw new Error(`Неверный текст бренда: "${brandName}", ожидалось "ИТС-Ком"`);
+        if (topbarImages.length > 0) throw new Error('В topbar не должно быть тегов <img> или /logo.png');
+        if (!themeBtn) throw new Error('Отсутствует кнопка переключения темы #themeToggle');
+        if (!accountBtn) throw new Error('Отсутствует кнопка аккаунта #homeAccountToggle');
+        console.log('✓ Верхняя панель навигации полностью соответствует требованиям!');
+
+        // 4. Проверка Верхней статусной секции (Hero Bar)
+        console.log(`[4/8] Проверка Верхней статусной секции (Hero Bar)...`);
         const heroTitle = await page.$eval('.command-hero__title', el => el.textContent.trim());
         const heroGreeting = await page.$eval('.command-hero__user-badge', el => el.textContent.trim());
+        const heroUser = await page.$eval('.command-hero__username', el => el.textContent.trim());
         const heroStatus = await page.$eval('.command-hero__status-text', el => el.textContent.trim());
         const heroDate = await page.$eval('#heroCurrentDate', el => el.textContent.trim());
         const hasPulseDot = await page.$('.status-pulse-dot');
 
-        console.log(`   - Заголовок: "${heroTitle}"`);
+        console.log(`   - Главный заголовок: "${heroTitle}"`);
         console.log(`   - Приветствие: "${heroGreeting}"`);
-        console.log(`   - Статус: "${heroStatus}"`);
-        console.log(`   - Текущая дата: "${heroDate}"`);
+        console.log(`   - Логин пользователя: "${heroUser}"`);
+        console.log(`   - Статус узлов: "${heroStatus}"`);
+        console.log(`   - Актуальная дата: "${heroDate}"`);
 
-        if (!heroTitle.includes('Командный центр ИТС-Ком')) throw new Error('Неверный заголовок Hero Bar');
-        if (!heroGreeting.includes('С возвращением') || !heroGreeting.includes('Администратор')) throw new Error('Неверное приветствие пользователя');
-        if (!heroStatus.includes('Все узлы в штатном режиме')) throw new Error('Неверный статус системы');
-        if (!heroDate || heroDate.length < 5) throw new Error('Отсутствует динамическая дата');
-        if (!hasPulseDot) throw new Error('Отсутствует пульсирующий индикатор статуса');
-        console.log('✓ Приветственная панель (Hero Bar) полностью соответствует спецификации!');
+        if (heroTitle !== 'База знаний ИТС-Ком') {
+            throw new Error(`Неверный заголовок: "${heroTitle}", ожидалось "База знаний ИТС-Ком"`);
+        }
+        if (!heroGreeting.includes('С возвращением') || heroUser !== 'admin') {
+            throw new Error(`Неверное приветствие пользователя: ожидался логин "admin", получено "${heroUser}"`);
+        }
+        if (!heroStatus.includes('Все узлы в штатном режиме')) {
+            throw new Error('Неверный статус системы');
+        }
+        if (!heroDate || heroDate.length < 5) {
+            throw new Error('Отсутствует динамическая дата');
+        }
+        // Проверка даты с заглавной буквы
+        const firstLetter = heroDate.charAt(0);
+        if (firstLetter !== firstLetter.toUpperCase() || firstLetter === firstLetter.toLowerCase()) {
+            throw new Error(`Дата должна начинаться с заглавной буквы: "${heroDate}"`);
+        }
+        if (!hasPulseDot) {
+            throw new Error('Отсутствует зеленый пульсирующий индикатор статуса');
+        }
+        console.log('✓ Верхняя статусная секция полностью соответствует спецификации!');
 
-        // 4. Проверка Command Search Bar и хоткея Ctrl + K
-        console.log(`[4/7] Проверка строки быстрого поиска и хоткея Ctrl + K...`);
+        // 5. Проверка ПОЛНОГО удаления строки поиска и блока «Быстрый доступ к серверам»
+        console.log(`[5/8] Проверка отсутствия перегруза (поиск и быстрый доступ)...`);
         const searchInput = await page.$('#commandSearchInput');
-        if (!searchInput) throw new Error('Поле поиска #commandSearchInput не найдено');
-
-        // Клик вне поля, затем эмуляция нажатия Ctrl+K
-        await page.click('body');
-        const isFocusedBefore = await page.evaluate(() => document.activeElement.id === 'commandSearchInput');
-        if (isFocusedBefore) throw new Error('Инпут не должен быть в фокусе до нажатия хоткея');
-
-        await page.keyboard.down('Control');
-        await page.keyboard.press('KeyK');
-        await page.keyboard.up('Control');
-
-        const isFocusedAfter = await page.evaluate(() => document.activeElement.id === 'commandSearchInput');
-        if (!isFocusedAfter) throw new Error('Хоткей Ctrl+K не установил фокус в #commandSearchInput');
-        console.log('✓ Хоткей Ctrl + K успешно активирует фокус строки поиска!');
-
-        // Ввод поискового запроса и проверка интерактивного выпадающего списка
-        await page.type('#commandSearchInput', 'ALPH');
-        await page.waitForSelector('#commandSearchResults', { visible: true });
-
-        const resultsCountText = await page.$eval('#searchResultsCount', el => el.textContent);
-        const firstResultName = await page.$eval('.dropdown-item__name', el => el.textContent);
-        console.log(`   - Результаты поиска: ${resultsCountText}, первый результат: "${firstResultName}"`);
-
-        if (!firstResultName.includes('ALPHUTA')) throw new Error('Ожидался сервер ALPHUTA в результатах поиска');
-
-        // Проверка навигации стрелками (ArrowDown)
-        await page.keyboard.press('ArrowDown');
-        const hasSelectedClass = await page.$eval('.command-dropdown__item', el => el.classList.contains('is-selected'));
-        if (!hasSelectedClass) throw new Error('Стрелка вниз должна выделять элемент .is-selected');
-
-        // Закрытие по Escape
-        await page.keyboard.press('Escape');
-        const isDropdownHidden = await page.$eval('#commandSearchResults', el => el.style.display === 'none');
-        if (!isDropdownHidden) throw new Error('Escape должен скрывать выпадающий список результатов');
-        console.log('✓ Интерактивный поиск и клавиатурная навигация работают безупречно!');
-
-        // 5. Проверка Сетки основных виджетов
-        console.log(`[5/7] Проверка виджетов Wiki и События/Мониторинг...`);
-        const wikiBadge = await page.$eval('#wikiTotalBadge', el => el.textContent.trim());
-        const wikiStatus = await page.$eval('.command-widget--wiki .widget-status', el => el.textContent.trim());
-        const wikiBtnHref = await page.$eval('#btnOpenWiki', el => el.getAttribute('href'));
-
-        console.log(`   - Wiki бейдж: "${wikiBadge}", статус: "${wikiStatus}", ссылка: "${wikiBtnHref}"`);
-        if (!wikiBadge.includes('серверов')) throw new Error('Отсутствует бейдж серверов на карточке Wiki');
-        if (!wikiStatus.includes('Активно')) throw new Error('Отсутствует индикатор Активно на карточке Wiki');
-        if (wikiBtnHref !== '/wiki') throw new Error('Кнопка Wiki должна вести на /wiki');
-
-        const eventsBadge = await page.$eval('.command-widget--events .widget-badge', el => el.textContent.trim());
-        const eventsStatus = await page.$eval('.command-widget--events .widget-status', el => el.textContent.trim());
-        const feedItems = await page.$$('.activity-feed-item');
-        console.log(`   - Мониторинг бейдж: "${eventsBadge}", статус: "${eventsStatus}", событий в ленте: ${feedItems.length}`);
-        if (!eventsBadge.includes('В разработке')) throw new Error('Неверный бейдж Событий');
-        if (!eventsStatus.includes('Zabbix')) throw new Error('Неверный статус интеграции Zabbix');
-        if (feedItems.length < 4) throw new Error('Ожидалось не менее 4 событий в ленте Zabbix');
-        console.log('✓ Сетка основных виджетов полностью соответствует требованиям!');
-
-        // 6. Проверка Блока «Быстрый доступ» (Quick Access Servers) & AnyDesk копирования
-        console.log(`[6/7] Проверка блока «Быстрый доступ» и копирования AnyDesk в 1 клик...`);
+        const searchWrap = await page.$('#commandSearchWrap');
+        const searchDropdown = await page.$('#commandSearchResults');
+        const quickServersSection = await page.$('.command-quick-section, #quickServersHeading');
         const serverCards = await page.$$('.server-card');
-        if (serverCards.length !== 4) throw new Error(`Ожидалось 4 карточки быстрых серверов, получено: ${serverCards.length}`);
 
-        const expectedServers = [
-            { name: 'ALPHUTA', anydesk: '1 170 691 894', link: '/wiki/organization/1' },
-            { name: 'Antarium', anydesk: '1218740083', link: '/wiki/organization/2' },
-            { name: 'ARG', anydesk: '987 654 321', link: '/wiki/organization/3' },
-            { name: 'VDS', anydesk: '543 210 987', link: '/wiki/organization/14' }
-        ];
+        if (searchInput || searchWrap || searchDropdown) {
+            throw new Error('Блок быстрого поиска (#commandSearchInput) должен быть полностью удален!');
+        }
+        if (quickServersSection || serverCards.length > 0) {
+            throw new Error(`Блок «Быстрый доступ к серверам» должен быть полностью удален! Найдено карточек: ${serverCards.length}`);
+        }
+        console.log('✓ Строка поиска и карточки быстрого доступа успешно и полностью удалены!');
 
-        for (let i = 0; i < expectedServers.length; i++) {
-            const exp = expectedServers[i];
-            const name = await serverCards[i].$eval('.server-card__name', el => el.textContent.trim());
-            const anydesk = await serverCards[i].$eval('.anydesk-code', el => el.textContent.trim());
-            const link = await serverCards[i].$eval('.server-card__link', el => el.getAttribute('href'));
-
-            console.log(`   - Сервер #${i+1}: ${name} | AnyDesk: ${anydesk} | Ссылка: ${link}`);
-            if (name !== exp.name) throw new Error(`Неверное имя сервера #${i+1}: ${name} != ${exp.name}`);
-            if (anydesk !== exp.anydesk) throw new Error(`Неверный AnyDesk #${i+1}: ${anydesk} != ${exp.anydesk}`);
-            if (link !== exp.link) throw new Error(`Неверная ссылка #${i+1}: ${link} != ${exp.link}`);
+        // 6. Проверка 2 крупных сбалансированных карточек по центру
+        console.log(`[6/8] Проверка 2 крупных карточек («Wiki» и «События»)...`);
+        const widgets = await page.$$('.command-widget');
+        if (widgets.length !== 2) {
+            throw new Error(`Ожидалось ровно 2 карточки, получено: ${widgets.length}`);
         }
 
-        // Клик по кнопке копирования AnyDesk на первой карточке
-        const copyBtn = await serverCards[0].$('.copy-anydesk-btn');
-        await copyBtn.click();
+        // Карточка 1: Wiki
+        const wikiCard = await page.$('.command-widget--wiki');
+        if (!wikiCard) throw new Error('Не найдена карточка .command-widget--wiki');
+        const wikiTitle = await wikiCard.$eval('.command-widget__title', el => el.textContent.trim());
+        const wikiDesc = await wikiCard.$eval('.command-widget__desc', el => el.textContent.trim());
+        const wikiBadge = await wikiCard.$eval('#wikiTotalBadge', el => el.textContent.trim());
+        const wikiBtn = await wikiCard.$('.command-widget__btn--primary');
+        const wikiBtnText = await wikiBtn.evaluate(el => el.textContent.trim());
+        const wikiBtnHref = await wikiBtn.evaluate(el => el.getAttribute('href'));
+        const wikiSvg = await wikiCard.$('.command-widget__icon-wrap svg');
 
-        // Проверка тоста
-        await page.waitForSelector('.toast-item', { visible: true });
-        const toastText = await page.$eval('.toast-item', el => el.textContent.trim());
-        console.log(`   - Всплывающий тост: "${toastText}"`);
-        if (!toastText.includes('Скопировано в буфер') || !toastText.includes('1 170 691 894')) {
-            throw new Error('Тост не содержит корректного сообщения о копировании AnyDesk ID');
+        console.log(`   [Карточка 1 Wiki] Заголовок: "${wikiTitle}", Бейдж: "${wikiBadge}", Кнопка: "${wikiBtnText}" -> ${wikiBtnHref}`);
+        if (wikiTitle !== 'Wiki') throw new Error(`Ожидался заголовок "Wiki", получено "${wikiTitle}"`);
+        if (!wikiDesc.includes('Технические параметры серверов, доступы и конфигурации')) {
+            throw new Error(`Неверное описание Wiki: "${wikiDesc}"`);
         }
-
-        // Проверка смены текста/галочки на кнопке
-        const isCopiedClass = await copyBtn.evaluate(el => el.classList.contains('is-copied'));
-        const btnText = await copyBtn.$eval('.copy-btn-text', el => el.textContent.trim());
-        console.log(`   - Состояние кнопки: class contains 'is-copied' (${isCopiedClass}), текст: "${btnText}"`);
-        if (!isCopiedClass) throw new Error('Кнопка должна содержать класс is-copied');
-        if (!btnText.includes('Скопировано')) throw new Error('Кнопка должна менять текст на галочку/Скопировано');
-        console.log('✓ Копирование AnyDesk в 1 клик с тостом и анимацией кнопки работает отлично!');
-
-        // 7. Проверка переключения темы (Light/Dark) и адаптивности
-        console.log(`[7/7] Проверка темы Dark/Light и адаптивности для 1080p, 2K, 4K...`);
-        const themeBtn = await page.$('#themeToggle');
-        if (themeBtn) {
-            await themeBtn.click();
-            const currentTheme = await page.evaluate(() => document.documentElement.getAttribute('data-theme'));
-            console.log(`   - Переключение темы: data-theme="${currentTheme}"`);
-            if (currentTheme !== 'dark') throw new Error('Тема должна переключиться на dark');
+        if (!wikiBadge.includes('организаций')) {
+            throw new Error(`Ожидался бейдж организаций в карточке Wiki, получено "${wikiBadge}"`);
         }
+        if (!wikiBtnText.includes('Перейти в базу') || wikiBtnHref !== '/wiki') {
+            throw new Error(`Кнопка Wiki должна вести на /wiki с текстом "Перейти в базу", получено: "${wikiBtnText}" (${wikiBtnHref})`);
+        }
+        if (!wikiSvg) throw new Error('Отсутствует векторная SVG-иконка в карточке Wiki');
 
-        // Проверка разрешений
+        // Карточка 2: События
+        const eventsCard = await page.$('.command-widget--events');
+        if (!eventsCard) throw new Error('Не найдена карточка .command-widget--events');
+        const eventsTitle = await eventsCard.$eval('.command-widget__title', el => el.textContent.trim());
+        const eventsDesc = await eventsCard.$eval('.command-widget__desc', el => el.textContent.trim());
+        const eventsBadge = await eventsCard.$eval('.widget-badge', el => el.textContent.trim());
+        const eventsBtn = await eventsCard.$('.command-widget__btn--disabled');
+        const eventsBtnText = await eventsBtn.evaluate(el => el.textContent.trim());
+        const eventsBtnDisabled = await eventsBtn.evaluate(el => el.disabled);
+        const eventsSvg = await eventsCard.$('.command-widget__icon-wrap svg');
+
+        console.log(`   [Карточка 2 События] Заголовок: "${eventsTitle}", Бейдж: "${eventsBadge}", Кнопка: "${eventsBtnText}" (disabled=${eventsBtnDisabled})`);
+        if (eventsTitle !== 'События') throw new Error(`Ожидался заголовок "События", получено "${eventsTitle}"`);
+        if (!eventsDesc.includes('Журнал изменений инфраструктуры и сроков лицензий')) {
+            throw new Error(`Неверное описание Событий: "${eventsDesc}"`);
+        }
+        if (!eventsBadge.includes('В разработке')) {
+            throw new Error(`Ожидался бейдж "В разработке", получено "${eventsBadge}"`);
+        }
+        if (!eventsBtnText.includes('Скоро') || !eventsBtnDisabled) {
+            throw new Error(`Ожидалась кнопка-заглушка "Скоро" (disabled), получено "${eventsBtnText}" (disabled=${eventsBtnDisabled})`);
+        }
+        if (!eventsSvg) throw new Error('Отсутствует векторная SVG-иконка в карточке События');
+
+        console.log('✓ Обе карточки («Wiki» и «События») идеально сверстаны и сбалансированы!');
+
+        // 7. Проверка переключения темы (Light / Dark)
+        console.log(`[7/8] Проверка переключения темной и светлой темы...`);
+        await themeBtn.click();
+        const darkTheme = await page.evaluate(() => document.documentElement.getAttribute('data-theme'));
+        console.log(`   - Активирована тема: data-theme="${darkTheme}"`);
+        if (darkTheme !== 'dark') throw new Error('Тема должна переключиться на dark');
+
+        await themeBtn.click();
+        const lightTheme = await page.evaluate(() => document.documentElement.getAttribute('data-theme'));
+        console.log(`   - Возврат в тему: data-theme="${lightTheme}"`);
+        if (lightTheme !== 'light') throw new Error('Тема должна переключиться на light');
+        console.log('✓ Переключатель темы функционирует штатно!');
+
+        // 8. Проверка центрирования и адаптивности (1080p, 2K, 4K)
+        console.log(`[8/8] Проверка центрирования и адаптивности для 1080p, 2K, 4K...`);
         const viewports = [
             { w: 1920, h: 1080, name: '1080p Full HD' },
             { w: 2560, h: 1440, name: '2K QHD' },
@@ -190,13 +196,13 @@ async function runE2ETests() {
         for (const vp of viewports) {
             await page.setViewport({ width: vp.w, height: vp.h });
             const hubWidth = await page.$eval('.command-hub', el => el.offsetWidth);
-            console.log(`   - Разрешение ${vp.name} (${vp.w}x${vp.h}): .command-hub ширина = ${hubWidth}px (макс. 1240px)`);
-            if (hubWidth > 1240) throw new Error(`Контейнер превышает 1240px на разрешении ${vp.name}`);
+            console.log(`   - Разрешение ${vp.name} (${vp.w}x${vp.h}): .command-hub ширина = ${hubWidth}px (макс. 1100px)`);
+            if (hubWidth > 1100) throw new Error(`Контейнер превышает 1100px на разрешении ${vp.name}: ${hubWidth}px`);
         }
-        console.log('✓ Адаптивность и темная тема успешно проверены!');
+        console.log('✓ Адаптивность и центрирование (1000-1100px) успешно подтверждены!');
 
         console.log('\n====================================================');
-        console.log('  🎉 ВСЕ E2E ТЕСТЫ ЭТАПА 3 ПРОЙДЕНЫ УСПЕШНО (7/7)!');
+        console.log('  🎉 ВСЕ E2E ТЕСТЫ ЭТАПА 2 УСПЕШНО ПРОЙДЕНЫ (8/8)!');
         console.log('====================================================\n');
 
     } finally {
@@ -206,6 +212,6 @@ async function runE2ETests() {
 }
 
 runE2ETests().catch(err => {
-    console.error('❌ E2E Тест завершился с ошибкой:', err);
+    console.error('❌ E2E Тест главной страницы завершился с ошибкой:', err);
     process.exit(1);
 });

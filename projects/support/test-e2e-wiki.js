@@ -6,7 +6,7 @@ process.env.PORT = String(TEST_PORT);
 
 async function runWikiE2ETests() {
     console.log('====================================================');
-    console.log('  🧪 E2E ТЕСТИРОВАНИЕ SMART SERVER VIEWER (ЭТАП 4)');
+    console.log('  🧪 E2E ТЕСТИРОВАНИЕ WIKI: ЧИСТЫЙ ТЕКСТ И ТИПОГРАФИКА');
     console.log('====================================================\n');
 
     const { serverInstance } = require('./server');
@@ -44,35 +44,49 @@ async function runWikiE2ETests() {
         ]);
         console.log(`✓ Авторизация успешна!`);
 
-        // 3. Переход в раздел /wiki
+        // 3. Переход в раздел /wiki/organization/1
         console.log(`[3/8] Переход в раздел /wiki/organization/1 (ALPHUTA)...`);
         await page.goto(`${BASE_URL}/wiki/organization/1`, { waitUntil: 'networkidle0' });
 
-        // Проверка сайдбара
-        console.log(`[4/8] Проверка сайдбара: 25 серверов, бейджи PROD/DEV, счетчик...`);
+        // Проверка шапки: текстовый бренд "ИТС-Ком", отсутствие логотипа img
+        console.log(`   - Проверка шапки: текстовый заголовок «ИТС-Ком» без img /logo.png...`);
+        const brandText = await page.$eval('.home-topbar__brand .home-brand-name', el => el.textContent.trim());
+        const hasBrandImg = await page.$('.home-topbar__brand img');
+        if (brandText !== 'ИТС-Ком') {
+            throw new Error(`Ожидался текст бренда «ИТС-Ком», получено: "${brandText}"`);
+        }
+        if (hasBrandImg) {
+            throw new Error('Обнаружен устаревший тег <img> с логотипом в шапке /wiki!');
+        }
+        console.log(`   ✓ Шапка оформлена в едином минималистичном стиле («${brandText}», без логотипа)`);
+
+        // 4. Проверка сайдбара
+        console.log(`[4/8] Проверка сайдбара: 25 серверов, бейджи PROD/DEV, счетчик и поиск...`);
         const items = await page.$$('#wikiOrgList .wiki-list-item');
-        console.log(`   - Всего серверов в сайдбаре: ${items.length} (ожидается 25)`);
         if (items.length !== 25) {
             throw new Error(`Ожидалось 25 серверов, получено ${items.length}`);
         }
 
         const countBadge = await page.$eval('#wikiCountBadge', el => el.textContent.trim());
-        console.log(`   - Бейдж счетчика серверов: "${countBadge}"`);
         if (countBadge !== '25') {
             throw new Error(`Бейдж счетчика должен быть 25, получено: ${countBadge}`);
         }
 
         const prodBadges = await page.$$('.wiki-badge-env--prod');
-        const devBadges = await page.$$('.wiki-badge-env--dev');
-        console.log(`   - Найдено бейджей PROD: ${prodBadges.length}, DEV: ${devBadges.length}`);
         if (prodBadges.length === 0) {
             throw new Error('Бейджи PROD не найдены в списке серверов');
+        }
+
+        // Resize разделитель
+        const resizeHandle = await page.$('#wikiResizeHandle');
+        if (!resizeHandle) {
+            throw new Error('Resize-разделитель сайдбара #wikiResizeHandle не найден');
         }
 
         // Проверка фильтра поиска
         console.log(`   - Проверка живого поиска в сайдбаре по запросу "alphuta"...`);
         await page.type('#wikiSearch', 'alphuta');
-        await page.waitForTimeout ? page.waitForTimeout(200) : new Promise(r => setTimeout(r, 200));
+        await new Promise(r => setTimeout(r, 200));
 
         const visibleItems = await page.$$eval('#wikiOrgList .wiki-list-item', els =>
             els.filter(el => el.style.display !== 'none').length
@@ -83,121 +97,158 @@ async function runWikiE2ETests() {
             throw new Error(`Ожидался 1 видимый сервер, получено ${visibleItems}`);
         }
 
-        // Проверка кнопки очистки поиска
-        console.log(`   - Проверка кнопки быстрой очистки поля поиска (#wikiSearchClear)...`);
+        // Очистка поиска
+        console.log(`   - Очистка поиска через #wikiSearchClear...`);
         await page.click('#wikiSearchClear');
         const restoredCount = await page.$$eval('#wikiOrgList .wiki-list-item', els =>
             els.filter(el => el.style.display !== 'none').length
         );
-        console.log(`   - После очистки восстановлено серверов: ${restoredCount}`);
         if (restoredCount !== 25) {
             throw new Error(`Ожидалось 25 восстановленных серверов, получено ${restoredCount}`);
         }
+        console.log(`   ✓ Поиск и сброс сайдбара работают корректно`);
 
-        // 5. Проверка Smart Server Viewer (карточки и поля)
-        console.log(`[5/8] Проверка Smart Server Viewer на карточке ALPHUTA...`);
-        const cardRemote = await page.$('#cardRemote');
-        const cardDatabase = await page.$('#cardDatabase');
-        const cardHardware = await page.$('#cardHardware');
-
-        if (!cardRemote || !cardDatabase || !cardHardware) {
-            throw new Error('Карточки Smart Server Viewer (Remote, Database, Hardware) не найдены в DOM');
-        }
-        console.log(`   ✓ Карточка 1 «Удаленный доступ & RDP» найдена`);
-        console.log(`   ✓ Карточка 2 «Базы данных & 1С:Предприятие» найдена`);
-        console.log(`   ✓ Карточка 3 «Аппаратная часть & iLO / IPMI» найдена`);
-
-        // Проверка AnyDesk ID
-        const anydeskIdText = await page.$eval('#cardRemote .smart-val.font-mono', el => el.textContent.trim());
-        console.log(`   - AnyDesk ID: "${anydeskIdText}" (ожидается "1 170 691 894")`);
-        if (!anydeskIdText.includes('1 170 691 894')) {
-            throw new Error(`Неверный AnyDesk ID: ${anydeskIdText}`);
+        // 5. Проверка чистого листа контента и комфортной типографики
+        console.log(`[5/8] Проверка чистого листа .wiki-sheet и типографики (15px, line-height 1.6, monospace)...`);
+        const wikiSheet = await page.$('.wiki-sheet');
+        if (!wikiSheet) {
+            throw new Error('Контейнер чистого листа (.wiki-sheet) не найден в DOM');
         }
 
-        // 6. Проверка маскирования пароля, глазка и копирования с тостом
-        console.log(`[6/8] Проверка маскирования паролей, глазка и Floating Toast...`);
-        const maskedEl = await page.$('#cardRemote .smart-val--masked');
-        const initialSecretText = await page.evaluate(el => el.textContent.trim(), maskedEl);
-        console.log(`   - Пароль по умолчанию маскирован: "${initialSecretText}"`);
-        if (initialSecretText !== '••••••••') {
-            throw new Error(`Пароль должен быть маскирован точками, получено: ${initialSecretText}`);
+        const sheetStyles = await page.$eval('.wiki-sheet', el => {
+            const cs = window.getComputedStyle(el);
+            return {
+                fontSize: cs.fontSize,
+                lineHeight: cs.lineHeight,
+                fontFamily: cs.fontFamily
+            };
+        });
+
+        console.log(`   - Font Size: ${sheetStyles.fontSize} (ожидается 15px)`);
+        console.log(`   - Line Height: ${sheetStyles.lineHeight} (ожидается 24px = 15px * 1.6)`);
+        console.log(`   - Font Family: ${sheetStyles.fontFamily}`);
+
+        if (sheetStyles.fontSize !== '15px') {
+            throw new Error(`Ожидался размер шрифта 15px, получено: ${sheetStyles.fontSize}`);
+        }
+        if (sheetStyles.lineHeight !== '24px' && sheetStyles.lineHeight !== '1.6') {
+            throw new Error(`Ожидался line-height 1.6 (24px), получено: ${sheetStyles.lineHeight}`);
+        }
+        const fontLower = sheetStyles.fontFamily.toLowerCase();
+        const hasMonoStack = fontLower.includes('jetbrains mono') ||
+                             fontLower.includes('consolas') ||
+                             fontLower.includes('sf mono') ||
+                             fontLower.includes('menlo') ||
+                             fontLower.includes('monaco') ||
+                             fontLower.includes('monospace');
+        if (!hasMonoStack) {
+            throw new Error(`Стек шрифта не содержит требуемые моноширинные шрифты: ${sheetStyles.fontFamily}`);
+        }
+        console.log(`   ✓ Комфортная типографика (15px, line-height 1.6, моноширинный стек) подтверждена!`);
+
+        // Проверка наличия параметров ALPHUTA в чистом виде
+        const sheetText = await page.$eval('.wiki-sheet', el => el.innerText);
+        if (!sheetText.includes('1 170 691 894') || !sheetText.includes('MS SQL 2019') || !sheetText.includes('ASDFzxcv_113525')) {
+            throw new Error('Данные серверов ALPHUTA не отображаются в чистом листе');
+        }
+        console.log(`   ✓ Все технические параметры сервера ALPHUTA отображаются в естественном виде`);
+
+        // 6. Проверка отсутствия старых жестких сеток Smart Server Viewer и полей «Не указано»
+        console.log(`[6/8] Проверка отсутствия жестких таблиц и статусов «Не указано»...`);
+        const oldGrid = await page.$('.smart-grid, #cardRemote, #cardDatabase, #cardHardware');
+        if (oldGrid) {
+            throw new Error('Обнаружены элементы устаревшей жесткой сетки Smart Server Viewer!');
         }
 
-        // Клик по глазку
-        const toggleBtn = await page.$('#cardRemote .smart-btn-icon--toggle');
-        await toggleBtn.click();
-        const revealedText = await page.evaluate(el => el.textContent.trim(), maskedEl);
-        console.log(`   - Пароль после клика по глазку: "${revealedText}"`);
-        if (revealedText === '••••••••' || !revealedText) {
-            throw new Error('Глазок не раскрыл реальный пароль');
+        const containsNotSpecified = sheetText.includes('Не указано');
+        if (containsNotSpecified) {
+            throw new Error('В тексте листа обнаружены поля со статусом «Не указано»!');
+        }
+        console.log(`   ✓ Жесткие сетки и поля со статусом «Не указано» полностью отсутствуют!`);
+
+        // 7. Проверка кнопки «📋 Скопировать все реквизиты» и появления тоста
+        console.log(`[7/8] Проверка кнопки «📋 Скопировать все реквизиты» (#copyAllBtn)...`);
+        const copyAllBtn = await page.$('#copyAllBtn');
+        if (!copyAllBtn) {
+            throw new Error('Кнопка #copyAllBtn не найдена в шапке карточки');
         }
 
-        // Клик по глазку повторно
-        await toggleBtn.click();
-        const remaskedText = await page.evaluate(el => el.textContent.trim(), maskedEl);
-        console.log(`   - Пароль после повторного клика: "${remaskedText}"`);
-        if (remaskedText !== '••••••••') {
-            throw new Error('Пароль должен снова замаскироваться');
-        }
-
-        // Клик по кнопке копирования
-        console.log(`   - Проверка клика по кнопке копирования AnyDesk...`);
-        const copyBtn = await page.$('#cardRemote .smart-btn-icon--copy');
-        await copyBtn.click();
-
-        // Проверка тоста
+        await page.click('#copyAllBtn');
         await page.waitForSelector('.floating-toast.is-show', { timeout: 2000 });
-        const toastText = await page.$eval('.floating-toast.is-show', el => el.textContent.trim());
-        console.log(`   ✓ Floating Toast появился: "${toastText}"`);
+        const toastMsg = await page.$eval('.floating-toast.is-show', el => el.textContent.trim());
+        console.log(`   - Появился всплывающий тост: "${toastMsg}"`);
+        if (!toastMsg.includes('Реквизиты скопированы')) {
+            throw new Error(`Неверный текст тоста: ${toastMsg}`);
+        }
 
-        // Кнопка «Скопировать все реквизиты»
-        console.log(`   - Проверка кнопки «Скопировать все реквизиты» (#copyAllSummaryBtn)...`);
-        await page.click('#copyAllSummaryBtn');
-        await new Promise(r => setTimeout(r, 400));
-        const summaryToast = await page.$eval('.floating-toast', el => el.textContent.trim());
-        console.log(`   ✓ Toast для выжимки всех реквизитов: "${summaryToast}"`);
+        const isCopiedState = await page.$eval('#copyAllBtn', el => el.classList.contains('is-copied') || el.innerText.includes('Скопировано'));
+        console.log(`   - Кнопка кратковременно изменила статус (is-copied/Скопировано): ${isCopiedState}`);
+        if (!isCopiedState) {
+            throw new Error('Кнопка #copyAllBtn не переключилась в состояние успешного копирования');
+        }
+        console.log(`   ✓ Кнопка копирования всех реквизитов и всплывающий тост работают безупречно!`);
 
-        // 7. Проверка Empty State
-        console.log(`[7/8] Проверка Empty State на организации с пустой конфигурацией (/wiki/organization/4)...`);
+        // 8. Проверка Empty State и режима редактирования
+        console.log(`[8/8] Проверка Empty State (/wiki/organization/4) и перехода в режим редактирования...`);
         await page.goto(`${BASE_URL}/wiki/organization/4`, { waitUntil: 'networkidle0' });
 
-        const emptyTitle = await page.$eval('.smart-empty-state__title', el => el.textContent.trim());
-        const hasFillBtn = await page.$('#emptyStateEditBtn');
-        console.log(`   - Empty State заголовок: "${emptyTitle}"`);
-        console.log(`   - Кнопка «Заполнить конфигурацию»: ${Boolean(hasFillBtn)}`);
-        if (!hasFillBtn) {
-            throw new Error('Кнопка «Заполнить конфигурацию сервера» не найдена в Empty State');
+        const emptyTitle = await page.$eval('.wiki-empty-state__title', el => el.textContent.trim());
+        console.log(`   - Заголовок Empty State: "${emptyTitle}"`);
+        if (!emptyTitle.includes('Параметры сервера пока не заполнены')) {
+            throw new Error(`Неверный заголовок Empty State: ${emptyTitle}`);
         }
 
-        // 8. Проверка перехода в режим редактирования и кнопок Отмена / Сохранить
-        console.log(`[8/8] Проверка режима редактирования (Edit Mode) и кнопок Отмена / Сохранить...`);
+        const editEmptyBtn = await page.$('#emptyStateEditBtn');
+        if (!editEmptyBtn) {
+            throw new Error('Кнопка «Редактировать» в Empty State не найдена');
+        }
+
+        // Переход в режим редактирования
         await page.click('#emptyStateEditBtn');
         await new Promise(r => setTimeout(r, 300));
 
         const editorOuterVisible = await page.$eval('#editorOuter', el => el.style.display !== 'none');
-        const smartViewerHidden = await page.$eval('#smartServerViewer', el => el.style.display === 'none');
-        const saveBtnVisible = await page.$('#saveBtn');
-        const cancelBtnVisible = await page.$('#cancelEditBtn');
+        const sheetHidden = await page.$eval('#wikiSheet', el => el.style.display === 'none');
+        const saveBtn = await page.$('#saveBtn');
+        const cancelBtn = await page.$('#cancelEditBtn');
 
         console.log(`   - Редактор открыт: ${editorOuterVisible}`);
-        console.log(`   - Smart Viewer скрыт: ${smartViewerHidden}`);
-        console.log(`   - Кнопка Сохранить: ${Boolean(saveBtnVisible)}`);
-        console.log(`   - Кнопка Отмена: ${Boolean(cancelBtnVisible)}`);
+        console.log(`   - Чистый лист скрыт: ${sheetHidden}`);
+        console.log(`   - Кнопка Сохранить (#saveBtn): ${Boolean(saveBtn)}`);
+        console.log(`   - Кнопка Отмена (#cancelEditBtn): ${Boolean(cancelBtn)}`);
 
-        if (!editorOuterVisible || !saveBtnVisible || !cancelBtnVisible) {
-            throw new Error('Режим редактирования или кнопки Отмена/Сохранить работают некорректно');
+        if (!editorOuterVisible || !saveBtn || !cancelBtn) {
+            throw new Error('Режим редактирования или кнопки Сохранить/Отмена работают некорректно');
         }
 
-        // Проверка кнопки Отмена
+        // Проверка кнопки «Отмена»
+        console.log(`   - Проверка нажатия кнопки «Отмена» (#cancelEditBtn)...`);
         await page.click('#cancelEditBtn');
         await new Promise(r => setTimeout(r, 300));
 
-        const editorOuterClosed = await page.$eval('#editorOuter', el => el.style.display === 'none');
-        const smartViewerRestored = await page.$eval('#smartServerViewer', el => el.style.display !== 'none');
-        console.log(`   ✓ Кнопка Отмена вернула в Smart Viewer (редактор скрыт: ${editorOuterClosed}, Viewer показан: ${smartViewerRestored})`);
+        const editorClosed = await page.$eval('#editorOuter', el => el.style.display === 'none');
+        const sheetRestored = await page.$eval('#wikiSheet', el => el.style.display !== 'none');
+        console.log(`   ✓ Кнопка «Отмена» закрыла редактор (редактор скрыт: ${editorClosed}, лист показан: ${sheetRestored})`);
+
+        // Проверка кнопки «Сохранить»
+        console.log(`   - Проверка ввода текста и сохранения (#saveBtn)...`);
+        await page.click('#editBtnTop');
+        await new Promise(r => setTimeout(r, 300));
+        await page.focus('#orgEditor');
+        await page.keyboard.type('Тестовая конфигурация сервера\nAnydesk: 111 222 333\nПароль: SuperSecretPass123');
+
+        await page.click('#saveBtn');
+        await new Promise(r => setTimeout(r, 500));
+
+        const savedSheetText = await page.$eval('#wikiSheet', el => el.innerText);
+        console.log(`   - Текст после сохранения: "${savedSheetText.replace(/\n/g, ' ')}"`);
+        if (!savedSheetText.includes('111 222 333') || !savedSheetText.includes('SuperSecretPass123')) {
+            throw new Error('Сохраненный текст не появился в чистом листе');
+        }
+        console.log(`   ✓ Сохранение через PUT /api/organizations/:id успешно обновило лист контента!`);
 
         console.log('\n====================================================');
-        console.log('  🎉 ВСЕ E2E ПРОВЕРКИ ЭТАПА 4 УСПЕШНО ПРОЙДЕНЫ!');
+        console.log('  🎉 ВСЕ E2E ПРОВЕРКИ ЭТАПА 3 УСПЕШНО ПРОЙДЕНЫ!');
         console.log('====================================================\n');
 
     } catch (err) {

@@ -3,23 +3,21 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Командный центр — ИТС-Ком</title>
+    <title>База знаний — ИТС-Ком</title>
     <link rel="stylesheet" href="/css/style.css">
     <link rel="icon" type="image/png" href="/favicon.png">
     <meta name="app-user" content="<%= user.username %>">
     <script>(function(){var m=document.querySelector('meta[name="app-user"]');var u=m&&m.getAttribute('content');var k=u?'ui_theme_'+u:'ui_theme';var t=localStorage.getItem(k);if(t)document.documentElement.setAttribute('data-theme',t);})()</script>
 </head>
 <body class="home-body">
-    <% const displayName = user.username === 'admin' ? 'Администратор' : user.username; %>
-    <% const avatarLetter = displayName.charAt(0).toUpperCase(); %>
+    <% const avatarLetter = (user.username || 'A').charAt(0).toUpperCase(); %>
     <% const totalServers = typeof serverCount !== 'undefined' ? serverCount : 25; %>
     <% const dateDisplay = typeof currentDateStr !== 'undefined' ? currentDateStr : 'Четверг, 22 октября 2026 г.'; %>
 
     <!-- Верхний бар (Top Navigation Bar) -->
     <header class="home-topbar">
         <div class="home-topbar__brand">
-            <a href="/" class="home-brand-link" title="ИТС-Ком — Командный центр">
-                <img src="/logo.png" alt="ИТС-Ком" class="home-brand-logo">
+            <a href="/" class="home-brand-link" title="ИТС-Ком">
                 <span class="home-brand-name">ИТС-Ком</span>
             </a>
         </div>
@@ -36,7 +34,7 @@
             </button>
             <button class="home-account-button" type="button" id="homeAccountToggle" aria-expanded="false" aria-controls="homeAccountMenu">
                 <span class="home-account-avatar"><%= avatarLetter %></span>
-                <span class="home-account-name"><%= displayName %></span>
+                <span class="home-account-name"><%= user.username %></span>
                 <span class="home-account-caret" aria-hidden="true">
                     <svg viewBox="0 0 20 20" fill="none">
                         <path d="M5 7.5L10 12.5L15 7.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
@@ -70,13 +68,13 @@
 
     <!-- Главная рабочая область Command Hub -->
     <main class="command-hub" id="mainContent">
-        <!-- 1. Приветственная панель (Hero Bar) -->
+        <!-- 1. Верхняя статусная секция (Hero Bar) -->
         <section class="command-hero" aria-label="Приветственная панель">
             <div class="command-hero__content">
                 <div class="command-hero__top-row">
                     <div class="command-hero__user-badge">
                         <span class="command-hero__greeting" data-i18n="home.hero.welcome">С возвращением,</span>
-                        <strong class="command-hero__username"><%= displayName %></strong>
+                        <strong class="command-hero__username user-highlight"><%= user.username %></strong>
                     </div>
                     <div class="command-hero__status-pill" title="Телеметрия инфраструктуры Zabbix">
                         <span class="status-pulse-dot" aria-hidden="true"></span>
@@ -85,7 +83,7 @@
                 </div>
 
                 <div class="command-hero__bottom-row">
-                    <h1 class="command-hero__title" data-i18n="home.hero.title">Командный центр ИТС-Ком</h1>
+                    <h1 class="command-hero__title" data-i18n="home.hero.title">База знаний ИТС-Ком</h1>
                     <div class="command-hero__date" id="heroCurrentDateWrap">
                         <svg class="command-hero__date-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
                             <rect x="3" y="4" width="14" height="13" rx="2"/>
@@ -99,64 +97,13 @@
             </div>
         </section>
 
-        <!-- 2. Строка быстрого поиска (Command Search Bar) -->
-        <section class="command-search-section" aria-label="Поиск по серверам">
-            <div class="command-search-wrap" id="commandSearchWrap">
-                <div class="command-search-box" id="commandSearchBox">
-                    <span class="command-search-icon" aria-hidden="true">
-                        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8">
-                            <circle cx="8.5" cy="8.5" r="5.5"/>
-                            <path d="M12.5 12.5L17 17" stroke-linecap="round"/>
-                        </svg>
-                    </span>
-                    <input 
-                        type="text" 
-                        id="commandSearchInput" 
-                        class="command-search-input" 
-                        placeholder="Быстрый поиск серверов и документации (Ctrl + K)..." 
-                        data-i18n-placeholder="home.search.placeholder"
-                        autocomplete="off" 
-                        spellcheck="false"
-                        aria-label="Быстрый поиск серверов"
-                        aria-autocomplete="list"
-                        aria-controls="commandSearchResults"
-                        aria-expanded="false"
-                    >
-                    <div class="command-search-kbd" id="searchKbdTrigger" title="Нажмите Ctrl + K для поиска">
-                        <kbd>Ctrl</kbd>
-                        <span class="kbd-sep">+</span>
-                        <kbd>K</kbd>
-                    </div>
-                    <button type="button" class="command-search-clear" id="commandSearchClear" aria-label="Очистить поиск" style="display: none;">
-                        <svg viewBox="0 0 20 20" fill="currentColor">
-                            <path fill-rule="evenodd" d="M10 8.586l3.293-3.293a1 1 0 011.414 1.414L11.414 10l3.293 3.293a1 1 0 01-1.414 1.414L10 11.414l-3.293 3.293a1 1 0 01-1.414-1.414L8.586 10 5.293 6.707a1 1 0 011.414-1.414L10 8.586z" clip-rule="evenodd"/>
-                        </svg>
-                    </button>
-                </div>
-
-                <!-- Выпадающий список результатов (Dropdown) -->
-                <div class="command-dropdown" id="commandSearchResults" role="listbox" style="display: none;">
-                    <div class="command-dropdown__header">
-                        <span class="command-dropdown__header-title">Организации и серверы</span>
-                        <span class="command-dropdown__count" id="searchResultsCount">0 найдено</span>
-                    </div>
-                    <ul class="command-dropdown__list" id="searchResultsList" role="presentation">
-                        <!-- Динамические результаты поиска -->
-                    </ul>
-                    <div class="command-dropdown__footer">
-                        <span class="command-dropdown__hint" data-i18n="home.search.hint">Используйте ↑ ↓ для навигации, Enter для перехода, Esc для выхода</span>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <!-- 3. Сетка основных виджетов (Core Widgets Grid) -->
+        <!-- 2. Две крупные сбалансированные карточки по центру -->
         <section class="command-widgets-section" aria-label="Основные сервисы">
             <div class="command-widgets-grid">
-                <!-- Карточка «Wiki (База знаний)» -->
+                <!-- Карточка 1: Wiki (База знаний) -->
                 <article class="command-widget command-widget--wiki">
                     <div class="command-widget__header">
-                        <div class="command-widget__icon-wrap command-widget__icon-wrap--wiki">
+                        <div class="command-widget__icon-wrap command-widget__icon-wrap--wiki" aria-hidden="true">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
                                 <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
                                 <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
@@ -166,314 +113,86 @@
                         </div>
                         <div class="command-widget__badges">
                             <span class="widget-badge widget-badge--primary" id="wikiTotalBadge">
-                                <%= totalServers %> серверов
-                            </span>
-                            <span class="widget-status widget-status--active">
-                                <span class="status-dot status-dot--green"></span>
-                                <span data-i18n="home.widget.wiki.status">● Активно</span>
+                                <%= totalServers %> организаций
                             </span>
                         </div>
                     </div>
 
                     <div class="command-widget__body">
-                        <h2 class="command-widget__title" data-i18n="home.widget.wiki.title">Wiki (База знаний)</h2>
+                        <h2 class="command-widget__title" data-i18n="home.widget.wiki.title">Wiki</h2>
                         <p class="command-widget__desc" data-i18n="home.widget.wiki.desc">
-                            Инфраструктура клиентов, учетные данные, доступы AnyDesk, RDP, базы MS SQL и 1C.
+                            Технические параметры серверов, доступы и конфигурации
                         </p>
-                        <div class="command-widget__tags">
-                            <span class="widget-chip">25 организаций</span>
-                            <span class="widget-chip">AnyDesk / RDP</span>
-                            <span class="widget-chip">MS SQL / 1C</span>
-                            <span class="widget-chip">iLO / IPMI</span>
+                        <div class="command-widget__features">
+                            <div class="feature-item">
+                                <span class="feature-bullet" aria-hidden="true">●</span>
+                                <span>Инфраструктура клиентов и доступы AnyDesk / RDP</span>
+                            </div>
+                            <div class="feature-item">
+                                <span class="feature-bullet" aria-hidden="true">●</span>
+                                <span>Учетные записи, базы данных MS SQL и 1C</span>
+                            </div>
+                            <div class="feature-item">
+                                <span class="feature-bullet" aria-hidden="true">●</span>
+                                <span>Параметры удаленного управления iLO / IPMI</span>
+                            </div>
                         </div>
                     </div>
 
                     <div class="command-widget__footer">
-                        <a href="/wiki" class="command-widget__btn command-widget__btn--primary" id="btnOpenWiki" data-i18n="home.widget.wiki.btn">
-                            Перейти в базу →
+                        <a href="/wiki" class="command-widget__btn command-widget__btn--primary" id="btnOpenWiki">
+                            <span data-i18n="home.widget.wiki.btn">Перейти в базу</span>
+                            <span class="btn-arrow" aria-hidden="true">→</span>
                         </a>
                     </div>
                 </article>
 
-                <!-- Карточка «События & Мониторинг» -->
+                <!-- Карточка 2: События -->
                 <article class="command-widget command-widget--events">
                     <div class="command-widget__header">
-                        <div class="command-widget__icon-wrap command-widget__icon-wrap--events">
+                        <div class="command-widget__icon-wrap command-widget__icon-wrap--events" aria-hidden="true">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                                <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+                                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                                <line x1="16" y1="2" x2="16" y2="6"/>
+                                <line x1="8" y1="2" x2="8" y2="6"/>
+                                <line x1="3" y1="10" x2="21" y2="10"/>
+                                <path d="M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01"/>
                             </svg>
                         </div>
                         <div class="command-widget__badges">
                             <span class="widget-badge widget-badge--warning" data-i18n="home.widget.events.badge">
                                 В разработке
                             </span>
-                            <span class="widget-status widget-status--info">
-                                <span class="status-dot status-dot--blue"></span>
-                                <span data-i18n="home.widget.events.status">Zabbix интеграция</span>
-                            </span>
                         </div>
                     </div>
 
                     <div class="command-widget__body">
-                        <h2 class="command-widget__title" data-i18n="home.widget.events.title">События & Мониторинг</h2>
+                        <h2 class="command-widget__title" data-i18n="home.widget.events.title">События</h2>
                         <p class="command-widget__desc" data-i18n="home.widget.events.desc">
-                            Оперативный журнал инфраструктуры, статусы сервисов и телеметрия серверов.
+                            Журнал изменений инфраструктуры и сроков лицензий
                         </p>
-
-                        <!-- Стилизованный журнал активности Zabbix -->
-                        <div class="zabbix-activity-feed" aria-label="Журнал активности Zabbix">
-                            <div class="activity-feed-item">
-                                <span class="activity-feed-time">10:42</span>
-                                <span class="activity-feed-dot activity-feed-dot--success" aria-hidden="true"></span>
-                                <div class="activity-feed-content">
-                                    <span class="activity-feed-server">ALPHUTA</span>
-                                    <span class="activity-feed-msg">ICMP Ping в норме (1.8 ms)</span>
-                                </div>
-                                <span class="activity-feed-badge activity-feed-badge--success">OK</span>
+                        <div class="command-widget__features">
+                            <div class="feature-item">
+                                <span class="feature-bullet" aria-hidden="true">●</span>
+                                <span>Мониторинг доступности и телеметрия Zabbix</span>
                             </div>
-                            <div class="activity-feed-item">
-                                <span class="activity-feed-time">10:35</span>
-                                <span class="activity-feed-dot activity-feed-dot--success" aria-hidden="true"></span>
-                                <div class="activity-feed-content">
-                                    <span class="activity-feed-server">Antarium</span>
-                                    <span class="activity-feed-msg">MS SQL 2019 служба активна</span>
-                                </div>
-                                <span class="activity-feed-badge activity-feed-badge--success">OK</span>
+                            <div class="feature-item">
+                                <span class="feature-bullet" aria-hidden="true">●</span>
+                                <span>Сроки действия лицензий и SSL-сертификатов</span>
                             </div>
-                            <div class="activity-feed-item">
-                                <span class="activity-feed-time">09:15</span>
-                                <span class="activity-feed-dot activity-feed-dot--info" aria-hidden="true"></span>
-                                <div class="activity-feed-content">
-                                    <span class="activity-feed-server">Backup Agent</span>
-                                    <span class="activity-feed-msg">Резервное копирование завершено</span>
-                                </div>
-                                <span class="activity-feed-badge activity-feed-badge--info">Success</span>
-                            </div>
-                            <div class="activity-feed-item">
-                                <span class="activity-feed-time">08:00</span>
-                                <span class="activity-feed-dot activity-feed-dot--neutral" aria-hidden="true"></span>
-                                <div class="activity-feed-content">
-                                    <span class="activity-feed-server">Zabbix Server</span>
-                                    <span class="activity-feed-msg">Ревизия триггеров узлов выполнена</span>
-                                </div>
-                                <span class="activity-feed-badge activity-feed-badge--neutral">Active</span>
+                            <div class="feature-item">
+                                <span class="feature-bullet" aria-hidden="true">●</span>
+                                <span>Журнал регламентных и технических работ</span>
                             </div>
                         </div>
+                    </div>
+
+                    <div class="command-widget__footer">
+                        <button type="button" class="command-widget__btn command-widget__btn--disabled" disabled aria-disabled="true" data-i18n="home.widget.events.soon">
+                            Скоро
+                        </button>
                     </div>
                 </article>
-            </div>
-        </section>
-
-        <!-- 4. Блок «Быстрый доступ» (Quick Access Servers) -->
-        <section class="command-quick-section" aria-labelledby="quickServersHeading">
-            <div class="section-heading">
-                <div class="section-heading__icon-wrap" aria-hidden="true">
-                    <svg viewBox="0 0 20 20" fill="currentColor">
-                        <path fill-rule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clip-rule="evenodd"/>
-                    </svg>
-                </div>
-                <div>
-                    <h2 id="quickServersHeading" class="section-heading__title" data-i18n="home.quick.title">Быстрый доступ к серверам</h2>
-                    <p class="section-heading__desc" data-i18n="home.quick.subtitle">Часто используемые контуры и AnyDesk подключения в 1 клик</p>
-                </div>
-            </div>
-
-            <div class="quick-servers-grid">
-                <!-- 1. ALPHUTA -->
-                <div class="server-card" data-server-name="ALPHUTA" data-server-id="1">
-                    <div class="server-card__top">
-                        <div class="server-card__meta">
-                            <span class="server-card__type-icon" aria-hidden="true">
-                                <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8">
-                                    <rect x="2" y="3" width="16" height="5" rx="1"/>
-                                    <rect x="2" y="11" width="16" height="5" rx="1"/>
-                                    <circle cx="6" cy="5.5" r="1" fill="currentColor"/>
-                                    <circle cx="6" cy="13.5" r="1" fill="currentColor"/>
-                                </svg>
-                            </span>
-                            <span class="server-card__name">ALPHUTA</span>
-                        </div>
-                        <span class="env-badge env-badge--prod">PROD</span>
-                    </div>
-
-                    <div class="server-card__body">
-                        <div class="anydesk-box">
-                            <span class="anydesk-label">AnyDesk ID:</span>
-                            <div class="anydesk-val-row">
-                                <code class="anydesk-code" id="anydesk-val-1">1 170 691 894</code>
-                                <button 
-                                    type="button" 
-                                    class="copy-anydesk-btn" 
-                                    data-anydesk="1 170 691 894" 
-                                    title="Копировать AnyDesk ID" 
-                                    aria-label="Копировать AnyDesk ID 1 170 691 894"
-                                >
-                                    <svg class="copy-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8">
-                                        <rect x="7" y="7" width="10" height="10" rx="2"/>
-                                        <path d="M4 13V4a1 1 0 011-1h9" stroke-linecap="round"/>
-                                    </svg>
-                                    <svg class="check-icon" viewBox="0 0 20 20" fill="currentColor" style="display: none;">
-                                        <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
-                                    </svg>
-                                    <span class="copy-btn-text" data-i18n="home.quick.copy">Копировать</span>
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="server-card__footer">
-                        <a href="/wiki/organization/1" class="server-card__link" data-i18n="home.quick.open">
-                            Открыть →
-                        </a>
-                    </div>
-                </div>
-
-                <!-- 2. Antarium -->
-                <div class="server-card" data-server-name="Antarium" data-server-id="2">
-                    <div class="server-card__top">
-                        <div class="server-card__meta">
-                            <span class="server-card__type-icon" aria-hidden="true">
-                                <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8">
-                                    <rect x="2" y="3" width="16" height="5" rx="1"/>
-                                    <rect x="2" y="11" width="16" height="5" rx="1"/>
-                                    <circle cx="6" cy="5.5" r="1" fill="currentColor"/>
-                                    <circle cx="6" cy="13.5" r="1" fill="currentColor"/>
-                                </svg>
-                            </span>
-                            <span class="server-card__name">Antarium</span>
-                        </div>
-                        <span class="env-badge env-badge--prod">PROD</span>
-                    </div>
-
-                    <div class="server-card__body">
-                        <div class="anydesk-box">
-                            <span class="anydesk-label">AnyDesk ID:</span>
-                            <div class="anydesk-val-row">
-                                <code class="anydesk-code" id="anydesk-val-2">1218740083</code>
-                                <button 
-                                    type="button" 
-                                    class="copy-anydesk-btn" 
-                                    data-anydesk="1218740083" 
-                                    title="Копировать AnyDesk ID" 
-                                    aria-label="Копировать AnyDesk ID 1218740083"
-                                >
-                                    <svg class="copy-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8">
-                                        <rect x="7" y="7" width="10" height="10" rx="2"/>
-                                        <path d="M4 13V4a1 1 0 011-1h9" stroke-linecap="round"/>
-                                    </svg>
-                                    <svg class="check-icon" viewBox="0 0 20 20" fill="currentColor" style="display: none;">
-                                        <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
-                                    </svg>
-                                    <span class="copy-btn-text" data-i18n="home.quick.copy">Копировать</span>
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="server-card__footer">
-                        <a href="/wiki/organization/2" class="server-card__link" data-i18n="home.quick.open">
-                            Открыть →
-                        </a>
-                    </div>
-                </div>
-
-                <!-- 3. ARG -->
-                <div class="server-card" data-server-name="ARG" data-server-id="3">
-                    <div class="server-card__top">
-                        <div class="server-card__meta">
-                            <span class="server-card__type-icon" aria-hidden="true">
-                                <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8">
-                                    <rect x="2" y="3" width="16" height="5" rx="1"/>
-                                    <rect x="2" y="11" width="16" height="5" rx="1"/>
-                                    <circle cx="6" cy="5.5" r="1" fill="currentColor"/>
-                                    <circle cx="6" cy="13.5" r="1" fill="currentColor"/>
-                                </svg>
-                            </span>
-                            <span class="server-card__name">ARG</span>
-                        </div>
-                        <span class="env-badge env-badge--prod-cb">PROD ЦБ</span>
-                    </div>
-
-                    <div class="server-card__body">
-                        <div class="anydesk-box">
-                            <span class="anydesk-label">AnyDesk ID:</span>
-                            <div class="anydesk-val-row">
-                                <code class="anydesk-code" id="anydesk-val-3">987 654 321</code>
-                                <button 
-                                    type="button" 
-                                    class="copy-anydesk-btn" 
-                                    data-anydesk="987 654 321" 
-                                    title="Копировать AnyDesk ID" 
-                                    aria-label="Копировать AnyDesk ID 987 654 321"
-                                >
-                                    <svg class="copy-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8">
-                                        <rect x="7" y="7" width="10" height="10" rx="2"/>
-                                        <path d="M4 13V4a1 1 0 011-1h9" stroke-linecap="round"/>
-                                    </svg>
-                                    <svg class="check-icon" viewBox="0 0 20 20" fill="currentColor" style="display: none;">
-                                        <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
-                                    </svg>
-                                    <span class="copy-btn-text" data-i18n="home.quick.copy">Копировать</span>
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="server-card__footer">
-                        <a href="/wiki/organization/3" class="server-card__link" data-i18n="home.quick.open">
-                            Открыть →
-                        </a>
-                    </div>
-                </div>
-
-                <!-- 4. VDS -->
-                <div class="server-card" data-server-name="VDS" data-server-id="14">
-                    <div class="server-card__top">
-                        <div class="server-card__meta">
-                            <span class="server-card__type-icon" aria-hidden="true">
-                                <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8">
-                                    <rect x="2" y="3" width="16" height="5" rx="1"/>
-                                    <rect x="2" y="11" width="16" height="5" rx="1"/>
-                                    <circle cx="6" cy="5.5" r="1" fill="currentColor"/>
-                                    <circle cx="6" cy="13.5" r="1" fill="currentColor"/>
-                                </svg>
-                            </span>
-                            <span class="server-card__name">VDS</span>
-                        </div>
-                        <span class="env-badge env-badge--dev">DEV Cloud</span>
-                    </div>
-
-                    <div class="server-card__body">
-                        <div class="anydesk-box">
-                            <span class="anydesk-label">AnyDesk ID:</span>
-                            <div class="anydesk-val-row">
-                                <code class="anydesk-code" id="anydesk-val-14">543 210 987</code>
-                                <button 
-                                    type="button" 
-                                    class="copy-anydesk-btn" 
-                                    data-anydesk="543 210 987" 
-                                    title="Копировать AnyDesk ID" 
-                                    aria-label="Копировать AnyDesk ID 543 210 987"
-                                >
-                                    <svg class="copy-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8">
-                                        <rect x="7" y="7" width="10" height="10" rx="2"/>
-                                        <path d="M4 13V4a1 1 0 011-1h9" stroke-linecap="round"/>
-                                    </svg>
-                                    <svg class="check-icon" viewBox="0 0 20 20" fill="currentColor" style="display: none;">
-                                        <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
-                                    </svg>
-                                    <span class="copy-btn-text" data-i18n="home.quick.copy">Копировать</span>
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="server-card__footer">
-                        <a href="/wiki/organization/14" class="server-card__link" data-i18n="home.quick.open">
-                            Открыть →
-                        </a>
-                    </div>
-                </div>
             </div>
         </section>
     </main>
@@ -501,7 +220,7 @@
                 });
             }
 
-            // ── Dynamic Date formatting in Russian ──
+            // ── Dynamic Date formatting in Russian with capitalized weekday ──
             try {
                 const dateEl = document.getElementById('heroCurrentDate');
                 if (dateEl) {
@@ -535,7 +254,6 @@
                 toast.innerHTML = '<span class="toast-icon">' + iconSvg + '</span><span class="toast-text">' + message + '</span>';
                 container.appendChild(toast);
 
-                // Анимация плавного появления
                 requestAnimationFrame(function () {
                     toast.classList.add('is-visible');
                 });
@@ -548,311 +266,6 @@
                 }, 2800);
             }
             window.showCommandToast = showToast;
-
-            // ── Copy to Clipboard Functionality ──
-            function copyText(text, callback) {
-                if (navigator.clipboard && window.isSecureContext) {
-                    navigator.clipboard.writeText(text).then(function() {
-                        if (callback) callback();
-                    }).catch(function() {
-                        fallbackCopy(text, callback);
-                    });
-                } else {
-                    fallbackCopy(text, callback);
-                }
-            }
-
-            function fallbackCopy(text, callback) {
-                const ta = document.createElement('textarea');
-                ta.value = text;
-                ta.style.position = 'fixed';
-                ta.style.left = '-9999px';
-                ta.style.top = '0';
-                document.body.appendChild(ta);
-                ta.focus();
-                ta.select();
-                try {
-                    document.execCommand('copy');
-                    if (callback) callback();
-                } catch (err) {
-                    console.error('Clipboard copy failed', err);
-                }
-                document.body.removeChild(ta);
-            }
-
-            // Навешивание клика на кнопки копирования AnyDesk
-            const copyButtons = document.querySelectorAll('.copy-anydesk-btn');
-            copyButtons.forEach(function (btn) {
-                btn.addEventListener('click', function (e) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    const rawVal = btn.getAttribute('data-anydesk') || '';
-                    if (!rawVal) return;
-
-                    copyText(rawVal, function () {
-                        const copyIcon = btn.querySelector('.copy-icon');
-                        const checkIcon = btn.querySelector('.check-icon');
-                        const textSpan = btn.querySelector('.copy-btn-text');
-
-                        btn.classList.add('is-copied');
-                        if (copyIcon) copyIcon.style.display = 'none';
-                        if (checkIcon) checkIcon.style.display = 'inline-block';
-                        if (textSpan) textSpan.textContent = '✓ Скопировано!';
-
-                        const toastMsg = 'Скопировано в буфер: ' + rawVal;
-                        showToast(toastMsg, 'success');
-
-                        setTimeout(function () {
-                            btn.classList.remove('is-copied');
-                            if (copyIcon) copyIcon.style.display = 'inline-block';
-                            if (checkIcon) checkIcon.style.display = 'none';
-                            if (textSpan) {
-                                const currentLang = localStorage.getItem('ui_lang') || 'ru';
-                                const defaultCopyText = window.ITS_I18n ? window.ITS_I18n.t('home.quick.copy') : 'Копировать';
-                                textSpan.textContent = defaultCopyText || 'Копировать';
-                            }
-                        }, 2000);
-                    });
-                });
-            });
-
-            // ── Command Search Bar (Ctrl + K) & Dropdown ──
-            const searchInput = document.getElementById('commandSearchInput');
-            const searchWrap = document.getElementById('commandSearchWrap');
-            const searchBox = document.getElementById('commandSearchBox');
-            const dropdown = document.getElementById('commandSearchResults');
-            const resultsList = document.getElementById('searchResultsList');
-            const countLabel = document.getElementById('searchResultsCount');
-            const clearBtn = document.getElementById('commandSearchClear');
-            const kbdTrigger = document.getElementById('searchKbdTrigger');
-
-            let orgCache = null;
-            let currentSelectedIndex = -1;
-            let currentVisibleItems = [];
-
-            // Загрузка организаций
-            function loadOrganizations(cb) {
-                if (orgCache) {
-                    if (cb) cb(orgCache);
-                    return;
-                }
-                fetch('/api/organizations')
-                    .then(function(res) { return res.json(); })
-                    .then(function(data) {
-                        orgCache = Array.isArray(data) ? data : [];
-                        if (cb) cb(orgCache);
-                    })
-                    .catch(function(err) {
-                        console.error('Failed to load organizations', err);
-                        if (cb) cb([]);
-                    });
-            }
-
-            // Хоткей Ctrl + K (or Cmd + K)
-            window.addEventListener('keydown', function (e) {
-                if ((e.ctrlKey || e.metaKey) && (e.key === 'k' || e.key === 'K')) {
-                    e.preventDefault();
-                    if (searchInput) {
-                        searchInput.focus();
-                        searchInput.select();
-                        loadOrganizations();
-                    }
-                }
-            });
-
-            if (kbdTrigger) {
-                kbdTrigger.addEventListener('click', function () {
-                    if (searchInput) {
-                        searchInput.focus();
-                        searchInput.select();
-                    }
-                });
-            }
-
-            function closeDropdown() {
-                if (!dropdown) return;
-                dropdown.style.display = 'none';
-                if (searchInput) searchInput.setAttribute('aria-expanded', 'false');
-                currentSelectedIndex = -1;
-                currentVisibleItems = [];
-            }
-
-            function openDropdown() {
-                if (!dropdown) return;
-                dropdown.style.display = 'block';
-                if (searchInput) searchInput.setAttribute('aria-expanded', 'true');
-            }
-
-            function highlightMatch(text, query) {
-                if (!query) return escapeHtml(text);
-                const idx = text.toLowerCase().indexOf(query.toLowerCase());
-                if (idx === -1) return escapeHtml(text);
-                const before = text.substring(0, idx);
-                const match = text.substring(idx, idx + query.length);
-                const after = text.substring(idx + query.length);
-                return escapeHtml(before) + '<mark class="search-highlight">' + escapeHtml(match) + '</mark>' + escapeHtml(after);
-            }
-
-            function escapeHtml(str) {
-                if (!str) return '';
-                return str.replace(/[&<>'"]/g, function(tag) {
-                    return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag);
-                });
-            }
-
-            function renderResults(query) {
-                const q = (query || '').trim().toLowerCase();
-                if (!orgCache) {
-                    loadOrganizations(function () {
-                        renderResults(query);
-                    });
-                    return;
-                }
-
-                resultsList.innerHTML = '';
-                currentSelectedIndex = -1;
-
-                const filtered = orgCache.filter(function (org) {
-                    if (!q) return true; // show all or popular if empty query
-                    return org.name.toLowerCase().includes(q) || String(org.id) === q;
-                }).slice(0, 8); // limit top 8
-
-                currentVisibleItems = filtered;
-                countLabel.textContent = filtered.length + ' найдено';
-
-                if (filtered.length === 0) {
-                    const emptyItem = document.createElement('li');
-                    emptyItem.className = 'command-dropdown__empty';
-                    emptyItem.textContent = 'Организаций или серверов не найдено';
-                    resultsList.appendChild(emptyItem);
-                    openDropdown();
-                    return;
-                }
-
-                filtered.forEach(function (org, index) {
-                    const li = document.createElement('li');
-                    li.className = 'command-dropdown__item';
-                    li.setAttribute('role', 'option');
-                    li.setAttribute('data-id', org.id);
-                    li.setAttribute('data-index', index);
-
-                    li.innerHTML = 
-                        '<div class="dropdown-item__main">' +
-                            '<span class="dropdown-item__icon">' +
-                                '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8">' +
-                                    '<rect x="2" y="3" width="16" height="5" rx="1"/>' +
-                                    '<rect x="2" y="11" width="16" height="5" rx="1"/>' +
-                                    '<circle cx="6" cy="5.5" r="1" fill="currentColor"/>' +
-                                    '<circle cx="6" cy="13.5" r="1" fill="currentColor"/>' +
-                                '</svg>' +
-                            '</span>' +
-                            '<span class="dropdown-item__name">' + highlightMatch(org.name, q) + '</span>' +
-                        '</div>' +
-                        '<div class="dropdown-item__meta">' +
-                            '<span class="dropdown-item__badge">#' + org.id + '</span>' +
-                            '<span class="dropdown-item__arrow">↵</span>' +
-                        '</div>';
-
-                    li.addEventListener('click', function () {
-                        window.location.href = '/wiki/organization/' + org.id;
-                    });
-
-                    li.addEventListener('mouseenter', function () {
-                        updateSelectedItem(index);
-                    });
-
-                    resultsList.appendChild(li);
-                });
-
-                openDropdown();
-            }
-
-            function updateSelectedItem(index) {
-                currentSelectedIndex = index;
-                const items = resultsList.querySelectorAll('.command-dropdown__item');
-                items.forEach(function (item, idx) {
-                    if (idx === index) {
-                        item.classList.add('is-selected');
-                        item.scrollIntoView({ block: 'nearest' });
-                    } else {
-                        item.classList.remove('is-selected');
-                    }
-                });
-            }
-
-            if (searchInput) {
-                searchInput.addEventListener('focus', function () {
-                    searchBox.classList.add('is-focused');
-                    loadOrganizations(function () {
-                        renderResults(searchInput.value);
-                    });
-                });
-
-                searchInput.addEventListener('input', function () {
-                    const val = searchInput.value;
-                    if (clearBtn) {
-                        clearBtn.style.display = val.length > 0 ? 'inline-flex' : 'none';
-                    }
-                    renderResults(val);
-                });
-
-                searchInput.addEventListener('keydown', function (e) {
-                    if (dropdown.style.display === 'none') {
-                        if (e.key === 'ArrowDown' || e.key === 'Enter') {
-                            renderResults(searchInput.value);
-                        }
-                        return;
-                    }
-
-                    if (e.key === 'ArrowDown') {
-                        e.preventDefault();
-                        if (currentVisibleItems.length > 0) {
-                            const next = (currentSelectedIndex + 1) % currentVisibleItems.length;
-                            updateSelectedItem(next);
-                        }
-                    } else if (e.key === 'ArrowUp') {
-                        e.preventDefault();
-                        if (currentVisibleItems.length > 0) {
-                            const prev = currentSelectedIndex <= 0 ? currentVisibleItems.length - 1 : currentSelectedIndex - 1;
-                            updateSelectedItem(prev);
-                        }
-                    } else if (e.key === 'Enter') {
-                        e.preventDefault();
-                        if (currentSelectedIndex >= 0 && currentVisibleItems[currentSelectedIndex]) {
-                            window.location.href = '/wiki/organization/' + currentVisibleItems[currentSelectedIndex].id;
-                        } else if (currentVisibleItems.length > 0) {
-                            window.location.href = '/wiki/organization/' + currentVisibleItems[0].id;
-                        }
-                    } else if (e.key === 'Escape') {
-                        e.preventDefault();
-                        closeDropdown();
-                        searchInput.blur();
-                    }
-                });
-            }
-
-            if (clearBtn) {
-                clearBtn.addEventListener('click', function () {
-                    searchInput.value = '';
-                    clearBtn.style.display = 'none';
-                    searchInput.focus();
-                    renderResults('');
-                });
-            }
-
-            document.addEventListener('click', function (e) {
-                if (searchWrap && !searchWrap.contains(e.target)) {
-                    closeDropdown();
-                    if (searchBox) searchBox.classList.remove('is-focused');
-                }
-            });
-
-            // Preload organizations on idle
-            if ('requestIdleCallback' in window) {
-                window.requestIdleCallback(function() { loadOrganizations(); });
-            } else {
-                setTimeout(loadOrganizations, 800);
-            }
         })();
     </script>
 </body>

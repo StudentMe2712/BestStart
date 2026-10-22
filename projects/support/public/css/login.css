@@ -94,60 +94,46 @@ body.auth-body {
         inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 
-/* ── Card Header & Brand Presentation ── */
+/* ── Topbar Brand Presentation (No Logo) ── */
+.home-topbar--public .home-brand-name {
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    color: #ffffff;
+}
+
+/* ── Card Header & Brand Presentation (Minimalist Elegant Text) ── */
 .login-card__header {
     text-align: center;
-    margin-bottom: 24px;
+    margin-bottom: 28px;
 }
 
-.login-card__logo-wrap {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    padding: 10px 16px;
-    background: var(--bg-subtle, #f1f5f9);
-    border: 1px solid var(--border-subtle, #e2e8f0);
-    border-radius: 12px;
-    margin-bottom: 14px;
-    box-shadow: var(--shadow-xs, 0 1px 2px rgba(0, 0, 0, 0.04));
-    transition: all var(--transition-fast, 150ms ease);
-}
-
-[data-theme="dark"] .login-card__logo-wrap {
-    background: rgba(15, 23, 42, 0.7);
-    border-color: rgba(255, 255, 255, 0.08);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
-}
-
-.login-card__logo {
-    height: 42px;
-    width: auto;
-    max-width: 160px;
-    object-fit: contain;
-    display: block;
-}
-
+.auth-title,
 .login-card__title {
-    font-size: 20px;
+    font-size: 26px;
     font-weight: 700;
-    letter-spacing: -0.015em;
+    letter-spacing: -0.025em;
     color: var(--text-primary, #0f172a);
-    margin: 0 0 4px 0;
-    line-height: 1.25;
+    margin: 0 0 6px 0;
+    line-height: 1.2;
 }
 
+[data-theme="dark"] .auth-title,
 [data-theme="dark"] .login-card__title {
     color: var(--text-primary, #f8fafc);
 }
 
+.auth-subtitle,
 .login-card__subtitle {
-    font-size: 13.5px;
-    font-weight: 400;
+    font-size: 14px;
+    font-weight: 500;
     color: var(--text-muted, #64748b);
+    letter-spacing: 0.01em;
     margin: 0;
     line-height: 1.4;
 }
 
+[data-theme="dark"] .auth-subtitle,
 [data-theme="dark"] .login-card__subtitle {
     color: var(--text-muted, #94a3b8);
 }

@@ -9,7 +9,8 @@
     "testdb": "node testdb.js",
     "migrate": "node migrate.js",
     "test:e2e:home": "node test-e2e-home.js",
-    "test:e2e:wiki": "node test-e2e-wiki.js"
+    "test:e2e:wiki": "node test-e2e-wiki.js",
+    "test:e2e:login": "node test-e2e-login.js"
   },
   "keywords": [
     "wiki",

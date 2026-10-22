@@ -36,11 +36,16 @@ const editorBottomBar        = document.getElementById('editorBottomBar');
 const draftStatus            = document.getElementById('draftStatus');
 const formatSelect           = document.getElementById('formatSelect');
 const linkBtn                = document.getElementById('linkBtn');
-const smartServerViewer      = document.getElementById('smartServerViewer');
-const smartViewerActions     = document.getElementById('smartViewerActions');
-const copyAllSummaryBtn      = document.getElementById('copyAllSummaryBtn');
+const wikiSheet              = document.getElementById('wikiSheet');
+const wikiContentActions     = document.getElementById('wikiContentActions');
+const copyAllBtn             = document.getElementById('copyAllBtn') || document.getElementById('copyContentBtn') || document.getElementById('copyAllSummaryBtn');
 const contentSectionSubtitle = document.getElementById('contentSectionSubtitle');
 const floatingToastContainer = document.getElementById('floatingToastContainer');
+
+// Backwards compatibility aliases
+const smartServerViewer      = wikiSheet;
+const smartViewerActions     = wikiContentActions;
+const copyAllSummaryBtn      = copyAllBtn;
 
 // ── More menu ──────────────────────────────────────────────
 const moreBtnTop = document.getElementById('moreBtnTop');
@@ -152,7 +157,7 @@ async function copyToClipboard(text, triggerBtn, fieldName) {
 }
 
 /* ============================================================
-   SMART PARSER: RAW NOTES -> STRUCTURED SERVER CONFIG
+   CLEAN TEXT WIKI & COMFORTABLE TYPOGRAPHY
    ============================================================ */
 
 function cleanHtmlToText(html) {
@@ -173,556 +178,200 @@ function cleanHtmlToText(html) {
         .replace(/&#39;/g, "'");
 }
 
-function parseServerConfig(rawContent, orgName) {
-    const rawText = cleanHtmlToText(rawContent).trim();
-    const name = orgName || (orgNameInput ? orgNameInput.value : '');
+function escapeHtmlText(text) {
+    if (!text) return '';
+    var d = document.createElement('div');
+    d.appendChild(document.createTextNode(text));
+    return d.innerHTML;
+}
 
-    if (!rawText) {
-        return {
-            isEmpty: true,
-            orgName: name,
-            env: /dev|тест|vds|test/i.test(name) ? 'DEV' : 'PROD',
-            remote: {},
-            database: {},
-            hardware: {},
-            notes: []
-        };
+function formatTokens(str) {
+    if (!str) return '';
+    var safe = escapeHtmlText(str);
+
+    // Format IP addresses
+    safe = safe.replace(/\b(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})\b/g, '<span class="wiki-token-ip">$1</span>');
+
+    // Format AnyDesk numbers (e.g. 1 170 691 894 or 1218740083)
+    safe = safe.replace(/\b(\d{1,4}\s\d{3}\s\d{3,4}|\d{9,10})\b/g, '<span class="wiki-token-anydesk">$1</span>');
+
+    return safe;
+}
+
+function formatLineContent(lineTrimmed) {
+    if (!lineTrimmed) return '&nbsp;';
+
+    // 1. Key: Value pattern (e.g., "Anydesk: 987 654 321", "RDP: arg.local\admin")
+    var colonIdx = lineTrimmed.indexOf(':');
+    if (colonIdx > 0 && colonIdx < 35 && !lineTrimmed.slice(0, colonIdx).includes('http')) {
+        var key = lineTrimmed.slice(0, colonIdx).trim();
+        var val = lineTrimmed.slice(colonIdx + 1).trim();
+        return '<span class="wiki-token-key">' + escapeHtmlText(key) + ':</span> <span class="wiki-token-val">' + formatTokens(val) + '</span>';
     }
 
-    const lines = rawText.split('\n').map(function(l) { return l.trim(); }).filter(Boolean);
-    const consumedIndices = new Set();
+    // 2. Value - Description or Description - Value (e.g. "kuadmin123 - Пароль от Ани деск", "кластер серверов - terminal")
+    var dashMatch = lineTrimmed.match(/^([^\-–—]+)\s*[\-–—]\s*(.+)$/);
+    if (dashMatch) {
+        var left = dashMatch[1].trim();
+        var right = dashMatch[2].trim();
 
-    const env = (/dev|тест|vds|test/i.test(name) || /dev|тест|vds|test/i.test(rawText)) ? 'DEV' : 'PROD';
-
-    const remote = {
-        anydeskId: '',
-        anydeskPass: '',
-        rdpHost: '',
-        rdpUser: '',
-        rdpPass: ''
-    };
-
-    const database = {
-        dbType: '',
-        dbUser: '',
-        dbPass: '',
-        dbCluster: '',
-        onecUser: '',
-        onecPass: ''
-    };
-
-    const hardware = {
-        disks: [],
-        iloHost: '',
-        iloUser: '',
-        iloPass: '',
-        iloDns: ''
-    };
-
-    const notes = [];
-
-    // 1. Pass: Single-line patterns with prefixes
-    for (var i = 0; i < lines.length; i++) {
-        var line = lines[i];
-
-        // Anydesk pass like "kuadmin123 - Пароль от Ани деск"
-        var anyPassMatch = line.match(/^([^\s]+)\s*[-–—]\s*(?:пароль\s*от\s*ани\s*деск|anydesk\s*pass)/i);
-        if (anyPassMatch) {
-            remote.anydeskPass = anyPassMatch[1];
-            consumedIndices.add(i);
-            continue;
+        // If left is description ("кластер серверов", "сервер базы")
+        if (/^(?:кластер|сервер базы|база данных|хост|dns)/i.test(left)) {
+            return '<span class="wiki-token-key">' + escapeHtmlText(left) + ':</span> <span class="wiki-token-val">' + formatTokens(right) + '</span>';
         }
 
-        // RDP pass like "Ku@dmin123Q - mstsc"
-        var rdpPassMatch = line.match(/^([^\s]+)\s*[-–—]\s*mstsc/i);
-        if (rdpPassMatch) {
-            remote.rdpPass = rdpPassMatch[1];
-            consumedIndices.add(i);
-            continue;
-        }
-
-        // Anydesk: 987 654 321
-        var anyLineMatch = line.match(/^anydesk\s*[:]\s*([0-9\s]{9,15})/i);
-        if (anyLineMatch) {
-            remote.anydeskId = anyLineMatch[1].trim();
-            consumedIndices.add(i);
-            continue;
-        }
-
-        // RDP: arg.local\admin
-        var rdpLineMatch = line.match(/^rdp\s*[:]\s*(.+)/i);
-        if (rdpLineMatch) {
-            var val = rdpLineMatch[1].trim();
-            if (val.includes('\\')) {
-                var rdpParts = val.split('\\');
-                remote.rdpHost = rdpParts[0];
-                remote.rdpUser = val;
-            } else {
-                remote.rdpUser = val;
-            }
-            consumedIndices.add(i);
-            continue;
-        }
-
-        // MS SQL 2019: sa / ArgPass2026
-        var dbLineMatch = line.match(/^(MS\s*SQL[^:]*|PostgreSQL|MySQL|MariaDB|Oracle)\s*[:]\s*(.+)/i);
-        if (dbLineMatch) {
-            database.dbType = dbLineMatch[1].trim();
-            var rest = dbLineMatch[2].trim();
-            if (rest.includes('/')) {
-                var p = rest.split('/');
-                database.dbUser = p[0].trim();
-                database.dbPass = p[1].trim();
-            } else {
-                database.dbUser = rest;
-            }
-            consumedIndices.add(i);
-            continue;
-        }
-
-        // 1C: USR1CV8 / ArgPass1C!
-        var onecLineMatch = line.match(/^(?:1[cс]|1с:предприятие)\s*[:]\s*(.+)/i);
-        if (onecLineMatch) {
-            var restOnec = onecLineMatch[1].trim();
-            if (restOnec.includes('/')) {
-                var op = restOnec.split('/');
-                database.onecUser = op[0].trim();
-                database.onecPass = op[1].trim();
-            } else {
-                database.onecUser = restOnec;
-            }
-            consumedIndices.add(i);
-            continue;
-        }
-
-        // кластер серверов - terminal
-        var clusterMatch = line.match(/^кластер\s*серверов\s*[-–—:]\s*(.+)/i);
-        if (clusterMatch) {
-            database.dbCluster = clusterMatch[1].trim();
-            consumedIndices.add(i);
-            continue;
-        }
-
-        // Сервер базы данных - SQL
-        var dbHostMatch = line.match(/^сервер\s*базы\s*данных\s*[-–—:]\s*(.+)/i);
-        if (dbHostMatch) {
-            database.dbType = (database.dbType ? database.dbType + ' / ' : '') + dbHostMatch[1].trim();
-            consumedIndices.add(i);
-            continue;
-        }
+        // Default: left is password/token, right is explanation
+        return '<span class="wiki-token-val">' + formatTokens(left) + '</span> <span class="wiki-token-key">— ' + escapeHtmlText(right) + '</span>';
     }
 
-    // 2. Pass: Multi-line blocks (AnyDesk, MS SQL, Disks, USR1CV8, Ilo)
-    for (var j = 0; j < lines.length; j++) {
-        if (consumedIndices.has(j)) continue;
-        var cur = lines[j];
-
-        // AnyDesk standalone header
-        if (/^anydesk$/i.test(cur)) {
-            consumedIndices.add(j);
-            if (j + 1 < lines.length && !consumedIndices.has(j + 1)) {
-                var nextLine = lines[j + 1];
-                var idMatch = nextLine.match(/([0-9\s]{9,15})/);
-                if (idMatch) {
-                    remote.anydeskId = idMatch[1].trim();
-                    if (nextLine.includes('/')) {
-                        var subParts = nextLine.split('/');
-                        if (subParts.length >= 2 && !remote.rdpUser) {
-                            remote.rdpUser = subParts.slice(1).join('/');
-                        }
-                    }
-                    consumedIndices.add(j + 1);
-                    if (j + 2 < lines.length && !consumedIndices.has(j + 2)) {
-                        var nextNext = lines[j + 2];
-                        if (!/^(ms sql|os |data |ilo|usr1cv8|администратор)/i.test(nextNext)) {
-                            if (!remote.anydeskPass) remote.anydeskPass = nextNext;
-                            consumedIndices.add(j + 2);
-                        }
-                    }
-                }
-            }
-            continue;
-        }
-
-        // MS SQL block
-        if (/^ms\s*sql\b/i.test(cur)) {
-            database.dbType = cur;
-            consumedIndices.add(j);
-            if (j + 1 < lines.length && !consumedIndices.has(j + 1)) {
-                database.dbUser = lines[j + 1];
-                consumedIndices.add(j + 1);
-                if (j + 2 < lines.length && !consumedIndices.has(j + 2)) {
-                    database.dbPass = lines[j + 2];
-                    consumedIndices.add(j + 2);
-                }
-            }
-            continue;
-        }
-
-        // sa user standalone
-        if (/^sa$/i.test(cur) && !database.dbUser) {
-            database.dbUser = 'sa';
-            consumedIndices.add(j);
-            if (j + 1 < lines.length && !consumedIndices.has(j + 1)) {
-                database.dbPass = lines[j + 1];
-                consumedIndices.add(j + 1);
-            }
-            continue;
-        }
-
-        // USR1CV8 standalone
-        if (/^usr1cv8$/i.test(cur)) {
-            database.onecUser = 'USR1CV8';
-            consumedIndices.add(j);
-            if (j + 1 < lines.length && !consumedIndices.has(j + 1)) {
-                database.onecPass = lines[j + 1];
-                consumedIndices.add(j + 1);
-            }
-            continue;
-        }
-
-        // Disks: NVME / RAID / SSD / SATA
-        if (/\b(?:nvme|raid\s*\d*|ssd|sata|hdd|sas)\b/i.test(cur)) {
-            hardware.disks.push(cur);
-            consumedIndices.add(j);
-            continue;
-        }
-
-        // Ilo block
-        if (/^(?:ilo|ipmi)$/i.test(cur)) {
-            consumedIndices.add(j);
-            var idx = j + 1;
-            while (idx < lines.length && idx <= j + 6 && !consumedIndices.has(idx)) {
-                var l = lines[idx];
-                if (/^(?:dhcp|\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})$/i.test(l)) {
-                    hardware.iloHost = l;
-                    consumedIndices.add(idx);
-                } else if (/^(?:administrator|admin)$/i.test(l)) {
-                    hardware.iloUser = l;
-                    consumedIndices.add(idx);
-                } else if (/^(?:dns|serial|iloczjd)/i.test(l)) {
-                    hardware.iloDns = (hardware.iloDns ? hardware.iloDns + ' / ' : '') + l;
-                    consumedIndices.add(idx);
-                } else if (hardware.iloUser && !hardware.iloPass) {
-                    hardware.iloPass = l;
-                    consumedIndices.add(idx);
-                } else {
-                    break;
-                }
-                idx++;
-            }
-            continue;
-        }
-
-        // Standalone user "Администратор" or domain user
-        if (/^(?:администратор|administrator)$/i.test(cur) && !remote.rdpUser) {
-            remote.rdpUser = cur;
-            consumedIndices.add(j);
-            if (j + 1 < lines.length && !consumedIndices.has(j + 1)) {
-                var nextL = lines[j + 1];
-                if (!/^(anydesk|ms sql|os |ilo|usr1cv8)/i.test(nextL)) {
-                    remote.rdpPass = nextL;
-                    consumedIndices.add(j + 1);
-                }
-            }
-            continue;
-        }
-
-        // Domain user like "antraium.local\администратор"
-        if (cur.includes('\\')) {
-            remote.rdpUser = cur;
-            var parts = cur.split('\\');
-            if (parts[0]) remote.rdpHost = parts[0];
-            consumedIndices.add(j);
-            if (j + 1 < lines.length && !consumedIndices.has(j + 1)) {
-                var nextAfterDom = lines[j + 1];
-                if (!/^(anydesk|ms sql|os |ilo|usr1cv8|данные|кластер|сервер)/i.test(nextAfterDom)) {
-                    if (!remote.rdpPass) remote.rdpPass = nextAfterDom;
-                    consumedIndices.add(j + 1);
-                }
-            }
-            continue;
-        }
-
-        // Header titles
-        if (/^(?:для входа|данные для)/i.test(cur)) {
-            consumedIndices.add(j);
-            continue;
-        }
-    }
-
-    // Remaining lines -> notes
-    for (var k = 0; k < lines.length; k++) {
-        if (!consumedIndices.has(k)) {
-            notes.push(lines[k]);
-        }
-    }
-
-    return {
-        isEmpty: false,
-        orgName: name,
-        env: env,
-        remote: remote,
-        database: database,
-        hardware: hardware,
-        notes: notes
-    };
+    // 3. Standalone line with tokens
+    return formatTokens(lineTrimmed);
 }
 
 /* ============================================================
-   SMART SERVER VIEWER DOM BUILDER
+   WIKI CONTENT SHEET BUILDER
    ============================================================ */
 
-function renderSmartViewer(data) {
-    if (!smartServerViewer) return;
-    activeServerData = data;
+function renderWikiSheet(rawContent) {
+    if (!wikiSheet) return;
 
-    if (data.isEmpty) {
-        if (copyAllSummaryBtn) copyAllSummaryBtn.style.display = 'none';
-        smartServerViewer.innerHTML =
-            '<div class="smart-empty-state">' +
-                '<svg class="smart-empty-state__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">' +
-                    '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>' +
-                    '<path d="M12 8v4M12 16h.01" stroke-width="2" stroke-linecap="round"/>' +
-                '</svg>' +
-                '<h4 class="smart-empty-state__title">Конфигурация сервера пока не заполнена</h4>' +
-                '<p class="smart-empty-state__desc">Учетные данные AnyDesk, RDP, SQL, 1C и iLO для этого сервера еще не внесены в базу знаний.</p>' +
+    var clean = cleanHtmlToText(rawContent).trim();
+
+    if (!clean) {
+        if (copyAllBtn) copyAllBtn.style.display = 'none';
+        wikiSheet.innerHTML =
+            '<div class="wiki-empty-state" id="wikiEmptyState">' +
+                '<div class="wiki-empty-state__icon-wrap">' +
+                    '<svg class="wiki-empty-state__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">' +
+                        '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>' +
+                        '<polyline points="14 2 14 8 20 8"/>' +
+                        '<line x1="12" y1="18" x2="12" y2="12"/>' +
+                        '<line x1="9" y1="15" x2="15" y2="15"/>' +
+                    '</svg>' +
+                '</div>' +
+                '<h4 class="wiki-empty-state__title">Параметры сервера пока не заполнены</h4>' +
+                '<p class="wiki-empty-state__desc">Заметки, доступы и технические реквизиты для этого сервера пока не внесены в базу знаний.</p>' +
                 '<button type="button" class="btn-fill-config" id="emptyStateEditBtn">' +
-                    '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>' +
-                    '<span>Заполнить конфигурацию сервера →</span>' +
+                    '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">' +
+                        '<path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>' +
+                        '<path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>' +
+                    '</svg>' +
+                    '<span>Редактировать</span>' +
                 '</button>' +
             '</div>';
 
-        var emptyEditBtn = document.getElementById('emptyStateEditBtn');
-        if (emptyEditBtn) {
-            emptyEditBtn.addEventListener('click', enterEditMode);
+        var emptyBtn = document.getElementById('emptyStateEditBtn');
+        if (emptyBtn) {
+            emptyBtn.addEventListener('click', enterEditMode);
         }
         return;
     }
 
-    if (copyAllSummaryBtn) copyAllSummaryBtn.style.display = 'inline-flex';
+    if (copyAllBtn) copyAllBtn.style.display = 'inline-flex';
 
-    var html = '<div class="smart-grid">';
+    var lines = clean.split('\n');
+    var html = '<div class="wiki-lines-container">';
 
-    // ── Card 1: Remote & RDP ──
-    html +=
-        '<div class="smart-card" id="cardRemote">' +
-            '<div class="smart-card-header">' +
-                '<div class="smart-card-header__left">' +
-                    '<svg class="smart-card-header__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>' +
-                    '<h4 class="smart-card-header__title">Удаленный доступ & RDP</h4>' +
-                '</div>' +
-                '<span class="smart-card-header__badge">RDP / AnyDesk</span>' +
-            '</div>' +
-            '<div class="smart-card-body">' +
-                renderSmartRow('AnyDesk ID', data.remote.anydeskId, false, true) +
-                (data.remote.anydeskPass ? renderSmartRow('AnyDesk Пароль', data.remote.anydeskPass, true) : '') +
-                renderSmartRow('RDP / mstsc хост', data.remote.rdpHost, false, true) +
-                renderSmartRow('Пользователь', data.remote.rdpUser, false) +
-                renderSmartRow('Пароль доступа', data.remote.rdpPass, true) +
-            '</div>' +
-        '</div>';
+    for (var i = 0; i < lines.length; i++) {
+        var lineRaw = lines[i];
+        var lineTrimmed = lineRaw.trim();
+        var lineNum = i + 1;
 
-    // ── Card 2: Database & 1C ──
-    html +=
-        '<div class="smart-card" id="cardDatabase">' +
-            '<div class="smart-card-header">' +
-                '<div class="smart-card-header__left">' +
-                    '<svg class="smart-card-header__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>' +
-                    '<h4 class="smart-card-header__title">Базы данных & 1С:Предприятие</h4>' +
-                '</div>' +
-                '<span class="smart-card-header__badge">SQL / 1C</span>' +
-            '</div>' +
-            '<div class="smart-card-body">' +
-                renderSmartRow('СУБД', data.database.dbType, false) +
-                renderSmartRow('Пользователь СУБД (sa)', data.database.dbUser, false) +
-                renderSmartRow('Пароль СУБД', data.database.dbPass, true) +
-                renderSmartRow('Кластер / База', data.database.dbCluster, false) +
-                renderSmartRow('Служба 1С', data.database.onecUser, false) +
-                renderSmartRow('Пароль службы 1С', data.database.onecPass, true) +
-            '</div>' +
-        '</div>';
-
-    // ── Card 3: Hardware & iLO ──
-    var disksContent = '';
-    if (data.hardware.disks && data.hardware.disks.length > 0) {
-        disksContent = '<div class="smart-disks-list">' +
-            data.hardware.disks.map(function(d) {
-                return '<div class="smart-disk-item"><span class="smart-disk-dot"></span><span>' + escapeHtmlText(d) + '</span></div>';
-            }).join('') +
-            '</div>';
-    }
-
-    html +=
-        '<div class="smart-card" id="cardHardware">' +
-            '<div class="smart-card-header">' +
-                '<div class="smart-card-header__left">' +
-                    '<svg class="smart-card-header__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="2" ry="2"/><rect x="9" y="9" width="6" height="6"/><line x1="9" y1="1" x2="9" y2="4"/><line x1="15" y1="1" x2="15" y2="4"/><line x1="9" y1="20" x2="9" y2="23"/><line x1="15" y1="20" x2="15" y2="23"/><line x1="20" y1="9" x2="23" y2="9"/><line x1="20" y1="14" x2="23" y2="14"/><line x1="1" y1="9" x2="4" y2="9"/><line x1="1" y1="14" x2="4" y2="14"/></svg>' +
-                    '<h4 class="smart-card-header__title">Аппаратная часть & iLO / IPMI</h4>' +
-                '</div>' +
-                '<span class="smart-card-header__badge">Hardware</span>' +
-            '</div>' +
-            '<div class="smart-card-body">' +
-                (disksContent ? '<div class="smart-row" style="flex-direction: column; align-items: flex-start; gap: 6px;"><span class="smart-row__label">Дисковая подсистема:</span>' + disksContent + '</div>' : '') +
-                renderSmartRow('iLO / IPMI адрес', data.hardware.iloHost, false, true) +
-                renderSmartRow('Администратор iLO', data.hardware.iloUser, false) +
-                renderSmartRow('Пароль iLO', data.hardware.iloPass, true) +
-                renderSmartRow('Серийный номер / DNS', data.hardware.iloDns, false) +
-            '</div>' +
-        '</div>';
-
-    // ── Card 4: Additional Notes ──
-    if (data.notes && data.notes.length > 0) {
-        html +=
-            '<div class="smart-card smart-card--notes" id="cardNotes">' +
-                '<div class="smart-card-header">' +
-                    '<div class="smart-card-header__left">' +
-                        '<svg class="smart-card-header__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>' +
-                        '<h4 class="smart-card-header__title">Дополнительные параметры и заметки</h4>' +
-                    '</div>' +
-                    '<span class="smart-card-header__badge">Заметки</span>' +
-                '</div>' +
-                '<div class="smart-card-body">' +
-                    '<div class="smart-notes-content">' + escapeHtmlText(data.notes.join('\n')) + '</div>' +
-                '</div>' +
-            '</div>';
-    }
-
-    html += '</div>'; // end .smart-grid
-    smartServerViewer.innerHTML = html;
-
-    bindSmartViewerEvents();
-}
-
-function renderSmartRow(label, value, isSecret, isMono) {
-    var hasValue = Boolean(value && String(value).trim());
-    var safeVal = hasValue ? escapeHtmlText(String(value).trim()) : '';
-
-    var valueHtml = '';
-    var actionsHtml = '';
-
-    if (!hasValue) {
-        valueHtml = '<span class="smart-val smart-val--empty">Не указано</span>';
-    } else if (isSecret) {
-        valueHtml = '<span class="smart-val smart-val--masked" data-raw-val="' + safeVal + '">••••••••</span>';
-        actionsHtml =
-            '<button type="button" class="smart-btn-icon smart-btn-icon--toggle" title="Показать/скрыть пароль" aria-label="Показать/скрыть">' +
-                '<svg class="eye-open" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>' +
-                '<svg class="eye-closed" style="display:none;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>' +
-            '</button>' +
-            '<button type="button" class="smart-btn-icon smart-btn-icon--copy" data-copy-val="' + safeVal + '" data-label="' + escapeHtmlText(label) + '" title="Копировать пароль" aria-label="Копировать">' +
-                '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>' +
-            '</button>';
-    } else {
-        var monoClass = isMono ? ' font-mono' : '';
-        valueHtml = '<span class="smart-val' + monoClass + '">' + safeVal + '</span>';
-        actionsHtml =
-            '<button type="button" class="smart-btn-icon smart-btn-icon--copy" data-copy-val="' + safeVal + '" data-label="' + escapeHtmlText(label) + '" title="Копировать ' + escapeHtmlText(label) + '" aria-label="Копировать">' +
-                '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>' +
-            '</button>';
-    }
-
-    return (
-        '<div class="smart-row">' +
-            '<span class="smart-row__label">' + escapeHtmlText(label) + ':</span>' +
-            '<div class="smart-row__value-wrap">' +
-                valueHtml +
-                actionsHtml +
-            '</div>' +
-        '</div>'
-    );
-}
-
-function bindSmartViewerEvents() {
-    if (!smartServerViewer) return;
-
-    // Password Eye Toggle
-    smartServerViewer.querySelectorAll('.smart-btn-icon--toggle').forEach(function(btn) {
-        btn.addEventListener('click', function() {
-            var rowWrap = btn.closest('.smart-row__value-wrap');
-            if (!rowWrap) return;
-            var valEl = rowWrap.querySelector('.smart-val--masked');
-            if (!valEl) return;
-
-            var rawVal = valEl.getAttribute('data-raw-val');
-            var isRevealed = valEl.classList.contains('is-revealed');
-            var eyeOpen = btn.querySelector('.eye-open');
-            var eyeClosed = btn.querySelector('.eye-closed');
-
-            if (isRevealed) {
-                valEl.textContent = '••••••••';
-                valEl.classList.remove('is-revealed');
-                if (eyeOpen) eyeOpen.style.display = 'block';
-                if (eyeClosed) eyeClosed.style.display = 'none';
-            } else {
-                valEl.textContent = rawVal;
-                valEl.classList.add('is-revealed');
-                if (eyeOpen) eyeOpen.style.display = 'none';
-                if (eyeClosed) eyeClosed.style.display = 'block';
-            }
-        });
-    });
-
-    // Copy Button
-    smartServerViewer.querySelectorAll('.smart-btn-icon--copy').forEach(function(btn) {
-        btn.addEventListener('click', function() {
-            var copyVal = btn.getAttribute('data-copy-val');
-            var label = btn.getAttribute('data-label');
-            copyToClipboard(copyVal, btn, label);
-        });
-    });
-}
-
-function generateSummaryText(data) {
-    if (!data || data.isEmpty) return '';
-
-    var lines = [];
-    lines.push('══════════════════════════════════════════════');
-    lines.push('СЕРВЕР: ' + data.orgName + ' [' + data.env + ']');
-    lines.push('══════════════════════════════════════════════');
-
-    lines.push('\n[УДАЛЕННЫЙ ДОСТУП & RDP]');
-    if (data.remote.anydeskId)   lines.push('AnyDesk ID: ' + data.remote.anydeskId);
-    if (data.remote.anydeskPass) lines.push('AnyDesk Пароль: ' + data.remote.anydeskPass);
-    if (data.remote.rdpHost)     lines.push('RDP / mstsc хост: ' + data.remote.rdpHost);
-    if (data.remote.rdpUser)     lines.push('Пользователь: ' + data.remote.rdpUser);
-    if (data.remote.rdpPass)     lines.push('Пароль доступа: ' + data.remote.rdpPass);
-
-    if (data.database.dbType || data.database.dbUser || data.database.onecUser) {
-        lines.push('\n[БАЗЫ ДАННЫХ & 1С]');
-        if (data.database.dbType)    lines.push('СУБД: ' + data.database.dbType);
-        if (data.database.dbUser)    lines.push('Пользователь sa: ' + data.database.dbUser);
-        if (data.database.dbPass)    lines.push('Пароль СУБД: ' + data.database.dbPass);
-        if (data.database.dbCluster) lines.push('Кластер / База: ' + data.database.dbCluster);
-        if (data.database.onecUser)  lines.push('Служба 1С: ' + data.database.onecUser);
-        if (data.database.onecPass)  lines.push('Пароль 1С: ' + data.database.onecPass);
-    }
-
-    if (data.hardware.iloHost || (data.hardware.disks && data.hardware.disks.length > 0)) {
-        lines.push('\n[ЖЕЛЕЗО & iLO / IPMI]');
-        if (data.hardware.disks && data.hardware.disks.length > 0) {
-            lines.push('Диски: ' + data.hardware.disks.join(' / '));
+        if (!lineTrimmed) {
+            html += '<div class="wiki-line wiki-line--empty">' +
+                        '<span class="wiki-line-num">' + lineNum + '</span>' +
+                        '<div class="wiki-line-text">&nbsp;</div>' +
+                    '</div>';
+            continue;
         }
-        if (data.hardware.iloHost) lines.push('iLO Хост/IP: ' + data.hardware.iloHost);
-        if (data.hardware.iloUser) lines.push('iLO Пользователь: ' + data.hardware.iloUser);
-        if (data.hardware.iloPass) lines.push('iLO Пароль: ' + data.hardware.iloPass);
-        if (data.hardware.iloDns)  lines.push('Серийный / DNS: ' + data.hardware.iloDns);
+
+        var isHeader = false;
+        if (/^\[[^\]]+\]$/.test(lineTrimmed) ||
+            /^(?:ms\s*sql\b|anydesk$|ilo$|ipmi$|usr1cv8$|для входа|данные для|кластер|сервер базы|учетные данные)/i.test(lineTrimmed) ||
+            (lineTrimmed.length < 35 && lineTrimmed === lineTrimmed.toUpperCase() && /[A-ZА-Я]/.test(lineTrimmed) && !lineTrimmed.includes('@') && !lineTrimmed.includes('.'))) {
+            isHeader = true;
+        }
+
+        var formattedText = formatLineContent(lineTrimmed);
+        var lineClasses = 'wiki-line' + (isHeader ? ' wiki-line--header' : '');
+
+        html += '<div class="' + lineClasses + '" data-line-index="' + i + '">' +
+                    '<span class="wiki-line-num">' + lineNum + '</span>' +
+                    '<div class="wiki-line-text">' + formattedText + '</div>' +
+                    '<button type="button" class="wiki-line-copy-btn" title="Копировать строку" aria-label="Копировать">' +
+                        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">' +
+                            '<rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>' +
+                            '<path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>' +
+                        '</svg>' +
+                    '</button>' +
+                '</div>';
     }
 
-    if (data.notes && data.notes.length > 0) {
-        lines.push('\n[ЗАМЕТКИ]');
-        lines.push(data.notes.join('\n'));
-    }
+    html += '</div>';
+    wikiSheet.innerHTML = html;
 
-    lines.push('══════════════════════════════════════════════');
-    return lines.join('\n');
+    // Bind line copy buttons
+    wikiSheet.querySelectorAll('.wiki-line-copy-btn').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            var lineEl = btn.closest('.wiki-line');
+            if (!lineEl) return;
+            var textEl = lineEl.querySelector('.wiki-line-text');
+            var rawTextToCopy = textEl ? textEl.innerText.trim() : '';
+            copyToClipboard(rawTextToCopy, btn, 'Строка');
+        });
+    });
 }
 
-if (copyAllSummaryBtn) {
-    copyAllSummaryBtn.addEventListener('click', function() {
-        if (!activeServerData) return;
-        var summary = generateSummaryText(activeServerData);
-        copyToClipboard(summary, copyAllSummaryBtn, 'Все реквизиты');
+/* ============================================================
+   COPY ALL REQUISITES
+   ============================================================ */
+
+if (copyAllBtn) {
+    copyAllBtn.addEventListener('click', async function() {
+        var baseContent = typeof initialContent !== 'undefined' ? initialContent : '';
+        if (orgEditor && !baseContent) baseContent = orgEditor.innerHTML;
+        var text = cleanHtmlToText(baseContent).trim();
+
+        if (!text) {
+            showToast('Нет данных для копирования');
+            return;
+        }
+
+        var copied = false;
+        if (navigator.clipboard && window.isSecureContext) {
+            try {
+                await navigator.clipboard.writeText(text);
+                copied = true;
+            } catch (e) {}
+        }
+        if (!copied) {
+            try {
+                var ta = document.createElement('textarea');
+                ta.value = text;
+                ta.style.position = 'fixed';
+                ta.style.left = '-9999px';
+                document.body.appendChild(ta);
+                ta.focus();
+                ta.select();
+                document.execCommand('copy');
+                document.body.removeChild(ta);
+                copied = true;
+            } catch (err) {}
+        }
+
+        copyAllBtn.classList.add('is-copied');
+        var originalHtml = copyAllBtn.innerHTML;
+        copyAllBtn.innerHTML =
+            '<svg width="15" height="15" viewBox="0 0 20 20" fill="none"><path d="M5 10L8 13L15 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> ' +
+            '<span>✓ Скопировано!</span>';
+
+        setTimeout(function() {
+            copyAllBtn.classList.remove('is-copied');
+            copyAllBtn.innerHTML = originalHtml;
+        }, 1500);
+
+        showToast('✓ Реквизиты скопированы в буфер обмена!');
     });
 }
 
@@ -734,8 +383,8 @@ function enterEditMode() {
     if (!orgEditor) return;
     isEditMode = true;
 
-    if (smartServerViewer) smartServerViewer.style.display = 'none';
-    if (smartViewerActions) smartViewerActions.style.display = 'none';
+    if (wikiSheet) wikiSheet.style.display = 'none';
+    if (wikiContentActions) wikiContentActions.style.display = 'none';
 
     if (editorOuter) {
         editorOuter.style.display = 'block';
@@ -776,11 +425,11 @@ function exitEditMode() {
         editorBottomBar.classList.remove('is-visible');
     }
 
-    if (smartServerViewer) smartServerViewer.style.display = 'flex';
-    if (smartViewerActions) smartViewerActions.style.display = 'flex';
+    if (wikiSheet) wikiSheet.style.display = 'block';
+    if (wikiContentActions) wikiContentActions.style.display = 'flex';
 
     if (contentSectionSubtitle) {
-        contentSectionSubtitle.textContent = 'Smart Server Viewer';
+        contentSectionSubtitle.textContent = 'Заметки и реквизиты';
     }
 
     if (editBtnTop) {
@@ -814,13 +463,6 @@ function cancelEditMode() {
     }
 
     exitEditMode();
-}
-
-function escapeHtmlText(text) {
-    if (!text) return '';
-    var d = document.createElement('div');
-    d.appendChild(document.createTextNode(text));
-    return d.innerHTML;
 }
 
 function setEditorContent(content) {
@@ -861,9 +503,8 @@ if (orgEditor && typeof initialContent !== 'undefined') {
 
     setEditorContent(loadedContent);
 
-    // Initial render of Smart Viewer
-    var initialParsed = parseServerConfig(loadedContent, orgNameInput ? orgNameInput.value : '');
-    renderSmartViewer(initialParsed);
+    // Initial render of pure Wiki Sheet
+    renderWikiSheet(loadedContent);
 }
 
 if (editBtnTop) {
@@ -973,14 +614,13 @@ if (saveBtn) {
             localStorage.removeItem('draft_org_' + id);
             if (draftStatus) draftStatus.innerHTML = '';
 
-            // Update local memory and re-parse Smart Viewer
+            // Update local memory and re-render pure Wiki Sheet
             initialContent = content;
-            var updatedData = parseServerConfig(content, name);
-            renderSmartViewer(updatedData);
+            renderWikiSheet(content);
 
-            // Exit edit mode smoothly back to Smart Viewer
+            // Exit edit mode smoothly back to Sheet
             exitEditMode();
-            showToast('Конфигурация сервера успешно сохранена!');
+            showToast('✓ Параметры сервера успешно сохранены!');
 
         } catch (err) {
             saveBtn.textContent = originalText;
