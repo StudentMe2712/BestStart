@@ -146,28 +146,32 @@ let databases1C = [
         id: 1,
         org_id: 1,
         name: 'Бухгалтерия для Казахстана (Прод)',
-        release: '3.0.73.1 (БК)',
+        release: '3.0.73.1 (БК), подсистема Строительство',
+        description: '3.0.73.1 (БК), подсистема Строительство',
         updated_at: new Date('2026-10-15T10:00:00.000Z')
     },
     {
         id: 2,
         org_id: 1,
         name: 'Зарплата и управление персоналом',
-        release: '3.1.28.12 (ЗУП)',
+        release: '3.1.28.12 (ЗУП), типовая',
+        description: '3.1.28.12 (ЗУП), типовая',
         updated_at: new Date('2026-10-18T14:30:00.000Z')
     },
     {
         id: 3,
         org_id: 2,
         name: 'Управление предприятием (ERP)',
-        release: '2.4.14.8 (ERP)',
+        release: '2.4.14.8 (ERP), модуль WMS',
+        description: '2.4.14.8 (ERP), модуль WMS',
         updated_at: new Date('2026-10-10T09:15:00.000Z')
     },
     {
         id: 4,
         org_id: 3,
         name: 'Бухгалтерия (ЦБ)',
-        release: '3.0.72.5 (БК)',
+        release: '3.0.72.5 (БК), расширение Налоги',
+        description: '3.0.72.5 (БК), расширение Налоги',
         updated_at: new Date('2026-10-12T11:45:00.000Z')
     }
 ];
@@ -178,39 +182,62 @@ async function initDatabases1CTable() {
 }
 
 const databases1CDB = {
+    getAll: async () => {
+        return databases1C
+            .map(d => ({
+                ...d,
+                description: d.description || d.release || '',
+                release: d.release || d.description || ''
+            }))
+            .sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at));
+    },
     getByOrgId: async (orgId) => {
         return databases1C
             .filter(d => d.org_id === Number(orgId))
+            .map(d => ({
+                ...d,
+                description: d.description || d.release || '',
+                release: d.release || d.description || ''
+            }))
             .sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at));
     },
     getAllRecentUpdates: async () => {
         return databases1C
             .map(d => {
                 const org = organizations.find(o => o.id === d.org_id);
+                const desc = d.description || d.release || '';
                 return {
                     ...d,
+                    description: desc,
+                    release: desc,
                     org_name: org ? org.name : `Организация #${d.org_id}`
                 };
             })
             .sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at));
     },
-    create: async ({ org_id, name, release, updated_at }) => {
+    create: async ({ org_id, name, release, description, updated_at }) => {
         const id = nextDb1CId++;
+        const descText = (description !== undefined ? description : (release || '')).trim();
         const newDb = {
             id,
             org_id: Number(org_id),
             name: name ? name.trim() : '',
-            release: release ? release.trim() : '',
+            release: descText,
+            description: descText,
             updated_at: updated_at ? new Date(updated_at) : new Date()
         };
         databases1C.push(newDb);
         return newDb;
     },
-    update: async (id, { name, release, updated_at }) => {
+    update: async (id, { name, release, description, updated_at }) => {
         const db = databases1C.find(d => d.id === Number(id));
         if (db) {
             if (name !== undefined) db.name = name.trim();
-            if (release !== undefined) db.release = release.trim();
+            const descText = description !== undefined ? description : release;
+            if (descText !== undefined) {
+                db.description = descText.trim();
+                db.release = descText.trim();
+            }
             db.updated_at = updated_at ? new Date(updated_at) : new Date();
             return 1;
         }

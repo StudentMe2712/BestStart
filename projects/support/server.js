@@ -437,15 +437,17 @@ app.get('/api/organizations/:id/databases', requireAuth, async (req, res) => {
 
 // API: Добавить базу 1С к организации
 app.post('/api/organizations/:id/databases', requireAuth, async (req, res) => {
-    const { name, release, updated_at } = req.body;
+    const { name, release, description, updated_at } = req.body;
     if (!name || !name.trim()) {
         return res.status(400).json({ error: 'Наименование базы обязательно' });
     }
+    const descText = (description !== undefined ? description : (release || '')).trim();
     try {
         const newDb = await databases1CDB.create({
             org_id: req.params.id,
             name: name.trim(),
-            release: release ? release.trim() : '',
+            release: descText,
+            description: descText,
             updated_at: updated_at || new Date()
         });
         res.status(201).json(newDb);
@@ -457,14 +459,16 @@ app.post('/api/organizations/:id/databases', requireAuth, async (req, res) => {
 
 // API: Обновить базу 1С
 app.put('/api/databases/:id', requireAuth, async (req, res) => {
-    const { name, release, updated_at } = req.body;
+    const { name, release, description, updated_at } = req.body;
     if (!name || !name.trim()) {
         return res.status(400).json({ error: 'Наименование базы обязательно' });
     }
+    const descText = description !== undefined ? description : release;
     try {
         const affectedRows = await databases1CDB.update(req.params.id, {
             name: name.trim(),
-            release: release ? release.trim() : '',
+            release: descText !== undefined ? descText.trim() : '',
+            description: descText !== undefined ? descText.trim() : '',
             updated_at: updated_at || new Date()
         });
         if (affectedRows === 0) {
@@ -497,10 +501,38 @@ app.delete('/api/databases/:id', requireAuth, async (req, res) => {
 app.get('/events', requireAuth, async (req, res) => {
     try {
         const organizations = await organizationsDB.getAll();
+        const allDatabases = typeof databases1CDB.getAll === 'function'
+            ? await databases1CDB.getAll()
+            : await databases1CDB.getAllRecentUpdates();
         const updates = await databases1CDB.getAllRecentUpdates();
+
+        // Группировка баз по организациям
+        const dbsByOrg = {};
+        (allDatabases || []).forEach(db => {
+            const orgId = Number(db.org_id);
+            if (!dbsByOrg[orgId]) dbsByOrg[orgId] = [];
+            dbsByOrg[orgId].push(db);
+        });
+
+        const groupedOrganizations = (organizations || []).map(org => {
+            const dbs = dbsByOrg[org.id] || [];
+            return {
+                id: org.id,
+                name: org.name,
+                databases: dbs,
+                count: dbs.length
+            };
+        });
+
+        const totalOrgs = groupedOrganizations.length;
+        const totalBases = (allDatabases || []).length;
+
         res.render('events', {
             organizations: organizations || [],
+            groupedOrganizations,
             updates: updates || [],
+            totalOrgs,
+            totalBases,
             user: req.session.user
         });
     } catch (err) {
@@ -549,13 +581,25 @@ app.get('/api/export/txt/:id', requireAuth, async (req, res) => {
         }
         
         const cleanText = cleanHtmlToPlainText(organization.content || '');
+        const databases = await databases1CDB.getByOrgId(organization.id);
+
+        let fullText = cleanText;
+        if (databases && Array.isArray(databases) && databases.length > 0) {
+            fullText += '\n\n' + '='.repeat(50) + '\nИНФОРМАЦИОННЫЕ БАЗЫ 1С:\n' + '='.repeat(50) + '\n';
+            databases.forEach((db, idx) => {
+                const desc = db.description || db.release || '—';
+                const dateStr = db.updated_at ? new Date(db.updated_at).toLocaleDateString('ru-RU') : '—';
+                fullText += `${idx + 1}. ${db.name}\n   Описание: ${desc}\n   Дата: ${dateStr}\n`;
+            });
+        }
+
         const safeName = organization.name.replace(/[/\\?%*:|"<>]/g, '_');
         const filename = `${safeName}.txt`;
         const encodedFilename = encodeURIComponent(filename);
 
         res.setHeader('Content-Type', 'text/plain; charset=utf-8');
         res.setHeader('Content-Disposition', `attachment; filename="${encodedFilename}"; filename*=UTF-8''${encodedFilename}`);
-        res.send(cleanText);
+        res.send(fullText);
     } catch (error) {
         console.error('Ошибка экспорта TXT:', error.message);
         return res.status(500).json({ error: 'Ошибка экспорта в TXT' });
@@ -595,8 +639,8 @@ app.get('/api/export/pdf/:id', requireAuth, async (req, res) => {
                 <table class="print-table">
                     <thead>
                         <tr>
-                            <th>Наименование базы</th>
-                            <th>Релиз конфигурации</th>
+                            <th>Информационная база</th>
+                            <th>Описание</th>
                             <th>Дата обновления</th>
                         </tr>
                     </thead>
@@ -604,7 +648,7 @@ app.get('/api/export/pdf/:id', requireAuth, async (req, res) => {
                         ${organization.bases.map(b => `
                             <tr>
                                 <td>${escapeHtml(b.name || '')}</td>
-                                <td>${escapeHtml(b.release || '')}</td>
+                                <td>${escapeHtml(b.description || b.release || '—')}</td>
                                 <td>${escapeHtml(b.updated_at ? new Date(b.updated_at).toLocaleDateString('ru-RU') : '—')}</td>
                             </tr>
                         `).join('')}

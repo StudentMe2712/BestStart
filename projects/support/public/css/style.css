@@ -3043,6 +3043,103 @@ body {
     color: #475569;
 }
 
+.events-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.events-tree-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.events-action-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    padding: 6px 12px;
+    font-size: 13px;
+    font-weight: 500;
+    color: #334155;
+    cursor: pointer;
+    outline: none;
+    transition: all 0.15s ease;
+}
+
+.events-action-btn:hover {
+    background: #f1f5f9;
+    border-color: #94a3b8;
+    color: #0f172a;
+}
+
+.events-action-btn .btn-icon {
+    font-size: 12px;
+    font-weight: 700;
+    color: #64748b;
+}
+
+.events-search-box {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.events-search-icon {
+    position: absolute;
+    left: 10px;
+    width: 16px;
+    height: 16px;
+    color: #94a3b8;
+    pointer-events: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.events-search-icon svg {
+    width: 15px;
+    height: 15px;
+}
+
+.events-search-input {
+    appearance: none;
+    -webkit-appearance: none;
+    padding: 6px 12px 6px 32px;
+    font-size: 13px;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    background: #ffffff;
+    min-width: 240px;
+    color: #1e293b;
+    outline: none;
+    transition: all 0.15s ease;
+}
+
+.events-search-input:focus {
+    border-color: #2563eb;
+    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
+}
+
+.events-badge-pill {
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+    color: #1d4ed8;
+    font-size: 12px;
+    padding: 5px 12px;
+    border-radius: 9999px;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+.events-badge-pill strong {
+    font-weight: 700;
+}
+
 .events-select-wrap {
     position: relative;
 }
@@ -3165,6 +3262,121 @@ body {
     font-size: 13px;
 }
 
+/* ── Hierarchical Tree Table (1C Value Tree / Accordion) ── */
+.events-tree-table {
+    table-layout: fixed;
+    width: 100%;
+}
+
+.events-group-row {
+    background: #f8fafc;
+    cursor: pointer;
+    transition: background 0.15s ease;
+    user-select: none;
+}
+
+.events-group-row:hover td {
+    background: #f1f5f9;
+}
+
+.events-group-row td {
+    padding: 10px 18px;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.events-group-cell {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+}
+
+.events-chevron {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    font-size: 13px;
+    font-weight: 700;
+    color: #475569;
+    user-select: none;
+    transition: color 0.15s ease;
+}
+
+.events-folder-icon {
+    font-size: 15px;
+    line-height: 1;
+}
+
+.events-group-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: #0f172a;
+    text-decoration: none;
+    transition: color 0.15s ease;
+}
+
+.events-group-title:hover {
+    color: #2563eb;
+}
+
+.events-count-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    border-radius: 9999px;
+    background: #e2e8f0;
+    color: #475569;
+    font-size: 11px;
+    font-weight: 600;
+    margin-left: 6px;
+}
+
+.events-child-row {
+    background: #ffffff;
+    transition: background 0.15s ease;
+}
+
+.events-child-row td {
+    padding: 11px 18px;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.events-child-row:hover td {
+    background: #f8fafc;
+}
+
+.tree-indent {
+    display: inline-flex;
+    align-items: center;
+    justify-content: flex-end;
+    width: 32px;
+    margin-left: 10px;
+}
+
+.tree-branch {
+    font-family: 'JetBrains Mono', Consolas, monospace;
+    font-size: 13px;
+    font-weight: 600;
+    color: #94a3b8;
+}
+
+.events-db-desc {
+    font-size: 13px;
+    color: #475569;
+}
+
+.events-child-row--empty td {
+    padding: 10px 18px;
+}
+
+.events-db-empty-hint {
+    font-size: 12px;
+    color: #94a3b8;
+    font-style: italic;
+}
+
 .events-empty-state {
     padding: 48px 24px;
     text-align: center;
@@ -3253,5 +3465,91 @@ body {
 }
 
 [data-theme="dark"] .events-empty-state .empty-state-subtext {
+    color: #64748b;
+}
+
+[data-theme="dark"] .events-action-btn {
+    background: #0f172a;
+    border-color: #1e293b;
+    color: #cbd5e1;
+}
+
+[data-theme="dark"] .events-action-btn:hover {
+    background: #1e293b;
+    border-color: #334155;
+    color: #f8fafc;
+}
+
+[data-theme="dark"] .events-action-btn .btn-icon {
+    color: #94a3b8;
+}
+
+[data-theme="dark"] .events-search-input {
+    background-color: #0f172a;
+    border-color: #1e293b;
+    color: #f8fafc;
+}
+
+[data-theme="dark"] .events-search-input:focus {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+}
+
+[data-theme="dark"] .events-badge-pill {
+    background: rgba(37, 99, 235, 0.15);
+    border-color: rgba(37, 99, 235, 0.3);
+    color: #60a5fa;
+}
+
+[data-theme="dark"] .events-group-row {
+    background: #0f172a;
+}
+
+[data-theme="dark"] .events-group-row td {
+    border-color: #1e293b;
+}
+
+[data-theme="dark"] .events-group-row:hover td {
+    background: #1a273b;
+}
+
+[data-theme="dark"] .events-chevron {
+    color: #94a3b8;
+}
+
+[data-theme="dark"] .events-group-title {
+    color: #f8fafc;
+}
+
+[data-theme="dark"] .events-group-title:hover {
+    color: #60a5fa;
+}
+
+[data-theme="dark"] .events-count-badge {
+    background: #1e293b;
+    color: #94a3b8;
+}
+
+[data-theme="dark"] .events-child-row {
+    background: #141f2e;
+}
+
+[data-theme="dark"] .events-child-row td {
+    border-color: #1e293b;
+}
+
+[data-theme="dark"] .events-child-row:hover td {
+    background: #1a273b;
+}
+
+[data-theme="dark"] .tree-branch {
+    color: #64748b;
+}
+
+[data-theme="dark"] .events-db-desc {
+    color: #94a3b8;
+}
+
+[data-theme="dark"] .events-db-empty-hint {
     color: #64748b;
 }

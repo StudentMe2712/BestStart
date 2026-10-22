@@ -321,6 +321,9 @@ function renderWikiSheet(rawContent) {
 
 function enterEditMode() {
     if (!orgEditor) return;
+    if (typeof window.switchCompanyTab === 'function') {
+        window.switchCompanyTab('data', true);
+    }
     isEditMode = true;
 
     if (wikiSheet) wikiSheet.style.display = 'none';
@@ -789,7 +792,86 @@ if (wikiSearch && wikiOrgList) {
 }
 
 /* ============================================================
-   1C DATABASES REGISTRY (AJAX CRUD — Спринт 3 Этап 3)
+   COMPANY TABS (Данные / Базы 1С — Спринт 4)
+   ============================================================ */
+
+(function initCompanyTabs() {
+    var tabDataBtn = document.getElementById('tabBtnData');
+    var tab1cBtn   = document.getElementById('tabBtn1c');
+    var paneData   = document.getElementById('tabPaneData');
+    var pane1c     = document.getElementById('tabPane1c');
+    var orgIdInput = document.getElementById('currentOrgId');
+
+    if (!tabDataBtn || !tab1cBtn || !paneData || !pane1c) return;
+
+    var orgId = orgIdInput ? orgIdInput.value : '';
+
+    function switchTab(tabKey, updateUrl) {
+        if (tabKey === '1c') {
+            tabDataBtn.classList.remove('is-active');
+            tabDataBtn.setAttribute('aria-selected', 'false');
+            tab1cBtn.classList.add('is-active');
+            tab1cBtn.setAttribute('aria-selected', 'true');
+
+            paneData.style.display = 'none';
+            pane1c.style.display = 'block';
+
+            if (window.sessionStorage) {
+                sessionStorage.setItem('wiki_active_tab', '1c');
+                if (orgId) sessionStorage.setItem('wiki_active_tab_' + orgId, '1c');
+            }
+            if (updateUrl && window.history && history.replaceState) {
+                history.replaceState(null, null, '#tab-1c');
+            }
+        } else {
+            tab1cBtn.classList.remove('is-active');
+            tab1cBtn.setAttribute('aria-selected', 'false');
+            tabDataBtn.classList.add('is-active');
+            tabDataBtn.setAttribute('aria-selected', 'true');
+
+            pane1c.style.display = 'none';
+            paneData.style.display = 'block';
+
+            if (window.sessionStorage) {
+                sessionStorage.setItem('wiki_active_tab', 'data');
+                if (orgId) sessionStorage.setItem('wiki_active_tab_' + orgId, 'data');
+            }
+            if (updateUrl && window.history && history.replaceState) {
+                history.replaceState(null, null, '#tab-data');
+            }
+        }
+    }
+
+    tabDataBtn.addEventListener('click', function() { switchTab('data', true); });
+    tab1cBtn.addEventListener('click', function() { switchTab('1c', true); });
+
+    // Initial tab detection
+    var initialTab = 'data';
+    if (window.location.hash === '#tab-1c') {
+        initialTab = '1c';
+    } else if (window.location.hash === '#tab-data') {
+        initialTab = 'data';
+    } else if (window.sessionStorage) {
+        var savedOrgTab = orgId ? sessionStorage.getItem('wiki_active_tab_' + orgId) : null;
+        var savedTab = savedOrgTab || sessionStorage.getItem('wiki_active_tab');
+        if (savedTab === '1c') initialTab = '1c';
+    }
+
+    switchTab(initialTab, false);
+
+    window.addEventListener('hashchange', function() {
+        if (window.location.hash === '#tab-1c') {
+            switchTab('1c', false);
+        } else if (window.location.hash === '#tab-data') {
+            switchTab('data', false);
+        }
+    });
+
+    window.switchCompanyTab = switchTab;
+})();
+
+/* ============================================================
+   1C DATABASES REGISTRY (AJAX CRUD — Спринт 3/4)
    ============================================================ */
 
 (function initDatabases1C() {
@@ -798,15 +880,16 @@ if (wikiSearch && wikiOrgList) {
     var closeDbModal   = document.getElementById('closeDb1cModal');
     var cancelDbModal  = document.getElementById('cancelDb1cBtn');
     var dbForm         = document.getElementById('db1cForm');
-    var dbIdInput      = document.getElementById('db1cId');
-    var dbNameInput    = document.getElementById('db1cName');
-    var dbReleaseInput = document.getElementById('db1cRelease');
-    var dbDateInput    = document.getElementById('db1cDate');
+    var dbIdInput      = document.getElementById('dbId') || document.getElementById('db1cId');
+    var dbNameInput    = document.getElementById('dbName') || document.getElementById('db1cName');
+    var dbDescInput    = document.getElementById('dbDescription') || document.getElementById('db1cRelease');
+    var dbDateInput    = document.getElementById('dbDate') || document.getElementById('db1cDate');
     var dbModalTitle   = document.getElementById('db1cModalTitle');
     var tableWrap      = document.getElementById('db1cTableWrap');
     var tableBody      = document.getElementById('db1cTableBody');
     var emptyState     = document.getElementById('db1cEmptyState');
     var countBadge     = document.getElementById('db1cCountBadge');
+    var tabDbCount     = document.getElementById('tabDbCount');
     var orgIdInput     = document.getElementById('currentOrgId');
 
     if (!dbModal || !orgIdInput) return;
@@ -826,22 +909,26 @@ if (wikiSearch && wikiOrgList) {
     function openModalForAdd() {
         if (!dbForm) return;
         dbForm.reset();
-        dbIdInput.value = '';
-        dbDateInput.value = getTodayString();
-        dbModalTitle.textContent = 'Добавить базу 1С';
+        if (dbIdInput) dbIdInput.value = '';
+        var altId = document.getElementById('db1cId');
+        if (altId) altId.value = '';
+        if (dbDateInput) dbDateInput.value = getTodayString();
+        if (dbModalTitle) dbModalTitle.textContent = 'Добавить базу 1С';
         dbModal.style.display = 'flex';
-        setTimeout(function() { dbNameInput.focus(); }, 50);
+        if (dbNameInput) setTimeout(function() { dbNameInput.focus(); }, 50);
     }
 
     function openModalForEdit(data) {
         if (!dbForm) return;
-        dbIdInput.value = data.id || '';
-        dbNameInput.value = data.name || '';
-        dbReleaseInput.value = data.release || '';
-        dbDateInput.value = data.date || getTodayString();
-        dbModalTitle.textContent = 'Редактировать базу 1С';
+        if (dbIdInput) dbIdInput.value = data.id || '';
+        var altId = document.getElementById('db1cId');
+        if (altId) altId.value = data.id || '';
+        if (dbNameInput) dbNameInput.value = data.name || '';
+        if (dbDescInput) dbDescInput.value = data.description || data.release || '';
+        if (dbDateInput) dbDateInput.value = data.date || getTodayString();
+        if (dbModalTitle) dbModalTitle.textContent = 'Редактировать базу 1С';
         dbModal.style.display = 'flex';
-        setTimeout(function() { dbNameInput.focus(); }, 50);
+        if (dbNameInput) setTimeout(function() { dbNameInput.focus(); }, 50);
     }
 
     function closeModal() {
@@ -849,10 +936,12 @@ if (wikiSearch && wikiOrgList) {
     }
 
     function updateViewCounts() {
-        if (!tableBody || !countBadge) return;
+        if (!tableBody) return;
         var rows = tableBody.querySelectorAll('tr');
         var count = rows.length;
-        countBadge.textContent = String(count);
+        if (countBadge) countBadge.textContent = String(count);
+        var tabBadge = document.getElementById('tabDbCount');
+        if (tabBadge) tabBadge.textContent = String(count);
         if (count > 0) {
             if (tableWrap) tableWrap.style.display = '';
             if (emptyState) emptyState.style.display = 'none';
@@ -872,11 +961,13 @@ if (wikiSearch && wikiOrgList) {
     function createRowHtml(db) {
         var formattedDate = formatDateRu(db.updated_at);
         var isoDate = db.updated_at ? new Date(db.updated_at).toISOString().split('T')[0] : '';
+        var desc = db.description || db.release || '—';
+        var safeDesc = escapeHtmlText(desc === '—' ? '' : desc);
         return '<td class="db-name-cell"><span class="db-name-text">' + escapeHtmlText(db.name) + '</span></td>' +
-               '<td class="db-release-cell"><span class="db-release-badge">' + escapeHtmlText(db.release || '—') + '</span></td>' +
+               '<td class="db-release-cell"><span class="db-release-badge db-desc-text">' + escapeHtmlText(desc) + '</span></td>' +
                '<td class="db-date-cell">' + formattedDate + '</td>' +
                '<td class="db-actions-cell">' +
-               '  <button type="button" class="btn-db-action btn-db-edit" title="Редактировать базу" data-id="' + db.id + '" data-name="' + escapeHtmlText(db.name) + '" data-release="' + escapeHtmlText(db.release || '') + '" data-date="' + isoDate + '">✏️</button>' +
+               '  <button type="button" class="btn-db-action btn-db-edit" title="Редактировать базу" data-id="' + db.id + '" data-name="' + escapeHtmlText(db.name) + '" data-description="' + safeDesc + '" data-release="' + safeDesc + '" data-date="' + isoDate + '">✏️</button>' +
                '  <button type="button" class="btn-db-action btn-db-delete" title="Удалить базу" data-id="' + db.id + '" data-name="' + escapeHtmlText(db.name) + '">🗑</button>' +
                '</td>';
     }
@@ -902,7 +993,8 @@ if (wikiSearch && wikiOrgList) {
                 var data = {
                     id: editBtn.getAttribute('data-id'),
                     name: editBtn.getAttribute('data-name'),
-                    release: editBtn.getAttribute('data-release'),
+                    description: editBtn.getAttribute('data-description') || editBtn.getAttribute('data-release') || '',
+                    release: editBtn.getAttribute('data-release') || editBtn.getAttribute('data-description') || '',
                     date: editBtn.getAttribute('data-date')
                 };
                 openModalForEdit(data);
@@ -937,10 +1029,10 @@ if (wikiSearch && wikiOrgList) {
     if (dbForm) {
         dbForm.addEventListener('submit', async function(e) {
             e.preventDefault();
-            var id = dbIdInput.value;
-            var name = dbNameInput.value.trim();
-            var release = dbReleaseInput.value.trim();
-            var updated_at = dbDateInput.value;
+            var id = dbIdInput ? dbIdInput.value : '';
+            var name = dbNameInput ? dbNameInput.value.trim() : '';
+            var desc = dbDescInput ? dbDescInput.value.trim() : '';
+            var updated_at = dbDateInput ? dbDateInput.value : '';
 
             if (!name) {
                 alert('Введите наименование базы');
@@ -955,7 +1047,7 @@ if (wikiSearch && wikiOrgList) {
                 var res = await fetch(url, {
                     method: method,
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ name: name, release: release, updated_at: updated_at })
+                    body: JSON.stringify({ name: name, description: desc, release: desc, updated_at: updated_at })
                 });
 
                 var data = await res.json();
@@ -967,13 +1059,13 @@ if (wikiSearch && wikiOrgList) {
                 if (isEdit) {
                     var existingRow = tableBody.querySelector('tr[data-id="' + id + '"]');
                     if (existingRow) {
-                        existingRow.innerHTML = createRowHtml({ id: id, name: name, release: release, updated_at: updated_at });
+                        existingRow.innerHTML = createRowHtml({ id: id, name: name, description: desc, release: desc, updated_at: updated_at });
                     }
                     showToast('База 1С успешно обновлена');
                 } else {
                     var newRow = document.createElement('tr');
                     newRow.setAttribute('data-id', data.id);
-                    newRow.innerHTML = createRowHtml({ id: data.id, name: name, release: release, updated_at: updated_at });
+                    newRow.innerHTML = createRowHtml({ id: data.id, name: name, description: desc, release: desc, updated_at: updated_at });
                     tableBody.insertBefore(newRow, tableBody.firstChild);
                     showToast('База 1С успешно добавлена');
                 }

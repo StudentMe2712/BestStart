@@ -163,126 +163,148 @@
                     </div>
                 </div>
 
+                <!-- COMPANY TABS NAVIGATION -->
+                <div class="company-tabs-bar" id="companyTabsBar" role="tablist" aria-label="Вкладки организации">
+                    <button type="button" class="company-tab-btn is-active" id="tabBtnData" data-tab="data" role="tab" aria-selected="true" aria-controls="tabPaneData">
+                        <span class="company-tab-icon" aria-hidden="true">📝</span>
+                        <span class="company-tab-label">Данные</span>
+                    </button>
+                    <button type="button" class="company-tab-btn" id="tabBtn1c" data-tab="1c" role="tab" aria-selected="false" aria-controls="tabPane1c">
+                        <span class="company-tab-icon" aria-hidden="true">📦</span>
+                        <span class="company-tab-label">Базы 1С</span>
+                        <span class="company-tab-badge" id="tabDbCount"><%= (typeof databases !== 'undefined' && databases) ? databases.length : 0 %></span>
+                    </button>
+                </div>
+
                 <!-- CONTENT SECTION -->
                 <div class="content-section">
-                    <!-- Clean Content Sheet (Shown in view mode) -->
-                    <div class="wiki-sheet wiki-content-sheet" id="wikiSheet"></div>
+                    <!-- Tab Pane 1: Данные -->
+                    <div class="company-tab-pane is-active" id="tabPaneData" role="tabpanel" aria-labelledby="tabBtnData">
+                        <!-- Clean Content Sheet (Shown in view mode) -->
+                        <div class="wiki-sheet wiki-content-sheet" id="wikiSheet"></div>
 
-                    <!-- Editor outer (Shown in edit mode) -->
-                    <div class="editor-outer" id="editorOuter" style="display: none;">
+                        <!-- Editor outer (Shown in edit mode) -->
+                        <div class="editor-outer" id="editorOuter" style="display: none;">
 
-                        <!-- Toolbar (hidden in view mode) -->
-                        <div class="editor-toolbar" id="editorToolbar">
-                            <select class="editor-format-select" id="formatSelect">
-                                <option value="p"  data-i18n="toolbar.paragraph">Абзац</option>
-                                <option value="h1" data-i18n="toolbar.h1">Заголовок 1</option>
-                                <option value="h2" data-i18n="toolbar.h2">Заголовок 2</option>
-                                <option value="h3" data-i18n="toolbar.h3">Заголовок 3</option>
-                            </select>
-                            <div class="tb-sep"></div>
-                            <button class="tb-btn" data-cmd="bold" title="Жирный"><b>B</b></button>
-                            <button class="tb-btn" data-cmd="italic" title="Курсив"><i>I</i></button>
-                            <button class="tb-btn" data-cmd="underline" title="Подчёркнутый"><u>U</u></button>
-                            <button class="tb-btn" data-cmd="strikeThrough" title="Зачёркнутый"><s>S</s></button>
-                            <div class="tb-sep"></div>
-                            <button class="tb-btn" data-cmd="insertUnorderedList" title="Маркированный список">
-                                <svg width="15" height="13" viewBox="0 0 15 13"><circle cx="1.5" cy="2" r="1.5" fill="currentColor"/><rect x="4" y="1" width="11" height="2" fill="currentColor" rx="1"/><circle cx="1.5" cy="6.5" r="1.5" fill="currentColor"/><rect x="4" y="5.5" width="11" height="2" fill="currentColor" rx="1"/><circle cx="1.5" cy="11" r="1.5" fill="currentColor"/><rect x="4" y="10" width="11" height="2" fill="currentColor" rx="1"/></svg>
-                            </button>
-                            <button class="tb-btn" data-cmd="insertOrderedList" title="Нумерованный список">
-                                <svg width="15" height="13" viewBox="0 0 15 13"><text x="0" y="4" font-size="5" fill="currentColor" font-family="sans-serif">1.</text><rect x="6" y="1" width="9" height="2" fill="currentColor" rx="1"/><text x="0" y="8.5" font-size="5" fill="currentColor" font-family="sans-serif">2.</text><rect x="6" y="5.5" width="9" height="2" fill="currentColor" rx="1"/><text x="0" y="13" font-size="5" fill="currentColor" font-family="sans-serif">3.</text><rect x="6" y="10" width="9" height="2" fill="currentColor" rx="1"/></svg>
-                            </button>
-                            <button class="tb-btn" data-cmd="indent" title="Отступ">
-                                <svg width="15" height="13" viewBox="0 0 15 13"><rect x="0" y="0" width="15" height="2" fill="currentColor" rx="1"/><rect x="4" y="5.5" width="11" height="2" fill="currentColor" rx="1"/><rect x="0" y="11" width="15" height="2" fill="currentColor" rx="1"/><polygon points="0,5.5 0,9.5 3.5,7.5" fill="currentColor"/></svg>
-                            </button>
-                            <div class="tb-sep"></div>
-                            <button class="tb-btn" data-cmd="justifyLeft" title="По левому краю">
-                                <svg width="15" height="12" viewBox="0 0 15 12"><rect x="0" y="0" width="15" height="2" fill="currentColor" rx="1"/><rect x="0" y="5" width="10" height="2" fill="currentColor" rx="1"/><rect x="0" y="10" width="15" height="2" fill="currentColor" rx="1"/></svg>
-                            </button>
-                            <button class="tb-btn" data-cmd="justifyCenter" title="По центру">
-                                <svg width="15" height="12" viewBox="0 0 15 12"><rect x="0" y="0" width="15" height="2" fill="currentColor" rx="1"/><rect x="2.5" y="5" width="10" height="2" fill="currentColor" rx="1"/><rect x="0" y="10" width="15" height="2" fill="currentColor" rx="1"/></svg>
-                            </button>
-                            <button class="tb-btn" data-cmd="justifyRight" title="По правому краю">
-                                <svg width="15" height="12" viewBox="0 0 15 12"><rect x="0" y="0" width="15" height="2" fill="currentColor" rx="1"/><rect x="5" y="5" width="10" height="2" fill="currentColor" rx="1"/><rect x="0" y="10" width="15" height="2" fill="currentColor" rx="1"/></svg>
-                            </button>
-                            <button class="tb-btn" data-cmd="justifyFull" title="По ширине">
-                                <svg width="15" height="12" viewBox="0 0 15 12"><rect x="0" y="0" width="15" height="2" fill="currentColor" rx="1"/><rect x="0" y="5" width="15" height="2" fill="currentColor" rx="1"/><rect x="0" y="10" width="15" height="2" fill="currentColor" rx="1"/></svg>
-                            </button>
-                            <div class="tb-sep"></div>
-                            <button class="tb-btn" id="linkBtn" title="Вставить ссылку">
-                                <svg width="15" height="15" viewBox="0 0 15 15" fill="none"><path d="M6 9L9 6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><path d="M7.5 4L8.5 3C9.5 2 11 2 12 3C13 4 13 5.5 12 6.5L11 7.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><path d="M8 11L7 12C6 13 4.5 13 3.5 12C2.5 11 2.5 9.5 3.5 8.5L4.5 7.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
-                            </button>
-                            <div class="tb-sep"></div>
-                            <button class="tb-btn" data-cmd="undo" title="Отменить">
-                                <svg width="15" height="15" viewBox="0 0 15 15" fill="none"><path d="M2.5 8.5C2.5 5.462 4.962 3 8 3C11.038 3 13.5 5.462 13.5 8.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><path d="M2.5 5.5V8.5H5.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                            </button>
-                            <button class="tb-btn" data-cmd="redo" title="Повторить">
-                                <svg width="15" height="15" viewBox="0 0 15 15" fill="none"><path d="M12.5 8.5C12.5 5.462 10.038 3 7 3C3.962 3 1.5 5.462 1.5 8.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><path d="M12.5 5.5V8.5H9.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                            </button>
+                            <!-- Toolbar (hidden in view mode) -->
+                            <div class="editor-toolbar" id="editorToolbar">
+                                <select class="editor-format-select" id="formatSelect">
+                                    <option value="p"  data-i18n="toolbar.paragraph">Абзац</option>
+                                    <option value="h1" data-i18n="toolbar.h1">Заголовок 1</option>
+                                    <option value="h2" data-i18n="toolbar.h2">Заголовок 2</option>
+                                    <option value="h3" data-i18n="toolbar.h3">Заголовок 3</option>
+                                </select>
+                                <div class="tb-sep"></div>
+                                <button class="tb-btn" data-cmd="bold" title="Жирный"><b>B</b></button>
+                                <button class="tb-btn" data-cmd="italic" title="Курсив"><i>I</i></button>
+                                <button class="tb-btn" data-cmd="underline" title="Подчёркнутый"><u>U</u></button>
+                                <button class="tb-btn" data-cmd="strikeThrough" title="Зачёркнутый"><s>S</s></button>
+                                <div class="tb-sep"></div>
+                                <button class="tb-btn" data-cmd="insertUnorderedList" title="Маркированный список">
+                                    <svg width="15" height="13" viewBox="0 0 15 13"><circle cx="1.5" cy="2" r="1.5" fill="currentColor"/><rect x="4" y="1" width="11" height="2" fill="currentColor" rx="1"/><circle cx="1.5" cy="6.5" r="1.5" fill="currentColor"/><rect x="4" y="5.5" width="11" height="2" fill="currentColor" rx="1"/><circle cx="1.5" cy="11" r="1.5" fill="currentColor"/><rect x="4" y="10" width="11" height="2" fill="currentColor" rx="1"/></svg>
+                                </button>
+                                <button class="tb-btn" data-cmd="insertOrderedList" title="Нумерованный список">
+                                    <svg width="15" height="13" viewBox="0 0 15 13"><text x="0" y="4" font-size="5" fill="currentColor" font-family="sans-serif">1.</text><rect x="6" y="1" width="9" height="2" fill="currentColor" rx="1"/><text x="0" y="8.5" font-size="5" fill="currentColor" font-family="sans-serif">2.</text><rect x="6" y="5.5" width="9" height="2" fill="currentColor" rx="1"/><text x="0" y="13" font-size="5" fill="currentColor" font-family="sans-serif">3.</text><rect x="6" y="10" width="9" height="2" fill="currentColor" rx="1"/></svg>
+                                </button>
+                                <button class="tb-btn" data-cmd="indent" title="Отступ">
+                                    <svg width="15" height="13" viewBox="0 0 15 13"><rect x="0" y="0" width="15" height="2" fill="currentColor" rx="1"/><rect x="4" y="5.5" width="11" height="2" fill="currentColor" rx="1"/><rect x="0" y="11" width="15" height="2" fill="currentColor" rx="1"/><polygon points="0,5.5 0,9.5 3.5,7.5" fill="currentColor"/></svg>
+                                </button>
+                                <div class="tb-sep"></div>
+                                <button class="tb-btn" data-cmd="justifyLeft" title="По левому краю">
+                                    <svg width="15" height="12" viewBox="0 0 15 12"><rect x="0" y="0" width="15" height="2" fill="currentColor" rx="1"/><rect x="0" y="5" width="10" height="2" fill="currentColor" rx="1"/><rect x="0" y="10" width="15" height="2" fill="currentColor" rx="1"/></svg>
+                                </button>
+                                <button class="tb-btn" data-cmd="justifyCenter" title="По центру">
+                                    <svg width="15" height="12" viewBox="0 0 15 12"><rect x="0" y="0" width="15" height="2" fill="currentColor" rx="1"/><rect x="2.5" y="5" width="10" height="2" fill="currentColor" rx="1"/><rect x="0" y="10" width="15" height="2" fill="currentColor" rx="1"/></svg>
+                                </button>
+                                <button class="tb-btn" data-cmd="justifyRight" title="По правому краю">
+                                    <svg width="15" height="12" viewBox="0 0 15 12"><rect x="0" y="0" width="15" height="2" fill="currentColor" rx="1"/><rect x="5" y="5" width="10" height="2" fill="currentColor" rx="1"/><rect x="0" y="10" width="15" height="2" fill="currentColor" rx="1"/></svg>
+                                </button>
+                                <button class="tb-btn" data-cmd="justifyFull" title="По ширине">
+                                    <svg width="15" height="12" viewBox="0 0 15 12"><rect x="0" y="0" width="15" height="2" fill="currentColor" rx="1"/><rect x="0" y="5" width="15" height="2" fill="currentColor" rx="1"/><rect x="0" y="10" width="15" height="2" fill="currentColor" rx="1"/></svg>
+                                </button>
+                                <div class="tb-sep"></div>
+                                <button class="tb-btn" id="linkBtn" title="Вставить ссылку">
+                                    <svg width="15" height="15" viewBox="0 0 15 15" fill="none"><path d="M6 9L9 6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><path d="M7.5 4L8.5 3C9.5 2 11 2 12 3C13 4 13 5.5 12 6.5L11 7.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><path d="M8 11L7 12C6 13 4.5 13 3.5 12C2.5 11 2.5 9.5 3.5 8.5L4.5 7.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+                                </button>
+                                <div class="tb-sep"></div>
+                                <button class="tb-btn" data-cmd="undo" title="Отменить">
+                                    <svg width="15" height="15" viewBox="0 0 15 15" fill="none"><path d="M2.5 8.5C2.5 5.462 4.962 3 8 3C11.038 3 13.5 5.462 13.5 8.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><path d="M2.5 5.5V8.5H5.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                                </button>
+                                <button class="tb-btn" data-cmd="redo" title="Повторить">
+                                    <svg width="15" height="15" viewBox="0 0 15 15" fill="none"><path d="M12.5 8.5C12.5 5.462 10.038 3 7 3C3.962 3 1.5 5.462 1.5 8.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><path d="M12.5 5.5V8.5H9.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                                </button>
+                            </div>
+
+                            <!-- Editor body -->
+                            <div class="editor-body" id="orgEditor" contenteditable="false" spellcheck="true"></div>
                         </div>
-
-                        <!-- Editor body -->
-                        <div class="editor-body" id="orgEditor" contenteditable="false" spellcheck="true"></div>
                     </div>
 
-                    <!-- 1C Databases Registry Section -->
-                    <section class="wiki-databases-section" id="wikiDatabasesSection">
-                        <div class="wiki-databases-header">
-                            <div class="wiki-databases-title-wrap">
-                                <span class="wiki-databases-icon" aria-hidden="true">🗄️</span>
-                                <h3 class="wiki-databases-title">Информационные базы 1С</h3>
-                                <span class="wiki-databases-count" id="db1cCountBadge"><%= (typeof databases !== 'undefined' && databases) ? databases.length : 0 %></span>
+                    <!-- Tab Pane 2: Базы 1С -->
+                    <div class="company-tab-pane" id="tabPane1c" role="tabpanel" aria-labelledby="tabBtn1c" style="display: none;">
+                        <!-- 1C Databases Registry Section -->
+                        <section class="wiki-databases-section" id="wikiDatabasesSection">
+                            <div class="wiki-databases-header">
+                                <div class="wiki-databases-title-wrap">
+                                    <span class="wiki-databases-icon" aria-hidden="true">📦</span>
+                                    <h3 class="wiki-databases-title">Информационные базы 1С</h3>
+                                    <span class="wiki-databases-count" id="db1cCountBadge"><%= (typeof databases !== 'undefined' && databases) ? databases.length : 0 %></span>
+                                </div>
+                                <button type="button" class="btn-add-database" id="addDatabaseBtn">
+                                    <span class="btn-icon">+</span>
+                                    <span>Добавить базу</span>
+                                </button>
                             </div>
-                            <button type="button" class="btn-add-database" id="addDatabaseBtn">
-                                <span class="btn-icon">+</span>
-                                <span>Добавить базу</span>
-                            </button>
-                        </div>
 
-                        <!-- Table -->
-                        <div class="wiki-databases-table-wrap" id="db1cTableWrap" style="<%= (typeof databases !== 'undefined' && databases && databases.length > 0) ? '' : 'display: none;' %>">
-                            <table class="wiki-databases-table" id="db1cTable">
-                                <thead>
-                                    <tr>
-                                        <th class="db-col-name">Наименование базы</th>
-                                        <th class="db-col-release">Релиз конфигурации</th>
-                                        <th class="db-col-date">Дата обновления</th>
-                                        <th class="db-col-actions">Действия</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="db1cTableBody">
-                                    <% if (typeof databases !== 'undefined' && databases && databases.length > 0) { %>
-                                        <% databases.forEach(function(db) { %>
-                                            <% 
-                                                const formattedDate = db.updated_at ? new Date(db.updated_at).toLocaleDateString('ru-RU') : '—';
-                                                const isoDate = db.updated_at ? new Date(db.updated_at).toISOString().split('T')[0] : '';
-                                            %>
-                                            <tr data-id="<%= db.id %>">
-                                                <td class="db-name-cell">
-                                                    <span class="db-name-text"><%= db.name %></span>
-                                                </td>
-                                                <td class="db-release-cell">
-                                                    <span class="db-release-badge"><%= db.release || '—' %></span>
-                                                </td>
-                                                <td class="db-date-cell">
-                                                    <%= formattedDate %>
-                                                </td>
-                                                <td class="db-actions-cell">
-                                                    <button type="button" class="btn-db-action btn-db-edit" title="Редактировать базу" data-id="<%= db.id %>" data-name="<%= db.name %>" data-release="<%= db.release %>" data-date="<%= isoDate %>">✏️</button>
-                                                    <button type="button" class="btn-db-action btn-db-delete" title="Удалить базу" data-id="<%= db.id %>" data-name="<%= db.name %>">🗑</button>
-                                                </td>
-                                            </tr>
-                                        <% }); %>
-                                    <% } %>
-                                </tbody>
-                            </table>
-                        </div>
+                            <!-- Table -->
+                            <div class="wiki-databases-table-wrap" id="db1cTableWrap" style="<%= (typeof databases !== 'undefined' && databases && databases.length > 0) ? '' : 'display: none;' %>">
+                                <table class="wiki-databases-table" id="db1cTable">
+                                    <thead>
+                                        <tr>
+                                            <th class="db-col-name">Информационная база</th>
+                                            <th class="db-col-release">Описание</th>
+                                            <th class="db-col-date">Дата</th>
+                                            <th class="db-col-actions">Действия</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="db1cTableBody">
+                                        <% if (typeof databases !== 'undefined' && databases && databases.length > 0) { %>
+                                            <% databases.forEach(function(db) { %>
+                                                <% 
+                                                    const formattedDate = db.updated_at ? new Date(db.updated_at).toLocaleDateString('ru-RU') : '—';
+                                                    const isoDate = db.updated_at ? new Date(db.updated_at).toISOString().split('T')[0] : '';
+                                                    const descText = db.description || db.release || '—';
+                                                %>
+                                                <tr data-id="<%= db.id %>">
+                                                    <td class="db-name-cell">
+                                                        <span class="db-name-text"><%= db.name %></span>
+                                                    </td>
+                                                    <td class="db-release-cell">
+                                                        <span class="db-release-badge db-desc-text"><%= descText %></span>
+                                                    </td>
+                                                    <td class="db-date-cell">
+                                                        <%= formattedDate %>
+                                                    </td>
+                                                    <td class="db-actions-cell">
+                                                        <button type="button" class="btn-db-action btn-db-edit" title="Редактировать базу" data-id="<%= db.id %>" data-name="<%= db.name %>" data-description="<%= db.description || db.release || '' %>" data-release="<%= db.release || db.description || '' %>" data-date="<%= isoDate %>">✏️</button>
+                                                        <button type="button" class="btn-db-action btn-db-delete" title="Удалить базу" data-id="<%= db.id %>" data-name="<%= db.name %>">🗑</button>
+                                                    </td>
+                                                </tr>
+                                            <% }); %>
+                                        <% } %>
+                                    </tbody>
+                                </table>
+                            </div>
 
-                        <!-- Empty State -->
-                        <div class="wiki-databases-empty" id="db1cEmptyState" style="<%= (typeof databases !== 'undefined' && databases && databases.length > 0) ? 'display: none;' : '' %>">
-                            <div class="empty-state-icon">📂</div>
-                            <div class="empty-state-text">Информационные базы 1С пока не добавлены</div>
-                            <div class="empty-state-subtext">Нажмите «+ Добавить базу», чтобы зафиксировать конфигурацию и релиз</div>
-                        </div>
+                            <!-- Empty State -->
+                            <div class="wiki-databases-empty" id="db1cEmptyState" style="<%= (typeof databases !== 'undefined' && databases && databases.length > 0) ? 'display: none;' : '' %>">
+                                <div class="empty-state-icon">📂</div>
+                                <div class="empty-state-text">Информационные базы 1С пока не добавлены</div>
+                                <div class="empty-state-subtext">Нажмите «+ Добавить базу», чтобы зафиксировать конфигурацию и описание</div>
+                            </div>
+                        </section>
+                    </div>
+                </div>
                     </section>
                 </div>
 
@@ -381,26 +403,27 @@
             </div>
             <form id="db1cForm">
                 <input type="hidden" id="db1cId" value="">
+                <input type="hidden" id="dbId" value="">
                 <div class="modal-body">
                     <div class="form-group">
-                        <label for="db1cName">Наименование базы:</label>
-                        <input type="text" id="db1cName" class="form-input" required placeholder="Например: Бухгалтерия для Казахстана (Прод)">
+                        <label for="dbName">Информационная база:</label>
+                        <input type="text" id="dbName" name="dbName" class="form-input" required placeholder="Например: Бухгалтерия (ЦБ)">
                     </div>
                     <div class="form-group">
-                        <label for="db1cRelease">Релиз конфигурации:</label>
-                        <input type="text" id="db1cRelease" class="form-input" list="db1cReleasePresets" placeholder="3.0.73.1 (БК)" required>
-                        <datalist id="db1cReleasePresets">
-                            <option value="3.0.73.1 (БК)">Бухгалтерия для Казахстана (БК)</option>
-                            <option value="3.1.28.12 (ЗУП)">Зарплата и управление персоналом (ЗУП)</option>
-                            <option value="2.4.14.8 (ERP)">Управление предприятием (ERP)</option>
-                            <option value="2.0.42.1 (УТ)">Управление торговлей (УТ)</option>
-                            <option value="1.3.19.1 (УПП)">Управление производственным предприятием (УПП)</option>
+                        <label for="dbDescription">Описание:</label>
+                        <input type="text" id="dbDescription" name="dbDescription" class="form-input" list="dbDescriptionPresets" placeholder="Например: 3.0.73.1 (БК), подсистема Строительство">
+                        <datalist id="dbDescriptionPresets">
+                            <option value="3.0.73.1 (БК), подсистема Строительство">Бухгалтерия для Казахстана</option>
+                            <option value="3.1.28.12 (ЗУП), типовая">Зарплата и управление персоналом</option>
+                            <option value="2.4.14.8 (ERP), модуль WMS">Управление предприятием</option>
+                            <option value="2.0.42.1 (УТ)">Управление торговлей</option>
+                            <option value="1.3.19.1 (УПП)">Управление производственным предприятием</option>
                         </datalist>
-                        <small class="form-hint">Выберите из шаблонов или введите по образцу: x.x.xx.x (Конфигурация)</small>
+                        <small class="form-hint">Свободный текст: конфигурация, релиз, специфика, доработки и расширения</small>
                     </div>
                     <div class="form-group">
-                        <label for="db1cDate">Дата обновления:</label>
-                        <input type="date" id="db1cDate" class="form-input" required>
+                        <label for="dbDate">Дата:</label>
+                        <input type="date" id="dbDate" name="dbDate" class="form-input" required>
                     </div>
                 </div>
                 <div class="modal-footer">
