@@ -141,7 +141,8 @@
                 <!-- Кнопка отправки формы -->
                 <button type="submit" id="submitBtn" class="btn-login" data-i18n="login.btn">Войти</button>
 
-                <!-- Информационный бейдж с автозаполнением admin / admin -->
+                <!-- Информационный бейдж с автозаполнением admin / admin (только для локального dev-окружения) -->
+                <% if (typeof isStubMode !== 'undefined' && isStubMode) { %>
                 <div class="quick-creds-container">
                     <button
                         type="button"
@@ -161,6 +162,7 @@
                         <span class="quick-creds-badge__action" data-i18n="login.quickFill">Заполнить</span>
                     </button>
                 </div>
+                <% } %>
 
                 <!-- Подвал формы со ссылкой на регистрацию -->
                 <div class="form-footer">
@@ -223,6 +225,7 @@
             }
 
             // 3. Подсказка локального входа (автозаполнение admin / admin)
+            <% if (typeof isStubMode !== 'undefined' && isStubMode) { %>
             if (quickCreds && usernameInput && passwordInput) {
                 quickCreds.addEventListener('click', function(e) {
                     e.preventDefault();
@@ -258,6 +261,7 @@
                     }
                 });
             }
+            <% } %>
 
             // 4. Валидация перед отправкой
             if (loginForm) {

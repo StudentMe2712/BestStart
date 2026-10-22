@@ -267,11 +267,9 @@ function renderWikiSheet(rawContent) {
     for (var i = 0; i < lines.length; i++) {
         var lineRaw = lines[i];
         var lineTrimmed = lineRaw.trim();
-        var lineNum = i + 1;
 
         if (!lineTrimmed) {
             html += '<div class="wiki-line wiki-line--empty">' +
-                        '<span class="wiki-line-num">' + lineNum + '</span>' +
                         '<div class="wiki-line-text">&nbsp;</div>' +
                     '</div>';
             continue;
@@ -288,7 +286,6 @@ function renderWikiSheet(rawContent) {
         var lineClasses = 'wiki-line' + (isHeader ? ' wiki-line--header' : '');
 
         html += '<div class="' + lineClasses + '" data-line-index="' + i + '">' +
-                    '<span class="wiki-line-num">' + lineNum + '</span>' +
                     '<div class="wiki-line-text">' + formattedText + '</div>' +
                     '<button type="button" class="wiki-line-copy-btn" title="Копировать строку" aria-label="Копировать">' +
                         '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">' +
@@ -881,7 +878,7 @@ if (wikiSearch && wikiOrgList) {
     var cancelDbModal  = document.getElementById('cancelDb1cBtn');
     var dbForm         = document.getElementById('db1cForm');
     var dbIdInput      = document.getElementById('dbId') || document.getElementById('db1cId');
-    var dbNameInput    = document.getElementById('dbName') || document.getElementById('db1cName');
+    var dbNameInput    = document.getElementById('dbNameInput') || document.getElementById('dbName') || document.getElementById('db1cName');
     var dbDescInput    = document.getElementById('dbDescription') || document.getElementById('db1cRelease');
     var dbDateInput    = document.getElementById('dbDate') || document.getElementById('db1cDate');
     var dbModalTitle   = document.getElementById('db1cModalTitle');

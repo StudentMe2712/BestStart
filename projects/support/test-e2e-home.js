@@ -97,6 +97,16 @@ async function runE2ETests() {
         if (!hasPulseDot) {
             throw new Error('Отсутствует зеленый пульсирующий индикатор статуса');
         }
+
+        // Проверка отсутствия артефакта верхней синей полоски над hero
+        const heroBeforeContent = await page.evaluate(() => {
+            const hero = document.querySelector('.command-hero');
+            return window.getComputedStyle(hero, '::before').content;
+        });
+        if (heroBeforeContent && heroBeforeContent !== 'none') {
+            throw new Error(`Артефакт верхней полоски (.command-hero::before) должен отсутствовать, но content="${heroBeforeContent}"`);
+        }
+        console.log('✓ Верхняя синяя полоска над блоком приветствия полностью удалена!');
         console.log('✓ Верхняя статусная секция полностью соответствует спецификации!');
 
         // 5. Проверка ПОЛНОГО удаления строки поиска и блока «Быстрый доступ к серверам»
@@ -158,6 +168,7 @@ async function runE2ETests() {
         if (!eventsCard) throw new Error('Не найдена карточка .command-widget--events');
         const eventsTitle = await eventsCard.$eval('.command-widget__title', el => el.textContent.trim());
         const eventsDesc = await eventsCard.$eval('.command-widget__desc', el => el.textContent.trim());
+        const eventsTotalBadge = await eventsCard.$eval('#eventsTotalBadge', el => el.textContent.trim());
         const eventsBadges = await eventsCard.$$('.widget-badge');
         for (const badge of eventsBadges) {
             const bText = await badge.evaluate(el => el.textContent.trim());
@@ -165,13 +176,16 @@ async function runE2ETests() {
                 throw new Error('Бейдж "В разработке" должен быть удален из карточки События');
             }
         }
+        if (!eventsTotalBadge || !eventsTotalBadge.includes('баз 1С')) {
+            throw new Error(`В карточке «События» ожидался симметричный бейдж с количеством баз 1С, получено: "${eventsTotalBadge}"`);
+        }
         const eventsBtn = await eventsCard.$('#btnOpenEvents, .command-widget__btn--primary');
         if (!eventsBtn) throw new Error('Отсутствует активная кнопка перехода к событиям (#btnOpenEvents)');
         const eventsBtnText = await eventsBtn.evaluate(el => el.textContent.trim());
         const eventsBtnHref = await eventsBtn.evaluate(el => el.getAttribute('href'));
         const eventsSvg = await eventsCard.$('.command-widget__icon-wrap svg');
 
-        console.log(`   [Карточка 2 События] Заголовок: "${eventsTitle}", Описание: "${eventsDesc}", Кнопка: "${eventsBtnText}" -> ${eventsBtnHref}`);
+        console.log(`   [Карточка 2 События] Заголовок: "${eventsTitle}", Бейдж: "${eventsTotalBadge}", Описание: "${eventsDesc}", Кнопка: "${eventsBtnText}" -> ${eventsBtnHref}`);
         if (eventsTitle !== 'События') throw new Error(`Ожидался заголовок "События", получено "${eventsTitle}"`);
         if (!eventsDesc.includes('Иерархический журнал и реестр информационных баз 1С') && !eventsDesc.includes('Журнал обновлений и релизов')) {
             throw new Error(`Неверное описание Событий: "${eventsDesc}", ожидалось "Иерархический журнал и реестр информационных баз 1С."`);
@@ -210,7 +224,36 @@ async function runE2ETests() {
             console.log(`   - Разрешение ${vp.name} (${vp.w}x${vp.h}): .command-hub ширина = ${hubWidth}px (макс. 1100px)`);
             if (hubWidth > 1100) throw new Error(`Контейнер превышает 1100px на разрешении ${vp.name}: ${hubWidth}px`);
         }
-        console.log('✓ Адаптивность и центрирование (1000-1100px) успешно подтверждены!');
+
+        // Проверка отступов и вертикального центрирования
+        const hubStyles = await page.$eval('.command-hub', el => {
+            const cs = window.getComputedStyle(el);
+            return {
+                display: cs.display,
+                justifyContent: cs.justifyContent,
+                minHeight: cs.minHeight
+            };
+        });
+        console.log(`   - Стили .command-hub: display=${hubStyles.display}, justifyContent=${hubStyles.justifyContent}, minHeight=${hubStyles.minHeight}`);
+        if (hubStyles.display !== 'flex' || hubStyles.justifyContent !== 'center') {
+            throw new Error(`Ожидалось вертикальное центрирование .command-hub (display: flex, justify-content: center), получено: ${JSON.stringify(hubStyles)}`);
+        }
+
+        const widgetStyles = await page.$eval('.command-widget', el => {
+            const cs = window.getComputedStyle(el);
+            return {
+                paddingTop: cs.paddingTop,
+                paddingRight: cs.paddingRight,
+                paddingBottom: cs.paddingBottom,
+                paddingLeft: cs.paddingLeft
+            };
+        });
+        console.log(`   - Отступы .command-widget: top=${widgetStyles.paddingTop}, right=${widgetStyles.paddingRight}, bottom=${widgetStyles.paddingBottom}, left=${widgetStyles.paddingLeft}`);
+        if (widgetStyles.paddingTop !== '36px' || widgetStyles.paddingRight !== '32px' || widgetStyles.paddingBottom !== '32px' || widgetStyles.paddingLeft !== '32px') {
+            throw new Error(`Ожидались отступы 36px 32px 32px у .command-widget, получено: ${JSON.stringify(widgetStyles)}`);
+        }
+
+        console.log('✓ Адаптивность, центрирование и комфортные отступы (36px 32px) успешно подтверждены!');
 
         console.log('\n====================================================');
         console.log('  🎉 ВСЕ E2E ТЕСТЫ ЭТАПА 4 УСПЕШНО ПРОЙДЕНЫ (8/8)!');

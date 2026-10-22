@@ -81,6 +81,12 @@
                     <h1 class="events-title">Журнал релизов 1С</h1>
                     <p class="events-subtitle">Реестр информационных баз организаций-клиентов</p>
                 </div>
+                <div class="events-header__actions">
+                    <label class="events-toggle-label" title="Скрыть организации без информационных баз 1С">
+                        <input type="checkbox" id="onlyWithBasesToggle" class="events-toggle-checkbox" checked>
+                        <span class="events-toggle-text">Только с базами 1С</span>
+                    </label>
+                </div>
             </div>
 
             <!-- Events Hierarchical Tree Card -->
@@ -96,6 +102,11 @@
                             </tr>
                         </thead>
                         <tbody id="eventsTableBody">
+                            <tr id="eventsNoBasesFilterRow" style="display: none;">
+                                <td colspan="4" class="events-empty-filter-cell">
+                                    Нет организаций с информационными базами 1С. Снимите переключатель «Только с базами 1С», чтобы увидеть все организации.
+                                </td>
+                            </tr>
                             <% if (groups && groups.length > 0) { %>
                                 <% groups.forEach(function(group) { 
                                     const hasBases = group.databases && group.databases.length > 0;
@@ -105,6 +116,7 @@
                                         data-org-id="<%= group.id %>" 
                                         data-name="<%= group.name %>" 
                                         data-count="<%= group.count %>" 
+                                        <%= !hasBases ? 'style="display: none;"' : '' %>
                                         <%= hasBases ? 'tabindex="0" role="button" aria-expanded="false"' : 'aria-expanded="false"' %>>
                                         <td class="col-org" colspan="4">
                                             <div class="events-group-cell">
@@ -113,7 +125,7 @@
                                                 <% } else { %>
                                                     <span class="tree-node-1c-spacer" aria-hidden="true"></span>
                                                 <% } %>
-                                                <a href="/wiki/organization/<%= group.id %>" class="events-group-title events-org-link" onclick="event.stopPropagation();" title="Открыть Wiki компании">
+                                                <a href="/wiki/organization/<%= group.id %>" class="events-group-title events-org-link" onclick="event.stopPropagation();" title="Перейти в карточку компании в Wiki">
                                                     <span class="events-org-name"><%= group.name %></span>
                                                     <span class="events-link-arrow">↗</span>
                                                 </a>
@@ -254,6 +266,48 @@
                         toggleGroup(row);
                     }
                 });
+            });
+        })();
+
+        // Toggle filter: Only organizations with 1C databases
+        (function () {
+            const toggle = document.getElementById('onlyWithBasesToggle');
+            if (!toggle) return;
+
+            const STORAGE_KEY = 'events_filter_only_bases';
+            const savedState = localStorage.getItem(STORAGE_KEY);
+            const emptyRows = document.querySelectorAll('.events-group-row.is-empty');
+            const noBasesRow = document.getElementById('eventsNoBasesFilterRow');
+
+            function applyFilter(onlyBases) {
+                emptyRows.forEach(function (row) {
+                    row.style.display = onlyBases ? 'none' : '';
+                });
+
+                if (noBasesRow) {
+                    const allGroups = document.querySelectorAll('.events-group-row');
+                    const hasVisible = Array.from(allGroups).some(function (r) {
+                        return r.style.display !== 'none';
+                    });
+                    noBasesRow.style.display = (!hasVisible && onlyBases) ? '' : 'none';
+                }
+            }
+
+            // Sync with saved preference (defaults to true / checked)
+            if (savedState !== null) {
+                toggle.checked = savedState === 'true';
+            } else {
+                toggle.checked = true;
+            }
+
+            applyFilter(toggle.checked);
+
+            toggle.addEventListener('change', function () {
+                const isChecked = this.checked;
+                try {
+                    localStorage.setItem(STORAGE_KEY, isChecked ? 'true' : 'false');
+                } catch (e) {}
+                applyFilter(isChecked);
             });
         })();
     </script>

@@ -118,7 +118,7 @@ app.get('/login', (req, res) => {
     if (req.session && req.session.user) {
         return res.redirect('/');
     }
-    res.render('login', { error: null });
+    res.render('login', { error: null, isStubMode: USE_STUB });
 });
 
 // Обработка логина
@@ -144,19 +144,21 @@ app.post('/login', async (req, res) => {
             req.session.save((err) => {
                 if (err) {
                     console.error('Ошибка сохранения сессии:', err);
-                    return res.render('login', { error: 'Ошибка сессии. Попробуйте ещё раз.' });
+                    return res.render('login', { error: 'Ошибка сессии. Попробуйте ещё раз.', isStubMode: USE_STUB });
                 }
                 res.redirect('/');
             });
         } else {
             res.render('login', { 
-                error: result.error || 'Ошибка входа' 
+                error: result.error || 'Ошибка входа',
+                isStubMode: USE_STUB 
             });
         }
     } catch (err) {
         console.error('Ошибка при входе:', err);
         res.render('login', { 
-            error: 'Ошибка сервера. Попробуйте позже.' 
+            error: 'Ошибка сервера. Попробуйте позже.',
+            isStubMode: USE_STUB 
         });
     }
 });
@@ -264,6 +266,8 @@ app.get('/', requireAuth, async (req, res) => {
     try {
         const organizations = await organizationsDB.getAll();
         const serverCount = Array.isArray(organizations) ? organizations.length : 25;
+        const allDatabases = await databases1CDB.getAll();
+        const totalDatabasesCount = allDatabases ? allDatabases.length : 0;
         const now = new Date();
         const formattedDate = now.toLocaleDateString('ru-RU', {
             weekday: 'long',
@@ -276,6 +280,7 @@ app.get('/', requireAuth, async (req, res) => {
         res.render('home', { 
             user: req.session.user,
             serverCount,
+            totalDatabasesCount,
             currentDateStr
         });
     } catch (err) {
@@ -283,10 +288,31 @@ app.get('/', requireAuth, async (req, res) => {
         res.render('home', { 
             user: req.session.user,
             serverCount: 25,
+            totalDatabasesCount: 4,
             currentDateStr: 'Четверг, 22 октября 2026 г.'
         });
     }
 });
+
+// Вспомогательная функция формирования монограммы организации (Спринт 6)
+function getOrgMonogram(name) {
+    if (!name || typeof name !== 'string') return '';
+    const clean = name.trim();
+    if (!clean) return '';
+    if (/^астанагенплан/i.test(clean)) return 'АП';
+
+    const words = clean.split(/[\s\-_–—/\\()]+/).filter(w => /[a-zA-Zа-яА-ЯёЁ]/.test(w));
+    if (words.length >= 2) {
+        const m1 = words[0].match(/[a-zA-Zа-яА-ЯёЁ]/);
+        const m2 = words[1].match(/[a-zA-Zа-яА-ЯёЁ]/);
+        if (m1 && m2) return (m1[0] + m2[0]).toUpperCase();
+    }
+    const letters = clean.replace(/[^a-zA-Zа-яА-ЯёЁ]/g, '');
+    if (letters.length >= 2) {
+        return letters.substring(0, 2).toUpperCase();
+    }
+    return letters.toUpperCase();
+}
 
 // Страница Wiki (список организаций)
 app.get('/wiki', requireAuth, async (req, res) => {
@@ -296,7 +322,8 @@ app.get('/wiki', requireAuth, async (req, res) => {
             organizations, 
             currentOrg: null,
             databases: [],
-            user: req.session.user
+            user: req.session.user,
+            orgMonogram: ''
         });
     } catch (err) {
         console.error('Ошибка получения организаций:', err.message);
@@ -322,7 +349,8 @@ app.get('/wiki/organization/:id', requireAuth, async (req, res) => {
             organizations, 
             currentOrg: organization,
             databases: databases || [],
-            user: req.session.user
+            user: req.session.user,
+            orgMonogram: getOrgMonogram(organization.name)
         });
     } catch (err) {
         console.error('Ошибка получения организации:', err.message);
@@ -884,6 +912,6 @@ const serverInstance = app.listen(PORT, () => {
     console.log(`${'='.repeat(50)}\n`);
 });
 
-module.exports = { app, serverInstance };
+module.exports = { app, serverInstance, getOrgMonogram };
 
 

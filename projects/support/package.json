@@ -10,7 +10,8 @@
     "migrate": "node migrate.js",
     "test:e2e:home": "node test-e2e-home.js",
     "test:e2e:wiki": "node test-e2e-wiki.js",
-    "test:e2e:login": "node test-e2e-login.js"
+    "test:e2e:login": "node test-e2e-login.js",
+    "test:e2e:events": "node test-stage2-events.js"
   },
   "keywords": [
     "wiki",

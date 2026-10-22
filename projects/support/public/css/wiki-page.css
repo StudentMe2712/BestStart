@@ -321,15 +321,36 @@ body.wiki-page-body {
 }
 
 .org-avatar {
-    width: 48px;
-    height: 48px;
+    width: 44px;
+    height: 44px;
     flex-shrink: 0;
 }
 
 .org-avatar svg {
-    width: 48px;
-    height: 48px;
+    width: 44px;
+    height: 44px;
     display: block;
+}
+
+.org-avatar--monogram {
+    width: 44px;
+    height: 44px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, var(--brand-primary, #3b82f6) 0%, #2563eb 100%);
+    box-shadow: 0 2px 8px rgba(37, 99, 235, 0.25);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    user-select: none;
+}
+
+.org-monogram-text {
+    color: #ffffff;
+    font-weight: 700;
+    font-size: 16px;
+    letter-spacing: 0.5px;
+    line-height: 1;
+    font-family: inherit;
 }
 
 .org-header-info {
@@ -553,16 +574,7 @@ body.wiki-page-body {
 }
 
 .wiki-line-num {
-    width: 32px;
-    min-width: 32px;
-    font-size: 12px;
-    color: #94a3b8;
-    user-select: none;
-    text-align: right;
-    margin-right: 18px;
-    font-weight: 500;
-    opacity: 0.7;
-    font-family: 'JetBrains Mono', Consolas, 'SF Mono', Menlo, Monaco, monospace;
+    display: none !important;
 }
 
 .wiki-line-text {
@@ -1067,6 +1079,18 @@ body.wiki-page-body {
     transition: background 0.15s;
 }
 
+.btn-primary,
+#saveDb1cBtn {
+    background: var(--brand-primary, #3b82f6);
+    border: 1px solid var(--brand-primary, #3b82f6);
+    color: #fff;
+    transition: background 0.18s ease, border-color 0.18s ease;
+}
+.btn-primary:hover,
+#saveDb1cBtn:hover {
+    background: #2563eb;
+    border-color: #2563eb;
+}
 .btn-success { background: #17994d; color: #fff; border-color: #17994d; }
 .btn-success:hover { background: #148040; }
 .btn-danger { background: #dc3545; color: #fff; border-color: #dc3545; }
@@ -1238,7 +1262,7 @@ body.wiki-page-body {
 }
 
 [data-theme="dark"] .wiki-line-num {
-    color: #64748b;
+    display: none !important;
 }
 
 [data-theme="dark"] .wiki-line-text {
@@ -1446,8 +1470,19 @@ body.wiki-page-body {
 }
 
 .company-tab-icon {
-    font-size: 16px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
     line-height: 1;
+    flex-shrink: 0;
+}
+
+.company-tab-icon svg {
+    width: 16px;
+    height: 16px;
+    display: block;
 }
 
 .company-tab-label {

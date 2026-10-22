@@ -701,6 +701,8 @@ body {
     padding: 36px 24px 64px;
     display: flex;
     flex-direction: column;
+    justify-content: center;
+    min-height: calc(100vh - 120px);
     gap: 28px;
     width: 100%;
     box-sizing: border-box;
@@ -715,16 +717,6 @@ body {
     box-shadow: var(--shadow-sm);
     position: relative;
     overflow: hidden;
-}
-
-.command-hero::before {
-    content: "";
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 3px;
-    background: linear-gradient(90deg, var(--color-primary) 0%, var(--color-accent) 50%, var(--color-success) 100%);
 }
 
 .command-hero__content {
@@ -1103,14 +1095,14 @@ body {
     background: var(--bg-surface);
     border: 1px solid var(--border-subtle);
     border-radius: var(--radius-xl);
-    padding: 32px 32px 28px;
+    padding: 36px 32px 32px;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
     box-shadow: var(--shadow-sm);
     transition: transform var(--transition-fast), box-shadow var(--transition-fast), border-color var(--transition-fast);
     position: relative;
-    min-height: 250px;
+    min-height: 270px;
     box-sizing: border-box;
     width: 100%;
 }
@@ -2395,50 +2387,75 @@ body {
 }
 
 /* ============================================================
-   THEME TOGGLE BUTTON  (pill-style)
+   THEME TOGGLE BUTTON  (Vector SVG Button)
    ============================================================ */
 
 .theme-toggle-btn {
     position: relative;
     display: inline-flex;
     align-items: center;
-    width: 40px;
-    height: 22px;
-    border-radius: 999px;
-    background: rgba(0, 0, 0, 0.40);
-    border: 1px solid rgba(255, 255, 255, 0.14);
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    color: rgba(255, 255, 255, 0.9);
     cursor: pointer;
     padding: 0;
     flex-shrink: 0;
     vertical-align: middle;
-    transition: background 0.22s, border-color 0.22s;
+    transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease, transform 0.15s ease;
 }
 
 .theme-toggle-btn:hover {
-    background: rgba(0, 0, 0, 0.55);
-    border-color: rgba(255, 255, 255, 0.26);
+    background: rgba(255, 255, 255, 0.16);
+    border-color: rgba(255, 255, 255, 0.32);
+    color: #ffffff;
+    transform: translateY(-1px);
 }
 
-.theme-toggle-btn::before {
-    content: "";
-    position: absolute;
-    top: 3px;
-    left: 3px;
-    width: 14px;
-    height: 14px;
-    border-radius: 50%;
-    background: #f9ca27;
-    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.45);
-    transition: transform 0.22s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-[data-theme="dark"] .theme-toggle-btn::before {
-    transform: translateX(18px);
+.theme-toggle-btn:active {
+    transform: translateY(0);
 }
 
 .theme-toggle-btn svg,
-.theme-icon--sun,
-.theme-icon--moon {
+.theme-toggle-btn .theme-icon {
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+    transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+/* Light mode: show moon to toggle to dark, hide sun */
+.theme-toggle-btn .theme-icon--sun {
+    display: none;
+}
+
+.theme-toggle-btn .theme-icon--moon {
+    display: block;
+    color: rgba(255, 255, 255, 0.92);
+}
+
+/* Dark mode: show sun to toggle to light, hide moon */
+[data-theme="dark"] .theme-toggle-btn {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(255, 255, 255, 0.14);
+    color: rgba(255, 255, 255, 0.9);
+}
+
+[data-theme="dark"] .theme-toggle-btn:hover {
+    background: rgba(255, 255, 255, 0.12);
+    border-color: rgba(255, 255, 255, 0.25);
+    color: #ffffff;
+}
+
+[data-theme="dark"] .theme-toggle-btn .theme-icon--sun {
+    display: block;
+    color: #facc15;
+}
+
+[data-theme="dark"] .theme-toggle-btn .theme-icon--moon {
     display: none;
 }
 
@@ -2994,12 +3011,65 @@ body {
 }
 
 .events-container {
-    max-width: 1080px;
+    max-width: 1400px;
     margin: 0 auto;
+    width: 100%;
 }
 
 .events-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    flex-wrap: wrap;
+    gap: 16px;
     margin-bottom: 20px;
+}
+
+.events-header__actions {
+    display: flex;
+    align-items: center;
+}
+
+.events-toggle-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    color: #334155;
+    cursor: pointer;
+    user-select: none;
+    transition: all 0.15s ease;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+.events-toggle-label:hover {
+    background: #f8fafc;
+    border-color: #94a3b8;
+    color: #0f172a;
+}
+
+.events-toggle-checkbox {
+    width: 16px;
+    height: 16px;
+    accent-color: #2563eb;
+    cursor: pointer;
+    margin: 0;
+}
+
+.events-toggle-text {
+    line-height: 1;
+}
+
+.events-empty-filter-cell {
+    text-align: center;
+    padding: 32px 16px;
+    color: #64748b;
+    font-size: 13px;
 }
 
 .events-header__info {
@@ -3166,6 +3236,9 @@ body {
     border-radius: 12px;
     box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
     overflow: hidden;
+    max-width: 1400px;
+    margin: 0 auto;
+    width: 100%;
 }
 
 .events-table-wrap {
@@ -3446,6 +3519,27 @@ body {
 }
 
 [data-theme="dark"] .events-subtitle {
+    color: #94a3b8;
+}
+
+[data-theme="dark"] .events-toggle-label {
+    background: #141f2e;
+    border-color: #1e293b;
+    color: #cbd5e1;
+    box-shadow: none;
+}
+
+[data-theme="dark"] .events-toggle-label:hover {
+    background: #1a273b;
+    border-color: #334155;
+    color: #f8fafc;
+}
+
+[data-theme="dark"] .events-toggle-checkbox {
+    accent-color: #3b82f6;
+}
+
+[data-theme="dark"] .events-empty-filter-cell {
     color: #94a3b8;
 }
 
