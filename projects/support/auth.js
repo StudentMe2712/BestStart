@@ -216,6 +216,60 @@ async function getAllUsers() {
     }
 }
 
+// Проверка существования пользователя по логину (Спринт 7)
+async function checkUserExists(username) {
+    if (!username || typeof username !== 'string' || !username.trim()) {
+        return { exists: false };
+    }
+    let connection;
+    try {
+        connection = await pool.getConnection();
+        const [rows] = await connection.query(
+            'SELECT id FROM users WHERE LOWER(username) = LOWER(?)',
+            [username.trim()]
+        );
+        return { exists: rows.length > 0 };
+    } catch (err) {
+        console.error('Ошибка проверки пользователя:', err.message);
+        return { exists: false, error: 'Ошибка сервера при проверке пользователя' };
+    } finally {
+        if (connection) connection.release();
+    }
+}
+
+// Сброс пароля пользователя (Спринт 7)
+async function resetPassword(username, newPassword) {
+    if (!username || typeof username !== 'string' || !username.trim()) {
+        return { success: false, error: 'Логин не указан' };
+    }
+    if (!newPassword || typeof newPassword !== 'string' || newPassword.length < 8) {
+        return { success: false, error: 'Пароль должен содержать минимум 8 символов' };
+    }
+    let connection;
+    try {
+        connection = await pool.getConnection();
+        const [rows] = await connection.query(
+            'SELECT id FROM users WHERE LOWER(username) = LOWER(?)',
+            [username.trim()]
+        );
+        if (rows.length === 0) {
+            return { success: false, error: 'Пользователь не найден' };
+        }
+        const passwordHash = await bcrypt.hash(newPassword, 10);
+        await connection.query(
+            'UPDATE users SET password_hash = ? WHERE id = ?',
+            [passwordHash, rows[0].id]
+        );
+        console.log(`✓ Пароль пользователя ${username.trim()} успешно обновлен`);
+        return { success: true };
+    } catch (err) {
+        console.error('Ошибка сброса пароля:', err.message);
+        return { success: false, error: 'Ошибка сервера при сбросе пароля' };
+    } finally {
+        if (connection) connection.release();
+    }
+}
+
 module.exports = {
     pool,
     initDatabase,
@@ -223,6 +277,8 @@ module.exports = {
     authenticateUser,
     getUserById,
     updateProfile,
-    getAllUsers
+    getAllUsers,
+    checkUserExists,
+    resetPassword
 };
 

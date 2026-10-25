@@ -9,7 +9,7 @@ const { JSDOM } = require('jsdom');
 
 const USE_STUB = process.env.DB_STUB === 'true' || process.env.DB_STUB === '1';
 
-let pool, initDatabase, registerUser, authenticateUser, getUserById, updateProfile, initOrganizationTable, organizationsDB, initDatabases1CTable, databases1CDB;
+let pool, initDatabase, registerUser, authenticateUser, getUserById, updateProfile, checkUserExists, resetPassword, initOrganizationTable, organizationsDB, initDatabases1CTable, databases1CDB;
 
 if (USE_STUB) {
     console.log('⚠️  Using in-memory DB stub (DB_STUB=true)');
@@ -20,6 +20,8 @@ if (USE_STUB) {
     authenticateUser = stub.authenticateUser;
     getUserById = stub.getUserById;
     updateProfile = stub.updateProfile;
+    checkUserExists = stub.checkUserExists;
+    resetPassword = stub.resetPassword;
     initOrganizationTable = stub.initOrganizationTable;
     organizationsDB = stub.organizationsDB;
     initDatabases1CTable = stub.initDatabases1CTable;
@@ -34,6 +36,8 @@ if (USE_STUB) {
     authenticateUser = authModule.authenticateUser;
     getUserById = authModule.getUserById;
     updateProfile = authModule.updateProfile;
+    checkUserExists = authModule.checkUserExists;
+    resetPassword = authModule.resetPassword;
     initOrganizationTable = dbModule.initOrganizationTable;
     organizationsDB = dbModule.organizationsDB;
     initDatabases1CTable = dbModule.initDatabases1CTable;
@@ -45,6 +49,14 @@ const PORT = process.env.PORT || 3000;
 
 // Required for Plesk/Nginx reverse proxy — makes req.secure and req.ip work correctly
 app.set('trust proxy', 1);
+
+// Middleware базовых HTTP-заголовков безопасности (Спринт 7)
+app.use((req, res, next) => {
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('X-Frame-Options', 'DENY');
+    res.setHeader('Referrer-Policy', 'same-origin');
+    next();
+});
 
 // Инициализация базы данных для пользователей
 initDatabase().catch(err => {
@@ -113,6 +125,84 @@ function requireAuth(req, res, next) {
     }
 }
 
+// ============================================================
+// ВСТРОЕННЫЙ IN-MEMORY RATE LIMITER (Спринт 7)
+// Ограничение: максимум 5 неудачных попыток за 15 минут с одного IP.
+// Защищаемые маршруты:
+// - POST /login
+// - POST /api/auth/verify-login
+// - POST /api/auth/reset-password
+// ============================================================
+const RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000; // 15 минут
+const RATE_LIMIT_MAX_FAILURES = 5;
+const failedAttemptsMap = new Map(); // ip -> [timestamp1, timestamp2, ...]
+
+function getClientIp(req) {
+    let ip = req.ip || req.connection?.remoteAddress || req.socket?.remoteAddress || '127.0.0.1';
+    if (ip === '::1' || ip === '::ffff:127.0.0.1') {
+        ip = '127.0.0.1';
+    }
+    return ip;
+}
+
+function getRecentFailedAttempts(ip) {
+    const now = Date.now();
+    const attempts = failedAttemptsMap.get(ip) || [];
+    const validAttempts = attempts.filter(ts => (now - ts) < RATE_LIMIT_WINDOW_MS);
+    if (validAttempts.length > 0) {
+        failedAttemptsMap.set(ip, validAttempts);
+    } else {
+        failedAttemptsMap.delete(ip);
+    }
+    return validAttempts;
+}
+
+function isRateLimited(ip) {
+    const attempts = getRecentFailedAttempts(ip);
+    return attempts.length >= RATE_LIMIT_MAX_FAILURES;
+}
+
+function recordFailedAttempt(ip) {
+    const attempts = getRecentFailedAttempts(ip);
+    attempts.push(Date.now());
+    failedAttemptsMap.set(ip, attempts);
+}
+
+function clearRateLimit(ip) {
+    failedAttemptsMap.delete(ip);
+}
+
+// Middleware проверки Rate Limit
+function checkAuthRateLimit(req, res, next) {
+    const ip = getClientIp(req);
+    if (isRateLimited(ip)) {
+        const message = 'Слишком много неудачных попыток. Пожалуйста, повторите попытку через 15 минут.';
+        if (req.xhr || req.is('json') || req.headers.accept?.includes('application/json') || req.path.startsWith('/api/')) {
+            return res.status(429).json({ success: false, error: message });
+        }
+        return res.status(429).render('login', {
+            error: message,
+            isStubMode: USE_STUB
+        });
+    }
+    next();
+}
+
+const rateLimitCleanupTimer = setInterval(() => {
+    const now = Date.now();
+    for (const [ip, timestamps] of failedAttemptsMap.entries()) {
+        const valid = timestamps.filter(ts => (now - ts) < RATE_LIMIT_WINDOW_MS);
+        if (valid.length === 0) {
+            failedAttemptsMap.delete(ip);
+        } else {
+            failedAttemptsMap.set(ip, valid);
+        }
+    }
+}, 5 * 60 * 1000);
+if (rateLimitCleanupTimer.unref) {
+    rateLimitCleanupTimer.unref();
+}
+
 // Страница логина
 app.get('/login', (req, res) => {
     if (req.session && req.session.user) {
@@ -121,14 +211,16 @@ app.get('/login', (req, res) => {
     res.render('login', { error: null, isStubMode: USE_STUB });
 });
 
-// Обработка логина
-app.post('/login', async (req, res) => {
+// Обработка логина с защитой Rate Limiter
+app.post('/login', checkAuthRateLimit, async (req, res) => {
     const { username, password, remember } = req.body;
+    const clientIp = getClientIp(req);
     
     try {
         const result = await authenticateUser(username, password);
         
         if (result.success) {
+            clearRateLimit(clientIp);
             req.session.user = {
                 id: result.user.id,
                 username: result.user.username,
@@ -144,11 +236,24 @@ app.post('/login', async (req, res) => {
             req.session.save((err) => {
                 if (err) {
                     console.error('Ошибка сохранения сессии:', err);
+                    if (req.is('json') || req.headers.accept?.includes('application/json')) {
+                        return res.status(500).json({ success: false, error: 'Ошибка сессии. Попробуйте ещё раз.' });
+                    }
                     return res.render('login', { error: 'Ошибка сессии. Попробуйте ещё раз.', isStubMode: USE_STUB });
+                }
+                if (req.is('json') || req.headers.accept?.includes('application/json')) {
+                    return res.json({ success: true, redirect: '/' });
                 }
                 res.redirect('/');
             });
         } else {
+            recordFailedAttempt(clientIp);
+            if (req.is('json') || req.headers.accept?.includes('application/json')) {
+                return res.status(401).json({ 
+                    success: false, 
+                    error: result.error || 'Ошибка входа' 
+                });
+            }
             res.render('login', { 
                 error: result.error || 'Ошибка входа',
                 isStubMode: USE_STUB 
@@ -156,6 +261,13 @@ app.post('/login', async (req, res) => {
         }
     } catch (err) {
         console.error('Ошибка при входе:', err);
+        recordFailedAttempt(clientIp);
+        if (req.is('json') || req.headers.accept?.includes('application/json')) {
+            return res.status(500).json({ 
+                success: false, 
+                error: 'Ошибка сервера. Попробуйте позже.' 
+            });
+        }
         res.render('login', { 
             error: 'Ошибка сервера. Попробуйте позже.',
             isStubMode: USE_STUB 
@@ -163,55 +275,81 @@ app.post('/login', async (req, res) => {
     }
 });
 
-// Страница регистрации
+// ============================================================
+// ПУБЛИЧНАЯ РЕГИСТРАЦИЯ ЗАКРЫТА (Спринт 7)
+// Публичная регистрация отключена в целях корпоративной безопасности.
+// Доступ предоставляется только системным администратором.
+// ============================================================
 app.get('/register', (req, res) => {
-    if (req.session && req.session.user) {
-        return res.redirect('/');
-    }
-    res.render('register', { error: null, success: null });
+    res.redirect('/login');
 });
 
-// Обработка регистрации
-app.post('/register', async (req, res) => {
-    const { username, password, confirmPassword } = req.body;
-    
-    try {
-        // Проверка совпадения паролей
-        if (password !== confirmPassword) {
-            return res.render('register', { 
-                error: 'Пароли не совпадают',
-                success: null
-            });
-        }
-        
-        const result = await registerUser(username, password);
-        
-        if (result.success) {
-            req.session.user = {
-                id: result.user.id,
-                username: result.user.username,
-                loginTime: new Date()
-            };
+app.post('/register', (req, res) => {
+    res.redirect('/login');
+});
 
-            req.session.save((err) => {
-                if (err) {
-                    console.error('Ошибка сохранения сессии:', err);
-                    return res.render('register', { error: 'Ошибка сессии. Попробуйте ещё раз.', success: null });
-                }
-                res.redirect('/');
-            });
+// ============================================================
+// API ДВУХШАГОВОГО СБРОСА ПАРОЛЯ И ВЕРИФИКАЦИИ (Спринт 7)
+// ============================================================
+
+// Шаг 1: Проверка существования логина
+app.post('/api/auth/verify-login', checkAuthRateLimit, async (req, res) => {
+    const { username } = req.body;
+    const clientIp = getClientIp(req);
+
+    if (!username || typeof username !== 'string' || !username.trim()) {
+        recordFailedAttempt(clientIp);
+        return res.status(404).json({ success: false, error: 'Пользователь не найден' });
+    }
+
+    try {
+        const check = await checkUserExists(username.trim());
+        if (check && check.exists) {
+            return res.json({ success: true, exists: true });
         } else {
-            res.render('register', { 
-                error: result.error || 'Ошибка регистрации',
-                success: null
-            });
+            recordFailedAttempt(clientIp);
+            return res.status(404).json({ success: false, error: 'Пользователь не найден' });
         }
     } catch (err) {
-        console.error('Ошибка при регистрации:', err);
-        res.render('register', { 
-            error: 'Ошибка сервера. Попробуйте позже.',
-            success: null
-        });
+        console.error('Ошибка проверки существования пользователя:', err);
+        recordFailedAttempt(clientIp);
+        return res.status(500).json({ success: false, error: 'Ошибка сервера' });
+    }
+});
+
+// Шаг 2: Установка нового пароля
+app.post('/api/auth/reset-password', checkAuthRateLimit, async (req, res) => {
+    const { username, password, confirmPassword } = req.body;
+    const clientIp = getClientIp(req);
+
+    if (!username || typeof username !== 'string' || !username.trim()) {
+        recordFailedAttempt(clientIp);
+        return res.status(400).json({ success: false, error: 'Логин не указан' });
+    }
+
+    if (!password || typeof password !== 'string' || password.length < 8) {
+        recordFailedAttempt(clientIp);
+        return res.status(400).json({ success: false, error: 'Пароль должен содержать минимум 8 символов' });
+    }
+
+    if (password !== confirmPassword) {
+        recordFailedAttempt(clientIp);
+        return res.status(400).json({ success: false, error: 'Пароли не совпадают' });
+    }
+
+    try {
+        const result = await resetPassword(username.trim(), password);
+        if (result.success) {
+            clearRateLimit(clientIp);
+            return res.json({ success: true, message: 'Пароль успешно изменен' });
+        } else {
+            recordFailedAttempt(clientIp);
+            return res.status(400).json({ success: false, error: result.error || 'Ошибка сброса пароля' });
+        }
+    } catch (err) {
+        console.error('Ошибка сброса пароля:', err);
+        recordFailedAttempt(clientIp);
+        return res.status(500).json({ success: false, error: 'Ошибка сервера при сбросе пароля' });
     }
 });
 
@@ -449,9 +587,10 @@ app.delete('/api/organizations/:id', requireAuth, async (req, res) => {
 });
 
 // ============================================================
-// API: БАЗЫ ДАННЫХ 1С
+// API: БАЗЫ ДАННЫХ 1С (ЗАКОНСЕРВИРОВАНО В СПРИНТЕ 7)
 // ============================================================
 
+/*
 // API: Получить все базы 1С организации
 app.get('/api/organizations/:id/databases', requireAuth, async (req, res) => {
     try {
@@ -522,10 +661,13 @@ app.delete('/api/databases/:id', requireAuth, async (req, res) => {
         res.status(500).json({ error: 'Ошибка сервера' });
     }
 });
+*/
 
 // ============================================================
-// СОБЫТИЯ (Журнал обновлений и релизов 1С)
+// СОБЫТИЯ (Журнал обновлений и релизов 1С) (ЗАКОНСЕРВИРОВАНО В СПРИНТЕ 7)
 // ============================================================
+
+/*
 app.get('/events', requireAuth, async (req, res) => {
     try {
         const organizations = await organizationsDB.getAll();
@@ -568,6 +710,7 @@ app.get('/events', requireAuth, async (req, res) => {
         res.status(500).send('Ошибка сервера');
     }
 });
+*/
 
 // Helper: Очистка HTML до чистого моноширинного текста с сохранением всех строк
 function cleanHtmlToPlainText(html) {
@@ -912,6 +1055,15 @@ const serverInstance = app.listen(PORT, () => {
     console.log(`${'='.repeat(50)}\n`);
 });
 
-module.exports = { app, serverInstance, getOrgMonogram };
+module.exports = {
+    app,
+    serverInstance,
+    getOrgMonogram,
+    checkAuthRateLimit,
+    isRateLimited,
+    clearRateLimit,
+    recordFailedAttempt,
+    failedAttemptsMap
+};
 
 

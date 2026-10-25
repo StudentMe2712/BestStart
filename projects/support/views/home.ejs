@@ -25,7 +25,7 @@
         <nav class="home-topbar__nav" aria-label="Основная навигация">
             <a href="/" class="home-topbar__nav-link is-active" data-i18n="nav.home">Главная</a>
             <a href="/wiki" class="home-topbar__nav-link">Wiki</a>
-            <a href="/events" class="home-topbar__nav-link">События</a>
+            <!-- <a href="/events" class="home-topbar__nav-link">События</a> -->
         </nav>
 
         <div class="home-topbar__account">
@@ -98,11 +98,11 @@
             </div>
         </section>
 
-        <!-- 2. Две крупные сбалансированные карточки по центру -->
+        <!-- 2. Крупная сбалансированная карточка Wiki по центру -->
         <section class="command-widgets-section" aria-label="Основные сервисы">
-            <div class="command-widgets-grid">
+            <div class="command-widgets-grid" style="max-width: 560px; margin: 0 auto; display: block;">
                 <!-- Карточка 1: Wiki (База знаний) -->
-                <article class="command-widget command-widget--wiki">
+                <article class="command-widget command-widget--wiki" style="max-width: 560px; margin: 0 auto;">
                     <div class="command-widget__header">
                         <div class="command-widget__icon-wrap command-widget__icon-wrap--wiki" aria-hidden="true">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
@@ -134,7 +134,7 @@
                     </div>
                 </article>
 
-                <!-- Карточка 2: События -->
+                <!-- Карточка 2: События
                 <article class="command-widget command-widget--events">
                     <div class="command-widget__header">
                         <div class="command-widget__icon-wrap command-widget__icon-wrap--events" aria-hidden="true">
@@ -167,6 +167,7 @@
                         </a>
                     </div>
                 </article>
+                -->
             </div>
         </section>
     </main>

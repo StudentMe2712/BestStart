@@ -116,6 +116,32 @@ async function getAllUsers() {
     return users;
 }
 
+async function checkUserExists(username) {
+    if (!username || typeof username !== 'string' || !username.trim()) {
+        return { exists: false };
+    }
+    const cleanUser = username.trim().toLowerCase();
+    const existing = users.some(u => u.username.toLowerCase() === cleanUser);
+    return { exists: existing };
+}
+
+async function resetPassword(username, newPassword) {
+    if (!username || typeof username !== 'string' || !username.trim()) {
+        return { success: false, error: 'Логин не указан' };
+    }
+    if (!newPassword || typeof newPassword !== 'string' || newPassword.length < 8) {
+        return { success: false, error: 'Пароль должен содержать минимум 8 символов' };
+    }
+    const cleanUser = username.trim().toLowerCase();
+    const user = users.find(u => u.username.toLowerCase() === cleanUser);
+    if (!user) {
+        return { success: false, error: 'Пользователь не найден' };
+    }
+    const hash = await bcrypt.hash(newPassword, 10);
+    user.password_hash = hash;
+    return { success: true };
+}
+
 const organizationsDB = {
     getAll: async () => [...organizations].sort((a, b) => a.name.localeCompare(b.name, 'ru')),
     getById: async (id) => organizations.find(o => o.id === Number(id)) || null,
@@ -258,6 +284,8 @@ module.exports = {
     getUserById,
     updateProfile,
     getAllUsers,
+    checkUserExists,
+    resetPassword,
     initOrganizationTable,
     organizationsDB,
     initDatabases1CTable,

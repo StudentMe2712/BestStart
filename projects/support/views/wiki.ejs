@@ -54,7 +54,7 @@
         <nav class="home-topbar__nav" aria-label="Основная навигация">
             <a href="/" class="home-topbar__nav-link" data-i18n="nav.home">Главная</a>
             <a href="/wiki" class="home-topbar__nav-link is-active">Wiki</a>
-            <a href="/events" class="home-topbar__nav-link">События</a>
+            <!-- <a href="/events" class="home-topbar__nav-link">События</a> -->
         </nav>
         <div class="home-topbar__account">
             <button class="theme-toggle-btn" id="themeToggle" type="button" aria-label="Переключить тему">
@@ -200,7 +200,7 @@
                     </div>
                 </div>
 
-                <!-- COMPANY TABS NAVIGATION -->
+                <!-- COMPANY TABS NAVIGATION (Консервация в Спринте 7)
                 <div class="company-tabs-bar" id="companyTabsBar" role="tablist" aria-label="Вкладки организации">
                     <button type="button" class="company-tab-btn is-active" id="tabBtnData" data-tab="data" role="tab" aria-selected="true" aria-controls="tabPaneData">
                         <span class="company-tab-icon" aria-hidden="true">
@@ -226,6 +226,7 @@
                         <span class="company-tab-badge" id="tabDbCount"><%= (typeof databases !== 'undefined' && databases) ? databases.length : 0 %></span>
                     </button>
                 </div>
+                -->
 
                 <!-- CONTENT SECTION -->
                 <div class="content-section">
@@ -291,9 +292,8 @@
                         </div>
                     </div>
 
-                    <!-- Tab Pane 2: Базы 1С -->
+                    <!-- Tab Pane 2: Базы 1С (Консервация в Спринте 7)
                     <div class="company-tab-pane" id="tabPane1c" role="tabpanel" aria-labelledby="tabBtn1c" style="display: none;">
-                        <!-- 1C Databases Registry Section -->
                         <section class="wiki-databases-section" id="wikiDatabasesSection">
                             <div class="wiki-databases-header">
                                 <div class="wiki-databases-title-wrap">
@@ -307,7 +307,6 @@
                                 </button>
                             </div>
 
-                            <!-- Table -->
                             <div class="wiki-databases-table-wrap" id="db1cTableWrap" style="<%= (typeof databases !== 'undefined' && databases && databases.length > 0) ? '' : 'display: none;' %>">
                                 <table class="wiki-databases-table" id="db1cTable">
                                     <thead>
@@ -347,7 +346,6 @@
                                 </table>
                             </div>
 
-                            <!-- Empty State -->
                             <div class="wiki-databases-empty" id="db1cEmptyState" style="<%= (typeof databases !== 'undefined' && databases && databases.length > 0) ? 'display: none;' : '' %>">
                                 <div class="empty-state-icon">📂</div>
                                 <div class="empty-state-text">Информационные базы 1С пока не добавлены</div>
@@ -355,6 +353,7 @@
                             </div>
                         </section>
                     </div>
+                    -->
                 </div>
 
                 <!-- BOTTOM BAR (shown in edit mode) -->
@@ -443,7 +442,7 @@
         </div>
     </div>
 
-    <!-- Modal: Add/Edit 1C Database -->
+    <!-- Modal: Add/Edit 1C Database (Консервация в Спринте 7)
     <div class="modal" id="db1cModal" style="display: none;">
         <div class="modal-content db-modal-content">
             <div class="modal-header">
@@ -475,6 +474,7 @@
             </form>
         </div>
     </div>
+    -->
 
     <!-- Floating Toast Container -->
     <div class="floating-toast-container" id="floatingToastContainer" aria-live="polite" aria-atomic="true"></div>
