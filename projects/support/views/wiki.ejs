@@ -109,19 +109,77 @@
             <div class="wiki-search-summary" id="wikiSearchSummary" style="display: none;"></div>
             <ul class="wiki-list" id="wikiOrgList">
                 <% if (organizations && organizations.length > 0) { %>
-                    <% organizations.forEach(function(org) { %>
-                        <% const orgNameLower = (org.name || '').toLowerCase(); %>
-                        <li class="wiki-list-item" data-name="<%= orgNameLower %>">
-                            <a href="/wiki/organization/<%= org.id %>"
-                               class="wiki-list-link<%= currentOrg && currentOrg.id === org.id ? ' is-active' : '' %>">
-                                <span class="wiki-active-bar" aria-hidden="true"></span>
-                                <svg class="wiki-list-chevron" viewBox="0 0 8 12" fill="none" width="7" height="11">
-                                    <path d="M1.5 1.5L6 6L1.5 10.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-                                </svg>
-                                <span class="wiki-list-name"><%= org.name %></span>
-                            </a>
-                        </li>
-                    <% }); %>
+                    <%
+                        const pins = (typeof userPins !== 'undefined' && Array.isArray(userPins)) ? userPins : [];
+                        const pinnedOrgs = [];
+                        const otherOrgs = [];
+                        organizations.forEach(function(org) {
+                            if (pins.includes(org.id)) {
+                                pinnedOrgs.push(org);
+                            } else {
+                                otherOrgs.push(org);
+                            }
+                        });
+                    %>
+                    <% if (pinnedOrgs.length > 0) { %>
+                        <li class="wiki-list-section-header" id="pinnedSectionHeader"><span>ЗАКРЕПЛЕННЫЕ</span></li>
+                        <% pinnedOrgs.forEach(function(org) { %>
+                            <% const orgNameLower = (org.name || '').toLowerCase(); %>
+                            <li class="wiki-list-item" data-name="<%= orgNameLower %>" data-org-id="<%= org.id %>">
+                                <a href="/wiki/organization/<%= org.id %>"
+                                   class="wiki-list-link<%= currentOrg && currentOrg.id === org.id ? ' is-active' : '' %>">
+                                    <span class="wiki-active-bar" aria-hidden="true"></span>
+                                    <svg class="wiki-list-chevron" viewBox="0 0 8 12" fill="none" width="7" height="11">
+                                        <path d="M1.5 1.5L6 6L1.5 10.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                                    </svg>
+                                    <span class="wiki-list-name"><%= org.name %></span>
+                                </a>
+                                <button type="button" class="wiki-pin-btn is-pinned" data-org-id="<%= org.id %>" title="Открепить организацию" aria-label="Булавка">
+                                    <svg viewBox="0 0 20 20" fill="currentColor">
+                                        <path d="M10 2a1 1 0 011 1v.258l2.842 1.895A1 1 0 0114.5 6v1a1 1 0 01-.293.707L13 8.914V14a1 1 0 01-1 1h-1v3a1 1 0 11-2 0v-3H8a1 1 0 01-1-1V8.914l-1.207-1.207A1 1 0 015.5 7V6a1 1 0 01.658-.847L9 3.258V3a1 1 0 011-1z"/>
+                                    </svg>
+                                </button>
+                            </li>
+                        <% }); %>
+                        <li class="wiki-list-section-header" id="allSectionHeader"><span>ВСЕ ОРГАНИЗАЦИИ</span></li>
+                        <% otherOrgs.forEach(function(org) { %>
+                            <% const orgNameLower = (org.name || '').toLowerCase(); %>
+                            <li class="wiki-list-item" data-name="<%= orgNameLower %>" data-org-id="<%= org.id %>">
+                                <a href="/wiki/organization/<%= org.id %>"
+                                   class="wiki-list-link<%= currentOrg && currentOrg.id === org.id ? ' is-active' : '' %>">
+                                    <span class="wiki-active-bar" aria-hidden="true"></span>
+                                    <svg class="wiki-list-chevron" viewBox="0 0 8 12" fill="none" width="7" height="11">
+                                        <path d="M1.5 1.5L6 6L1.5 10.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                                    </svg>
+                                    <span class="wiki-list-name"><%= org.name %></span>
+                                </a>
+                                <button type="button" class="wiki-pin-btn" data-org-id="<%= org.id %>" title="Закрепить организацию" aria-label="Булавка">
+                                    <svg viewBox="0 0 20 20" fill="currentColor">
+                                        <path d="M10 2a1 1 0 011 1v.258l2.842 1.895A1 1 0 0114.5 6v1a1 1 0 01-.293.707L13 8.914V14a1 1 0 01-1 1h-1v3a1 1 0 11-2 0v-3H8a1 1 0 01-1-1V8.914l-1.207-1.207A1 1 0 015.5 7V6a1 1 0 01.658-.847L9 3.258V3a1 1 0 011-1z"/>
+                                    </svg>
+                                </button>
+                            </li>
+                        <% }); %>
+                    <% } else { %>
+                        <% organizations.forEach(function(org) { %>
+                            <% const orgNameLower = (org.name || '').toLowerCase(); %>
+                            <li class="wiki-list-item" data-name="<%= orgNameLower %>" data-org-id="<%= org.id %>">
+                                <a href="/wiki/organization/<%= org.id %>"
+                                   class="wiki-list-link<%= currentOrg && currentOrg.id === org.id ? ' is-active' : '' %>">
+                                    <span class="wiki-active-bar" aria-hidden="true"></span>
+                                    <svg class="wiki-list-chevron" viewBox="0 0 8 12" fill="none" width="7" height="11">
+                                        <path d="M1.5 1.5L6 6L1.5 10.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                                    </svg>
+                                    <span class="wiki-list-name"><%= org.name %></span>
+                                </a>
+                                <button type="button" class="wiki-pin-btn" data-org-id="<%= org.id %>" title="Закрепить организацию" aria-label="Булавка">
+                                    <svg viewBox="0 0 20 20" fill="currentColor">
+                                        <path d="M10 2a1 1 0 011 1v.258l2.842 1.895A1 1 0 0114.5 6v1a1 1 0 01-.293.707L13 8.914V14a1 1 0 01-1 1h-1v3a1 1 0 11-2 0v-3H8a1 1 0 01-1-1V8.914l-1.207-1.207A1 1 0 015.5 7V6a1 1 0 01.658-.847L9 3.258V3a1 1 0 011-1z"/>
+                                    </svg>
+                                </button>
+                            </li>
+                        <% }); %>
+                    <% } %>
                     <li class="wiki-list-empty" id="wikiSearchNoResults" style="display: none;" data-i18n="wiki.sidebar.noResults">Ничего не найдено</li>
                 <% } else { %>
                     <li class="wiki-list-empty" data-i18n="wiki.sidebar.empty">Нет организаций</li>
@@ -290,6 +348,119 @@
                             <!-- Editor body -->
                             <div class="editor-body" id="orgEditor" contenteditable="false" spellcheck="true"></div>
                         </div>
+
+                        <!-- Секция: Прикрепленные файлы (Спринт 7) -->
+                        <section class="wiki-attachments-section" id="wikiAttachmentsSection">
+                            <div class="wiki-attachments-header">
+                                <div class="wiki-attachments-title-wrap">
+                                    <svg class="wiki-attachments-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
+                                    </svg>
+                                    <h3 class="wiki-attachments-title">Прикрепленные файлы</h3>
+                                    <span class="wiki-attachments-badge" id="filesCountBadge"><%= (typeof files !== 'undefined' && files) ? files.length : 0 %></span>
+                                </div>
+                                <div class="wiki-attachments-actions">
+                                    <input type="file" id="fileInputUpload" multiple style="display: none;" accept=".xlsx,.xls,.csv,.pdf,.docx,.doc,.png,.jpg,.jpeg,.webp,.txt,.zip,.rdp">
+                                    <button type="button" class="btn-attach-file" id="btnAttachFile">
+                                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                            <line x1="12" y1="5" x2="12" y2="19"/>
+                                            <line x1="5" y1="12" x2="19" y2="12"/>
+                                        </svg>
+                                        <span>+ Прикрепить файл</span>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Dropzone Drag & Drop -->
+                            <div class="attachments-dropzone" id="attachmentsDropzone" tabindex="0" role="button" aria-label="Перетащите файлы сюда или нажмите кнопку выше (до 25 МБ)">
+                                <div class="dropzone-inner">
+                                    <svg class="dropzone-icon" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                                        <polyline points="17 8 12 3 7 8"/>
+                                        <line x1="12" y1="3" x2="12" y2="15"/>
+                                    </svg>
+                                    <span class="dropzone-text">Перетащите файлы сюда или нажмите кнопку выше (до 25 МБ)</span>
+                                    <span class="dropzone-subtext">Поддерживаются форматы Excel, PDF, Word, изображения, архивы и RDP</span>
+                                </div>
+                            </div>
+
+                            <!-- Список файлов -->
+                            <div class="attachments-list" id="attachmentsList">
+                                <% if (typeof files !== 'undefined' && files && files.length > 0) { %>
+                                    <% files.forEach(function(file) { %>
+                                        <%
+                                            const ext = (file.original_name ? file.original_name.split('.').pop() : '').toLowerCase();
+                                            let fileType = 'file';
+                                            let iconColor = '#64748b';
+                                            let isPreviewable = false;
+
+                                            if (['xlsx', 'xls', 'csv'].includes(ext)) {
+                                                fileType = 'excel';
+                                                iconColor = '#10b981';
+                                            } else if (ext === 'pdf') {
+                                                fileType = 'pdf';
+                                                iconColor = '#ef4444';
+                                                isPreviewable = true;
+                                            } else if (['png', 'jpg', 'jpeg', 'webp'].includes(ext)) {
+                                                fileType = 'image';
+                                                iconColor = '#3b82f6';
+                                                isPreviewable = true;
+                                            } else if (['docx', 'doc', 'txt'].includes(ext)) {
+                                                fileType = 'doc';
+                                                iconColor = '#6366f1';
+                                            } else if (['zip', 'rdp'].includes(ext)) {
+                                                fileType = 'archive';
+                                                iconColor = '#f59e0b';
+                                            }
+
+                                            const size = file.file_size || 0;
+                                            let sizeFormatted = '';
+                                            if (size < 1024) {
+                                                sizeFormatted = size + ' Б';
+                                            } else if (size < 1024 * 1024) {
+                                                sizeFormatted = (size / 1024).toFixed(1) + ' КБ';
+                                            } else {
+                                                sizeFormatted = (size / (1024 * 1024)).toFixed(1) + ' МБ';
+                                            }
+                                        %>
+                                        <div class="file-chip file-chip--<%= fileType %>" data-file-id="<%= file.id %>" data-file-name="<%= file.original_name %>" data-file-type="<%= fileType %>" data-previewable="<%= isPreviewable ? 'true' : 'false' %>">
+                                            <div class="file-chip-main<%= isPreviewable ? ' is-clickable' : '' %>" <%= isPreviewable ? 'role="button" tabindex="0" title="Нажмите для предпросмотра"' : '' %>>
+                                                <span class="file-chip-icon" style="color: <%= iconColor %>;">
+                                                    <% if (fileType === 'excel') { %>
+                                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="17"/><line x1="16" y1="13" x2="8" y2="17"/></svg>
+                                                    <% } else if (fileType === 'pdf') { %>
+                                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M10 12h2a1 1 0 0 1 1 1v1a1 1 0 0 1-1 1h-2v-4z"/></svg>
+                                                    <% } else if (fileType === 'image') { %>
+                                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                                                    <% } else if (fileType === 'doc') { %>
+                                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/></svg>
+                                                    <% } else if (fileType === 'archive') { %>
+                                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/></svg>
+                                                    <% } else { %>
+                                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                                                    <% } %>
+                                                </span>
+                                                <div class="file-chip-info">
+                                                    <span class="file-chip-name" title="<%= file.original_name %>"><%= file.original_name %></span>
+                                                    <span class="file-chip-size"><%= sizeFormatted %></span>
+                                                </div>
+                                            </div>
+                                            <div class="file-chip-actions">
+                                                <a href="/api/files/<%= file.id %>/download" class="file-chip-btn file-chip-btn--download" title="Скачать файл" download="<%= file.original_name %>">
+                                                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                                                        <polyline points="7 10 12 15 17 10"/>
+                                                        <line x1="12" y1="15" x2="12" y2="3"/>
+                                                    </svg>
+                                                </a>
+                                                <button type="button" class="file-chip-btn file-chip-btn--delete" data-file-id="<%= file.id %>" data-file-name="<%= file.original_name %>" title="Удалить файл">
+                                                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    <% }); %>
+                                <% } %>
+                            </div>
+                        </section>
                     </div>
 
                     <!-- Tab Pane 2: Базы 1С (Консервация в Спринте 7)
@@ -476,12 +647,43 @@
     </div>
     -->
 
+    <!-- Lightbox Modal (Спринт 7) -->
+    <div class="file-lightbox-modal" id="fileLightboxModal" style="display: none;" role="dialog" aria-modal="true" aria-labelledby="lightboxFileName">
+        <div class="lightbox-overlay" id="lightboxOverlay"></div>
+        <div class="lightbox-window">
+            <div class="lightbox-header">
+                <div class="lightbox-title-wrap">
+                    <svg class="lightbox-title-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                        <polyline points="14 2 14 8 20 8"/>
+                    </svg>
+                    <span class="lightbox-filename" id="lightboxFileName">Файл</span>
+                </div>
+                <div class="lightbox-controls">
+                    <a href="#" class="lightbox-btn lightbox-btn--download" id="lightboxDownloadBtn" title="Скачать файл" download>
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                            <polyline points="7 10 12 15 17 10"/>
+                            <line x1="12" y1="15" x2="12" y2="3"/>
+                        </svg>
+                        <span>Скачать</span>
+                    </a>
+                    <button type="button" class="lightbox-btn lightbox-btn--close" id="lightboxCloseBtn" title="Закрыть (Esc)" aria-label="Закрыть">&times;</button>
+                </div>
+            </div>
+            <div class="lightbox-body" id="lightboxBody">
+                <!-- <img> or <iframe> inserted dynamically -->
+            </div>
+        </div>
+    </div>
+
     <!-- Floating Toast Container -->
     <div class="floating-toast-container" id="floatingToastContainer" aria-live="polite" aria-atomic="true"></div>
 
     <script>
         var initialContent = <%- currentOrg ? JSON.stringify(currentOrg.content || '').replace(/<\//g, '<\\/') : '""' %>;
         var initialDatabases = <%- (typeof databases !== 'undefined' && databases) ? JSON.stringify(databases).replace(/<\//g, '<\\/') : '[]' %>;
+        var initialFiles = <%- (typeof files !== 'undefined' && files) ? JSON.stringify(files).replace(/<\//g, '<\\/') : '[]' %>;
     </script>
     <script src="/js/i18n.js"></script>
     <script src="/js/main.js"></script>

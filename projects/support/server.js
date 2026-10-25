@@ -3,13 +3,15 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const session = require('express-session');
 const path = require('path');
+const fs = require('fs');
+const multer = require('multer');
 const { marked } = require('marked');
 const createDOMPurify = require('dompurify');
 const { JSDOM } = require('jsdom');
 
 const USE_STUB = process.env.DB_STUB === 'true' || process.env.DB_STUB === '1';
 
-let pool, initDatabase, registerUser, authenticateUser, getUserById, updateProfile, checkUserExists, resetPassword, initOrganizationTable, organizationsDB, initDatabases1CTable, databases1CDB;
+let pool, initDatabase, registerUser, authenticateUser, getUserById, updateProfile, checkUserExists, resetPassword, initOrganizationTable, organizationsDB, initDatabases1CTable, databases1CDB, initUserPinsTable, userPinsDB, initFilesTable, filesDB;
 
 if (USE_STUB) {
     console.log('⚠️  Using in-memory DB stub (DB_STUB=true)');
@@ -26,6 +28,10 @@ if (USE_STUB) {
     organizationsDB = stub.organizationsDB;
     initDatabases1CTable = stub.initDatabases1CTable;
     databases1CDB = stub.databases1CDB;
+    initUserPinsTable = stub.initUserPinsTable;
+    userPinsDB = stub.userPinsDB;
+    initFilesTable = stub.initFilesTable;
+    filesDB = stub.filesDB;
 } else {
     const MySQLStore = require('express-mysql-session')(session);
     const dbModule = require('./database');
@@ -42,6 +48,10 @@ if (USE_STUB) {
     organizationsDB = dbModule.organizationsDB;
     initDatabases1CTable = dbModule.initDatabases1CTable;
     databases1CDB = dbModule.databases1CDB;
+    initUserPinsTable = dbModule.initUserPinsTable;
+    userPinsDB = dbModule.userPinsDB;
+    initFilesTable = dbModule.initFilesTable;
+    filesDB = dbModule.filesDB;
 }
 
 const app = express();
@@ -71,6 +81,16 @@ initOrganizationTable().catch(err => {
 // Инициализация таблицы баз 1С
 initDatabases1CTable().catch(err => {
     console.error('Не удалось инициализировать таблицу баз 1С:', err);
+});
+
+// Инициализация таблицы закреплений организаций (Спринт 7)
+initUserPinsTable().catch(err => {
+    console.error('Не удалось инициализировать таблицу user_pins:', err);
+});
+
+// Инициализация таблицы прикрепленных файлов (Спринт 7)
+initFilesTable().catch(err => {
+    console.error('Не удалось инициализировать таблицу organization_files:', err);
 });
 
 // Настройка DOMPurify для безопасности
@@ -124,6 +144,59 @@ function requireAuth(req, res, next) {
         res.redirect('/login');
     }
 }
+
+// ============================================================
+// НАСТРОЙКА MULTER ДЛЯ ЗАГРУЗКИ ФАЙЛОВ ОРГАНИЗАЦИЙ (Спринт 7)
+// ============================================================
+const ALLOWED_EXTENSIONS = [
+    '.xlsx', '.xls', '.csv', '.pdf', '.docx', '.doc',
+    '.png', '.jpg', '.jpeg', '.webp', '.txt', '.zip', '.rdp'
+];
+
+const storage = multer.diskStorage({
+    destination: (req, file, cb) => {
+        const orgId = req.params.id;
+        const uploadDir = path.join(__dirname, 'uploads', `org_${orgId}`);
+        if (!fs.existsSync(uploadDir)) {
+            fs.mkdirSync(uploadDir, { recursive: true });
+        }
+        cb(null, uploadDir);
+    },
+    filename: (req, file, cb) => {
+        const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
+        const ext = path.extname(file.originalname).toLowerCase();
+        cb(null, `${uniqueSuffix}${ext}`);
+    }
+});
+
+const fileFilter = (req, file, cb) => {
+    const ext = path.extname(file.originalname || '').toLowerCase();
+    if (ALLOWED_EXTENSIONS.includes(ext)) {
+        cb(null, true);
+    } else {
+        cb(new Error(`Недопустимый тип файла (${ext}). Разрешены только: ${ALLOWED_EXTENSIONS.join(', ')}`));
+    }
+};
+
+const upload = multer({
+    storage,
+    limits: { fileSize: 25 * 1024 * 1024 }, // 25 МБ
+    fileFilter
+});
+
+const uploadSingleFile = (req, res, next) => {
+    upload.single('file')(req, res, (err) => {
+        if (err instanceof multer.MulterError) {
+            if (err.code === 'LIMIT_FILE_SIZE') {
+                return res.status(400).json({ success: false, error: 'Размер файла превышает допустимый лимит (25 МБ)' });
+            }
+            return res.status(400).json({ success: false, error: `Ошибка загрузки файла: ${err.message}` });
+        } else if (err) {
+            return res.status(400).json({ success: false, error: err.message });
+        }
+        next();
+    });
+};
 
 // ============================================================
 // ВСТРОЕННЫЙ IN-MEMORY RATE LIMITER (Спринт 7)
@@ -406,6 +479,8 @@ app.get('/', requireAuth, async (req, res) => {
         const serverCount = Array.isArray(organizations) ? organizations.length : 25;
         const allDatabases = await databases1CDB.getAll();
         const totalDatabasesCount = allDatabases ? allDatabases.length : 0;
+        const userPins = await userPinsDB.getUserPins(req.session.user.id);
+        const pinnedOrgs = Array.isArray(organizations) ? organizations.filter(o => (userPins || []).includes(o.id)) : [];
         const now = new Date();
         const formattedDate = now.toLocaleDateString('ru-RU', {
             weekday: 'long',
@@ -419,7 +494,10 @@ app.get('/', requireAuth, async (req, res) => {
             user: req.session.user,
             serverCount,
             totalDatabasesCount,
-            currentDateStr
+            currentDateStr,
+            userPins: userPins || [],
+            pinnedOrgs: pinnedOrgs || [],
+            organizations: organizations || []
         });
     } catch (err) {
         console.error('Ошибка рендеринга главной страницы:', err);
@@ -427,7 +505,10 @@ app.get('/', requireAuth, async (req, res) => {
             user: req.session.user,
             serverCount: 25,
             totalDatabasesCount: 4,
-            currentDateStr: 'Четверг, 22 октября 2026 г.'
+            currentDateStr: 'Четверг, 22 октября 2026 г.',
+            userPins: [],
+            pinnedOrgs: [],
+            organizations: []
         });
     }
 });
@@ -456,12 +537,15 @@ function getOrgMonogram(name) {
 app.get('/wiki', requireAuth, async (req, res) => {
     try {
         const organizations = await organizationsDB.getAll();
+        const userPins = await userPinsDB.getUserPins(req.session.user.id);
         res.render('wiki', { 
             organizations, 
             currentOrg: null,
             databases: [],
             user: req.session.user,
-            orgMonogram: ''
+            orgMonogram: '',
+            userPins: userPins || [],
+            files: []
         });
     } catch (err) {
         console.error('Ошибка получения организаций:', err.message);
@@ -482,13 +566,17 @@ app.get('/wiki/organization/:id', requireAuth, async (req, res) => {
         }
 
         const databases = await databases1CDB.getByOrgId(orgId);
+        const userPins = await userPinsDB.getUserPins(req.session.user.id);
+        const files = await filesDB.getByOrgId(orgId);
         
         res.render('wiki', { 
             organizations, 
             currentOrg: organization,
             databases: databases || [],
             user: req.session.user,
-            orgMonogram: getOrgMonogram(organization.name)
+            orgMonogram: getOrgMonogram(organization.name),
+            userPins: userPins || [],
+            files: files || []
         });
     } catch (err) {
         console.error('Ошибка получения организации:', err.message);
@@ -583,6 +671,156 @@ app.delete('/api/organizations/:id', requireAuth, async (req, res) => {
     } catch (err) {
         console.error('Ошибка удаления организации:', err.message);
         return res.status(500).json({ error: 'Ошибка сервера' });
+    }
+});
+
+// ============================================================
+// API: ЗАКРЕПЛЕНИЕ ОРГАНИЗАЦИЙ (USER PINS — СПРИНТ 7)
+// ============================================================
+
+// Переключить закрепление организации
+app.post('/api/organizations/:id/pin', requireAuth, async (req, res) => {
+    try {
+        const orgId = Number(req.params.id);
+        const userId = req.session.user.id;
+        const result = await userPinsDB.toggleUserPin(userId, orgId);
+        res.json({
+            success: true,
+            pinned: result.pinned,
+            pins: result.pins
+        });
+    } catch (err) {
+        console.error('Ошибка переключения закрепления организации:', err);
+        res.status(500).json({ success: false, error: 'Ошибка сервера' });
+    }
+});
+
+// Получить список ID закрепленных организаций текущего пользователя
+app.get('/api/user/pins', requireAuth, async (req, res) => {
+    try {
+        const userId = req.session.user.id;
+        const pins = await userPinsDB.getUserPins(userId);
+        res.json({
+            success: true,
+            pins: pins || []
+        });
+    } catch (err) {
+        console.error('Ошибка получения списка закреплений пользователя:', err);
+        res.status(500).json({ success: false, error: 'Ошибка сервера' });
+    }
+});
+
+// ============================================================
+// API: ПРИКРЕПЛЕННЫЕ ФАЙЛЫ (ORGANIZATION FILES — СПРИНТ 7)
+// ============================================================
+
+// Загрузить файл для организации
+app.post('/api/organizations/:id/files', requireAuth, uploadSingleFile, async (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ success: false, error: 'Файл не прикреплен' });
+        }
+        const orgId = Number(req.params.id);
+        const createdFile = await filesDB.create({
+            org_id: orgId,
+            filename: req.file.filename,
+            original_name: req.file.originalname,
+            mime_type: req.file.mimetype || 'application/octet-stream',
+            file_size: req.file.size,
+            uploaded_by: req.session.user.username
+        });
+        res.json({
+            success: true,
+            file: createdFile
+        });
+    } catch (err) {
+        console.error('Ошибка загрузки файла организации:', err);
+        res.status(500).json({ success: false, error: 'Ошибка сервера при загрузке файла' });
+    }
+});
+
+// Получить список файлов организации
+app.get('/api/organizations/:id/files', requireAuth, async (req, res) => {
+    try {
+        const orgId = Number(req.params.id);
+        const files = await filesDB.getByOrgId(orgId);
+        res.json({
+            success: true,
+            files: files || []
+        });
+    } catch (err) {
+        console.error('Ошибка получения списка файлов организации:', err);
+        res.status(500).json({ success: false, error: 'Ошибка сервера' });
+    }
+});
+
+// Просмотреть файл (инлайн / lightbox)
+app.get('/api/files/:fileId/view', requireAuth, async (req, res) => {
+    try {
+        const fileId = Number(req.params.fileId);
+        const file = await filesDB.getById(fileId);
+        if (!file) {
+            return res.status(404).json({ success: false, error: 'Файл не найден' });
+        }
+
+        const filePath = path.join(__dirname, 'uploads', `org_${file.org_id}`, file.filename);
+        if (!fs.existsSync(filePath)) {
+            return res.status(404).json({ success: false, error: 'Файл не найден на сервере' });
+        }
+
+        res.setHeader('Content-Type', file.mime_type || 'application/octet-stream');
+        res.setHeader('Content-Disposition', `inline; filename*=UTF-8''${encodeURIComponent(file.original_name)}`);
+        res.sendFile(filePath);
+    } catch (err) {
+        console.error('Ошибка просмотра файла:', err);
+        res.status(500).json({ success: false, error: 'Ошибка сервера при открытии файла' });
+    }
+});
+
+// Скачать файл
+app.get('/api/files/:fileId/download', requireAuth, async (req, res) => {
+    try {
+        const fileId = Number(req.params.fileId);
+        const file = await filesDB.getById(fileId);
+        if (!file) {
+            return res.status(404).json({ success: false, error: 'Файл не найден' });
+        }
+
+        const filePath = path.join(__dirname, 'uploads', `org_${file.org_id}`, file.filename);
+        if (!fs.existsSync(filePath)) {
+            return res.status(404).json({ success: false, error: 'Файл не найден на сервере' });
+        }
+
+        res.download(filePath, file.original_name);
+    } catch (err) {
+        console.error('Ошибка скачивания файла:', err);
+        res.status(500).json({ success: false, error: 'Ошибка сервера при скачивании файла' });
+    }
+});
+
+// Удалить файл
+app.delete('/api/files/:fileId', requireAuth, async (req, res) => {
+    try {
+        const fileId = Number(req.params.fileId);
+        const file = await filesDB.getById(fileId);
+        if (!file) {
+            return res.status(404).json({ success: false, error: 'Файл не найден' });
+        }
+
+        const filePath = path.join(__dirname, 'uploads', `org_${file.org_id}`, file.filename);
+        if (fs.existsSync(filePath)) {
+            try {
+                fs.unlinkSync(filePath);
+            } catch (unlinkErr) {
+                console.warn('Предупреждение при удалении файла с диска:', unlinkErr.message);
+            }
+        }
+
+        await filesDB.delete(fileId);
+        res.json({ success: true });
+    } catch (err) {
+        console.error('Ошибка удаления файла:', err);
+        res.status(500).json({ success: false, error: 'Ошибка сервера при удалении файла' });
     }
 });
 
@@ -1063,7 +1301,9 @@ module.exports = {
     isRateLimited,
     clearRateLimit,
     recordFailedAttempt,
-    failedAttemptsMap
+    failedAttemptsMap,
+    userPinsDB,
+    filesDB
 };
 
 

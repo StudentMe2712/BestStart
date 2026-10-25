@@ -275,11 +275,179 @@ const databases1CDB = {
     }
 };
 
+// ============================================================
+// Инициализация таблицы закреплений организаций (user_pins - Спринт 7)
+// ============================================================
+async function initUserPinsTable() {
+    let connection;
+    try {
+        connection = await pool.getConnection();
+        await connection.query(`
+            CREATE TABLE IF NOT EXISTS user_pins (
+                user_id INT NOT NULL,
+                org_id INT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (user_id, org_id)
+            )
+        `);
+        console.log('✓ Таблица user_pins готова');
+    } catch (err) {
+        console.error('Ошибка инициализации таблицы user_pins:', err.message);
+        throw err;
+    } finally {
+        if (connection) connection.release();
+    }
+}
+
+// Функции для работы с закреплениями пользователей
+const userPinsDB = {
+    // Получить массив ID закрепленных организаций пользователя
+    getUserPins: async (userId) => {
+        let connection;
+        try {
+            connection = await pool.getConnection();
+            const [rows] = await connection.query('SELECT org_id FROM user_pins WHERE user_id = ? ORDER BY created_at ASC', [Number(userId)]);
+            return rows.map(r => Number(r.org_id));
+        } catch (err) {
+            console.error(`Ошибка получения закреплений пользователя ${userId}:`, err.message);
+            throw err;
+        } finally {
+            if (connection) connection.release();
+        }
+    },
+
+    // Переключить закрепление организации (если закреплено - удалить, иначе добавить)
+    toggleUserPin: async (userId, orgId) => {
+        let connection;
+        try {
+            connection = await pool.getConnection();
+            const uId = Number(userId);
+            const oId = Number(orgId);
+            const [existing] = await connection.query('SELECT user_id FROM user_pins WHERE user_id = ? AND org_id = ?', [uId, oId]);
+            let pinned = false;
+            if (existing.length > 0) {
+                await connection.query('DELETE FROM user_pins WHERE user_id = ? AND org_id = ?', [uId, oId]);
+                pinned = false;
+            } else {
+                await connection.query('INSERT INTO user_pins (user_id, org_id) VALUES (?, ?)', [uId, oId]);
+                pinned = true;
+            }
+            const [rows] = await connection.query('SELECT org_id FROM user_pins WHERE user_id = ? ORDER BY created_at ASC', [uId]);
+            return { pinned, pins: rows.map(r => Number(r.org_id)) };
+        } catch (err) {
+            console.error(`Ошибка переключения закрепления user ${userId}, org ${orgId}:`, err.message);
+            throw err;
+        } finally {
+            if (connection) connection.release();
+        }
+    }
+};
+
+// ============================================================
+// Инициализация таблицы прикрепленных файлов (organization_files - Спринт 7)
+// ============================================================
+async function initFilesTable() {
+    let connection;
+    try {
+        connection = await pool.getConnection();
+        await connection.query(`
+            CREATE TABLE IF NOT EXISTS organization_files (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                org_id INT NOT NULL,
+                filename VARCHAR(255) NOT NULL,
+                original_name VARCHAR(255) NOT NULL,
+                mime_type VARCHAR(100) NOT NULL,
+                file_size INT NOT NULL,
+                uploaded_by VARCHAR(50) DEFAULT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                INDEX (org_id)
+            )
+        `);
+        console.log('✓ Таблица organization_files готова');
+    } catch (err) {
+        console.error('Ошибка инициализации таблицы organization_files:', err.message);
+        throw err;
+    } finally {
+        if (connection) connection.release();
+    }
+}
+
+// Функции для работы с файлами организаций
+const filesDB = {
+    // Получить список файлов организации (сортировка по новизне DESC)
+    getByOrgId: async (orgId) => {
+        let connection;
+        try {
+            connection = await pool.getConnection();
+            const [rows] = await connection.query('SELECT * FROM organization_files WHERE org_id = ? ORDER BY created_at DESC', [Number(orgId)]);
+            return rows;
+        } catch (err) {
+            console.error(`Ошибка получения файлов для организации ${orgId}:`, err.message);
+            throw err;
+        } finally {
+            if (connection) connection.release();
+        }
+    },
+
+    // Получить метаданные файла по ID
+    getById: async (fileId) => {
+        let connection;
+        try {
+            connection = await pool.getConnection();
+            const [rows] = await connection.query('SELECT * FROM organization_files WHERE id = ?', [Number(fileId)]);
+            return rows[0] || null;
+        } catch (err) {
+            console.error(`Ошибка получения файла по ID ${fileId}:`, err.message);
+            throw err;
+        } finally {
+            if (connection) connection.release();
+        }
+    },
+
+    // Добавить запись о новом файле
+    create: async ({ org_id, filename, original_name, mime_type, file_size, uploaded_by }) => {
+        let connection;
+        try {
+            connection = await pool.getConnection();
+            const [result] = await connection.query(
+                'INSERT INTO organization_files (org_id, filename, original_name, mime_type, file_size, uploaded_by) VALUES (?, ?, ?, ?, ?, ?)',
+                [Number(org_id), filename, original_name, mime_type, Number(file_size), uploaded_by || null]
+            );
+            const [rows] = await connection.query('SELECT * FROM organization_files WHERE id = ?', [result.insertId]);
+            return rows[0];
+        } catch (err) {
+            console.error('Ошибка добавления файла в БД:', err.message);
+            throw err;
+        } finally {
+            if (connection) connection.release();
+        }
+    },
+
+    // Удалить запись о файле по ID
+    delete: async (fileId) => {
+        let connection;
+        try {
+            connection = await pool.getConnection();
+            const [result] = await connection.query('DELETE FROM organization_files WHERE id = ?', [Number(fileId)]);
+            return result.affectedRows;
+        } catch (err) {
+            console.error(`Ошибка удаления файла по ID ${fileId}:`, err.message);
+            throw err;
+        } finally {
+            if (connection) connection.release();
+        }
+    }
+};
+
 module.exports = {
     initOrganizationTable,
     organizationsDB,
     initDatabases1CTable,
-    databases1CDB
+    databases1CDB,
+    initUserPinsTable,
+    userPinsDB,
+    initFilesTable,
+    filesDB
 };
 
 

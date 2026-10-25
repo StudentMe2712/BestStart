@@ -739,15 +739,21 @@ if (confirmDeleteBtn) {
    ============================================================ */
 
 if (wikiSearch && wikiOrgList) {
-    var allItems = Array.from(wikiOrgList.querySelectorAll('.wiki-list-item'));
-    var totalCount = allItems.length;
-
     function applyFilter() {
         var query = wikiSearch.value.trim().toLowerCase();
+        var allItems = Array.from(wikiOrgList.querySelectorAll('.wiki-list-item'));
+        var totalCount = allItems.length;
         var visibleCount = 0;
 
         if (wikiSearchClear) {
             wikiSearchClear.style.display = query ? 'flex' : 'none';
+        }
+
+        var sectionHeaders = wikiOrgList.querySelectorAll('.wiki-list-section-header');
+        if (query) {
+            sectionHeaders.forEach(function(h) { h.style.display = 'none'; });
+        } else {
+            sectionHeaders.forEach(function(h) { h.style.display = ''; });
         }
 
         allItems.forEach(function(item) {
@@ -776,6 +782,8 @@ if (wikiSearch && wikiOrgList) {
             }
         }
     }
+
+    window.refreshWikiFilter = applyFilter;
 
     wikiSearch.addEventListener('input', applyFilter);
 
@@ -1077,4 +1085,438 @@ if (wikiSearch && wikiOrgList) {
             }
         });
     }
+})();
+
+/* ============================================================
+   WIKI SIDEBAR PINNING (Sprint 7)
+   ============================================================ */
+
+document.addEventListener('click', async function (e) {
+    var pinBtn = e.target.closest('.wiki-pin-btn');
+    if (!pinBtn) return;
+
+    e.preventDefault();
+    e.stopPropagation();
+
+    var orgId = pinBtn.getAttribute('data-org-id');
+    if (!orgId) return;
+
+    try {
+        var res = await fetch('/api/organizations/' + orgId + '/pin', {
+            method: 'POST',
+            headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json'
+            }
+        });
+        var data = await res.json();
+        if (data && data.success) {
+            var isPinned = !!data.pinned;
+            if (isPinned) {
+                pinBtn.classList.add('is-pinned');
+                pinBtn.setAttribute('title', 'Открепить организацию');
+                showToast('Организация закреплена');
+            } else {
+                pinBtn.classList.remove('is-pinned');
+                pinBtn.setAttribute('title', 'Закрепить организацию');
+                showToast('Организация откреплена');
+            }
+            reorganizeWikiSidebar(data.pins || []);
+        } else {
+            showToast((data && data.error) || 'Ошибка закрепления');
+        }
+    } catch (err) {
+        console.error('Error toggling pin:', err);
+        showToast('Ошибка при закреплении организации');
+    }
+});
+
+function reorganizeWikiSidebar(pins) {
+    var list = document.getElementById('wikiOrgList');
+    if (!list) return;
+
+    var noResults = document.getElementById('wikiSearchNoResults');
+    var items = Array.from(list.querySelectorAll('.wiki-list-item'));
+    if (!items.length) return;
+
+    var pinsNum = (pins || []).map(Number);
+    var pinnedItems = [];
+    var otherItems = [];
+
+    items.forEach(function(item) {
+        var btn = item.querySelector('.wiki-pin-btn');
+        var id = btn ? Number(btn.getAttribute('data-org-id')) : 0;
+        var isPinned = pinsNum.includes(id);
+
+        if (btn) {
+            if (isPinned) {
+                btn.classList.add('is-pinned');
+                btn.setAttribute('title', 'Открепить организацию');
+            } else {
+                btn.classList.remove('is-pinned');
+                btn.setAttribute('title', 'Закрепить организацию');
+            }
+        }
+
+        if (isPinned) {
+            pinnedItems.push(item);
+        } else {
+            otherItems.push(item);
+        }
+    });
+
+    // Remove existing headers
+    var oldHeaders = list.querySelectorAll('.wiki-list-section-header');
+    oldHeaders.forEach(function(h) { h.remove(); });
+
+    // Detach all items
+    items.forEach(function(item) { item.remove(); });
+
+    if (pinnedItems.length > 0) {
+        var pHeader = document.createElement('li');
+        pHeader.className = 'wiki-list-section-header';
+        pHeader.id = 'pinnedSectionHeader';
+        pHeader.innerHTML = '<span>ЗАКРЕПЛЕННЫЕ</span>';
+        list.appendChild(pHeader);
+
+        pinnedItems.forEach(function(item) {
+            list.appendChild(item);
+        });
+
+        var aHeader = document.createElement('li');
+        aHeader.className = 'wiki-list-section-header';
+        aHeader.id = 'allSectionHeader';
+        aHeader.innerHTML = '<span>ВСЕ ОРГАНИЗАЦИИ</span>';
+        list.appendChild(aHeader);
+
+        otherItems.forEach(function(item) {
+            list.appendChild(item);
+        });
+    } else {
+        otherItems.forEach(function(item) {
+            list.appendChild(item);
+        });
+    }
+
+    if (noResults) {
+        list.appendChild(noResults);
+    }
+
+    if (window.refreshWikiFilter) {
+        window.refreshWikiFilter();
+    }
+}
+
+/* ============================================================
+   ATTACHMENTS & LIGHTBOX MODAL (Sprint 7)
+   ============================================================ */
+
+(function initAttachmentsAndLightbox() {
+    var attachmentsSection = document.getElementById('wikiAttachmentsSection');
+    var dropzone = document.getElementById('attachmentsDropzone');
+    var fileInput = document.getElementById('fileInputUpload');
+    var btnAttach = document.getElementById('btnAttachFile');
+    var attachmentsList = document.getElementById('attachmentsList');
+    var filesCountBadge = document.getElementById('filesCountBadge');
+    var orgIdInput = document.getElementById('currentOrgId');
+
+    // Lightbox elements
+    var lightboxModal = document.getElementById('fileLightboxModal');
+    var lightboxOverlay = document.getElementById('lightboxOverlay');
+    var lightboxCloseBtn = document.getElementById('lightboxCloseBtn');
+    var lightboxFileName = document.getElementById('lightboxFileName');
+    var lightboxDownloadBtn = document.getElementById('lightboxDownloadBtn');
+    var lightboxBody = document.getElementById('lightboxBody');
+
+    if (!attachmentsSection) return;
+
+    var currentOrgId = orgIdInput ? Number(orgIdInput.value) : null;
+    if (!currentOrgId) return;
+
+    function getFileTypeInfo(originalName, fileSize) {
+        var ext = (originalName ? originalName.split('.').pop() : '').toLowerCase();
+        var fileType = 'file';
+        var iconColor = '#64748b';
+        var isPreviewable = false;
+
+        if (['xlsx', 'xls', 'csv'].includes(ext)) {
+            fileType = 'excel';
+            iconColor = '#10b981';
+        } else if (ext === 'pdf') {
+            fileType = 'pdf';
+            iconColor = '#ef4444';
+            isPreviewable = true;
+        } else if (['png', 'jpg', 'jpeg', 'webp'].includes(ext)) {
+            fileType = 'image';
+            iconColor = '#3b82f6';
+            isPreviewable = true;
+        } else if (['docx', 'doc', 'txt'].includes(ext)) {
+            fileType = 'doc';
+            iconColor = '#6366f1';
+        } else if (['zip', 'rdp'].includes(ext)) {
+            fileType = 'archive';
+            iconColor = '#f59e0b';
+        }
+
+        var size = fileSize || 0;
+        var sizeFormatted = '';
+        if (size < 1024) {
+            sizeFormatted = size + ' Б';
+        } else if (size < 1024 * 1024) {
+            sizeFormatted = (size / 1024).toFixed(1) + ' КБ';
+        } else {
+            sizeFormatted = (size / (1024 * 1024)).toFixed(1) + ' МБ';
+        }
+
+        return { ext: ext, type: fileType, color: iconColor, isPreviewable: isPreviewable, sizeFormatted: sizeFormatted };
+    }
+
+    function getFileIconSvg(fileType) {
+        if (fileType === 'excel') {
+            return '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="17"/><line x1="16" y1="13" x2="8" y2="17"/></svg>';
+        } else if (fileType === 'pdf') {
+            return '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M10 12h2a1 1 0 0 1 1 1v1a1 1 0 0 1-1 1h-2v-4z"/></svg>';
+        } else if (fileType === 'image') {
+            return '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>';
+        } else if (fileType === 'doc') {
+            return '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/></svg>';
+        } else if (fileType === 'archive') {
+            return '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/></svg>';
+        } else {
+            return '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>';
+        }
+    }
+
+    function createFileChipElement(file) {
+        var info = getFileTypeInfo(file.original_name, file.file_size);
+        var chip = document.createElement('div');
+        chip.className = 'file-chip file-chip--' + info.type;
+        chip.setAttribute('data-file-id', file.id);
+        chip.setAttribute('data-file-name', file.original_name);
+        chip.setAttribute('data-file-type', info.type);
+        chip.setAttribute('data-previewable', info.isPreviewable ? 'true' : 'false');
+
+        var previewAttr = info.isPreviewable ? ' role="button" tabindex="0" title="Нажмите для предпросмотра"' : '';
+        var clickableClass = info.isPreviewable ? ' is-clickable' : '';
+
+        chip.innerHTML =
+            '<div class="file-chip-main' + clickableClass + '"' + previewAttr + '>' +
+                '<span class="file-chip-icon" style="color: ' + info.color + ';">' +
+                    getFileIconSvg(info.type) +
+                '</span>' +
+                '<div class="file-chip-info">' +
+                    '<span class="file-chip-name" title="' + escapeHtmlText(file.original_name) + '">' + escapeHtmlText(file.original_name) + '</span>' +
+                    '<span class="file-chip-size">' + info.sizeFormatted + '</span>' +
+                '</div>' +
+            '</div>' +
+            '<div class="file-chip-actions">' +
+                '<a href="/api/files/' + file.id + '/download" class="file-chip-btn file-chip-btn--download" title="Скачать файл" download="' + escapeHtmlText(file.original_name) + '">' +
+                    '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>' +
+                '</a>' +
+                '<button type="button" class="file-chip-btn file-chip-btn--delete" data-file-id="' + file.id + '" data-file-name="' + escapeHtmlText(file.original_name) + '" title="Удалить файл">' +
+                    '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>' +
+                '</button>' +
+            '</div>';
+
+        return chip;
+    }
+
+    function updateBadgeCount(delta) {
+        if (!filesCountBadge) return;
+        var current = parseInt(filesCountBadge.textContent, 10) || 0;
+        var next = Math.max(0, current + delta);
+        filesCountBadge.textContent = String(next);
+    }
+
+    async function uploadFiles(files) {
+        if (!files || !files.length) return;
+        var maxBytes = 25 * 1024 * 1024; // 25 MB
+
+        for (var i = 0; i < files.length; i++) {
+            var file = files[i];
+            if (file.size > maxBytes) {
+                showToast('Файл "' + file.name + '" превышает 25 МБ');
+                continue;
+            }
+
+            var formData = new FormData();
+            formData.append('file', file);
+
+            try {
+                var res = await fetch('/api/organizations/' + currentOrgId + '/files', {
+                    method: 'POST',
+                    body: formData
+                });
+                var data = await res.json();
+                if (res.ok && data && data.success && data.file) {
+                    var chip = createFileChipElement(data.file);
+                    if (attachmentsList) {
+                        attachmentsList.appendChild(chip);
+                    }
+                    updateBadgeCount(1);
+                    showToast('Файл "' + data.file.original_name + '" прикреплен');
+                } else {
+                    var errMsg = (data && data.error) ? data.error : 'Ошибка загрузки файла';
+                    showToast(errMsg);
+                }
+            } catch (err) {
+                console.error('Ошибка загрузки файла:', err);
+                showToast('Ошибка при загрузке файла');
+            }
+        }
+    }
+
+    // Attach button click -> trigger hidden file input
+    if (btnAttach && fileInput) {
+        btnAttach.addEventListener('click', function(e) {
+            e.preventDefault();
+            fileInput.click();
+        });
+    }
+
+    // File input change
+    if (fileInput) {
+        fileInput.addEventListener('change', function() {
+            if (this.files && this.files.length) {
+                uploadFiles(this.files);
+                this.value = '';
+            }
+        });
+    }
+
+    // Dropzone click -> trigger hidden file input
+    if (dropzone && fileInput) {
+        dropzone.addEventListener('click', function(e) {
+            if (e.target !== fileInput) {
+                fileInput.click();
+            }
+        });
+
+        // Drag & Drop events
+        ['dragenter', 'dragover'].forEach(function(eventName) {
+            dropzone.addEventListener(eventName, function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                dropzone.classList.add('is-dragover');
+            });
+        });
+
+        ['dragleave', 'drop'].forEach(function(eventName) {
+            dropzone.addEventListener(eventName, function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                dropzone.classList.remove('is-dragover');
+            });
+        });
+
+        dropzone.addEventListener('drop', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            dropzone.classList.remove('is-dragover');
+            var dt = e.dataTransfer;
+            if (dt && dt.files && dt.files.length) {
+                uploadFiles(dt.files);
+            }
+        });
+    }
+
+    // Delegated actions inside attachmentsList: Download, Delete, Lightbox Preview
+    if (attachmentsList) {
+        attachmentsList.addEventListener('click', async function(e) {
+            var deleteBtn = e.target.closest('.file-chip-btn--delete');
+            var mainClickable = e.target.closest('.file-chip-main.is-clickable');
+
+            if (deleteBtn) {
+                e.preventDefault();
+                e.stopPropagation();
+                var fileId = deleteBtn.getAttribute('data-file-id');
+                var fileName = deleteBtn.getAttribute('data-file-name') || 'файл';
+
+                if (!confirm('Вы уверены, что хотите удалить файл "' + fileName + '"?')) {
+                    return;
+                }
+
+                try {
+                    var res = await fetch('/api/files/' + fileId, { method: 'DELETE' });
+                    var data = await res.json();
+                    if (res.ok && data && data.success) {
+                        var chip = deleteBtn.closest('.file-chip');
+                        if (chip) chip.remove();
+                        updateBadgeCount(-1);
+                        showToast('Файл удален');
+                    } else {
+                        showToast((data && data.error) || 'Ошибка удаления файла');
+                    }
+                } catch (err) {
+                    console.error('Ошибка удаления файла:', err);
+                    showToast('Ошибка при удалении файла');
+                }
+                return;
+            }
+
+            if (mainClickable) {
+                var chip = mainClickable.closest('.file-chip');
+                if (!chip) return;
+                var fileId = chip.getAttribute('data-file-id');
+                var fileType = chip.getAttribute('data-file-type');
+                var fileName = chip.getAttribute('data-file-name');
+                openLightbox(fileId, fileName, fileType);
+            }
+        });
+    }
+
+    // Lightbox modal functions
+    function openLightbox(fileId, fileName, fileType) {
+        if (!lightboxModal) return;
+
+        if (lightboxFileName) lightboxFileName.textContent = fileName || 'Просмотр файла';
+        if (lightboxDownloadBtn) {
+            lightboxDownloadBtn.href = '/api/files/' + fileId + '/download';
+            lightboxDownloadBtn.setAttribute('download', fileName || '');
+        }
+
+        if (lightboxBody) {
+            lightboxBody.innerHTML = '';
+            var viewUrl = '/api/files/' + fileId + '/view';
+
+            if (fileType === 'image') {
+                var img = document.createElement('img');
+                img.className = 'lightbox-image';
+                img.src = viewUrl;
+                img.alt = fileName;
+                lightboxBody.appendChild(img);
+            } else if (fileType === 'pdf') {
+                var iframe = document.createElement('iframe');
+                iframe.className = 'lightbox-iframe';
+                iframe.src = viewUrl;
+                lightboxBody.appendChild(iframe);
+            } else {
+                lightboxBody.innerHTML = '<div style="color: #94a3b8; font-size: 14px;">Предпросмотр недоступен для данного формата. Используйте кнопку «Скачать».</div>';
+            }
+        }
+
+        lightboxModal.style.display = 'flex';
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeLightbox() {
+        if (!lightboxModal) return;
+        lightboxModal.style.display = 'none';
+        document.body.style.overflow = '';
+        if (lightboxBody) lightboxBody.innerHTML = '';
+    }
+
+    if (lightboxCloseBtn) {
+        lightboxCloseBtn.addEventListener('click', closeLightbox);
+    }
+
+    if (lightboxOverlay) {
+        lightboxOverlay.addEventListener('click', closeLightbox);
+    }
+
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && lightboxModal && lightboxModal.style.display === 'flex') {
+            closeLightbox();
+        }
+    });
 })();

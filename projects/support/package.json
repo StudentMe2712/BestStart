@@ -32,6 +32,7 @@
     "express-session": "^1.18.2",
     "jsdom": "^23.2.0",
     "marked": "^11.2.0",
+    "multer": "^2.5.0",
     "mysql2": "^3.15.3",
     "pg": "^8.16.3",
     "puppeteer": "^21.11.0",

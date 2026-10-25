@@ -276,6 +276,80 @@ const databases1CDB = {
     }
 };
 
+// ============================================================
+// МОК ЗАКРЕПЛЕНИЙ ОРГАНИЗАЦИЙ (user_pins - Спринт 7)
+// ============================================================
+let userPins = [{ user_id: 1, org_id: 1 }, { user_id: 1, org_id: 2 }]; // default pins for admin
+
+async function initUserPinsTable() {
+    console.log(`✓ [Stub DB] Таблица user_pins готова (закреплений: ${userPins.length})`);
+}
+
+const userPinsDB = {
+    getUserPins: async (userId) => {
+        return userPins
+            .filter(p => p.user_id === Number(userId))
+            .map(p => Number(p.org_id));
+    },
+    toggleUserPin: async (userId, orgId) => {
+        const uId = Number(userId);
+        const oId = Number(orgId);
+        const index = userPins.findIndex(p => p.user_id === uId && p.org_id === oId);
+        let pinned = false;
+        if (index !== -1) {
+            userPins.splice(index, 1);
+            pinned = false;
+        } else {
+            userPins.push({ user_id: uId, org_id: oId, created_at: new Date() });
+            pinned = true;
+        }
+        const pins = userPins
+            .filter(p => p.user_id === uId)
+            .map(p => Number(p.org_id));
+        return { pinned, pins };
+    }
+};
+
+// ============================================================
+// МОК ПРИКРЕПЛЕННЫХ ФАЙЛОВ (organization_files - Спринт 7)
+// ============================================================
+let organizationFiles = [];
+let nextFileId = 1;
+
+async function initFilesTable() {
+    console.log(`✓ [Stub DB] Таблица organization_files готова (файлов: ${organizationFiles.length})`);
+}
+
+const filesDB = {
+    getByOrgId: async (orgId) => {
+        return organizationFiles
+            .filter(f => f.org_id === Number(orgId))
+            .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    },
+    getById: async (fileId) => {
+        return organizationFiles.find(f => f.id === Number(fileId)) || null;
+    },
+    create: async ({ org_id, filename, original_name, mime_type, file_size, uploaded_by }) => {
+        const fileRecord = {
+            id: nextFileId++,
+            org_id: Number(org_id),
+            filename,
+            original_name,
+            mime_type,
+            file_size: Number(file_size),
+            uploaded_by: uploaded_by || null,
+            created_at: new Date()
+        };
+        organizationFiles.push(fileRecord);
+        return fileRecord;
+    },
+    delete: async (fileId) => {
+        const before = organizationFiles.length;
+        organizationFiles = organizationFiles.filter(f => f.id !== Number(fileId));
+        return before - organizationFiles.length;
+    }
+};
+
 module.exports = {
     pool: mockPool,
     initDatabase,
@@ -289,5 +363,9 @@ module.exports = {
     initOrganizationTable,
     organizationsDB,
     initDatabases1CTable,
-    databases1CDB
+    databases1CDB,
+    initUserPinsTable,
+    userPinsDB,
+    initFilesTable,
+    filesDB
 };

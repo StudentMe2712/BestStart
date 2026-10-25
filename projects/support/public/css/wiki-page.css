@@ -193,13 +193,16 @@ body.wiki-page-body {
 .wiki-list-item {
     margin: 0;
     padding: 0;
+    position: relative;
+    display: flex;
+    align-items: center;
 }
 
 .wiki-list-link {
     display: flex;
     align-items: center;
     gap: 8px;
-    padding: 8px 12px 8px 14px;
+    padding: 8px 34px 8px 14px;
     color: #a8bacf;
     text-decoration: none;
     font-size: 12.5px;
@@ -207,6 +210,8 @@ body.wiki-page-body {
     transition: background 0.15s ease, color 0.15s ease, border-left-color 0.15s ease;
     line-height: 1.35;
     position: relative;
+    flex: 1;
+    min-width: 0;
 }
 
 .wiki-list-link:hover {
@@ -238,6 +243,90 @@ body.wiki-page-body {
     word-break: break-word;
     min-width: 0;
     flex: 1;
+}
+
+/* Sidebar section headers */
+.wiki-list-section-header {
+    padding: 10px 14px 4px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: #64748b;
+    list-style: none;
+    user-select: none;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    margin-top: 6px;
+}
+
+.wiki-list-section-header:first-child {
+    border-top: none;
+    margin-top: 0;
+    padding-top: 4px;
+}
+
+.wiki-list-section-header span {
+    display: block;
+    color: #64748b;
+}
+
+[data-theme="dark"] .wiki-list-section-header span {
+    color: #94a3b8;
+}
+
+/* Pin button */
+.wiki-pin-btn {
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 22px;
+    height: 22px;
+    padding: 0;
+    border: none;
+    background: transparent;
+    border-radius: 4px;
+    color: #64748b;
+    opacity: 0;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: opacity 0.15s ease, color 0.15s ease, background 0.15s ease, transform 0.15s ease;
+    z-index: 2;
+}
+
+.wiki-pin-btn svg {
+    width: 14px;
+    height: 14px;
+    pointer-events: none;
+}
+
+.wiki-list-item:hover .wiki-pin-btn,
+.wiki-pin-btn.is-pinned {
+    opacity: 1;
+}
+
+.wiki-pin-btn:hover {
+    background: rgba(255, 255, 255, 0.12);
+    color: #cbd5e1;
+    transform: translateY(-50%) scale(1.1);
+}
+
+.wiki-pin-btn.is-pinned {
+    color: #3b82f6; /* sapphire */
+}
+
+.wiki-pin-btn.is-pinned:hover {
+    color: #60a5fa;
+}
+
+[data-theme="dark"] .wiki-pin-btn {
+    color: #64748b;
+}
+
+[data-theme="dark"] .wiki-pin-btn.is-pinned {
+    color: #60a5fa;
 }
 
 
@@ -1848,4 +1937,404 @@ body.wiki-page-body {
 [data-theme="dark"] .wiki-databases-empty .empty-state-subtext,
 [data-theme="dark"] .form-hint {
     color: #64748b;
+}
+
+/* ============================================================
+   ATTACHMENTS & LIGHTBOX (Sprint 7)
+   ============================================================ */
+
+/* Attachments Section */
+.wiki-attachments-section {
+    margin-top: 28px;
+    padding-top: 24px;
+    border-top: 1px solid #e2e8f0;
+}
+
+[data-theme="dark"] .wiki-attachments-section {
+    border-top-color: #1e293b;
+}
+
+.wiki-attachments-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 16px;
+}
+
+.wiki-attachments-title-wrap {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.wiki-attachments-icon {
+    color: #64748b;
+    flex-shrink: 0;
+}
+
+[data-theme="dark"] .wiki-attachments-icon {
+    color: #94a3b8;
+}
+
+.wiki-attachments-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 0;
+}
+
+.wiki-attachments-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 22px;
+    height: 22px;
+    padding: 0 6px;
+    border-radius: var(--radius-full);
+    background: var(--bg-subtle, #f1f5f9);
+    border: 1px solid var(--border-subtle, #e2e8f0);
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-secondary);
+}
+
+[data-theme="dark"] .wiki-attachments-badge {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.12);
+    color: #cbd5e1;
+}
+
+.btn-attach-file {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    font-size: 13.5px;
+    font-weight: 600;
+    border-radius: var(--radius-md, 6px);
+    background: var(--color-accent, #2563eb);
+    color: #ffffff;
+    border: none;
+    cursor: pointer;
+    box-shadow: 0 1px 3px rgba(37, 99, 235, 0.2);
+    transition: background 0.15s ease, transform 0.15s ease;
+}
+
+.btn-attach-file:hover {
+    background: var(--color-accent-hover, #1d4ed8);
+    transform: translateY(-1px);
+}
+
+/* Dropzone Drag & Drop */
+.attachments-dropzone {
+    border: 2px dashed #cbd5e1;
+    border-radius: 10px;
+    padding: 24px 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.18s ease, background-color 0.18s ease;
+    background: rgba(248, 250, 252, 0.6);
+    outline: none;
+}
+
+.attachments-dropzone:hover,
+.attachments-dropzone.is-dragover {
+    border-color: #3b82f6;
+    background: rgba(59, 130, 246, 0.06);
+}
+
+[data-theme="dark"] .attachments-dropzone {
+    border-color: #334155;
+    background: rgba(15, 23, 42, 0.4);
+}
+
+[data-theme="dark"] .attachments-dropzone:hover,
+[data-theme="dark"] .attachments-dropzone.is-dragover {
+    border-color: #60a5fa;
+    background: rgba(59, 130, 246, 0.12);
+}
+
+.dropzone-inner {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+
+.dropzone-icon {
+    color: #64748b;
+    margin-bottom: 4px;
+    transition: transform 0.18s ease, color 0.18s ease;
+}
+
+.attachments-dropzone:hover .dropzone-icon,
+.attachments-dropzone.is-dragover .dropzone-icon {
+    transform: translateY(-2px);
+    color: #3b82f6;
+}
+
+.dropzone-text {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-primary);
+}
+
+.dropzone-subtext {
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+/* Attachments List Grid */
+.attachments-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+    gap: 12px;
+    margin-top: 18px;
+}
+
+/* File Chip */
+.file-chip {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.03);
+    transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+}
+
+[data-theme="dark"] .file-chip {
+    background: #141f2e;
+    border-color: #1e293b;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.file-chip:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(15, 23, 42, 0.06);
+    border-color: #cbd5e1;
+}
+
+[data-theme="dark"] .file-chip:hover {
+    border-color: #334155;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+}
+
+.file-chip-main {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex: 1;
+    min-width: 0;
+}
+
+.file-chip-main.is-clickable {
+    cursor: pointer;
+}
+
+.file-chip-main.is-clickable:hover .file-chip-name {
+    color: var(--color-accent, #2563eb);
+}
+
+.file-chip-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.file-chip-info {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    gap: 2px;
+}
+
+.file-chip-name {
+    font-size: 13.5px;
+    font-weight: 500;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    transition: color 0.15s ease;
+}
+
+.file-chip-size {
+    font-size: 11.5px;
+    color: var(--text-muted);
+}
+
+.file-chip-actions {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-left: 10px;
+    flex-shrink: 0;
+}
+
+.file-chip-btn {
+    width: 28px;
+    height: 28px;
+    border-radius: 4px;
+    border: none;
+    background: transparent;
+    color: #64748b;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    transition: background-color 0.15s ease, color 0.15s ease;
+    text-decoration: none;
+}
+
+.file-chip-btn--download:hover {
+    background: rgba(37, 99, 235, 0.1);
+    color: #2563eb;
+}
+
+.file-chip-btn--delete:hover {
+    background: rgba(239, 68, 68, 0.12);
+    color: #ef4444;
+}
+
+/* Lightbox Modal */
+.file-lightbox-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.lightbox-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(10, 15, 29, 0.85);
+    backdrop-filter: blur(6px);
+}
+
+.lightbox-window {
+    position: relative;
+    z-index: 10000;
+    width: 90vw;
+    max-width: 1100px;
+    height: 86vh;
+    background: #0f172a;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 12px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
+}
+
+.lightbox-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 20px;
+    background: #1e293b;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    color: #f8fafc;
+    flex-shrink: 0;
+}
+
+.lightbox-title-wrap {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+    flex: 1;
+}
+
+.lightbox-title-icon {
+    color: #60a5fa;
+    flex-shrink: 0;
+}
+
+.lightbox-filename {
+    font-size: 15px;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.lightbox-controls {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-shrink: 0;
+}
+
+.lightbox-btn--download {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    font-size: 13px;
+    font-weight: 500;
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.1);
+    color: #ffffff;
+    text-decoration: none;
+    transition: background 0.15s ease;
+}
+
+.lightbox-btn--download:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.lightbox-btn--close {
+    width: 32px;
+    height: 32px;
+    border: none;
+    background: transparent;
+    color: #94a3b8;
+    font-size: 24px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+    transition: all 0.15s ease;
+    line-height: 1;
+}
+
+.lightbox-btn--close:hover {
+    background: rgba(239, 68, 68, 0.25);
+    color: #ef4444;
+}
+
+.lightbox-body {
+    flex: 1;
+    overflow: auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #0b1120;
+    padding: 16px;
+}
+
+.lightbox-image {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+    border-radius: 4px;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
+}
+
+.lightbox-iframe {
+    width: 100%;
+    height: 100%;
+    border: none;
+    border-radius: 4px;
+    background: #ffffff;
 }

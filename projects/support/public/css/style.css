@@ -696,20 +696,22 @@ body {
    COMMAND HUB (Vercel / Linear / Datadog Style Dashboard)
    ============================================================ */
 .command-hub {
-    max-width: 1080px;
+    max-width: 1320px;
+    width: 100%;
     margin: 0 auto;
     padding: 36px 24px 64px;
     display: flex;
     flex-direction: column;
-    justify-content: center;
+    justify-content: flex-start;
     min-height: calc(100vh - 120px);
     gap: 28px;
-    width: 100%;
     box-sizing: border-box;
 }
 
 /* ── 1. Hero Bar (Приветственная панель) ── */
 .command-hero {
+    width: 100%;
+    box-sizing: border-box;
     background: var(--bg-surface);
     border: 1px solid var(--border-subtle);
     border-radius: var(--radius-xl);
@@ -1076,6 +1078,292 @@ body {
 /* ── 3. Core Widgets Grid (2 Large Balanced Cards) ── */
 .command-widgets-section {
     width: 100%;
+    box-sizing: border-box;
+}
+
+/* ── Hero Wiki 2-Column Dashboard Card (Sprint 7) ── */
+.command-hero-wiki {
+    min-height: 400px;
+    padding: 44px 48px;
+    display: grid;
+    grid-template-columns: 1.25fr 1fr;
+    gap: 48px;
+    align-items: center;
+    border-radius: var(--radius-xl);
+    background: var(--bg-surface);
+    border: 1px solid var(--border-subtle);
+    box-shadow: var(--shadow-sm);
+    box-sizing: border-box;
+    width: 100%;
+    transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.command-hero-wiki:hover {
+    border-color: var(--border-medium);
+    box-shadow: var(--shadow-md);
+}
+
+@media (max-width: 960px) {
+    .command-hero-wiki {
+        grid-template-columns: 1fr;
+        gap: 32px;
+        padding: 28px 24px;
+    }
+}
+
+[data-theme="dark"] .command-hero-wiki {
+    background: var(--bg-surface);
+    border-color: rgba(255, 255, 255, 0.08);
+}
+
+[data-theme="dark"] .command-hero-wiki:hover {
+    border-color: rgba(255, 255, 255, 0.16);
+    box-shadow: 0 12px 32px -4px rgba(0, 0, 0, 0.5);
+}
+
+/* Left Column */
+.hero-wiki-left {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+}
+
+.hero-wiki-icon-wrap {
+    width: 60px;
+    height: 60px;
+    border-radius: var(--radius-lg);
+    background: rgba(37, 99, 235, 0.1);
+    color: var(--color-accent);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 20px;
+    border: 1px solid rgba(37, 99, 235, 0.2);
+}
+
+[data-theme="dark"] .hero-wiki-icon-wrap {
+    background: rgba(59, 130, 246, 0.15);
+    border-color: rgba(59, 130, 246, 0.3);
+    color: #60a5fa;
+}
+
+.hero-wiki-title {
+    font-size: 30px;
+    font-weight: 700;
+    color: var(--text-primary);
+    line-height: 1.25;
+    margin: 0 0 16px 0;
+    letter-spacing: -0.02em;
+}
+
+.hero-wiki-p {
+    font-size: 15px;
+    line-height: 1.6;
+    color: var(--text-secondary);
+    margin: 0 0 12px 0;
+}
+
+.hero-wiki-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin: 18px 0 26px 0;
+}
+
+.hero-wiki-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    border-radius: var(--radius-full);
+    font-size: 13px;
+    font-weight: 500;
+    background: var(--bg-subtle);
+    color: var(--text-secondary);
+    border: 1px solid var(--border-subtle);
+}
+
+[data-theme="dark"] .hero-wiki-tag {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.1);
+    color: #cbd5e1;
+}
+
+.hero-wiki-action {
+    margin-top: 6px;
+}
+
+.hero-wiki-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 28px;
+    font-size: 16px;
+    font-weight: 600;
+    border-radius: var(--radius-md);
+    background: var(--color-accent);
+    color: #ffffff;
+    text-decoration: none;
+    border: 1px solid transparent;
+    box-shadow: 0 2px 8px rgba(37, 99, 235, 0.25);
+    transition: background 0.18s ease, transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.hero-wiki-btn:hover {
+    background: var(--color-accent-hover);
+    box-shadow: 0 4px 16px rgba(37, 99, 235, 0.35);
+    transform: translateY(-1px);
+    color: #ffffff;
+}
+
+.hero-btn-arrow {
+    transition: transform 0.18s ease;
+    font-size: 18px;
+    line-height: 1;
+}
+
+.hero-wiki-btn:hover .hero-btn-arrow {
+    transform: translateX(4px);
+}
+
+/* Right Column */
+.hero-wiki-right {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    width: 100%;
+}
+
+.hero-wiki-illustration-wrap {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    overflow: hidden;
+}
+
+.hero-wiki-illustration {
+    width: 100%;
+    max-width: 440px;
+    height: auto;
+    filter: drop-shadow(0 4px 12px rgba(15, 23, 42, 0.06));
+}
+
+[data-theme="dark"] .hero-wiki-illustration {
+    filter: drop-shadow(0 4px 16px rgba(0, 0, 0, 0.4));
+}
+
+/* Pinned Orgs Block */
+.hero-pinned-card {
+    background: var(--bg-subtle);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+    padding: 18px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+[data-theme="dark"] .hero-pinned-card {
+    background: rgba(255, 255, 255, 0.03);
+    border-color: rgba(255, 255, 255, 0.08);
+}
+
+.hero-pinned-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.hero-pinned-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.hero-pinned-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.hero-pinned-pill {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 14px;
+    background: var(--bg-surface);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    text-decoration: none;
+    color: var(--text-primary);
+    transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+}
+
+[data-theme="dark"] .hero-pinned-pill {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.08);
+    color: #f1f5f9;
+}
+
+.hero-pinned-pill:hover {
+    border-color: var(--color-accent);
+    background: var(--bg-surface);
+    transform: translateX(2px);
+}
+
+[data-theme="dark"] .hero-pinned-pill:hover {
+    background: rgba(59, 130, 246, 0.12);
+    border-color: rgba(59, 130, 246, 0.4);
+}
+
+.hero-pinned-monogram {
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    background: rgba(37, 99, 235, 0.12);
+    color: var(--color-accent);
+    font-size: 11px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    letter-spacing: 0.02em;
+}
+
+[data-theme="dark"] .hero-pinned-monogram {
+    background: rgba(59, 130, 246, 0.2);
+    color: #93c5fd;
+}
+
+.hero-pinned-name {
+    font-size: 13.5px;
+    font-weight: 500;
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.hero-pinned-arrow {
+    color: var(--text-muted);
+    font-size: 14px;
+    transition: transform 0.15s ease, color 0.15s ease;
+}
+
+.hero-pinned-pill:hover .hero-pinned-arrow {
+    transform: translateX(3px);
+    color: var(--color-accent);
+}
+
+.hero-pinned-hint-pill {
+    font-size: 13px;
+    color: var(--text-muted);
+    line-height: 1.45;
 }
 
 .command-widgets-grid {

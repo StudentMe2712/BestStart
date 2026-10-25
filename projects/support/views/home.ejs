@@ -13,6 +13,28 @@
     <% const avatarLetter = (user.username || 'A').charAt(0).toUpperCase(); %>
     <% const totalServers = typeof serverCount !== 'undefined' ? serverCount : 25; %>
     <% const dateDisplay = typeof currentDateStr !== 'undefined' ? currentDateStr : 'Четверг, 22 октября 2026 г.'; %>
+    <%
+    function computeOrgMonogram(name) {
+        if (!name || typeof name !== 'string') return '';
+        var clean = name.trim();
+        if (!clean) return '';
+        if (/^астанагенплан/i.test(clean)) return 'АП';
+
+        var words = clean.split(/[\s\-_–—/\\()]+/).filter(function(w) { return /[a-zA-Zа-яА-ЯёЁ]/.test(w); });
+        if (words.length >= 2) {
+            var m1 = words[0].match(/[a-zA-Zа-яА-ЯёЁ]/);
+            var m2 = words[1].match(/[a-zA-Zа-яА-ЯёЁ]/);
+            if (m1 && m2) return (m1[0] + m2[0]).toUpperCase();
+        }
+        var letters = clean.replace(/[^a-zA-Zа-яА-ЯёЁ]/g, '');
+        if (letters.length >= 2) {
+            return letters.substring(0, 2).toUpperCase();
+        }
+        return letters.toUpperCase();
+    }
+    const pinnedList = (typeof pinnedOrgs !== 'undefined' && Array.isArray(pinnedOrgs)) ? pinnedOrgs : [];
+    const orgsList = (typeof organizations !== 'undefined' && Array.isArray(organizations)) ? organizations : [];
+    %>
 
     <!-- Верхний бар (Top Navigation Bar) -->
     <header class="home-topbar">
@@ -98,10 +120,154 @@
             </div>
         </section>
 
-        <!-- 2. Крупная сбалансированная карточка Wiki по центру -->
+        <!-- 2. Масштабная 2-колоночная Hero-карточка Wiki (Спринт 7) -->
         <section class="command-widgets-section" aria-label="Основные сервисы">
+            <article class="command-hero-wiki" id="commandHeroWiki">
+                <!-- Левая колонка -->
+                <div class="hero-wiki-left">
+                    <div class="hero-wiki-icon-wrap" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="30" height="30">
+                            <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+                            <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+                            <line x1="9" y1="7" x2="15" y2="7"/>
+                            <line x1="9" y1="11" x2="15" y2="11"/>
+                        </svg>
+                    </div>
+
+                    <h2 class="hero-wiki-title">Wiki — Серверная база знаний</h2>
+
+                    <p class="hero-wiki-p">
+                        Единое защищенное хранилище технической документации, параметров серверной инфраструктуры, реквизитов удаленного доступа и конфигураций клиентов ИТС-Ком.
+                    </p>
+                    <p class="hero-wiki-p">
+                        Поддерживает ведение текстовых заметок, прикрепление таблиц Excel, схем и PDF-регламентов по каждой организации.
+                    </p>
+
+                    <div class="hero-wiki-tags">
+                        <span class="hero-wiki-tag">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>
+                            <%= totalServers %> организаций
+                        </span>
+                        <span class="hero-wiki-tag">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+                            Вложения Excel / PDF / Схемы
+                        </span>
+                        <span class="hero-wiki-tag">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="12" y2="18"/><line x1="15" y1="15" x2="12" y2="18"/></svg>
+                            Экспорт PDF и TXT
+                        </span>
+                    </div>
+
+                    <div class="hero-wiki-action">
+                        <a href="/wiki" class="hero-wiki-btn" id="btnOpenWiki">
+                            <span>Перейти в базу знаний</span>
+                            <span class="hero-btn-arrow" aria-hidden="true">→</span>
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Правая колонка -->
+                <div class="hero-wiki-right">
+                    <div class="hero-wiki-illustration-wrap">
+                        <svg class="hero-wiki-illustration" viewBox="0 0 420 180" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="Инфраструктура серверов">
+                            <defs>
+                                <linearGradient id="rackGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                                    <stop offset="0%" stop-color="#1e293b"/>
+                                    <stop offset="100%" stop-color="#0f172a"/>
+                                </linearGradient>
+                                <linearGradient id="bladeGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                                    <stop offset="0%" stop-color="#334155"/>
+                                    <stop offset="100%" stop-color="#1e293b"/>
+                                </linearGradient>
+                                <linearGradient id="accentGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                                    <stop offset="0%" stop-color="#2563eb"/>
+                                    <stop offset="100%" stop-color="#3b82f6"/>
+                                </linearGradient>
+                            </defs>
+                            <rect x="20" y="10" width="380" height="160" rx="10" fill="url(#rackGrad)" stroke="#3b82f6" stroke-width="1.5" stroke-opacity="0.35"/>
+                            <rect x="26" y="16" width="368" height="148" rx="8" fill="#090d16"/>
+                            
+                            <!-- Switch 1U -->
+                            <rect x="36" y="24" width="348" height="26" rx="4" fill="url(#bladeGrad)" stroke="#475569" stroke-width="0.8"/>
+                            <circle cx="50" cy="37" r="3" fill="#10b981"/>
+                            <circle cx="62" cy="37" r="3" fill="#10b981"/>
+                            <circle cx="74" cy="37" r="3" fill="#3b82f6"/>
+                            <rect x="100" y="31" width="10" height="11" rx="1.5" fill="#0f172a" stroke="#60a5fa" stroke-width="0.8"/>
+                            <rect x="114" y="31" width="10" height="11" rx="1.5" fill="#0f172a" stroke="#60a5fa" stroke-width="0.8"/>
+                            <rect x="128" y="31" width="10" height="11" rx="1.5" fill="#0f172a" stroke="#60a5fa" stroke-width="0.8"/>
+                            <rect x="142" y="31" width="10" height="11" rx="1.5" fill="#0f172a" stroke="#60a5fa" stroke-width="0.8"/>
+                            <rect x="160" y="31" width="10" height="11" rx="1.5" fill="#0f172a" stroke="#60a5fa" stroke-width="0.8"/>
+                            <rect x="174" y="31" width="10" height="11" rx="1.5" fill="#0f172a" stroke="#60a5fa" stroke-width="0.8"/>
+                            <text x="320" y="41" fill="#94a3b8" font-size="9" font-family="monospace">10G CORE</text>
+
+                            <!-- Server Node 1 -->
+                            <rect x="36" y="56" width="348" height="32" rx="4" fill="url(#bladeGrad)" stroke="#475569" stroke-width="0.8"/>
+                            <circle cx="50" cy="72" r="3" fill="#3b82f6"/>
+                            <rect x="65" y="64" width="18" height="16" rx="2" fill="#1e293b" stroke="#3b82f6" stroke-width="0.8"/>
+                            <rect x="88" y="64" width="18" height="16" rx="2" fill="#1e293b" stroke="#3b82f6" stroke-width="0.8"/>
+                            <rect x="111" y="64" width="18" height="16" rx="2" fill="#1e293b" stroke="#3b82f6" stroke-width="0.8"/>
+                            <rect x="134" y="64" width="18" height="16" rx="2" fill="#1e293b" stroke="#3b82f6" stroke-width="0.8"/>
+                            <rect x="170" y="70" width="120" height="4" rx="2" fill="#1e293b"/>
+                            <rect x="170" y="70" width="85" height="4" rx="2" fill="url(#accentGrad)"/>
+                            <text x="315" y="75" fill="#60a5fa" font-size="9" font-family="monospace">NODE #01</text>
+
+                            <!-- Server Node 2 -->
+                            <rect x="36" y="94" width="348" height="32" rx="4" fill="url(#bladeGrad)" stroke="#475569" stroke-width="0.8"/>
+                            <circle cx="50" cy="110" r="3" fill="#10b981"/>
+                            <rect x="65" y="102" width="18" height="16" rx="2" fill="#1e293b" stroke="#10b981" stroke-width="0.8"/>
+                            <rect x="88" y="102" width="18" height="16" rx="2" fill="#1e293b" stroke="#10b981" stroke-width="0.8"/>
+                            <rect x="111" y="102" width="18" height="16" rx="2" fill="#1e293b" stroke="#10b981" stroke-width="0.8"/>
+                            <rect x="134" y="102" width="18" height="16" rx="2" fill="#1e293b" stroke="#10b981" stroke-width="0.8"/>
+                            <rect x="170" y="108" width="120" height="4" rx="2" fill="#1e293b"/>
+                            <rect x="170" y="108" width="102" height="4" rx="2" fill="#10b981"/>
+                            <text x="315" y="113" fill="#34d399" font-size="9" font-family="monospace">NODE #02</text>
+
+                            <!-- Storage SAN -->
+                            <rect x="36" y="132" width="348" height="24" rx="4" fill="url(#bladeGrad)" stroke="#475569" stroke-width="0.8"/>
+                            <circle cx="50" cy="144" r="3" fill="#3b82f6"/>
+                            <line x1="70" y1="144" x2="280" y2="144" stroke="#334155" stroke-width="2" stroke-dasharray="4 3"/>
+                            <text x="310" y="148" fill="#94a3b8" font-size="9" font-family="monospace">SAN STORAGE</text>
+
+                            <!-- Patch Cables -->
+                            <path d="M105 42 C 105 52, 60 55, 60 70" stroke="#3b82f6" stroke-width="1.6" stroke-opacity="0.8" fill="none"/>
+                            <path d="M133 42 C 133 60, 85 85, 85 105" stroke="#60a5fa" stroke-width="1.6" stroke-opacity="0.8" fill="none"/>
+                        </svg>
+                    </div>
+
+                    <!-- Live интерактивный блок: Мои закрепленные организации -->
+                    <div class="hero-pinned-card">
+                        <div class="hero-pinned-header">
+                            <span class="hero-pinned-title">Мои закрепленные организации 📌</span>
+                        </div>
+                        <% if (pinnedList && pinnedList.length > 0) { %>
+                            <div class="hero-pinned-list">
+                                <% pinnedList.forEach(function(org) { %>
+                                    <a href="/wiki/organization/<%= org.id %>" class="hero-pinned-pill" title="<%= org.name %>">
+                                        <span class="hero-pinned-monogram"><%= computeOrgMonogram(org.name) %></span>
+                                        <span class="hero-pinned-name"><%= org.name %></span>
+                                        <span class="hero-pinned-arrow" aria-hidden="true">→</span>
+                                    </a>
+                                <% }); %>
+                            </div>
+                        <% } else { %>
+                            <div class="hero-pinned-hint-pill">Вы еще не закрепили организации. Закрепите булавкой 📌 в Wiki:</div>
+                            <div class="hero-pinned-list">
+                                <% const sampleOrgs = (orgsList && orgsList.length > 0) ? orgsList.slice(0, 3) : []; %>
+                                <% sampleOrgs.forEach(function(org) { %>
+                                    <a href="/wiki/organization/<%= org.id %>" class="hero-pinned-pill" title="<%= org.name %>">
+                                        <span class="hero-pinned-monogram"><%= computeOrgMonogram(org.name) %></span>
+                                        <span class="hero-pinned-name"><%= org.name %></span>
+                                        <span class="hero-pinned-arrow" aria-hidden="true">→</span>
+                                    </a>
+                                <% }); %>
+                            </div>
+                        <% } %>
+                    </div>
+                </div>
+            </article>
+
+            <!-- Консервация старого грида виджетов и карточки События
             <div class="command-widgets-grid" style="max-width: 560px; margin: 0 auto; display: block;">
-                <!-- Карточка 1: Wiki (База знаний) -->
                 <article class="command-widget command-widget--wiki" style="max-width: 560px; margin: 0 auto;">
                     <div class="command-widget__header">
                         <div class="command-widget__icon-wrap command-widget__icon-wrap--wiki" aria-hidden="true">
@@ -127,14 +293,13 @@
                     </div>
 
                     <div class="command-widget__footer">
-                        <a href="/wiki" class="command-widget__btn command-widget__btn--primary" id="btnOpenWiki">
+                        <a href="/wiki" class="command-widget__btn command-widget__btn--primary" id="btnOpenWikiLegacy">
                             <span data-i18n="home.widget.wiki.btn">Перейти в базу</span>
                             <span class="btn-arrow" aria-hidden="true">→</span>
                         </a>
                     </div>
                 </article>
 
-                <!-- Карточка 2: События
                 <article class="command-widget command-widget--events">
                     <div class="command-widget__header">
                         <div class="command-widget__icon-wrap command-widget__icon-wrap--events" aria-hidden="true">
@@ -167,8 +332,8 @@
                         </a>
                     </div>
                 </article>
-                -->
             </div>
+            -->
         </section>
     </main>
 
