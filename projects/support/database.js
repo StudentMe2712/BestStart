@@ -361,7 +361,7 @@ async function initFilesTable() {
                 uploaded_by VARCHAR(50) DEFAULT NULL,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 INDEX (org_id)
-            )
+            ) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
         `);
         console.log('✓ Таблица organization_files готова');
     } catch (err) {

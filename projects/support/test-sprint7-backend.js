@@ -97,7 +97,7 @@ async function runTests() {
         console.log('[2/6] Проверка HTTP Security Headers...');
         const resLogin = await makeRequest({ method: 'GET', path: '/login' });
         assert.strictEqual(resLogin.headers['x-content-type-options'], 'nosniff', 'Заголовок X-Content-Type-Options должен быть nosniff');
-        assert.strictEqual(resLogin.headers['x-frame-options'], 'DENY', 'Заголовок X-Frame-Options должен быть DENY');
+        assert.strictEqual(resLogin.headers['x-frame-options'], 'SAMEORIGIN', 'Заголовок X-Frame-Options должен быть SAMEORIGIN');
         assert.strictEqual(resLogin.headers['referrer-policy'], 'same-origin', 'Заголовок Referrer-Policy должен быть same-origin');
         console.log('✓ Все обязательные security headers присутствуют в ответах.\n');
 

@@ -75,7 +75,7 @@ async function runAllTests() {
             method: 'GET'
         });
         assert.strictEqual(loginPageRes.headers['x-content-type-options'], 'nosniff');
-        assert.strictEqual(loginPageRes.headers['x-frame-options'], 'DENY');
+        assert.strictEqual(loginPageRes.headers['x-frame-options'], 'SAMEORIGIN');
         assert.strictEqual(loginPageRes.headers['referrer-policy'], 'same-origin');
 
         // Проверка отсутствия ссылок на регистрацию
@@ -188,7 +188,7 @@ async function runAllTests() {
         assert.strictEqual(homeRes.statusCode, 200);
         assert.ok(homeRes.body.includes('command-hero-wiki'), 'Шаблон должен содержать .command-hero-wiki');
         assert.ok(homeRes.body.includes('Wiki — Серверная база знаний'), 'Должен содержать заголовок Wiki');
-        assert.ok(homeRes.body.includes('Мои закрепленные организации'), 'Должен содержать блок закрепленных');
+        assert.ok(!homeRes.body.includes('hero-pinned-card'), 'Блок закрепленных на главной должен быть убран');
         assert.ok(homeRes.body.includes('Перейти в базу знаний'), 'Должна быть акцентная кнопка');
 
         // Проверка CSS на 1320px
@@ -211,8 +211,9 @@ async function runAllTests() {
         assert.strictEqual(wikiRes.statusCode, 200);
         assert.ok(wikiRes.body.includes('wiki-attachments-section'), 'Wiki должна содержать секцию вложений');
         assert.ok(wikiRes.body.includes('btnAttachFile'), 'Wiki должна содержать кнопку прикрепления файла');
-        assert.ok(wikiRes.body.includes('attachmentsDropzone'), 'Wiki должна содержать Drag & Drop зону');
+        assert.ok(!wikiRes.body.includes('attachmentsDropzone'), 'Drag & Drop зона должна быть удалена по требованию');
         assert.ok(wikiRes.body.includes('fileLightboxModal'), 'Wiki должна содержать модалку Lightbox');
+        assert.ok(wikiRes.body.includes('📌'), 'Сайдбар должен содержать легендарную красную булавку 📌');
 
         // Проверка загрузки и удаления через API
         const testFileContent = 'ITS-Com Network Configuration Table\nHost: 192.168.1.1\nPort: 3306';

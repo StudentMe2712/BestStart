@@ -274,59 +274,59 @@ body.wiki-page-body {
     color: #94a3b8;
 }
 
-/* Pin button */
+/* Pin button — Legendary RED Pushpin 📌 */
 .wiki-pin-btn {
     position: absolute;
     right: 8px;
     top: 50%;
     transform: translateY(-50%);
-    width: 22px;
-    height: 22px;
+    width: 24px;
+    height: 24px;
     padding: 0;
     border: none;
     background: transparent;
     border-radius: 4px;
-    color: #64748b;
-    opacity: 0;
+    opacity: 0.25;
+    filter: grayscale(50%);
     cursor: pointer;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    transition: opacity 0.15s ease, color 0.15s ease, background 0.15s ease, transform 0.15s ease;
+    transition: all 0.2s;
+    font-size: 15px;
+    line-height: 1;
     z-index: 2;
 }
 
-.wiki-pin-btn svg {
-    width: 14px;
-    height: 14px;
+.wiki-pin-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+    font-size: 15px;
+    user-select: none;
     pointer-events: none;
 }
 
-.wiki-list-item:hover .wiki-pin-btn,
-.wiki-pin-btn.is-pinned {
-    opacity: 1;
+.wiki-list-item:hover .wiki-pin-btn {
+    opacity: 0.8;
+    filter: none;
 }
 
 .wiki-pin-btn:hover {
-    background: rgba(255, 255, 255, 0.12);
-    color: #cbd5e1;
-    transform: translateY(-50%) scale(1.1);
+    opacity: 1;
+    filter: none;
+    transform: translateY(-50%) scale(1.15);
 }
 
 .wiki-pin-btn.is-pinned {
-    color: #3b82f6; /* sapphire */
+    opacity: 1;
+    filter: drop-shadow(0 1px 2px rgba(239, 68, 68, 0.45));
+    transform: translateY(-50%) scale(1.15);
 }
 
 .wiki-pin-btn.is-pinned:hover {
-    color: #60a5fa;
-}
-
-[data-theme="dark"] .wiki-pin-btn {
-    color: #64748b;
-}
-
-[data-theme="dark"] .wiki-pin-btn.is-pinned {
-    color: #60a5fa;
+    transform: translateY(-50%) scale(1.22);
 }
 
 
@@ -2026,6 +2026,50 @@ body.wiki-page-body {
     transform: translateY(-1px);
 }
 
+/* Compact icon-only attach button */
+.btn-attach-file--compact {
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-md, 6px);
+    background: var(--color-accent, #2563eb);
+    color: #ffffff;
+    border: none;
+    cursor: pointer;
+    box-shadow: 0 1px 3px rgba(37, 99, 235, 0.25);
+    transition: background 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.btn-attach-file--compact:hover {
+    background: var(--color-accent-hover, #1d4ed8);
+    transform: translateY(-1px);
+    box-shadow: 0 3px 8px rgba(37, 99, 235, 0.35);
+}
+
+.btn-attach-file--compact svg {
+    stroke: #ffffff;
+}
+
+.attachments-empty {
+    padding: 16px 20px;
+    text-align: center;
+    font-size: 13.5px;
+    color: var(--text-tertiary, #94a3b8);
+    background: var(--bg-subtle, rgba(248, 250, 252, 0.5));
+    border: 1px dashed var(--border-subtle, #cbd5e1);
+    border-radius: var(--radius-md, 8px);
+    margin: 8px 0 12px 0;
+}
+
+[data-theme="dark"] .attachments-empty {
+    background: rgba(255, 255, 255, 0.02);
+    border-color: rgba(255, 255, 255, 0.1);
+    color: #94a3b8;
+}
+
 /* Dropzone Drag & Drop */
 .attachments-dropzone {
     border: 2px dashed #cbd5e1;
@@ -2317,18 +2361,20 @@ body.wiki-page-body {
     flex: 1;
     overflow: auto;
     display: flex;
-    align-items: center;
+    align-items: stretch;
     justify-content: center;
     background: #0b1120;
-    padding: 16px;
+    padding: 0;
+    position: relative;
 }
 
 .lightbox-image {
-    max-width: 100%;
-    max-height: 100%;
+    max-width: calc(100% - 32px);
+    max-height: calc(100% - 32px);
     object-fit: contain;
     border-radius: 4px;
     box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
+    margin: auto;
 }
 
 .lightbox-iframe {
@@ -2337,4 +2383,174 @@ body.wiki-page-body {
     border: none;
     border-radius: 4px;
     background: #ffffff;
+}
+
+/* Lightbox Loading & Spinner */
+.lightbox-loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    color: #94a3b8;
+    font-size: 14px;
+    margin: auto;
+    padding: 40px;
+}
+
+.lightbox-spinner {
+    width: 34px;
+    height: 34px;
+    border: 3px solid rgba(255, 255, 255, 0.15);
+    border-top-color: #3b82f6;
+    border-radius: 50%;
+    animation: lightboxSpin 0.8s linear infinite;
+}
+
+@keyframes lightboxSpin {
+    to { transform: rotate(360deg); }
+}
+
+/* Lightbox Error */
+.lightbox-error {
+    text-align: center;
+    color: #f87171;
+    font-size: 14px;
+    margin: auto;
+    padding: 40px 24px;
+    line-height: 1.6;
+}
+
+.lightbox-error-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 14px;
+    padding: 8px 20px;
+    border-radius: 6px;
+    background: var(--color-accent, #2563eb);
+    color: #ffffff;
+    text-decoration: none;
+    font-size: 13.5px;
+    font-weight: 500;
+    transition: background 0.15s ease;
+}
+
+.lightbox-error-btn:hover {
+    background: var(--color-accent-hover, #1d4ed8);
+}
+
+/* Lightbox Spreadsheet Preview */
+.lightbox-spreadsheet-container {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background: #0b1120;
+}
+
+.lightbox-sheet-tabs {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 16px;
+    background: #1e293b;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    overflow-x: auto;
+    flex-shrink: 0;
+}
+
+.lightbox-sheet-tab {
+    padding: 6px 14px;
+    font-size: 12.5px;
+    font-weight: 500;
+    background: rgba(255, 255, 255, 0.05);
+    color: #94a3b8;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 6px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.15s ease;
+}
+
+.lightbox-sheet-tab:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: #ffffff;
+}
+
+.lightbox-sheet-tab.is-active {
+    background: var(--color-accent, #2563eb);
+    color: #ffffff;
+    border-color: var(--color-accent, #2563eb);
+}
+
+.lightbox-table-scroll {
+    flex: 1;
+    overflow: auto;
+    padding: 16px;
+    background: #0b1120;
+}
+
+#spreadsheetPreviewTable {
+    border-collapse: collapse;
+    width: 100%;
+    font-size: 13px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    color: #e2e8f0;
+    background: #0f172a;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 4px;
+}
+
+#spreadsheetPreviewTable th,
+#spreadsheetPreviewTable td {
+    padding: 8px 14px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    text-align: left;
+    white-space: nowrap;
+    line-height: 1.4;
+}
+
+#spreadsheetPreviewTable tr:first-child td,
+#spreadsheetPreviewTable th {
+    background: #1e293b;
+    font-weight: 600;
+    color: #f1f5f9;
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+#spreadsheetPreviewTable tr:nth-child(even) td {
+    background: rgba(255, 255, 255, 0.02);
+}
+
+#spreadsheetPreviewTable tr:hover td {
+    background: rgba(59, 130, 246, 0.1);
+}
+
+/* Lightbox Code & XML Preview */
+.lightbox-code-wrap {
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    padding: 20px 24px;
+    background: #0b1120;
+    box-sizing: border-box;
+}
+
+.lightbox-code-wrap pre {
+    margin: 0;
+    padding: 0;
+}
+
+.lightbox-code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    font-size: 13px;
+    line-height: 1.55;
+    color: #e2e8f0;
+    white-space: pre-wrap;
+    word-break: break-word;
 }

@@ -1121,6 +1121,9 @@ document.addEventListener('click', async function (e) {
                 pinBtn.setAttribute('title', 'Закрепить организацию');
                 showToast('Организация откреплена');
             }
+            if (!pinBtn.querySelector('.wiki-pin-icon')) {
+                pinBtn.innerHTML = '<span class="wiki-pin-icon" aria-hidden="true">📌</span>';
+            }
             reorganizeWikiSidebar(data.pins || []);
         } else {
             showToast((data && data.error) || 'Ошибка закрепления');
@@ -1130,6 +1133,25 @@ document.addEventListener('click', async function (e) {
         showToast('Ошибка при закреплении организации');
     }
 });
+
+function createOrgListItem(org, isPinned, isActive) {
+    var li = document.createElement('li');
+    li.className = 'wiki-list-item';
+    li.setAttribute('data-name', (org.name || '').toLowerCase());
+    li.setAttribute('data-org-id', org.id);
+    var pinTitle = isPinned ? 'Открепить организацию' : 'Закрепить организацию';
+    li.innerHTML = '<a href="/wiki/organization/' + org.id + '" class="wiki-list-link' + (isActive ? ' is-active' : '') + '">' +
+        '<span class="wiki-active-bar" aria-hidden="true"></span>' +
+        '<svg class="wiki-list-chevron" viewBox="0 0 8 12" fill="none" width="7" height="11">' +
+        '<path d="M1.5 1.5L6 6L1.5 10.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>' +
+        '</svg>' +
+        '<span class="wiki-list-name">' + escapeHtmlText(org.name) + '</span>' +
+        '</a>' +
+        '<button type="button" class="wiki-pin-btn' + (isPinned ? ' is-pinned' : '') + '" data-org-id="' + org.id + '" title="' + pinTitle + '" aria-label="Булавка">' +
+        '<span class="wiki-pin-icon" aria-hidden="true">📌</span>' +
+        '</button>';
+    return li;
+}
 
 function reorganizeWikiSidebar(pins) {
     var list = document.getElementById('wikiOrgList');
@@ -1155,6 +1177,9 @@ function reorganizeWikiSidebar(pins) {
             } else {
                 btn.classList.remove('is-pinned');
                 btn.setAttribute('title', 'Закрепить организацию');
+            }
+            if (!btn.querySelector('.wiki-pin-icon')) {
+                btn.innerHTML = '<span class="wiki-pin-icon" aria-hidden="true">📌</span>';
             }
         }
 
@@ -1242,6 +1267,11 @@ function reorganizeWikiSidebar(pins) {
         if (['xlsx', 'xls', 'csv'].includes(ext)) {
             fileType = 'excel';
             iconColor = '#10b981';
+            isPreviewable = true;
+        } else if (ext === 'xml') {
+            fileType = 'xml';
+            iconColor = '#06b6d4';
+            isPreviewable = true;
         } else if (ext === 'pdf') {
             fileType = 'pdf';
             iconColor = '#ef4444';
@@ -1253,6 +1283,7 @@ function reorganizeWikiSidebar(pins) {
         } else if (['docx', 'doc', 'txt'].includes(ext)) {
             fileType = 'doc';
             iconColor = '#6366f1';
+            isPreviewable = (ext === 'txt');
         } else if (['zip', 'rdp'].includes(ext)) {
             fileType = 'archive';
             iconColor = '#f59e0b';
@@ -1274,6 +1305,8 @@ function reorganizeWikiSidebar(pins) {
     function getFileIconSvg(fileType) {
         if (fileType === 'excel') {
             return '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="17"/><line x1="16" y1="13" x2="8" y2="17"/></svg>';
+        } else if (fileType === 'xml') {
+            return '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>';
         } else if (fileType === 'pdf') {
             return '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M10 12h2a1 1 0 0 1 1 1v1a1 1 0 0 1-1 1h-2v-4z"/></svg>';
         } else if (fileType === 'image') {
@@ -1353,6 +1386,8 @@ function reorganizeWikiSidebar(pins) {
                     if (attachmentsList) {
                         attachmentsList.appendChild(chip);
                     }
+                    var emptyEl = document.getElementById('attachmentsEmpty');
+                    if (emptyEl) emptyEl.style.display = 'none';
                     updateBadgeCount(1);
                     showToast('Файл "' + data.file.original_name + '" прикреплен');
                 } else {
@@ -1442,6 +1477,10 @@ function reorganizeWikiSidebar(pins) {
                     if (res.ok && data && data.success) {
                         var chip = deleteBtn.closest('.file-chip');
                         if (chip) chip.remove();
+                        var emptyEl = document.getElementById('attachmentsEmpty');
+                        if (emptyEl && attachmentsList && attachmentsList.querySelectorAll('.file-chip').length === 0) {
+                            emptyEl.style.display = '';
+                        }
                         updateBadgeCount(-1);
                         showToast('Файл удален');
                     } else {
@@ -1477,21 +1516,60 @@ function reorganizeWikiSidebar(pins) {
 
         if (lightboxBody) {
             lightboxBody.innerHTML = '';
-            var viewUrl = '/api/files/' + fileId + '/view';
 
             if (fileType === 'image') {
-                var img = document.createElement('img');
-                img.className = 'lightbox-image';
-                img.src = viewUrl;
-                img.alt = fileName;
-                lightboxBody.appendChild(img);
+                lightboxBody.innerHTML = '<img class="lightbox-image" src="/api/files/' + fileId + '/view" alt="' + escapeHtmlText(fileName) + '">';
             } else if (fileType === 'pdf') {
-                var iframe = document.createElement('iframe');
-                iframe.className = 'lightbox-iframe';
-                iframe.src = viewUrl;
-                lightboxBody.appendChild(iframe);
+                lightboxBody.innerHTML = '<iframe class="lightbox-iframe" src="/api/files/' + fileId + '/view"></iframe>';
+            } else if (fileType === 'excel' || fileType === 'xml' || fileType === 'doc') {
+                lightboxBody.innerHTML = '<div class="lightbox-loading"><span class="lightbox-spinner"></span><span>Загрузка предпросмотра...</span></div>';
+                fetch('/api/files/' + fileId + '/preview')
+                    .then(function(r) { return r.json(); })
+                    .then(function(data) {
+                        if (!data.success) {
+                            lightboxBody.innerHTML = '<div class="lightbox-error"><span>Не удалось загрузить предпросмотр: ' + escapeHtmlText(data.error || 'Формат не поддерживается') + '</span><br><a href="/api/files/' + fileId + '/download" class="lightbox-error-btn">Скачать файл</a></div>';
+                            return;
+                        }
+                        if (data.type === 'excel') {
+                            // Render sheet selector if multiple sheets, and spreadsheet table
+                            var html = '<div class="lightbox-spreadsheet-container">';
+                            if (data.sheetNames && data.sheetNames.length > 1) {
+                                html += '<div class="lightbox-sheet-tabs">';
+                                data.sheetNames.forEach(function(s) {
+                                    html += '<button type="button" class="lightbox-sheet-tab' + (s === data.currentSheet ? ' is-active' : '') + '" data-sheet="' + escapeHtmlText(s) + '">' + escapeHtmlText(s) + '</button>';
+                                });
+                                html += '</div>';
+                            }
+                            html += '<div class="lightbox-table-scroll">' + data.html + '</div>';
+                            html += '</div>';
+                            lightboxBody.innerHTML = html;
+
+                            // Sheet tab switcher
+                            var tabs = lightboxBody.querySelectorAll('.lightbox-sheet-tab');
+                            tabs.forEach(function(tab) {
+                                tab.addEventListener('click', function() {
+                                    var sheetName = this.getAttribute('data-sheet');
+                                    fetch('/api/files/' + fileId + '/preview?sheet=' + encodeURIComponent(sheetName))
+                                        .then(function(r) { return r.json(); })
+                                        .then(function(resData) {
+                                            if (resData.success) {
+                                                var scrollEl = lightboxBody.querySelector('.lightbox-table-scroll');
+                                                if (scrollEl) scrollEl.innerHTML = resData.html;
+                                                tabs.forEach(function(t) { t.classList.remove('is-active'); });
+                                                tab.classList.add('is-active');
+                                            }
+                                        });
+                                });
+                            });
+                        } else if (data.type === 'xml' || data.type === 'text') {
+                            lightboxBody.innerHTML = '<div class="lightbox-code-wrap"><pre><code class="lightbox-code">' + escapeHtmlText(data.content) + '</code></pre></div>';
+                        }
+                    })
+                    .catch(function(err) {
+                        lightboxBody.innerHTML = '<div class="lightbox-error"><span>Ошибка сети при загрузке предпросмотра</span><br><a href="/api/files/' + fileId + '/download" class="lightbox-error-btn">Скачать файл</a></div>';
+                    });
             } else {
-                lightboxBody.innerHTML = '<div style="color: #94a3b8; font-size: 14px;">Предпросмотр недоступен для данного формата. Используйте кнопку «Скачать».</div>';
+                lightboxBody.innerHTML = '<div class="lightbox-error"><span>Предпросмотр недоступен для данного формата.</span><br><a href="/api/files/' + fileId + '/download" class="lightbox-error-btn">Скачать файл</a></div>';
             }
         }
 

@@ -8,6 +8,7 @@ const multer = require('multer');
 const { marked } = require('marked');
 const createDOMPurify = require('dompurify');
 const { JSDOM } = require('jsdom');
+const XLSX = require('xlsx');
 
 const USE_STUB = process.env.DB_STUB === 'true' || process.env.DB_STUB === '1';
 
@@ -63,7 +64,7 @@ app.set('trust proxy', 1);
 // Middleware базовых HTTP-заголовков безопасности (Спринт 7)
 app.use((req, res, next) => {
     res.setHeader('X-Content-Type-Options', 'nosniff');
-    res.setHeader('X-Frame-Options', 'DENY');
+    res.setHeader('X-Frame-Options', 'SAMEORIGIN');
     res.setHeader('Referrer-Policy', 'same-origin');
     next();
 });
@@ -148,9 +149,22 @@ function requireAuth(req, res, next) {
 // ============================================================
 // НАСТРОЙКА MULTER ДЛЯ ЗАГРУЗКИ ФАЙЛОВ ОРГАНИЗАЦИЙ (Спринт 7)
 // ============================================================
+function fixUtf8Filename(name) {
+    if (!name || typeof name !== 'string') return name;
+    if (/[^\u0000-\u00ff]/.test(name)) return name;
+    try {
+        const decoded = Buffer.from(name, 'latin1').toString('utf8');
+        if (decoded && !decoded.includes('\uFFFD')) {
+            return decoded;
+        }
+    } catch (e) {}
+    return name;
+}
+
 const ALLOWED_EXTENSIONS = [
     '.xlsx', '.xls', '.csv', '.pdf', '.docx', '.doc',
-    '.png', '.jpg', '.jpeg', '.webp', '.txt', '.zip', '.rdp'
+    '.png', '.jpg', '.jpeg', '.webp', '.txt', '.zip', '.rdp',
+    '.xml'
 ];
 
 const storage = multer.diskStorage({
@@ -164,14 +178,16 @@ const storage = multer.diskStorage({
     },
     filename: (req, file, cb) => {
         const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
-        const ext = path.extname(file.originalname).toLowerCase();
+        const cleanName = fixUtf8Filename(file.originalname);
+        const ext = path.extname(cleanName || file.originalname).toLowerCase();
         cb(null, `${uniqueSuffix}${ext}`);
     }
 });
 
 const fileFilter = (req, file, cb) => {
     const ext = path.extname(file.originalname || '').toLowerCase();
-    if (ALLOWED_EXTENSIONS.includes(ext)) {
+    const mime = (file.mimetype || '').toLowerCase();
+    if (ALLOWED_EXTENSIONS.includes(ext) || ext === '.xml' || mime === 'application/xml' || mime === 'text/xml') {
         cb(null, true);
     } else {
         cb(new Error(`Недопустимый тип файла (${ext}). Разрешены только: ${ALLOWED_EXTENSIONS.join(', ')}`));
@@ -721,11 +737,17 @@ app.post('/api/organizations/:id/files', requireAuth, uploadSingleFile, async (r
             return res.status(400).json({ success: false, error: 'Файл не прикреплен' });
         }
         const orgId = Number(req.params.id);
+        const cleanOriginalName = fixUtf8Filename(req.file.originalname);
+        const ext = path.extname(cleanOriginalName || '').toLowerCase();
+        let mimeType = req.file.mimetype || 'application/octet-stream';
+        if (ext === '.xml' && (!req.file.mimetype || req.file.mimetype === 'application/octet-stream')) {
+            mimeType = 'application/xml';
+        }
         const createdFile = await filesDB.create({
             org_id: orgId,
             filename: req.file.filename,
-            original_name: req.file.originalname,
-            mime_type: req.file.mimetype || 'application/octet-stream',
+            original_name: cleanOriginalName,
+            mime_type: mimeType,
             file_size: req.file.size,
             uploaded_by: req.session.user.username
         });
@@ -768,12 +790,95 @@ app.get('/api/files/:fileId/view', requireAuth, async (req, res) => {
             return res.status(404).json({ success: false, error: 'Файл не найден на сервере' });
         }
 
+        res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+        res.setHeader('Content-Security-Policy', "frame-ancestors 'self'");
         res.setHeader('Content-Type', file.mime_type || 'application/octet-stream');
         res.setHeader('Content-Disposition', `inline; filename*=UTF-8''${encodeURIComponent(file.original_name)}`);
         res.sendFile(filePath);
     } catch (err) {
         console.error('Ошибка просмотра файла:', err);
         res.status(500).json({ success: false, error: 'Ошибка сервера при открытии файла' });
+    }
+});
+
+// Предварительный просмотр файла (таблицы Excel/CSV, XML, TXT, PDF, изображения)
+app.get('/api/files/:fileId/preview', requireAuth, async (req, res) => {
+    try {
+        const fileId = Number(req.params.fileId);
+        if (isNaN(fileId)) {
+            return res.status(400).json({ success: false, error: 'Неверный идентификатор файла' });
+        }
+
+        const file = await filesDB.getById(fileId);
+        if (!file) {
+            return res.status(404).json({ success: false, error: 'Файл не найден' });
+        }
+
+        const filePath = path.join(__dirname, 'uploads', `org_${file.org_id}`, file.filename);
+        if (!fs.existsSync(filePath)) {
+            return res.status(404).json({ success: false, error: 'Файл не найден на сервере' });
+        }
+
+        const ext = path.extname(file.original_name || file.filename || '').toLowerCase();
+        const IMAGE_EXTENSIONS = ['.png', '.jpg', '.jpeg', '.webp', '.gif', '.svg', '.bmp'];
+        const isImage = IMAGE_EXTENSIONS.includes(ext) || (file.mime_type && file.mime_type.startsWith('image/'));
+
+        // Spreadsheet (.xlsx, .xls, .csv)
+        if (ext === '.xlsx' || ext === '.xls' || ext === '.csv') {
+            try {
+                const workbook = XLSX.readFile(filePath);
+                const sheetNames = workbook.SheetNames || [];
+                const sheetName = (req.query.sheet && sheetNames.includes(req.query.sheet)) ? req.query.sheet : sheetNames[0];
+                const worksheet = sheetName ? workbook.Sheets[sheetName] : null;
+                const htmlTable = worksheet ? XLSX.utils.sheet_to_html(worksheet, { id: 'spreadsheetPreviewTable', editable: false }) : '';
+                return res.json({
+                    success: true,
+                    type: 'excel',
+                    html: htmlTable,
+                    sheetNames: sheetNames,
+                    currentSheet: sheetName,
+                    originalName: file.original_name
+                });
+            } catch (parseErr) {
+                return res.status(500).json({ success: false, error: 'Ошибка разбора таблицы: ' + parseErr.message });
+            }
+        }
+
+        // XML (.xml) или текстовые (.txt)
+        if (ext === '.xml' || ext === '.txt') {
+            try {
+                const content = fs.readFileSync(filePath, 'utf-8');
+                return res.json({
+                    success: true,
+                    type: ext === '.xml' ? 'xml' : 'text',
+                    content: content,
+                    originalName: file.original_name
+                });
+            } catch (readErr) {
+                return res.status(500).json({ success: false, error: 'Ошибка чтения файла: ' + readErr.message });
+            }
+        }
+
+        // PDF или изображение
+        if (ext === '.pdf' || isImage) {
+            return res.json({
+                success: true,
+                type: ext === '.pdf' ? 'pdf' : 'image',
+                viewUrl: `/api/files/${fileId}/view`,
+                originalName: file.original_name
+            });
+        }
+
+        // Неподдерживаемый тип для инлайн-просмотра
+        return res.json({
+            success: false,
+            type: 'unsupported',
+            originalName: file.original_name,
+            downloadUrl: `/api/files/${fileId}/download`
+        });
+    } catch (err) {
+        console.error('Ошибка предварительного просмотра файла:', err);
+        res.status(500).json({ success: false, error: 'Ошибка сервера при предварительном просмотре файла' });
     }
 });
 
