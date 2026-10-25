@@ -30,16 +30,21 @@ namespace PersonalProvocateur.App.UI;
 /// </summary>
 public partial class SettingsWindow : Window
 {
-    private static readonly Brush ActiveNavBg = CreateFrozenBrush(0xFF, 0x1C, 0x20, 0x33);
-    private static readonly Brush ActiveTabBg = CreateFrozenBrush(0xFF, 0x1C, 0x20, 0x33);
-    private static readonly Brush ActiveTabFg = CreateFrozenBrush(0xFF, 0xF3, 0xF4, 0xF6);
+    private static readonly Brush ActiveNavBg = CreateFrozenBrush(0xFF, 0x18, 0x18, 0x22);
+    private static readonly Brush ActiveTabBg = CreateFrozenBrush(0xFF, 0x18, 0x18, 0x22);
+    private static readonly Brush ActiveTabFg = CreateFrozenBrush(0xFF, 0xF4, 0xF4, 0xF5);
     private static readonly Brush InactiveTabBg = Brushes.Transparent;
-    private static readonly Brush InactiveTabFg = CreateFrozenBrush(0xFF, 0x9C, 0xA3, 0xAF);
+    private static readonly Brush InactiveTabFg = CreateFrozenBrush(0xFF, 0xA1, 0xA1, 0xAA);
 
     private static readonly Brush SelectedCardBg = CreateFrozenBrush(0x22, 0x8B, 0x5C, 0xF6);
     private static readonly Brush SelectedCardBorder = CreateFrozenBrush(0xFF, 0x8B, 0x5C, 0xF6);
-    private static readonly Brush NormalCardBg = CreateFrozenBrush(0xFF, 0x13, 0x15, 0x1F);
-    private static readonly Brush NormalCardBorder = CreateFrozenBrush(0xFF, 0x25, 0x29, 0x3A);
+    private static readonly Brush NormalCardBg = CreateFrozenBrush(0xFF, 0x14, 0x14, 0x19);
+    private static readonly Brush NormalCardBorder = CreateFrozenBrush(0xFF, 0x23, 0x23, 0x2B);
+
+    private static readonly Brush ModeActiveBg = CreateFrozenBrush(0x1F, 0x8B, 0x5C, 0xF6);
+    private static readonly Brush ModeActiveBorder = CreateFrozenBrush(0xFF, 0x8B, 0x5C, 0xF6);
+    private static readonly Brush ModeInactiveBg = CreateFrozenBrush(0xFF, 0x14, 0x14, 0x19);
+    private static readonly Brush ModeInactiveBorder = CreateFrozenBrush(0xFF, 0x23, 0x23, 0x2B);
 
     private static Brush CreateFrozenBrush(byte a, byte r, byte g, byte b)
     {
@@ -56,6 +61,7 @@ public partial class SettingsWindow : Window
     private readonly DispatcherTimer _autoSaveDebounceTimer;
     private DispatcherTimer? _toastTimer;
     private readonly ObservableCollection<VideoItemViewModel> _videos = new();
+    private readonly ObservableCollection<string> _entertainmentKeywords = new();
 
     private bool _isPaused;
     private bool _isLoading = true;
@@ -63,6 +69,7 @@ public partial class SettingsWindow : Window
     private string? _initialPanicHotkey;
     private string _selectedSkin = "DynamicOrb";
     private string _customMascotPath = string.Empty;
+    private string _triggerMode = "SmartHybrid";
     private int _selectedTabIndex = 0;
 
     /// <summary>
@@ -79,6 +86,16 @@ public partial class SettingsWindow : Window
     /// Gets the path to the custom mascot image if CustomImage skin is selected.
     /// </summary>
     public string CustomMascotPath => _customMascotPath;
+
+    /// <summary>
+    /// Gets the currently selected trigger mode ("SmartHybrid", "SmartOnly", "RandomTimer").
+    /// </summary>
+    public string TriggerMode => _triggerMode;
+
+    /// <summary>
+    /// Gets the tracked entertainment keywords list.
+    /// </summary>
+    public ObservableCollection<string> EntertainmentKeywords => _entertainmentKeywords;
 
     /// <summary>
     /// Gets the navigation button for the Content tab (alias for backward compatibility).
@@ -200,6 +217,31 @@ public partial class SettingsWindow : Window
                 _selectedSkin = s.MascotSkin ?? "DynamicOrb";
                 _customMascotPath = s.CustomMascotPath ?? string.Empty;
 
+                _triggerMode = s.TriggerMode ?? "SmartHybrid";
+                if (TriggerOnEntertainmentCheckBox != null)
+                {
+                    TriggerOnEntertainmentCheckBox.IsChecked = s.TriggerOnEntertainment;
+                }
+                if (EntertainmentGraceTextBox != null)
+                {
+                    EntertainmentGraceTextBox.Text = s.EntertainmentGraceSeconds.ToString();
+                }
+
+                _entertainmentKeywords.Clear();
+                foreach (var kw in (s.EntertainmentKeywords ?? new List<string>()))
+                {
+                    _entertainmentKeywords.Add(kw);
+                }
+
+                if (TriggerOnIdleCheckBox != null)
+                {
+                    TriggerOnIdleCheckBox.IsChecked = s.TriggerOnIdle;
+                }
+                if (IdleThresholdTextBox != null)
+                {
+                    IdleThresholdTextBox.Text = s.IdleThresholdMinutes.ToString();
+                }
+
                 try
                 {
                     RunOnStartupCheckBox.IsChecked = StartupManager.IsRunOnStartupEnabled();
@@ -215,12 +257,25 @@ public partial class SettingsWindow : Window
                 MaxIntervalTextBox.Text = "20";
                 _selectedSkin = "DynamicOrb";
                 _customMascotPath = string.Empty;
+                _triggerMode = "SmartHybrid";
+                _entertainmentKeywords.Clear();
+                foreach (var kw in new[] { "YouTube", "TikTok", "Twitch", "Reddit", "VK", "Shorts", "Reels", "Netflix", "Steam" })
+                {
+                    _entertainmentKeywords.Add(kw);
+                }
                 if (TargetMonitorComboBox.Items.Count > 0)
                 {
                     TargetMonitorComboBox.SelectedIndex = 0;
                 }
             }
 
+            if (EntertainmentTagsItemsControl != null)
+            {
+                EntertainmentTagsItemsControl.ItemsSource = _entertainmentKeywords;
+            }
+
+            UpdateTriggerModeUI(_triggerMode);
+            UpdateCorridorBar(GetMinInterval(), GetMaxInterval());
             UpdateSkinSelectionUi();
             SelectTab(0);
             RefreshVideosList();
@@ -308,6 +363,13 @@ public partial class SettingsWindow : Window
         string selectedSkin = _selectedSkin;
         string customPath = _customMascotPath;
 
+        string triggerMode = _triggerMode;
+        bool triggerOnEntertainment = TriggerOnEntertainmentCheckBox?.IsChecked ?? true;
+        int entertainmentGrace = int.TryParse(EntertainmentGraceTextBox?.Text, out int eg) ? Math.Clamp(eg, 5, 3600) : 60;
+        var keywords = _entertainmentKeywords.ToList();
+        bool triggerOnIdle = TriggerOnIdleCheckBox?.IsChecked ?? true;
+        int idleThreshold = int.TryParse(IdleThresholdTextBox?.Text, out int it) ? Math.Clamp(it, 1, 120) : 12;
+
         _settingsStore?.Update(s =>
         {
             s.MinIntervalMinutes = min;
@@ -326,6 +388,12 @@ public partial class SettingsWindow : Window
             s.RunOnStartup = runOnStartup;
             s.MascotSkin = selectedSkin;
             s.CustomMascotPath = customPath ?? string.Empty;
+            s.TriggerMode = triggerMode;
+            s.TriggerOnEntertainment = triggerOnEntertainment;
+            s.EntertainmentGraceSeconds = entertainmentGrace;
+            s.EntertainmentKeywords = keywords;
+            s.TriggerOnIdle = triggerOnIdle;
+            s.IdleThresholdMinutes = idleThreshold;
         });
 
         try
@@ -362,7 +430,7 @@ public partial class SettingsWindow : Window
         int max = GetMaxInterval();
         _scheduler?.UpdateIntervals(min, max);
 
-        Close();
+        ShowToast("✓ Настройки успешно сохранены", isSuccess: true);
     }
 
     #endregion
@@ -555,6 +623,171 @@ public partial class SettingsWindow : Window
     }
 
 
+    #region Smart Triggers, Presets & Corridor (ADR-025, ADR-026)
+
+    /// <summary>
+    /// Selects the provocateur triggering mode ("SmartHybrid", "SmartOnly", "RandomTimer") and triggers immediate auto-save.
+    /// </summary>
+    /// <param name="mode">Mode identifier string.</param>
+    public void SelectTriggerMode(string mode)
+    {
+        if (mode != "SmartHybrid" && mode != "SmartOnly" && mode != "RandomTimer")
+        {
+            mode = "SmartHybrid";
+        }
+        _triggerMode = mode;
+        UpdateTriggerModeUI(_triggerMode);
+        TriggerAutoSave(immediate: true);
+    }
+
+    /// <summary>
+    /// Updates the visual selection state of the 3 trigger mode cards.
+    /// </summary>
+    public void UpdateTriggerModeUI(string mode)
+    {
+        bool isHybrid = mode == "SmartHybrid";
+        bool isSmartOnly = mode == "SmartOnly";
+        bool isRandom = mode == "RandomTimer";
+
+        if (TriggerModeSmartHybridButton != null)
+        {
+            TriggerModeSmartHybridButton.Background = isHybrid ? ModeActiveBg : ModeInactiveBg;
+            TriggerModeSmartHybridButton.BorderBrush = isHybrid ? ModeActiveBorder : ModeInactiveBorder;
+        }
+        if (ModeHybridActiveBadge != null)
+        {
+            ModeHybridActiveBadge.Visibility = isHybrid ? Visibility.Visible : Visibility.Collapsed;
+        }
+
+        if (TriggerModeSmartOnlyButton != null)
+        {
+            TriggerModeSmartOnlyButton.Background = isSmartOnly ? ModeActiveBg : ModeInactiveBg;
+            TriggerModeSmartOnlyButton.BorderBrush = isSmartOnly ? ModeActiveBorder : ModeInactiveBorder;
+        }
+        if (ModeSmartOnlyActiveBadge != null)
+        {
+            ModeSmartOnlyActiveBadge.Visibility = isSmartOnly ? Visibility.Visible : Visibility.Collapsed;
+        }
+
+        if (TriggerModeRandomTimerButton != null)
+        {
+            TriggerModeRandomTimerButton.Background = isRandom ? ModeActiveBg : ModeInactiveBg;
+            TriggerModeRandomTimerButton.BorderBrush = isRandom ? ModeActiveBorder : ModeInactiveBorder;
+        }
+        if (ModeRandomTimerActiveBadge != null)
+        {
+            ModeRandomTimerActiveBadge.Visibility = isRandom ? Visibility.Visible : Visibility.Collapsed;
+        }
+    }
+
+    /// <summary>
+    /// Applies a quick interval preset in minutes and triggers immediate auto-save.
+    /// </summary>
+    /// <param name="min">Minimum interval minutes.</param>
+    /// <param name="max">Maximum interval minutes.</param>
+    public void ApplyIntervalPreset(int min, int max)
+    {
+        if (MinIntervalTextBox != null)
+        {
+            MinIntervalTextBox.Text = min.ToString();
+        }
+        if (MaxIntervalTextBox != null)
+        {
+            MaxIntervalTextBox.Text = max.ToString();
+        }
+        UpdateCorridorBar(min, max);
+        TriggerAutoSave(immediate: true);
+        _scheduler?.UpdateIntervals(min, max);
+    }
+
+    /// <summary>
+    /// Updates the visual graphic corridor bar to reflect current min and max interval values.
+    /// </summary>
+    public void UpdateCorridorBar(int min, int max)
+    {
+        if (CorridorColBefore == null || CorridorColActive == null || CorridorColAfter == null)
+        {
+            return;
+        }
+
+        double total = 120.0;
+        double before = Math.Clamp(min / total, 0.0, 1.0);
+        double active = Math.Clamp((max - min) / total, 0.05, 1.0);
+        double after = Math.Clamp(1.0 - before - active, 0.0, 1.0);
+
+        CorridorColBefore.Width = new GridLength(Math.Max(0.001, before), GridUnitType.Star);
+        CorridorColActive.Width = new GridLength(Math.Max(0.05, active), GridUnitType.Star);
+        CorridorColAfter.Width = new GridLength(Math.Max(0.001, after), GridUnitType.Star);
+    }
+
+    private void Preset5_15Button_Click(object sender, RoutedEventArgs e) => ApplyIntervalPreset(5, 15);
+    private void Preset15_35Button_Click(object sender, RoutedEventArgs e) => ApplyIntervalPreset(15, 35);
+    private void Preset30_60Button_Click(object sender, RoutedEventArgs e) => ApplyIntervalPreset(30, 60);
+    private void Preset60_120Button_Click(object sender, RoutedEventArgs e) => ApplyIntervalPreset(60, 120);
+
+    private void TriggerModeSmartHybridButton_Click(object sender, RoutedEventArgs e) => SelectTriggerMode("SmartHybrid");
+    private void TriggerModeSmartOnlyButton_Click(object sender, RoutedEventArgs e) => SelectTriggerMode("SmartOnly");
+    private void TriggerModeRandomTimerButton_Click(object sender, RoutedEventArgs e) => SelectTriggerMode("RandomTimer");
+
+    private void TriggerOnEntertainmentCheckBox_Click(object sender, RoutedEventArgs e)
+    {
+        TriggerAutoSave(immediate: true);
+    }
+
+    private void TriggerOnIdleCheckBox_Click(object sender, RoutedEventArgs e)
+    {
+        TriggerAutoSave(immediate: true);
+    }
+
+    private void SmartTriggerInputs_TextChanged(object sender, TextChangedEventArgs e)
+    {
+        if (_isLoading)
+        {
+            return;
+        }
+        TriggerAutoSave(immediate: false);
+    }
+
+    private void RemoveTagButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is FrameworkElement elem && elem.Tag is string tag)
+        {
+            _entertainmentKeywords.Remove(tag);
+            TriggerAutoSave(immediate: true);
+        }
+    }
+
+    private void AddTagButton_Click(object sender, RoutedEventArgs e)
+    {
+        AddNewTagFromInput();
+    }
+
+    private void NewTagTextBox_KeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Enter)
+        {
+            AddNewTagFromInput();
+            e.Handled = true;
+        }
+    }
+
+    private void AddNewTagFromInput()
+    {
+        if (NewTagTextBox == null)
+        {
+            return;
+        }
+        string tag = NewTagTextBox.Text.Trim();
+        if (!string.IsNullOrEmpty(tag) && !_entertainmentKeywords.Contains(tag, StringComparer.OrdinalIgnoreCase))
+        {
+            _entertainmentKeywords.Add(tag);
+            NewTagTextBox.Text = string.Empty;
+            TriggerAutoSave(immediate: true);
+        }
+    }
+
+    #endregion
+
     private void IntervalTextBox_TextChanged(object sender, TextChangedEventArgs e)
     {
         if (_isLoading)
@@ -562,6 +795,7 @@ public partial class SettingsWindow : Window
             return;
         }
 
+        UpdateCorridorBar(GetMinInterval(), GetMaxInterval());
         TriggerAutoSave(immediate: false);
     }
 
@@ -580,6 +814,7 @@ public partial class SettingsWindow : Window
             MaxIntervalTextBox.Text = max.ToString();
         }
 
+        UpdateCorridorBar(min, max);
         TriggerAutoSave(immediate: true);
     }
 
@@ -1175,6 +1410,16 @@ public class VideoItemViewModel
     public string Title => Item.Title;
     public string FilePath => Item.FilePath;
     public bool IsText => Item.ContentType == ProvocationContentType.Text;
+    public bool IsVideo => !IsText;
+
+    public string ThumbnailPath => Item.ThumbnailPath;
+    public bool HasThumbnail => !IsText && !string.IsNullOrEmpty(Item.ThumbnailPath) && File.Exists(Item.ThumbnailPath);
+    public string DurationText => string.IsNullOrWhiteSpace(Item.DurationText) ? "01:30" : Item.DurationText;
+
+    public Visibility ThumbnailVisibility => HasThumbnail ? Visibility.Visible : Visibility.Collapsed;
+    public Visibility FallbackVideoVisibility => (IsVideo && !HasThumbnail) ? Visibility.Visible : Visibility.Collapsed;
+    public Visibility VideoPreviewVisibility => IsVideo ? Visibility.Visible : Visibility.Collapsed;
+    public Visibility TextPreviewVisibility => IsText ? Visibility.Visible : Visibility.Collapsed;
 
     public bool IsEnabled
     {
@@ -1182,7 +1427,7 @@ public class VideoItemViewModel
         set => Item.IsEnabled = value;
     }
 
-    public string ContentTypeBadgeText => IsText ? "ТЕКСТ" : "ВИДЕО";
+    public string ContentTypeBadgeText => IsText ? "ТЕКСТОВАЯ ЗАДАЧА" : "MP4 ВИДЕО";
     public Brush ContentTypeBadgeBackground => IsText ? TextBadgeBg : VideoBadgeBg;
     public Brush ContentTypeBadgeForeground => IsText ? TextBadgeFg : VideoBadgeFg;
 

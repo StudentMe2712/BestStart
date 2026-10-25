@@ -89,10 +89,14 @@ public class SettingsWindowTests : IDisposable
         Assert.True(vm.IsEnabled);
         Assert.True(vm.IsAvailable);
         Assert.False(vm.IsText);
-        Assert.Equal("ВИДЕО", vm.ContentTypeBadgeText);
+        Assert.True(vm.IsVideo);
+        Assert.Equal("01:30", vm.DurationText);
+        Assert.Equal("MP4 ВИДЕО", vm.ContentTypeBadgeText);
         Assert.Equal("Доступен", vm.AvailabilityText);
         Assert.NotNull(vm.AvailabilityBackground);
         Assert.NotNull(vm.AvailabilityForeground);
+        Assert.Equal(Visibility.Visible, vm.VideoPreviewVisibility);
+        Assert.Equal(Visibility.Collapsed, vm.TextPreviewVisibility);
     }
 
     [Fact]
@@ -111,7 +115,8 @@ public class SettingsWindowTests : IDisposable
         Assert.False(vm.IsEnabled);
         Assert.False(vm.IsAvailable);
         Assert.False(vm.IsText);
-        Assert.Equal("ВИДЕО", vm.ContentTypeBadgeText);
+        Assert.True(vm.IsVideo);
+        Assert.Equal("MP4 ВИДЕО", vm.ContentTypeBadgeText);
         Assert.Equal("Не найден", vm.AvailabilityText);
         Assert.NotNull(vm.AvailabilityBackground);
         Assert.NotNull(vm.AvailabilityForeground);
@@ -131,11 +136,14 @@ public class SettingsWindowTests : IDisposable
         var vm = new VideoItemViewModel(item, isAvailable: true);
 
         Assert.True(vm.IsText);
-        Assert.Equal("ТЕКСТ", vm.ContentTypeBadgeText);
+        Assert.False(vm.IsVideo);
+        Assert.Equal("ТЕКСТОВАЯ ЗАДАЧА", vm.ContentTypeBadgeText);
         Assert.Equal("Готов к показу", vm.AvailabilityText);
         Assert.Equal("Сделай разминку для глаз прямо сейчас!", vm.SecondaryText);
         Assert.NotNull(vm.ContentTypeBadgeBackground);
         Assert.NotNull(vm.ContentTypeBadgeForeground);
+        Assert.Equal(Visibility.Collapsed, vm.VideoPreviewVisibility);
+        Assert.Equal(Visibility.Visible, vm.TextPreviewVisibility);
     }
 
     [Theory]
@@ -177,8 +185,8 @@ public class SettingsWindowTests : IDisposable
             window.Show();
 
             Assert.Equal("Provocateur", window.Title);
-            Assert.Equal(860, window.Width);
-            Assert.Equal(600, window.Height);
+            Assert.Equal(1180, window.Width);
+            Assert.Equal(780, window.Height);
             Assert.True(window.ShowInTaskbar);
 
             Assert.Equal("5", window.MinIntervalTextBox.Text);
@@ -406,7 +414,7 @@ public class SettingsWindowTests : IDisposable
     }
 
     [Fact]
-    public void SettingsWindow_SaveButton_SavesSettingsAndClosesWindow()
+    public void SettingsWindow_SaveButton_CallsShowToastAndDoesNotCloseWindow()
     {
         RunInSta(() =>
         {
@@ -421,10 +429,170 @@ public class SettingsWindowTests : IDisposable
             window.MinIntervalTextBox.Text = "15";
             window.MaxIntervalTextBox.Text = "45";
 
+            // Click Save button
             window.SaveButton.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
 
+            // ADR-026: Window MUST remain visible (no Close, no Hide)
+            Assert.True(window.IsVisible);
             Assert.Equal(15, store.CurrentSettings.MinIntervalMinutes);
             Assert.Equal(45, store.CurrentSettings.MaxIntervalMinutes);
+
+            // Toast HUD must be shown with success message
+            Assert.Equal(Visibility.Visible, window.ToastHudBorder.Visibility);
+            Assert.Contains("✓ Настройки успешно сохранены", window.ToastMessageTextBlock.Text);
+
+            window.Close();
+        });
+    }
+
+    [Fact]
+    public void SettingsWindow_OpenAddModalButton_HasStrictlyNoTextAndOnlyVectorPlus()
+    {
+        RunInSta(() =>
+        {
+            var store = new SettingsStore(_settingsPath);
+            var videoLib = new VideoLibraryService(store, fileExistsChecker: _ => false);
+            var scheduler = new RandomReminderScheduler();
+            using var coordinator = new OverlayCoordinator(scheduler, videoLib, store);
+
+            var window = new SettingsWindow(store, videoLib, coordinator, scheduler);
+            window.Show();
+
+            // ADR-025: Strictly 42x42px square button with no text
+            Assert.NotNull(window.OpenAddModalButton);
+            Assert.Equal(42, window.OpenAddModalButton.Width);
+            Assert.Equal(42, window.OpenAddModalButton.Height);
+            Assert.Null(window.OpenAddModalButton.Content);
+
+            // Window dimension standard: 1180x780 (min 1024x680)
+            Assert.Equal(1180, window.Width);
+            Assert.Equal(780, window.Height);
+            Assert.Equal(1024, window.MinWidth);
+            Assert.Equal(680, window.MinHeight);
+
+            window.Close();
+        });
+    }
+
+    [Fact]
+    public void SettingsWindow_TriggerMode_SwitchingUpdatesSelectionAndPersists()
+    {
+        RunInSta(() =>
+        {
+            var store = new SettingsStore(_settingsPath);
+            var videoLib = new VideoLibraryService(store, fileExistsChecker: _ => false);
+            var scheduler = new RandomReminderScheduler();
+            using var coordinator = new OverlayCoordinator(scheduler, videoLib, store);
+
+            var window = new SettingsWindow(store, videoLib, coordinator, scheduler);
+            window.Show();
+
+            // Default mode is SmartHybrid
+            Assert.Equal("SmartHybrid", window.TriggerMode);
+            Assert.Equal(Visibility.Visible, window.ModeHybridActiveBadge.Visibility);
+            Assert.Equal(Visibility.Collapsed, window.ModeSmartOnlyActiveBadge.Visibility);
+            Assert.Equal(Visibility.Collapsed, window.ModeRandomTimerActiveBadge.Visibility);
+
+            // Switch to SmartOnly
+            window.TriggerModeSmartOnlyButton.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+            Assert.Equal("SmartOnly", window.TriggerMode);
+            Assert.Equal("SmartOnly", store.CurrentSettings.TriggerMode);
+            Assert.Equal(Visibility.Collapsed, window.ModeHybridActiveBadge.Visibility);
+            Assert.Equal(Visibility.Visible, window.ModeSmartOnlyActiveBadge.Visibility);
+            Assert.Equal(Visibility.Collapsed, window.ModeRandomTimerActiveBadge.Visibility);
+
+            // Switch to RandomTimer
+            window.TriggerModeRandomTimerButton.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+            Assert.Equal("RandomTimer", window.TriggerMode);
+            Assert.Equal("RandomTimer", store.CurrentSettings.TriggerMode);
+            Assert.Equal(Visibility.Collapsed, window.ModeHybridActiveBadge.Visibility);
+            Assert.Equal(Visibility.Collapsed, window.ModeSmartOnlyActiveBadge.Visibility);
+            Assert.Equal(Visibility.Visible, window.ModeRandomTimerActiveBadge.Visibility);
+
+            // Switch back to SmartHybrid via programmatic API
+            window.SelectTriggerMode("SmartHybrid");
+            Assert.Equal("SmartHybrid", window.TriggerMode);
+            Assert.Equal("SmartHybrid", store.CurrentSettings.TriggerMode);
+            Assert.Equal(Visibility.Visible, window.ModeHybridActiveBadge.Visibility);
+
+            window.Close();
+        });
+    }
+
+    [Fact]
+    public void SettingsWindow_IntervalPresets_ApplyCorrectValuesAndSave()
+    {
+        RunInSta(() =>
+        {
+            var store = new SettingsStore(_settingsPath);
+            var videoLib = new VideoLibraryService(store, fileExistsChecker: _ => false);
+            var scheduler = new RandomReminderScheduler();
+            using var coordinator = new OverlayCoordinator(scheduler, videoLib, store);
+
+            var window = new SettingsWindow(store, videoLib, coordinator, scheduler);
+            window.Show();
+
+            // Preset 1: 5-15
+            window.Preset5_15Button.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+            Assert.Equal("5", window.MinIntervalTextBox.Text);
+            Assert.Equal("15", window.MaxIntervalTextBox.Text);
+            Assert.Equal(5, store.CurrentSettings.MinIntervalMinutes);
+            Assert.Equal(15, store.CurrentSettings.MaxIntervalMinutes);
+
+            // Preset 2: 15-35
+            window.Preset15_35Button.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+            Assert.Equal("15", window.MinIntervalTextBox.Text);
+            Assert.Equal("35", window.MaxIntervalTextBox.Text);
+            Assert.Equal(15, store.CurrentSettings.MinIntervalMinutes);
+            Assert.Equal(35, store.CurrentSettings.MaxIntervalMinutes);
+
+            // Preset 3: 30-60
+            window.Preset30_60Button.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+            Assert.Equal("30", window.MinIntervalTextBox.Text);
+            Assert.Equal("60", window.MaxIntervalTextBox.Text);
+            Assert.Equal(30, store.CurrentSettings.MinIntervalMinutes);
+            Assert.Equal(60, store.CurrentSettings.MaxIntervalMinutes);
+
+            // Preset 4: 60-120
+            window.Preset60_120Button.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+            Assert.Equal("60", window.MinIntervalTextBox.Text);
+            Assert.Equal("120", window.MaxIntervalTextBox.Text);
+            Assert.Equal(60, store.CurrentSettings.MinIntervalMinutes);
+            Assert.Equal(120, store.CurrentSettings.MaxIntervalMinutes);
+
+            window.Close();
+        });
+    }
+
+    [Fact]
+    public void SettingsWindow_SmartTriggers_KeywordsListAndThresholdsWork()
+    {
+        RunInSta(() =>
+        {
+            var store = new SettingsStore(_settingsPath);
+            var videoLib = new VideoLibraryService(store, fileExistsChecker: _ => false);
+            var scheduler = new RandomReminderScheduler();
+            using var coordinator = new OverlayCoordinator(scheduler, videoLib, store);
+
+            var window = new SettingsWindow(store, videoLib, coordinator, scheduler);
+            window.Show();
+
+            Assert.True(window.TriggerOnEntertainmentCheckBox.IsChecked);
+            Assert.Equal("60", window.EntertainmentGraceTextBox.Text);
+            Assert.Contains("YouTube", window.EntertainmentKeywords);
+
+            // Add new keyword
+            window.NewTagTextBox.Text = "Hulu";
+            window.AddTagButton.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+            Assert.Contains("Hulu", window.EntertainmentKeywords);
+            Assert.Contains("Hulu", store.CurrentSettings.EntertainmentKeywords);
+
+            // Remove keyword
+            window.EntertainmentKeywords.Remove("Hulu");
+            window.TriggerAutoSave(immediate: true);
+            Assert.DoesNotContain("Hulu", store.CurrentSettings.EntertainmentKeywords);
+
+            window.Close();
         });
     }
 

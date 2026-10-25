@@ -1,6 +1,6 @@
 # СПЕЦИФИКАЦИЯ ПРОЕКТА: Provocateur (`personal_provocateur_spec.md`)
 
-> **СТАТУС ДОКУМЕНТА:** Спринты 1–8 завершены (194/194 тестов пройдено). Активен **СПРИНТ 9: 1180×780 Production Studio UI, YouTube-Style Video Thumbnails, Smart Procrastination/Idle Detector & Save/Plus Button Fixes**.
+> **СТАТУС ДОКУМЕНТА:** Спринты 1–9 завершены (229/229 тестов пройдено). Все майлстоуны СПРИНТА 9 выполнены (1180×780 Production Studio UI, YouTube-Style Video Thumbnails, Smart Procrastination/Idle Detector & Save/Plus Button Fixes).
 > **ЛОКАЦИЯ ПРОЕКТА:** `projects/PersonalProvocateur/` (внутри репозитория `BestStart`).
 > **СТЕК:** C# 13 | .NET 10 LTS (`net10.0-windows`) | WPF + XAML | Win32 P/Invoke | JSON Storage | xUnit.
 
@@ -198,16 +198,16 @@ projects/PersonalProvocateur/
 - [x] **9.3. Сервис извлечения миниатюр и длительности видео `VideoThumbnailService` (ADR-024):**
   * Реализовать `VideoThumbnailService` через Windows Shell COM `IShellItemImageFactory` с надежным фоллбэком и кэшированием в `%LOCALAPPDATA%\PersonalProvocateur\Thumbnails`.
   * Интегрировать извлечение превью и длительности при добавлении видео в `VideoLibraryService`.
-- [ ] **9.4. Фикс кнопок `+` и «Сохранить» + Toast (ADR-025, ADR-026):**
+- [x] **9.4. Фикс кнопок `+` и «Сохранить» + Toast (ADR-025, ADR-026):**
   * Исправить кнопку добавления в шапке раздела «Контент»: единая квадратная кнопка `42×42px` с одним вектором `IconPlus` (`18×18px`, `StrokeThickness="2.5"`) без текста «Добавить».
   * Полностью удалить нижнюю дублирующую кнопку «+ Добавить в ротацию».
   * В `SaveButton_Click` удалить закрытие окна (`Close()`) и сворачивание; окно остается открытым на месте и показывает Toast `✓ Настройки успешно сохранены` на 2.2 секунды.
-- [ ] **9.5. Масштабирование окна до `1180×780` и YouTube-карточки контента (ADR-025, ADR-026):**
+- [x] **9.5. Масштабирование окна до `1180×780` и YouTube-карточки контента (ADR-025, ADR-026):**
   * Увеличить размер `SettingsWindow` до `Width="1180"`, `Height="780"` (`MinWidth="1024"`, `MinHeight="680"`).
   * Переверстать карточки контента в стиль YouTube Studio (блок 16:9 `176×99px`, бейдж длительности, hover-кнопка ▶, аккуратная типографика и переключатели).
-- [ ] **9.6. Визуальный конфигуратор коридора времени и умных триггеров (ADR-026):**
+- [x] **9.6. Визуальный конфигуратор коридора времени и умных триггеров (ADR-026):**
   * В разделе «Образ и таймер» добавить 3 селектор-карточки режимов, быстрые капсулы-пресеты интервалов (`5–15м`, `15–35м`, `30–60м`, `60–120м`), виджет тегов сайтов с добавлением/удалением и настройками порогов.
-- [ ] **9.7. Верификация, Юнит-тесты и Синхронизация:**
+- [x] **9.7. Верификация, Юнит-тесты и Синхронизация:**
   * Добавить тесты `SmartTriggerServiceTests.cs`, `VideoThumbnailServiceTests.cs` и обновить `SettingsWindowTests.cs`.
   * Успешное прохождение `dotnet build -c Release --warnaserror` и `dotnet test -c Release`.
   * Синхронизация изменений через `./sync.sh`.
@@ -219,6 +219,6 @@ projects/PersonalProvocateur/
 | **Спринты 1–6** | `[x]` Завершены | Ядро, Win32, Трей, Персонаж, Strict Video Lock | Release: 0 ошибок. 172 теста пройдено |
 | **Спринт 7** | `[x]` Завершен | `MemoryOptimizer.cs`, `TextSpotlightWindow`, `OverlayCoordinator.cs`, `SettingsWindow.xaml/.cs` + тесты | Release: 0 ошибок. 193 теста пройдено |
 | **Спринт 8** | `[x]` Завершен | `DarkTheme.xaml`, `SettingsWindow.xaml`, `SettingsWindow.xaml.cs`, `SettingsWindowTests.cs` | Release: 0 ошибок, 0 предупреждений. 194 теста пройдено |
-| **Спринт 9** | `[ ]` В процессе | `AppSettings.cs`, `VideoItem.cs`, `NativeMethods.cs`, `SmartTriggerService.cs`, `VideoThumbnailService.cs`, `VideoLibraryService.cs`, `OverlayCoordinator.cs`, `App.xaml.cs`, `SettingsWindow.xaml/.cs`, `DarkTheme.xaml`, тесты | Ожидается сборка и тестирование |
+| **Спринт 9** | `[x]` Завершен | `AppSettings.cs`, `VideoItem.cs`, `NativeMethods.cs`, `SmartTriggerService.cs`, `VideoThumbnailService.cs`, `VideoLibraryService.cs`, `OverlayCoordinator.cs`, `App.xaml.cs`, `SettingsWindow.xaml/.cs`, `DarkTheme.xaml`, тесты | Release: 0 ошибок, 0 предупреждений. 229 тестов пройдено (100%) |
 
 
