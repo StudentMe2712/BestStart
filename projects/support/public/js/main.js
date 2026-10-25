@@ -1431,7 +1431,7 @@ function reorganizeWikiSidebar(pins) {
             return '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M10 12h2a1 1 0 0 1 1 1v1a1 1 0 0 1-1 1h-2v-4z"/></svg>';
         } else if (fileType === 'image') {
             return '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>';
-        } else if (fileType === 'doc') {
+        } else if (fileType === 'doc' || fileType === 'docx') {
             return '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/></svg>';
         } else if (fileType === 'text') {
             return '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>';
@@ -1629,6 +1629,9 @@ function reorganizeWikiSidebar(pins) {
     function openLightbox(fileId, fileName, fileType) {
         if (!lightboxModal) return;
 
+        var ext = (fileName ? fileName.split('.').pop() : '').toLowerCase();
+        var isWordDoc = fileType === 'doc' || fileType === 'docx' || ext === 'docx' || ext === 'doc';
+
         if (lightboxFileName) lightboxFileName.textContent = fileName || 'Просмотр файла';
         if (lightboxDownloadBtn) {
             lightboxDownloadBtn.href = '/api/files/' + fileId + '/download';
@@ -1665,16 +1668,47 @@ function reorganizeWikiSidebar(pins) {
 
                 if (fileType === 'pdf') {
                     lightboxBody.innerHTML = '<iframe class="lightbox-iframe" src="/api/files/' + fileId + '/view"></iframe>';
-                } else if (fileType === 'excel' || fileType === 'xml' || fileType === 'doc' || fileType === 'text') {
+                } else if (fileType === 'excel' || fileType === 'xml' || fileType === 'doc' || fileType === 'docx' || fileType === 'text' || isWordDoc) {
                     lightboxBody.innerHTML = '<div class="lightbox-loading"><span class="lightbox-spinner"></span><span>Загрузка предпросмотра...</span></div>';
                     fetch('/api/files/' + fileId + '/preview')
                         .then(function(r) { return r.json(); })
                         .then(function(data) {
                             if (!data.success) {
-                                lightboxBody.innerHTML = '<div class="lightbox-error"><span>Не удалось загрузить предпросмотр: ' + escapeHtmlText(data.error || 'Формат не поддерживается') + '</span><br><a href="/api/files/' + fileId + '/download" class="lightbox-error-btn">Скачать файл</a></div>';
+                                if (isWordDoc) {
+                                    var docName = (data && data.originalName) || fileName || 'Документ Word';
+                                    var dlUrl = (data && data.downloadUrl) || ('/api/files/' + fileId + '/download');
+                                    var errorMsg = (data && data.error) || 'Не удалось загрузить содержимое документа Word. Попробуйте скачать файл.';
+                                    lightboxBody.innerHTML =
+                                        '<div class="lightbox-doc-wrap">' +
+                                            '<div class="lightbox-doc-fallback">' +
+                                                '<div class="lightbox-doc-fallback__icon">' +
+                                                    '<svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">' +
+                                                        '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>' +
+                                                        '<polyline points="14 2 14 8 20 8"/>' +
+                                                        '<line x1="16" y1="13" x2="8" y2="13"/>' +
+                                                        '<line x1="16" y1="17" x2="8" y2="17"/>' +
+                                                        '<line x1="10" y1="9" x2="8" y2="9"/>' +
+                                                    '</svg>' +
+                                                '</div>' +
+                                                '<h3 class="lightbox-doc-fallback__title">' + escapeHtmlText(docName) + '</h3>' +
+                                                '<p class="lightbox-doc-fallback__desc">' + escapeHtmlText(errorMsg) + '</p>' +
+                                                '<a href="' + dlUrl + '" class="lightbox-doc-fallback__btn" download="' + escapeHtmlText(docName) + '">' +
+                                                    '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+                                                        '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>' +
+                                                        '<polyline points="7 10 12 15 17 10"/>' +
+                                                        '<line x1="12" y1="15" x2="12" y2="3"/>' +
+                                                    '</svg>' +
+                                                    '<span>Скачать документ</span>' +
+                                                '</a>' +
+                                            '</div>' +
+                                        '</div>';
+                                    return;
+                                }
+                                var defaultErr = 'Формат не поддерживается';
+                                lightboxBody.innerHTML = '<div class="lightbox-error"><span>Не удалось загрузить предпросмотр: ' + escapeHtmlText((data && data.error) || defaultErr) + '</span><br><a href="/api/files/' + fileId + '/download" class="lightbox-error-btn">Скачать файл</a></div>';
                                 return;
                             }
-                            if (data.type === 'docx') {
+                            if (data.type === 'docx' || data.type === 'doc') {
                                 lightboxBody.innerHTML = '<div class="lightbox-doc-wrap"><div class="lightbox-doc-content">' + (data.html || '<p><em>Документ пуст</em></p>') + '</div></div>';
                             } else if (data.type === 'doc_fallback') {
                                 var docName = data.originalName || fileName || 'Документ Word';
@@ -1740,10 +1774,68 @@ function reorganizeWikiSidebar(pins) {
                             }
                         })
                         .catch(function(err) {
+                            if (isWordDoc) {
+                                var docName = fileName || 'Документ Word';
+                                var dlUrl = '/api/files/' + fileId + '/download';
+                                lightboxBody.innerHTML =
+                                    '<div class="lightbox-doc-wrap">' +
+                                        '<div class="lightbox-doc-fallback">' +
+                                            '<div class="lightbox-doc-fallback__icon">' +
+                                                '<svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">' +
+                                                    '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>' +
+                                                    '<polyline points="14 2 14 8 20 8"/>' +
+                                                    '<line x1="16" y1="13" x2="8" y2="13"/>' +
+                                                    '<line x1="16" y1="17" x2="8" y2="17"/>' +
+                                                    '<line x1="10" y1="9" x2="8" y2="9"/>' +
+                                                '</svg>' +
+                                            '</div>' +
+                                            '<h3 class="lightbox-doc-fallback__title">' + escapeHtmlText(docName) + '</h3>' +
+                                            '<p class="lightbox-doc-fallback__desc">Не удалось загрузить содержимое документа Word. Попробуйте скачать файл.</p>' +
+                                            '<a href="' + dlUrl + '" class="lightbox-doc-fallback__btn" download="' + escapeHtmlText(docName) + '">' +
+                                                '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+                                                    '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>' +
+                                                    '<polyline points="7 10 12 15 17 10"/>' +
+                                                    '<line x1="12" y1="15" x2="12" y2="3"/>' +
+                                                '</svg>' +
+                                                '<span>Скачать документ</span>' +
+                                            '</a>' +
+                                        '</div>' +
+                                    '</div>';
+                                return;
+                            }
                             lightboxBody.innerHTML = '<div class="lightbox-error"><span>Ошибка сети при загрузке предпросмотра</span><br><a href="/api/files/' + fileId + '/download" class="lightbox-error-btn">Скачать файл</a></div>';
                         });
                 } else {
-                    lightboxBody.innerHTML = '<div class="lightbox-error"><span>Предпросмотр недоступен для данного формата.</span><br><a href="/api/files/' + fileId + '/download" class="lightbox-error-btn">Скачать файл</a></div>';
+                    if (isWordDoc) {
+                        var docName = fileName || 'Документ Word';
+                        var dlUrl = '/api/files/' + fileId + '/download';
+                        lightboxBody.innerHTML =
+                            '<div class="lightbox-doc-wrap">' +
+                                '<div class="lightbox-doc-fallback">' +
+                                    '<div class="lightbox-doc-fallback__icon">' +
+                                        '<svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">' +
+                                            '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>' +
+                                            '<polyline points="14 2 14 8 20 8"/>' +
+                                            '<line x1="16" y1="13" x2="8" y2="13"/>' +
+                                            '<line x1="16" y1="17" x2="8" y2="17"/>' +
+                                            '<line x1="10" y1="9" x2="8" y2="9"/>' +
+                                        '</svg>' +
+                                    '</div>' +
+                                    '<h3 class="lightbox-doc-fallback__title">' + escapeHtmlText(docName) + '</h3>' +
+                                    '<p class="lightbox-doc-fallback__desc">Предпросмотр документа Word недоступен. Скачайте файл для открытия в Word.</p>' +
+                                    '<a href="' + dlUrl + '" class="lightbox-doc-fallback__btn" download="' + escapeHtmlText(docName) + '">' +
+                                        '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+                                            '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>' +
+                                            '<polyline points="7 10 12 15 17 10"/>' +
+                                            '<line x1="12" y1="15" x2="12" y2="3"/>' +
+                                        '</svg>' +
+                                        '<span>Скачать документ</span>' +
+                                    '</a>' +
+                                '</div>' +
+                            '</div>';
+                    } else {
+                        lightboxBody.innerHTML = '<div class="lightbox-error"><span>Предпросмотр недоступен для данного формата.</span><br><a href="/api/files/' + fileId + '/download" class="lightbox-error-btn">Скачать файл</a></div>';
+                    }
                 }
             }
         }

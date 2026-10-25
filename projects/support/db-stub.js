@@ -1,3 +1,5 @@
+const fs = require('fs');
+const path = require('path');
 const bcrypt = require('bcrypt');
 
 const sampleOrganizations = [
@@ -313,21 +315,148 @@ const userPinsDB = {
 // ============================================================
 // МОК ПРИКРЕПЛЕННЫХ ФАЙЛОВ (organization_files - Спринт 7)
 // ============================================================
+const MANIFEST_PATH = path.join(__dirname, 'uploads', 'stub-files-manifest.json');
 let organizationFiles = [];
 let nextFileId = 1;
 
+function getMimeByExt(ext) {
+    switch (ext) {
+        case '.docx': return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+        case '.doc': return 'application/msword';
+        case '.xlsx': return 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+        case '.xls': return 'application/vnd.ms-excel';
+        case '.csv': return 'text/csv';
+        case '.pdf': return 'application/pdf';
+        case '.png': return 'image/png';
+        case '.jpg':
+        case '.jpeg': return 'image/jpeg';
+        case '.webp': return 'image/webp';
+        case '.txt': return 'text/plain';
+        case '.xml': return 'application/xml';
+        default: return 'application/octet-stream';
+    }
+}
+
+function saveFilesManifest() {
+    try {
+        const uploadDir = path.join(__dirname, 'uploads');
+        if (!fs.existsSync(uploadDir)) {
+            fs.mkdirSync(uploadDir, { recursive: true });
+        }
+        fs.writeFileSync(MANIFEST_PATH, JSON.stringify({ nextFileId, files: organizationFiles }, null, 2), 'utf8');
+    } catch (e) {
+        console.warn('⚠️ [Stub DB] Не удалось сохранить манифест файлов:', e.message);
+    }
+}
+
+function loadAndScanFiles() {
+    // 1. Загрузка существующего манифеста
+    try {
+        if (fs.existsSync(MANIFEST_PATH)) {
+            const data = JSON.parse(fs.readFileSync(MANIFEST_PATH, 'utf8'));
+            if (Array.isArray(data.files)) {
+                organizationFiles = data.files.map(f => ({
+                    ...f,
+                    created_at: f.created_at ? new Date(f.created_at) : new Date()
+                }));
+                if (data.nextFileId) {
+                    nextFileId = Number(data.nextFileId);
+                }
+            }
+        }
+    } catch (e) {
+        console.warn('⚠️ [Stub DB] Ошибка чтения манифеста файлов:', e.message);
+    }
+
+    // 2. Сканирование существующих файлов на диске (uploads/org_*)
+    try {
+        const uploadsDir = path.join(__dirname, 'uploads');
+        if (fs.existsSync(uploadsDir)) {
+            const entries = fs.readdirSync(uploadsDir, { withFileTypes: true });
+            for (const entry of entries) {
+                if (entry.isDirectory() && entry.name.startsWith('org_')) {
+                    const orgId = Number(entry.name.replace('org_', ''));
+                    if (isNaN(orgId)) continue;
+                    const orgDir = path.join(uploadsDir, entry.name);
+                    const orgFiles = fs.readdirSync(orgDir, { withFileTypes: true });
+                    for (const fileDirent of orgFiles) {
+                        if (fileDirent.isFile()) {
+                            const filename = fileDirent.name;
+                            if (filename === 'stub-files-manifest.json') continue;
+                            const existing = organizationFiles.find(f => f.org_id === orgId && f.filename === filename);
+                            if (!existing) {
+                                const filePath = path.join(orgDir, filename);
+                                const stats = fs.statSync(filePath);
+                                const ext = path.extname(filename).toLowerCase();
+                                const detectedMime = getMimeByExt(ext);
+                                
+                                let originalName = filename;
+                                if (/^\d+-\d+\./.test(filename)) {
+                                    if (ext === '.docx' || ext === '.doc') {
+                                        originalName = `Документ_Word_${orgId}${ext}`;
+                                    } else if (ext === '.xlsx' || ext === '.xls') {
+                                        originalName = `Таблица_Excel_${orgId}${ext}`;
+                                    } else if (ext === '.png' || ext === '.jpg' || ext === '.jpeg') {
+                                        originalName = `Изображение_${orgId}${ext}`;
+                                    } else {
+                                        originalName = `Файл_${orgId}${ext}`;
+                                    }
+                                }
+                                
+                                const newRecord = {
+                                    id: nextFileId++,
+                                    org_id: orgId,
+                                    filename: filename,
+                                    original_name: originalName,
+                                    mime_type: detectedMime,
+                                    file_size: stats.size,
+                                    uploaded_by: 'admin',
+                                    created_at: stats.birthtime || stats.mtime || new Date()
+                                };
+                                organizationFiles.push(newRecord);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    } catch (scanErr) {
+        console.warn('⚠️ [Stub DB] Ошибка авто-сканирования папки uploads:', scanErr.message);
+    }
+
+    if (organizationFiles.length > 0) {
+        const maxId = Math.max(...organizationFiles.map(f => Number(f.id) || 0));
+        if (nextFileId <= maxId) {
+            nextFileId = maxId + 1;
+        }
+    }
+
+    saveFilesManifest();
+}
+
+// Первоначальное сканирование
+loadAndScanFiles();
+
 async function initFilesTable() {
+    loadAndScanFiles();
     console.log(`✓ [Stub DB] Таблица organization_files готова (файлов: ${organizationFiles.length})`);
 }
 
 const filesDB = {
     getByOrgId: async (orgId) => {
+        loadAndScanFiles();
         return organizationFiles
             .filter(f => f.org_id === Number(orgId))
             .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
     },
     getById: async (fileId) => {
-        return organizationFiles.find(f => f.id === Number(fileId)) || null;
+        const idNum = Number(fileId);
+        let found = organizationFiles.find(f => f.id === idNum);
+        if (!found) {
+            loadAndScanFiles();
+            found = organizationFiles.find(f => f.id === idNum);
+        }
+        return found || null;
     },
     create: async ({ org_id, filename, original_name, mime_type, file_size, uploaded_by }) => {
         const fileRecord = {
@@ -341,11 +470,14 @@ const filesDB = {
             created_at: new Date()
         };
         organizationFiles.push(fileRecord);
+        saveFilesManifest();
         return fileRecord;
     },
     delete: async (fileId) => {
+        const idNum = Number(fileId);
         const before = organizationFiles.length;
-        organizationFiles = organizationFiles.filter(f => f.id !== Number(fileId));
+        organizationFiles = organizationFiles.filter(f => f.id !== idNum);
+        saveFilesManifest();
         return before - organizationFiles.length;
     }
 };

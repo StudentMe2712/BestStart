@@ -2617,7 +2617,7 @@ body.wiki-page-body {
     width: 100%;
     height: 100%;
     overflow: auto;
-    padding: 30px 20px;
+    padding: 36px 20px 48px;
     background: #0b1120;
     display: flex;
     justify-content: center;
@@ -2628,18 +2628,20 @@ body.wiki-page-body {
 .lightbox-doc-content {
     width: 100%;
     max-width: 860px;
+    min-height: 580px;
     margin: 0 auto;
-    padding: 40px;
+    padding: 50px 60px;
     background: #ffffff;
     color: #1e293b;
     border-radius: 8px;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    line-height: 1.6;
-    font-size: 14.5px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.15), 0 20px 35px -5px rgba(0, 0, 0, 0.45);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    line-height: 1.65;
+    font-size: 15px;
     word-break: break-word;
     box-sizing: border-box;
     height: fit-content;
+    border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .lightbox-doc-content h1,

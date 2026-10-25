@@ -43,7 +43,9 @@ assert(renderedWiki.includes('color: #2563eb;'), 'Rendered docx/doc chip must us
 // 1.2 In public/js/main.js
 assert(mainJs.includes("ext === 'docx' || ext === 'doc'"), 'main.js must detect docx and doc in getFileTypeInfo');
 assert(mainJs.includes("iconColor = '#2563eb'"), 'main.js must set Word blue #2563eb');
-assert(mainJs.includes("data.type === 'docx'"), 'main.js must handle docx preview data');
+assert(mainJs.includes("fileType === 'docx'"), 'main.js must handle fileType docx');
+assert(mainJs.includes("data.type === 'docx' || data.type === 'doc'"), 'main.js must handle docx and doc preview types');
+assert(mainJs.includes('Не удалось загрузить содержимое документа Word. Попробуйте скачать файл.'), 'main.js must provide friendly Word error message');
 assert(mainJs.includes('lightbox-doc-wrap'), 'main.js must render .lightbox-doc-wrap container');
 assert(mainJs.includes('lightbox-doc-content'), 'main.js must render .lightbox-doc-content container');
 assert(mainJs.includes("data.type === 'doc_fallback'"), 'main.js must handle doc_fallback');
@@ -54,6 +56,7 @@ assert(mainJs.includes('Скачать документ'), 'main.js fallback mus
 assert(wikiCss.includes('.lightbox-doc-wrap'), 'wiki-page.css must contain .lightbox-doc-wrap');
 assert(wikiCss.includes('.lightbox-doc-content'), 'wiki-page.css must contain .lightbox-doc-content');
 assert(wikiCss.includes('max-width: 860px'), 'wiki-page.css must set max-width: 860px for doc content');
+assert(wikiCss.includes('min-height: 580px'), 'wiki-page.css must set min-height for paper sheet feel');
 assert(wikiCss.includes('.lightbox-doc-fallback'), 'wiki-page.css must contain .lightbox-doc-fallback');
 
 console.log('✓ Requirement 1 (.docx and .doc support) verified successfully.\n');

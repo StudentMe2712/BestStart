@@ -10,6 +10,7 @@ const createDOMPurify = require('dompurify');
 const { JSDOM } = require('jsdom');
 const XLSX = require('xlsx');
 const mammoth = require('mammoth');
+const WordExtractor = require('word-extractor');
 
 const USE_STUB = process.env.DB_STUB === 'true' || process.env.DB_STUB === '1';
 
@@ -833,7 +834,12 @@ app.get('/api/files/:fileId/preview', requireAuth, async (req, res) => {
             return res.status(404).json({ success: false, error: 'Файл не найден на сервере' });
         }
 
-        const ext = path.extname(file.original_name || file.filename || '').toLowerCase();
+        const filenameExt = path.extname(file.filename || '').toLowerCase();
+        const originalExt = path.extname(file.original_name || '').toLowerCase();
+        const ext = originalExt || filenameExt;
+        const mimeType = (file.mime_type || '').toLowerCase();
+        const isDocx = ext === '.docx' || filenameExt === '.docx' || originalExt === '.docx' || mimeType.includes('wordprocessingml');
+        const isDoc = ext === '.doc' || filenameExt === '.doc' || originalExt === '.doc' || mimeType.includes('msword');
         const IMAGE_EXTENSIONS = ['.png', '.jpg', '.jpeg', '.webp', '.gif', '.svg', '.bmp'];
         const isImage = IMAGE_EXTENSIONS.includes(ext) || (file.mime_type && file.mime_type.startsWith('image/'));
 
@@ -873,36 +879,65 @@ app.get('/api/files/:fileId/preview', requireAuth, async (req, res) => {
             }
         }
 
-        // Word (.docx, .doc)
-        if (ext === '.docx' || ext === '.doc') {
-            if (ext === '.docx') {
-                try {
-                    const result = await mammoth.convertToHtml({ path: filePath });
-                    return res.json({
-                        success: true,
-                        type: 'docx',
-                        html: result.value || '<p><em>Документ пуст</em></p>',
-                        messages: result.messages,
-                        originalName: file.original_name
-                    });
-                } catch (docErr) {
-                    console.error('Ошибка конвертации docx:', docErr);
-                    return res.json({
-                        success: true,
-                        type: 'doc_fallback',
-                        originalName: file.original_name,
-                        downloadUrl: `/api/files/${fileId}/download`,
-                        message: 'Предпросмотр документа недоступен. Скачайте файл для открытия в Word.'
-                    });
-                }
-            } else {
-                // .doc binary format
+        // Word DOCX
+        if (isDocx) {
+            try {
+                const result = await mammoth.convertToHtml({ path: filePath });
+                return res.json({
+                    success: true,
+                    type: 'docx',
+                    html: result.value || '<p><em>Документ Word не содержит текста или пуст.</em></p>',
+                    messages: result.messages,
+                    originalName: file.original_name
+                });
+            } catch (docErr) {
+                console.error('Ошибка конвертации docx:', docErr);
                 return res.json({
                     success: true,
                     type: 'doc_fallback',
                     originalName: file.original_name,
                     downloadUrl: `/api/files/${fileId}/download`,
-                    message: 'Формат .doc поддерживается для загрузки и скачивания. Для интерактивного веб-предпросмотра рекомендуется использовать .docx.'
+                    message: 'Не удалось разобрать разметку DOCX. Скачайте файл для открытия в Microsoft Word.'
+                });
+            }
+        }
+
+        // Word DOC (двоичный формат Word 97-2003)
+        if (isDoc) {
+            try {
+                const extractor = new WordExtractor();
+                const extracted = await extractor.extract(filePath);
+                const bodyText = (extracted.getBody() || '').trim();
+                const headersText = (extracted.getHeaders() || '').trim();
+                const footersText = (extracted.getFootnotes() || '').trim();
+                let htmlContent = '';
+                if (headersText) {
+                    htmlContent += `<div style="font-weight:600;margin-bottom:14px;color:#64748b;font-size:13px;border-bottom:1px solid #e2e8f0;padding-bottom:6px;">${escapeHtml(headersText)}</div>`;
+                }
+                if (bodyText) {
+                    const paragraphs = bodyText.split(/\r?\n/).filter(line => line.trim().length > 0);
+                    htmlContent += paragraphs.map(p => `<p>${escapeHtml(p)}</p>`).join('');
+                }
+                if (footersText) {
+                    htmlContent += `<div style="margin-top:20px;font-size:12px;color:#94a3b8;border-top:1px solid #e2e8f0;padding-top:8px;">${escapeHtml(footersText)}</div>`;
+                }
+                if (!htmlContent) {
+                    htmlContent = '<p><em>Документ Word (.doc) не содержит текста или пуст.</em></p>';
+                }
+                return res.json({
+                    success: true,
+                    type: 'docx', // клиентский lightbox отрендерит через единый lightbox-doc-wrap!
+                    html: htmlContent,
+                    originalName: file.original_name
+                });
+            } catch (docErr) {
+                console.error('Ошибка чтения .doc:', docErr);
+                return res.json({
+                    success: true,
+                    type: 'doc_fallback',
+                    originalName: file.original_name,
+                    downloadUrl: `/api/files/${fileId}/download`,
+                    message: 'Файл Word формата .doc (двоичный формат). Вы можете скачать его для открытия в приложении Word.'
                 });
             }
         }
