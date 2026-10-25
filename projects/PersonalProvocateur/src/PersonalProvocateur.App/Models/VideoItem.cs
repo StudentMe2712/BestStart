@@ -31,6 +31,16 @@ public class VideoItem
     public string FilePath { get; set; } = string.Empty;
 
     /// <summary>
+    /// File path to cached 16:9 thumbnail preview image.
+    /// </summary>
+    public string ThumbnailPath { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Formatted video duration text (e.g. "01:30", "04:15").
+    /// </summary>
+    public string DurationText { get; set; } = string.Empty;
+
+    /// <summary>
     /// UTC timestamp of when the video was added to the library.
     /// </summary>
     public DateTime AddedAtUtc { get; set; } = DateTime.UtcNow;

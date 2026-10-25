@@ -20,6 +20,12 @@ public static class AppPaths
         Path.Combine(AppDataDirectory, "settings.json");
 
     /// <summary>
+    /// Gets the full path to the thumbnails cache directory.
+    /// </summary>
+    public static string ThumbnailsDirectory { get; } =
+        Path.Combine(AppDataDirectory, "Thumbnails");
+
+    /// <summary>
     /// Ensures that the application data directory exists on disk.
     /// </summary>
     public static void EnsureAppDataDirectory()
@@ -27,6 +33,11 @@ public static class AppPaths
         if (!Directory.Exists(AppDataDirectory))
         {
             Directory.CreateDirectory(AppDataDirectory);
+        }
+
+        if (!Directory.Exists(ThumbnailsDirectory))
+        {
+            Directory.CreateDirectory(ThumbnailsDirectory);
         }
     }
 }

@@ -9,6 +9,7 @@ const { marked } = require('marked');
 const createDOMPurify = require('dompurify');
 const { JSDOM } = require('jsdom');
 const XLSX = require('xlsx');
+const mammoth = require('mammoth');
 
 const USE_STUB = process.env.DB_STUB === 'true' || process.env.DB_STUB === '1';
 
@@ -187,7 +188,13 @@ const storage = multer.diskStorage({
 const fileFilter = (req, file, cb) => {
     const ext = path.extname(file.originalname || '').toLowerCase();
     const mime = (file.mimetype || '').toLowerCase();
-    if (ALLOWED_EXTENSIONS.includes(ext) || ext === '.xml' || mime === 'application/xml' || mime === 'text/xml') {
+    const allowedMimes = [
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'application/msword',
+        'application/xml',
+        'text/xml'
+    ];
+    if (ALLOWED_EXTENSIONS.includes(ext) || allowedMimes.includes(mime) || ext === '.xml') {
         cb(null, true);
     } else {
         cb(new Error(`Недопустимый тип файла (${ext}). Разрешены только: ${ALLOWED_EXTENSIONS.join(', ')}`));
@@ -743,6 +750,12 @@ app.post('/api/organizations/:id/files', requireAuth, uploadSingleFile, async (r
         if (ext === '.xml' && (!req.file.mimetype || req.file.mimetype === 'application/octet-stream')) {
             mimeType = 'application/xml';
         }
+        if (ext === '.docx' && (!req.file.mimetype || req.file.mimetype === 'application/octet-stream')) {
+            mimeType = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+        }
+        if (ext === '.doc' && (!req.file.mimetype || req.file.mimetype === 'application/octet-stream')) {
+            mimeType = 'application/msword';
+        }
         const createdFile = await filesDB.create({
             org_id: orgId,
             filename: req.file.filename,
@@ -794,6 +807,7 @@ app.get('/api/files/:fileId/view', requireAuth, async (req, res) => {
         res.setHeader('Content-Security-Policy', "frame-ancestors 'self'");
         res.setHeader('Content-Type', file.mime_type || 'application/octet-stream');
         res.setHeader('Content-Disposition', `inline; filename*=UTF-8''${encodeURIComponent(file.original_name)}`);
+        res.setHeader('Cache-Control', 'private, max-age=86400');
         res.sendFile(filePath);
     } catch (err) {
         console.error('Ошибка просмотра файла:', err);
@@ -856,6 +870,40 @@ app.get('/api/files/:fileId/preview', requireAuth, async (req, res) => {
                 });
             } catch (readErr) {
                 return res.status(500).json({ success: false, error: 'Ошибка чтения файла: ' + readErr.message });
+            }
+        }
+
+        // Word (.docx, .doc)
+        if (ext === '.docx' || ext === '.doc') {
+            if (ext === '.docx') {
+                try {
+                    const result = await mammoth.convertToHtml({ path: filePath });
+                    return res.json({
+                        success: true,
+                        type: 'docx',
+                        html: result.value || '<p><em>Документ пуст</em></p>',
+                        messages: result.messages,
+                        originalName: file.original_name
+                    });
+                } catch (docErr) {
+                    console.error('Ошибка конвертации docx:', docErr);
+                    return res.json({
+                        success: true,
+                        type: 'doc_fallback',
+                        originalName: file.original_name,
+                        downloadUrl: `/api/files/${fileId}/download`,
+                        message: 'Предпросмотр документа недоступен. Скачайте файл для открытия в Word.'
+                    });
+                }
+            } else {
+                // .doc binary format
+                return res.json({
+                    success: true,
+                    type: 'doc_fallback',
+                    originalName: file.original_name,
+                    downloadUrl: `/api/files/${fileId}/download`,
+                    message: 'Формат .doc поддерживается для загрузки и скачивания. Для интерактивного веб-предпросмотра рекомендуется использовать .docx.'
+                });
             }
         }
 

@@ -45,6 +45,8 @@ public class VideoLibraryServiceTests : IDisposable
         Assert.Equal("First Clip", video.Title);
         Assert.Equal(@"C:\Videos\Motivation_1.mp4", video.FilePath);
         Assert.True(video.IsEnabled);
+        Assert.NotEmpty(video.ThumbnailPath);
+        Assert.NotEmpty(video.DurationText);
 
         var all = service.GetAllVideos();
         Assert.Single(all);

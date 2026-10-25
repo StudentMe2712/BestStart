@@ -7,6 +7,13 @@ Add entries with the `/lesson` command, or by hand. Newest on top.
 
 ## Log
 
+### 2026-10-25 — WPF RenderTargetBitmap cross-thread procedural rendering & WindowsForms namespace collisions
+- **Problem:** 1) `CS0104: 'FontFamily'/'FlowDirection' is an ambiguous reference` when using WPF typography inside projects with `<UseWindowsForms>true</UseWindowsForms>`. 2) `RenderTargetBitmap` rendering fails if invoked from non-STA background or unit test worker threads.
+- **Root cause:** 1) `System.Drawing.FontFamily` and `System.Windows.Forms.FlowDirection` clash with `System.Windows.Media.FontFamily` and `System.Windows.FlowDirection`. 2) WPF visuals and `RenderTargetBitmap` require an STA apartment thread.
+- **Fix:** 1) Explicitly alias `using FontFamily = System.Windows.Media.FontFamily;` and `using FlowDirection = System.Windows.FlowDirection;`. 2) Check `Thread.CurrentThread.GetApartmentState() == ApartmentState.STA`; if not STA, run procedural thumbnail rendering on a dedicated spawned STA thread with `.Join()`.
+- **Rule:** When rendering WPF Visuals/RenderTargetBitmap in background services, always verify STA thread apartment or marshal to a dedicated STA worker, and explicitly alias clashing WindowsForms graphics types.
+- **Scope:** this-project
+
 ### 2026-10-19 — GDI+ Transparent Crystal Icon Generation and WPF Numeric Stepper Two-Way Binding
 - **Problem:** 1) Generating Win32 HICON for Taskbar without a background square requires 32-bit ARGB with proper alpha channel preservation. 2) Replacing Sliders with TextBoxes and Steppers requires robust handling of non-numeric input, bounds clamping (1..120, min..480), and debounced saving to prevent race conditions during rapid typing.
 - **Root cause:** 1) Default `Graphics.Clear` or non-ARGB bitmaps in GDI+ render black backgrounds on Windows taskbars. 2) WPF `TextBox.TextChanged` fires on every keystroke, including empty or incomplete numeric states (e.g. while backspacing).

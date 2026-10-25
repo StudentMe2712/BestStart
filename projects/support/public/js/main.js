@@ -96,6 +96,114 @@ function showToast(message, type) {
 }
 
 /* ============================================================
+   UNIFIED CONFIRMATION MODAL (Sprint 7)
+   ============================================================ */
+
+window.showConfirmDialog = function(options) {
+    options = options || {};
+    var modal = document.getElementById('unifiedConfirmModal');
+    if (!modal) {
+        if (typeof options.onConfirm === 'function') options.onConfirm();
+        return;
+    }
+
+    var overlay = document.getElementById('confirmModalOverlay');
+    var titleEl = document.getElementById('confirmDialogTitle');
+    var descEl = document.getElementById('confirmDialogDesc');
+    var itemBoxEl = document.getElementById('confirmDialogItemBox');
+    var itemNameEl = document.getElementById('confirmDialogItemName');
+    var cancelBtn = document.getElementById('confirmDialogCancelBtn');
+    var submitBtn = document.getElementById('confirmDialogSubmitBtn');
+    var spinner = document.getElementById('confirmDialogSpinner');
+    var btnText = document.getElementById('confirmDialogBtnText');
+
+    if (titleEl) titleEl.textContent = options.title || 'Удалить объект?';
+    if (descEl) descEl.textContent = options.message || 'Вы действительно хотите удалить этот объект?';
+
+    if (options.itemName && itemNameEl && itemBoxEl) {
+        itemNameEl.textContent = options.itemName;
+        itemBoxEl.style.display = 'flex';
+    } else if (itemBoxEl) {
+        itemBoxEl.style.display = 'none';
+    }
+
+    var originalConfirmText = options.confirmText || 'Удалить';
+    if (btnText) btnText.textContent = originalConfirmText;
+    if (spinner) spinner.style.display = 'none';
+    if (submitBtn) submitBtn.disabled = false;
+    if (cancelBtn) cancelBtn.disabled = false;
+
+    function closeModal() {
+        modal.style.display = 'none';
+        cleanup();
+    }
+
+    function onKeyDown(e) {
+        if (e.key === 'Escape') {
+            e.preventDefault();
+            closeModal();
+        }
+    }
+
+    function onOverlayClick() {
+        closeModal();
+    }
+
+    function onCancelClick() {
+        closeModal();
+    }
+
+    async function onSubmitClick() {
+        if (!options.onConfirm) {
+            closeModal();
+            return;
+        }
+
+        if (submitBtn) submitBtn.disabled = true;
+        if (cancelBtn) cancelBtn.disabled = true;
+        if (spinner) spinner.style.display = 'inline-block';
+        if (btnText) btnText.textContent = 'Удаление...';
+
+        try {
+            var result = options.onConfirm();
+            if (result && typeof result.then === 'function') {
+                await result;
+            }
+            closeModal();
+        } catch (err) {
+            console.error('Ошибка выполнения подтверждения:', err);
+            if (submitBtn) submitBtn.disabled = false;
+            if (cancelBtn) cancelBtn.disabled = false;
+            if (spinner) spinner.style.display = 'none';
+            if (btnText) btnText.textContent = originalConfirmText;
+            if (typeof showToast === 'function') {
+                showToast((err && err.message) || 'Произошла ошибка при выполнении действия', 'error');
+            }
+        }
+    }
+
+    function cleanup() {
+        document.removeEventListener('keydown', onKeyDown);
+        if (overlay) overlay.removeEventListener('click', onOverlayClick);
+        if (cancelBtn) cancelBtn.removeEventListener('click', onCancelClick);
+        if (submitBtn) submitBtn.removeEventListener('click', onSubmitClick);
+    }
+
+    document.addEventListener('keydown', onKeyDown);
+    if (overlay) overlay.addEventListener('click', onOverlayClick);
+    if (cancelBtn) cancelBtn.addEventListener('click', onCancelClick);
+    if (submitBtn) submitBtn.addEventListener('click', onSubmitClick);
+
+    var windowEl = modal.querySelector('.confirm-modal__window');
+    if (windowEl) {
+        windowEl.onclick = function(e) { e.stopPropagation(); };
+    }
+
+    modal.style.display = 'flex';
+    if (cancelBtn) cancelBtn.focus();
+};
+
+/* ============================================================
    CLIPBOARD HELPER
    ============================================================ */
 
@@ -377,22 +485,28 @@ function cancelEditMode() {
     var cleanCur = cleanHtmlToText(currentContent).trim();
     var cleanBase = cleanHtmlToText(baseContent).trim();
 
-    if (cleanCur !== cleanBase) {
-        if (!confirm('Отменить изменения? Несохраненные правки будут потеряны.')) {
-            return;
+    function doResetAndExit() {
+        setEditorContent(baseContent);
+        if (currentOrgId) {
+            localStorage.removeItem('draft_org_' + currentOrgId.value);
+            if (draftStatus) draftStatus.innerHTML = '';
         }
+        exitEditMode();
     }
 
-    // Reset editor content back to initial
-    setEditorContent(baseContent);
-
-    // Remove draft from storage if cancelled
-    if (currentOrgId) {
-        localStorage.removeItem('draft_org_' + currentOrgId.value);
-        if (draftStatus) draftStatus.innerHTML = '';
+    if (cleanCur !== cleanBase) {
+        window.showConfirmDialog({
+            title: 'Отменить изменения?',
+            message: 'Несохраненные правки будут потеряны. Вы действительно хотите выйти?',
+            confirmText: 'Отменить правки',
+            onConfirm: function() {
+                doResetAndExit();
+            }
+        });
+        return;
     }
 
-    exitEditMode();
+    doResetAndExit();
 }
 
 function setEditorContent(content) {
@@ -701,7 +815,7 @@ if (deleteOrgModal) {
 }
 
 if (confirmDeleteBtn) {
-    confirmDeleteBtn.addEventListener('click', async function() {
+    confirmDeleteBtn.addEventListener('click', function() {
         var orgId   = null;
         var orgNameText = '';
 
@@ -716,21 +830,21 @@ if (confirmDeleteBtn) {
             return;
         }
 
-        if (!confirm(window.ITS_I18n ? window.ITS_I18n.tf('wiki.confirm.delete', orgNameText) : 'Удалить "' + orgNameText + '"?')) return;
-
-        try {
-            var response = await fetch(API_BASE + '/' + orgId, { method: 'DELETE' });
-            var data = await response.json();
-            if (!response.ok) {
-                alert(data.error || 'Ошибка удаления организации');
-                return;
+        window.showConfirmDialog({
+            title: 'Удалить организацию?',
+            message: 'Вы действительно хотите удалить организацию?',
+            itemName: orgNameText,
+            confirmText: 'Удалить организацию',
+            onConfirm: async function() {
+                var response = await fetch(API_BASE + '/' + orgId, { method: 'DELETE' });
+                var data = await response.json();
+                if (!response.ok) {
+                    throw new Error(data.error || 'Ошибка удаления организации');
+                }
+                if (deleteOrgModal) deleteOrgModal.style.display = 'none';
+                window.location.href = '/wiki';
             }
-            if (deleteOrgModal) deleteOrgModal.style.display = 'none';
-            window.location.href = '/wiki';
-        } catch (err) {
-            console.error('Ошибка удаления:', err);
-            alert('Ошибка соединения с сервером');
-        }
+        });
     });
 }
 
@@ -1011,23 +1125,24 @@ if (wikiSearch && wikiOrgList) {
             if (deleteBtn) {
                 var id = deleteBtn.getAttribute('data-id');
                 var name = deleteBtn.getAttribute('data-name') || 'базу';
-                if (!confirm('Удалить информационную базу "' + name + '"?')) return;
-
-                try {
-                    var res = await fetch('/api/databases/' + id, { method: 'DELETE' });
-                    var result = await res.json();
-                    if (!res.ok) {
-                        alert(result.error || 'Ошибка удаления базы');
-                        return;
+                window.showConfirmDialog({
+                    title: 'Удалить базу 1С?',
+                    message: 'Вы действительно хотите удалить базу?',
+                    itemName: name,
+                    confirmText: 'Удалить базу',
+                    onConfirm: async function() {
+                        var res = await fetch('/api/databases/' + id, { method: 'DELETE' });
+                        var result = await res.json();
+                        if (!res.ok) {
+                            throw new Error(result.error || 'Ошибка удаления базы');
+                        }
+                        var row = deleteBtn.closest('tr');
+                        if (row) row.remove();
+                        updateViewCounts();
+                        showToast('База 1С успешно удалена');
                     }
-                    var row = deleteBtn.closest('tr');
-                    if (row) row.remove();
-                    updateViewCounts();
-                    showToast('База 1С успешно удалена');
-                } catch (err) {
-                    console.error('Ошибка удаления базы 1С:', err);
-                    alert('Ошибка соединения с сервером');
-                }
+                });
+                return;
             }
         });
     }
@@ -1251,6 +1366,7 @@ function reorganizeWikiSidebar(pins) {
     var lightboxCloseBtn = document.getElementById('lightboxCloseBtn');
     var lightboxFileName = document.getElementById('lightboxFileName');
     var lightboxDownloadBtn = document.getElementById('lightboxDownloadBtn');
+    var lightboxZoomBtn = document.getElementById('lightboxZoomBtn');
     var lightboxBody = document.getElementById('lightboxBody');
 
     if (!attachmentsSection) return;
@@ -1280,10 +1396,14 @@ function reorganizeWikiSidebar(pins) {
             fileType = 'image';
             iconColor = '#3b82f6';
             isPreviewable = true;
-        } else if (['docx', 'doc', 'txt'].includes(ext)) {
+        } else if (ext === 'docx' || ext === 'doc') {
             fileType = 'doc';
+            iconColor = '#2563eb';
+            isPreviewable = true;
+        } else if (ext === 'txt') {
+            fileType = 'text';
             iconColor = '#6366f1';
-            isPreviewable = (ext === 'txt');
+            isPreviewable = true;
         } else if (['zip', 'rdp'].includes(ext)) {
             fileType = 'archive';
             iconColor = '#f59e0b';
@@ -1313,6 +1433,8 @@ function reorganizeWikiSidebar(pins) {
             return '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>';
         } else if (fileType === 'doc') {
             return '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/></svg>';
+        } else if (fileType === 'text') {
+            return '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>';
         } else if (fileType === 'archive') {
             return '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/></svg>';
         } else {
@@ -1467,29 +1589,28 @@ function reorganizeWikiSidebar(pins) {
                 var fileId = deleteBtn.getAttribute('data-file-id');
                 var fileName = deleteBtn.getAttribute('data-file-name') || 'файл';
 
-                if (!confirm('Вы уверены, что хотите удалить файл "' + fileName + '"?')) {
-                    return;
-                }
-
-                try {
-                    var res = await fetch('/api/files/' + fileId, { method: 'DELETE' });
-                    var data = await res.json();
-                    if (res.ok && data && data.success) {
-                        var chip = deleteBtn.closest('.file-chip');
-                        if (chip) chip.remove();
-                        var emptyEl = document.getElementById('attachmentsEmpty');
-                        if (emptyEl && attachmentsList && attachmentsList.querySelectorAll('.file-chip').length === 0) {
-                            emptyEl.style.display = '';
+                window.showConfirmDialog({
+                    title: 'Удалить вложение?',
+                    message: 'Вы действительно хотите удалить прикрепленный файл?',
+                    itemName: fileName,
+                    confirmText: 'Удалить файл',
+                    onConfirm: async function() {
+                        var res = await fetch('/api/files/' + fileId, { method: 'DELETE' });
+                        var data = await res.json();
+                        if (res.ok && data && data.success) {
+                            var chip = deleteBtn.closest('.file-chip');
+                            if (chip) chip.remove();
+                            var emptyEl = document.getElementById('attachmentsEmpty');
+                            if (emptyEl && attachmentsList && attachmentsList.querySelectorAll('.file-chip').length === 0) {
+                                emptyEl.style.display = '';
+                            }
+                            updateBadgeCount(-1);
+                            showToast('Файл удален');
+                        } else {
+                            throw new Error((data && data.error) || 'Ошибка удаления файла');
                         }
-                        updateBadgeCount(-1);
-                        showToast('Файл удален');
-                    } else {
-                        showToast((data && data.error) || 'Ошибка удаления файла');
                     }
-                } catch (err) {
-                    console.error('Ошибка удаления файла:', err);
-                    showToast('Ошибка при удалении файла');
-                }
+                });
                 return;
             }
 
@@ -1518,58 +1639,112 @@ function reorganizeWikiSidebar(pins) {
             lightboxBody.innerHTML = '';
 
             if (fileType === 'image') {
+                if (lightboxZoomBtn) {
+                    lightboxZoomBtn.style.display = 'inline-flex';
+                    lightboxZoomBtn.classList.remove('is-active');
+                    lightboxZoomBtn.setAttribute('title', 'Переключить масштаб 1:1 (Исходный размер) / По размеру окна');
+                }
                 lightboxBody.innerHTML = '<img class="lightbox-image" src="/api/files/' + fileId + '/view" alt="' + escapeHtmlText(fileName) + '">';
-            } else if (fileType === 'pdf') {
-                lightboxBody.innerHTML = '<iframe class="lightbox-iframe" src="/api/files/' + fileId + '/view"></iframe>';
-            } else if (fileType === 'excel' || fileType === 'xml' || fileType === 'doc') {
-                lightboxBody.innerHTML = '<div class="lightbox-loading"><span class="lightbox-spinner"></span><span>Загрузка предпросмотра...</span></div>';
-                fetch('/api/files/' + fileId + '/preview')
-                    .then(function(r) { return r.json(); })
-                    .then(function(data) {
-                        if (!data.success) {
-                            lightboxBody.innerHTML = '<div class="lightbox-error"><span>Не удалось загрузить предпросмотр: ' + escapeHtmlText(data.error || 'Формат не поддерживается') + '</span><br><a href="/api/files/' + fileId + '/download" class="lightbox-error-btn">Скачать файл</a></div>';
-                            return;
-                        }
-                        if (data.type === 'excel') {
-                            // Render sheet selector if multiple sheets, and spreadsheet table
-                            var html = '<div class="lightbox-spreadsheet-container">';
-                            if (data.sheetNames && data.sheetNames.length > 1) {
-                                html += '<div class="lightbox-sheet-tabs">';
-                                data.sheetNames.forEach(function(s) {
-                                    html += '<button type="button" class="lightbox-sheet-tab' + (s === data.currentSheet ? ' is-active' : '') + '" data-sheet="' + escapeHtmlText(s) + '">' + escapeHtmlText(s) + '</button>';
-                                });
-                                html += '</div>';
-                            }
-                            html += '<div class="lightbox-table-scroll">' + data.html + '</div>';
-                            html += '</div>';
-                            lightboxBody.innerHTML = html;
-
-                            // Sheet tab switcher
-                            var tabs = lightboxBody.querySelectorAll('.lightbox-sheet-tab');
-                            tabs.forEach(function(tab) {
-                                tab.addEventListener('click', function() {
-                                    var sheetName = this.getAttribute('data-sheet');
-                                    fetch('/api/files/' + fileId + '/preview?sheet=' + encodeURIComponent(sheetName))
-                                        .then(function(r) { return r.json(); })
-                                        .then(function(resData) {
-                                            if (resData.success) {
-                                                var scrollEl = lightboxBody.querySelector('.lightbox-table-scroll');
-                                                if (scrollEl) scrollEl.innerHTML = resData.html;
-                                                tabs.forEach(function(t) { t.classList.remove('is-active'); });
-                                                tab.classList.add('is-active');
-                                            }
-                                        });
-                                });
-                            });
-                        } else if (data.type === 'xml' || data.type === 'text') {
-                            lightboxBody.innerHTML = '<div class="lightbox-code-wrap"><pre><code class="lightbox-code">' + escapeHtmlText(data.content) + '</code></pre></div>';
-                        }
-                    })
-                    .catch(function(err) {
-                        lightboxBody.innerHTML = '<div class="lightbox-error"><span>Ошибка сети при загрузке предпросмотра</span><br><a href="/api/files/' + fileId + '/download" class="lightbox-error-btn">Скачать файл</a></div>';
-                    });
+                var img = lightboxBody.querySelector('.lightbox-image');
+                function toggleImageZoom() {
+                    if (!img) return;
+                    var isActual = img.classList.toggle('is-actual-size');
+                    if (lightboxZoomBtn) {
+                        lightboxZoomBtn.classList.toggle('is-active', isActual);
+                        lightboxZoomBtn.setAttribute('title', isActual ? 'По размеру окна' : 'Переключить масштаб 1:1 (Исходный размер) / По размеру окна');
+                    }
+                }
+                if (img) img.addEventListener('click', toggleImageZoom);
+                if (lightboxZoomBtn) lightboxZoomBtn.onclick = toggleImageZoom;
             } else {
-                lightboxBody.innerHTML = '<div class="lightbox-error"><span>Предпросмотр недоступен для данного формата.</span><br><a href="/api/files/' + fileId + '/download" class="lightbox-error-btn">Скачать файл</a></div>';
+                if (lightboxZoomBtn) {
+                    lightboxZoomBtn.style.display = 'none';
+                    lightboxZoomBtn.classList.remove('is-active');
+                    lightboxZoomBtn.onclick = null;
+                }
+
+                if (fileType === 'pdf') {
+                    lightboxBody.innerHTML = '<iframe class="lightbox-iframe" src="/api/files/' + fileId + '/view"></iframe>';
+                } else if (fileType === 'excel' || fileType === 'xml' || fileType === 'doc' || fileType === 'text') {
+                    lightboxBody.innerHTML = '<div class="lightbox-loading"><span class="lightbox-spinner"></span><span>Загрузка предпросмотра...</span></div>';
+                    fetch('/api/files/' + fileId + '/preview')
+                        .then(function(r) { return r.json(); })
+                        .then(function(data) {
+                            if (!data.success) {
+                                lightboxBody.innerHTML = '<div class="lightbox-error"><span>Не удалось загрузить предпросмотр: ' + escapeHtmlText(data.error || 'Формат не поддерживается') + '</span><br><a href="/api/files/' + fileId + '/download" class="lightbox-error-btn">Скачать файл</a></div>';
+                                return;
+                            }
+                            if (data.type === 'docx') {
+                                lightboxBody.innerHTML = '<div class="lightbox-doc-wrap"><div class="lightbox-doc-content">' + (data.html || '<p><em>Документ пуст</em></p>') + '</div></div>';
+                            } else if (data.type === 'doc_fallback') {
+                                var docName = data.originalName || fileName || 'Документ Word';
+                                var docMsg = data.message || 'Формат .doc не поддерживает интерактивный веб-предпросмотр. Скачайте документ для открытия в Microsoft Word.';
+                                var dlUrl = data.downloadUrl || ('/api/files/' + fileId + '/download');
+                                lightboxBody.innerHTML =
+                                    '<div class="lightbox-doc-wrap">' +
+                                        '<div class="lightbox-doc-fallback">' +
+                                            '<div class="lightbox-doc-fallback__icon">' +
+                                                '<svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">' +
+                                                    '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>' +
+                                                    '<polyline points="14 2 14 8 20 8"/>' +
+                                                    '<line x1="16" y1="13" x2="8" y2="13"/>' +
+                                                    '<line x1="16" y1="17" x2="8" y2="17"/>' +
+                                                    '<line x1="10" y1="9" x2="8" y2="9"/>' +
+                                                '</svg>' +
+                                            '</div>' +
+                                            '<h3 class="lightbox-doc-fallback__title">' + escapeHtmlText(docName) + '</h3>' +
+                                            '<p class="lightbox-doc-fallback__desc">' + escapeHtmlText(docMsg) + '</p>' +
+                                            '<a href="' + dlUrl + '" class="lightbox-doc-fallback__btn" download="' + escapeHtmlText(docName) + '">' +
+                                                '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+                                                    '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>' +
+                                                    '<polyline points="7 10 12 15 17 10"/>' +
+                                                    '<line x1="12" y1="15" x2="12" y2="3"/>' +
+                                                '</svg>' +
+                                                '<span>Скачать документ</span>' +
+                                            '</a>' +
+                                        '</div>' +
+                                    '</div>';
+                            } else if (data.type === 'excel') {
+                                // Render sheet selector if multiple sheets, and spreadsheet table
+                                var html = '<div class="lightbox-spreadsheet-container">';
+                                if (data.sheetNames && data.sheetNames.length > 1) {
+                                    html += '<div class="lightbox-sheet-tabs">';
+                                    data.sheetNames.forEach(function(s) {
+                                        html += '<button type="button" class="lightbox-sheet-tab' + (s === data.currentSheet ? ' is-active' : '') + '" data-sheet="' + escapeHtmlText(s) + '">' + escapeHtmlText(s) + '</button>';
+                                    });
+                                    html += '</div>';
+                                }
+                                html += '<div class="lightbox-table-scroll">' + data.html + '</div>';
+                                html += '</div>';
+                                lightboxBody.innerHTML = html;
+
+                                // Sheet tab switcher
+                                var tabs = lightboxBody.querySelectorAll('.lightbox-sheet-tab');
+                                tabs.forEach(function(tab) {
+                                    tab.addEventListener('click', function() {
+                                        var sheetName = this.getAttribute('data-sheet');
+                                        fetch('/api/files/' + fileId + '/preview?sheet=' + encodeURIComponent(sheetName))
+                                            .then(function(r) { return r.json(); })
+                                            .then(function(resData) {
+                                                if (resData.success) {
+                                                    var scrollEl = lightboxBody.querySelector('.lightbox-table-scroll');
+                                                    if (scrollEl) scrollEl.innerHTML = resData.html;
+                                                    tabs.forEach(function(t) { t.classList.remove('is-active'); });
+                                                    tab.classList.add('is-active');
+                                                }
+                                            });
+                                    });
+                                });
+                            } else if (data.type === 'xml' || data.type === 'text') {
+                                lightboxBody.innerHTML = '<div class="lightbox-code-wrap"><pre><code class="lightbox-code">' + escapeHtmlText(data.content) + '</code></pre></div>';
+                            }
+                        })
+                        .catch(function(err) {
+                            lightboxBody.innerHTML = '<div class="lightbox-error"><span>Ошибка сети при загрузке предпросмотра</span><br><a href="/api/files/' + fileId + '/download" class="lightbox-error-btn">Скачать файл</a></div>';
+                        });
+                } else {
+                    lightboxBody.innerHTML = '<div class="lightbox-error"><span>Предпросмотр недоступен для данного формата.</span><br><a href="/api/files/' + fileId + '/download" class="lightbox-error-btn">Скачать файл</a></div>';
+                }
             }
         }
 
@@ -1581,6 +1756,11 @@ function reorganizeWikiSidebar(pins) {
         if (!lightboxModal) return;
         lightboxModal.style.display = 'none';
         document.body.style.overflow = '';
+        if (lightboxZoomBtn) {
+            lightboxZoomBtn.style.display = 'none';
+            lightboxZoomBtn.classList.remove('is-active');
+            lightboxZoomBtn.onclick = null;
+        }
         if (lightboxBody) lightboxBody.innerHTML = '';
     }
 

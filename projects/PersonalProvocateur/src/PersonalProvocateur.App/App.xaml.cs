@@ -16,6 +16,7 @@ public partial class App : System.Windows.Application
     private VideoLibraryService? _videoLibraryService;
     private RandomReminderScheduler? _scheduler;
     private OverlayCoordinator? _overlayCoordinator;
+    private SmartTriggerService? _smartTriggerService;
     private TrayIconService? _trayIconService;
     private GlobalHotkeyService? _hotkeyService;
     private SystemPowerWatcher? _powerWatcher;
@@ -41,13 +42,20 @@ public partial class App : System.Windows.Application
         _videoLibraryService = new VideoLibraryService(_settingsStore);
         _scheduler = new RandomReminderScheduler();
         _overlayCoordinator = new OverlayCoordinator(_scheduler, _videoLibraryService, _settingsStore);
+        _smartTriggerService = new SmartTriggerService(_settingsStore, _overlayCoordinator);
 
         // Pre-generate and verify mascot graphics assets (ADR-003)
         var mascotAssetService = new MascotAssetService();
         mascotAssetService.EnsureAssetsExist();
 
         // 3. Scheduler trigger wiring
-        _scheduler.TimerTriggered += (s, args) => _overlayCoordinator.TriggerProvocation(isManualTest: false);
+        _scheduler.TimerTriggered += (s, args) =>
+        {
+            if (_settingsStore?.CurrentSettings.TriggerMode != "SmartOnly")
+            {
+                _overlayCoordinator?.TriggerProvocation(isManualTest: false);
+            }
+        };
 
         // 4. Tray Icon Service
         _trayIconService = new TrayIconService(_overlayCoordinator, _scheduler, _settingsStore, OpenSettingsWindow);
@@ -61,7 +69,7 @@ public partial class App : System.Windows.Application
         _powerWatcher = new SystemPowerWatcher(_scheduler, _settingsStore);
 
         // 7. Initial cycle start
-        if (!_settingsStore.CurrentSettings.IsPaused)
+        if (!_settingsStore.CurrentSettings.IsPaused && _settingsStore.CurrentSettings.TriggerMode != "SmartOnly")
         {
             var min = _settingsStore.CurrentSettings.MinIntervalMinutes;
             var max = _settingsStore.CurrentSettings.MaxIntervalMinutes;
@@ -137,6 +145,7 @@ public partial class App : System.Windows.Application
             _trayIconService?.Dispose();
             _hotkeyService?.Dispose();
             _powerWatcher?.Dispose();
+            _smartTriggerService?.Dispose();
             _overlayCoordinator?.Dispose();
             _scheduler?.Dispose();
             _singleInstanceGuard?.Dispose();

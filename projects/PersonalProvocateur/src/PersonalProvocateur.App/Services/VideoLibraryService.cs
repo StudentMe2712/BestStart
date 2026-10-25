@@ -12,6 +12,7 @@ public class VideoLibraryService
     private readonly SettingsStore _settingsStore;
     private readonly VideoShuffleBag _shuffleBag;
     private readonly Func<string, bool> _fileExistsChecker;
+    private readonly VideoThumbnailService _thumbnailService;
 
     /// <summary>
     /// Gets the underlying video shuffle bag instance.
@@ -19,21 +20,64 @@ public class VideoLibraryService
     public VideoShuffleBag ShuffleBag => _shuffleBag;
 
     /// <summary>
+    /// Gets the thumbnail processing service.
+    /// </summary>
+    public VideoThumbnailService ThumbnailService => _thumbnailService;
+
+    /// <summary>
     /// Initializes a new instance of <see cref="VideoLibraryService"/>.
     /// </summary>
     /// <param name="settingsStore">Application settings store.</param>
     /// <param name="shuffleBag">Optional shuffle bag. If null, a new instance is created.</param>
     /// <param name="fileExistsChecker">Optional file existence checker function.</param>
+    /// <param name="thumbnailService">Optional thumbnail processing service.</param>
     public VideoLibraryService(
         SettingsStore settingsStore,
         VideoShuffleBag? shuffleBag = null,
-        Func<string, bool>? fileExistsChecker = null)
+        Func<string, bool>? fileExistsChecker = null,
+        VideoThumbnailService? thumbnailService = null)
     {
         _settingsStore = settingsStore ?? throw new ArgumentNullException(nameof(settingsStore));
         _fileExistsChecker = fileExistsChecker ?? File.Exists;
         _shuffleBag = shuffleBag ?? new VideoShuffleBag(fileExistsChecker: _fileExistsChecker);
+        _thumbnailService = thumbnailService ?? new VideoThumbnailService(fileExistsChecker: _fileExistsChecker);
 
+        EnsureExistingVideosMetadata();
         RefreshPool();
+    }
+
+    private void EnsureExistingVideosMetadata()
+    {
+        bool updated = false;
+        foreach (var v in _settingsStore.CurrentSettings.Videos)
+        {
+            if (v.ContentType == ProvocationContentType.Video &&
+                (string.IsNullOrWhiteSpace(v.ThumbnailPath) || string.IsNullOrWhiteSpace(v.DurationText)))
+            {
+                try
+                {
+                    var meta = _thumbnailService.ProcessVideo(v.FilePath, v.Id);
+                    if (string.IsNullOrWhiteSpace(v.ThumbnailPath))
+                    {
+                        v.ThumbnailPath = meta.ThumbnailPath;
+                    }
+                    if (string.IsNullOrWhiteSpace(v.DurationText))
+                    {
+                        v.DurationText = meta.DurationText;
+                    }
+                    updated = true;
+                }
+                catch
+                {
+                    // Non-blocking fallback
+                }
+            }
+        }
+
+        if (updated)
+        {
+            _settingsStore.Save();
+        }
     }
 
     /// <summary>
@@ -120,11 +164,29 @@ public class VideoLibraryService
             resolvedTitle = "Provocation Video";
         }
 
+        var videoId = Guid.NewGuid();
+        string thumbnailPath = string.Empty;
+        string durationText = string.Empty;
+
+        try
+        {
+            var meta = _thumbnailService.ProcessVideo(filePath, videoId);
+            thumbnailPath = meta.ThumbnailPath;
+            durationText = meta.DurationText;
+        }
+        catch
+        {
+            thumbnailPath = string.Empty;
+            durationText = "01:30";
+        }
+
         var videoItem = new VideoItem
         {
-            Id = Guid.NewGuid(),
+            Id = videoId,
             Title = resolvedTitle,
             FilePath = filePath,
+            ThumbnailPath = thumbnailPath,
+            DurationText = durationText,
             AddedAtUtc = DateTime.UtcNow,
             IsEnabled = true
         };

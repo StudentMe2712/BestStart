@@ -19,6 +19,14 @@ public class AppSettingsTests
         Assert.False(settings.RunOnStartup);
         Assert.False(settings.IsPaused);
         Assert.Equal(0.85, settings.VideoVolume, 2);
+        Assert.Equal("SmartHybrid", settings.TriggerMode);
+        Assert.True(settings.TriggerOnEntertainment);
+        Assert.Equal(60, settings.EntertainmentGraceSeconds);
+        Assert.NotNull(settings.EntertainmentKeywords);
+        Assert.Contains("YouTube", settings.EntertainmentKeywords);
+        Assert.True(settings.TriggerOnIdle);
+        Assert.Equal(12, settings.IdleThresholdMinutes);
+        Assert.Equal(10, settings.SmartCooldownMinutes);
         Assert.NotNull(settings.Videos);
         Assert.Empty(settings.Videos);
     }
@@ -46,6 +54,28 @@ public class AppSettingsTests
         Assert.Equal(0.0, settings.VideoVolume, 2);
         Assert.Equal("Ctrl+Alt+P", settings.TriggerHotkey);
         Assert.Equal("Ctrl+Alt+Shift+P", settings.PanicHotkey);
+    }
+
+    [Fact]
+    public void Sanitize_ClampsSmartTriggerSettings()
+    {
+        var settings = new AppSettings
+        {
+            TriggerMode = "UnknownMode",
+            EntertainmentGraceSeconds = 2,
+            EntertainmentKeywords = null!,
+            IdleThresholdMinutes = -1,
+            SmartCooldownMinutes = 200
+        };
+
+        settings.Sanitize();
+
+        Assert.Equal("SmartHybrid", settings.TriggerMode);
+        Assert.Equal(5, settings.EntertainmentGraceSeconds);
+        Assert.NotNull(settings.EntertainmentKeywords);
+        Assert.Contains("YouTube", settings.EntertainmentKeywords);
+        Assert.Equal(1, settings.IdleThresholdMinutes);
+        Assert.Equal(120, settings.SmartCooldownMinutes);
     }
 
     [Fact]
@@ -79,6 +109,8 @@ public class AppSettingsTests
         Assert.Equal(string.Empty, video.TextContent);
         Assert.Equal("Test Video", video.Title);
         Assert.Equal(@"C:\Videos\test.mp4", video.FilePath);
+        Assert.Equal(string.Empty, video.ThumbnailPath);
+        Assert.Equal(string.Empty, video.DurationText);
         Assert.True(video.AddedAtUtc <= DateTime.UtcNow);
     }
 

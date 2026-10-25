@@ -77,9 +77,48 @@ public class AppSettings
     public string CustomMascotPath { get; set; } = string.Empty;
 
     /// <summary>
+    /// <summary>
     /// Target monitor index for presenting interactive provocations (default: 0).
     /// </summary>
     public int TargetMonitorIndex { get; set; } = 0;
+
+    /// <summary>
+    /// Trigger mode for provocations ("SmartHybrid", "SmartOnly", "RandomTimer"). Default: "SmartHybrid".
+    /// </summary>
+    public string TriggerMode { get; set; } = "SmartHybrid";
+
+    /// <summary>
+    /// Whether to trigger provocation when entertainment applications or sites are detected.
+    /// </summary>
+    public bool TriggerOnEntertainment { get; set; } = true;
+
+    /// <summary>
+    /// Dwell time in seconds on entertainment window before triggering provocation (clamped between 5 and 3600).
+    /// </summary>
+    public int EntertainmentGraceSeconds { get; set; } = 60;
+
+    /// <summary>
+    /// Keywords for detecting entertainment applications or web browser tabs.
+    /// </summary>
+    public List<string> EntertainmentKeywords { get; set; } = new()
+    {
+        "YouTube", "TikTok", "Twitch", "Reddit", "VK", "Shorts", "Reels", "Netflix", "Steam"
+    };
+
+    /// <summary>
+    /// Whether to trigger provocation when the system has been idle.
+    /// </summary>
+    public bool TriggerOnIdle { get; set; } = true;
+
+    /// <summary>
+    /// Threshold of system inactivity/idle in minutes before triggering provocation (clamped between 1 and 120).
+    /// </summary>
+    public int IdleThresholdMinutes { get; set; } = 12;
+
+    /// <summary>
+    /// Minimum cooldown in minutes between consecutive smart triggers (clamped between 1 and 120).
+    /// </summary>
+    public int SmartCooldownMinutes { get; set; } = 10;
 
     /// <summary>
     /// User's video library items.
@@ -135,6 +174,17 @@ public class AppSettings
         }
 
         CustomMascotPath ??= string.Empty;
+
+        if (TriggerMode != "SmartHybrid" && TriggerMode != "SmartOnly" && TriggerMode != "RandomTimer")
+        {
+            TriggerMode = "SmartHybrid";
+        }
+
+        EntertainmentGraceSeconds = Math.Clamp(EntertainmentGraceSeconds, 5, 3600);
+        EntertainmentKeywords ??= new() { "YouTube", "TikTok", "Twitch", "Reddit", "VK", "Shorts", "Reels", "Netflix", "Steam" };
+        IdleThresholdMinutes = Math.Clamp(IdleThresholdMinutes, 1, 120);
+        SmartCooldownMinutes = Math.Clamp(SmartCooldownMinutes, 1, 120);
+
         Videos ??= new List<VideoItem>();
     }
 }

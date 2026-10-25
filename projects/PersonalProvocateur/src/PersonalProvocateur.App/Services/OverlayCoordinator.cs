@@ -146,6 +146,17 @@ public class OverlayCoordinator : IDisposable
             {
                 TransitionTo(SessionState.BackgroundIdle);
             }
+
+            if (settings.TriggerMode == "SmartOnly")
+            {
+                _scheduler.Stop();
+            }
+            else if (!settings.IsPaused && !_scheduler.IsRunning && !_scheduler.IsSessionActive && CurrentState == SessionState.BackgroundIdle)
+            {
+                var min = settings.MinIntervalMinutes;
+                var max = settings.MaxIntervalMinutes;
+                _scheduler.StartNextCycle(min, max);
+            }
         }
     }
 
@@ -408,9 +419,12 @@ public class OverlayCoordinator : IDisposable
                 _scheduler.IsSessionActive = false;
                 TransitionTo(SessionState.BackgroundIdle);
 
-                var min = _settingsStore.CurrentSettings.MinIntervalMinutes;
-                var max = _settingsStore.CurrentSettings.MaxIntervalMinutes;
-                _scheduler.StartNextCycle(min, max);
+                if (_settingsStore.CurrentSettings.TriggerMode != "SmartOnly")
+                {
+                    var min = _settingsStore.CurrentSettings.MinIntervalMinutes;
+                    var max = _settingsStore.CurrentSettings.MaxIntervalMinutes;
+                    _scheduler.StartNextCycle(min, max);
+                }
             }
         });
     }
@@ -431,9 +445,12 @@ public class OverlayCoordinator : IDisposable
                 _scheduler.IsSessionActive = false;
                 TransitionTo(SessionState.BackgroundIdle);
 
-                var min = _settingsStore.CurrentSettings.MinIntervalMinutes;
-                var max = _settingsStore.CurrentSettings.MaxIntervalMinutes;
-                _scheduler.StartNextCycle(min, max);
+                if (_settingsStore.CurrentSettings.TriggerMode != "SmartOnly")
+                {
+                    var min = _settingsStore.CurrentSettings.MinIntervalMinutes;
+                    var max = _settingsStore.CurrentSettings.MaxIntervalMinutes;
+                    _scheduler.StartNextCycle(min, max);
+                }
             }
         });
     }
@@ -446,9 +463,16 @@ public class OverlayCoordinator : IDisposable
     {
         _settingsStore.Update(s => s.IsPaused = paused);
 
-        var min = _settingsStore.CurrentSettings.MinIntervalMinutes;
-        var max = _settingsStore.CurrentSettings.MaxIntervalMinutes;
-        _scheduler.SetPaused(paused, min, max);
+        if (_settingsStore.CurrentSettings.TriggerMode != "SmartOnly")
+        {
+            var min = _settingsStore.CurrentSettings.MinIntervalMinutes;
+            var max = _settingsStore.CurrentSettings.MaxIntervalMinutes;
+            _scheduler.SetPaused(paused, min, max);
+        }
+        else
+        {
+            _scheduler.Stop();
+        }
 
         lock (_lock)
         {
