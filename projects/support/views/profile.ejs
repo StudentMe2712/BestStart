@@ -118,20 +118,6 @@
 
             <!-- ── Body ── -->
             <div class="profile-card-body">
-                <% if ((userDetails && userDetails.must_change_password) || (user && user.must_change_password)) { %>
-                <div class="profile-warning-banner" role="alert" id="mustChangePasswordBanner">
-                    <div class="profile-warning-banner__icon">
-                        <svg viewBox="0 0 20 20" fill="currentColor">
-                            <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
-                        </svg>
-                    </div>
-                    <div class="profile-warning-banner__content">
-                        <h3 class="profile-warning-banner__title" data-i18n="profile.mustChange.title">Требуется сменить пароль</h3>
-                        <p class="profile-warning-banner__text" data-i18n="profile.mustChange.desc">Ваш пароль был сброшен администратором. Для продолжения работы в системе установите новый постоянный пароль.</p>
-                    </div>
-                </div>
-                <% } %>
-
                 <h2 class="profile-section-title" data-i18n="section.account">Информация об аккаунте</h2>
 
                 <div class="profile-info-table">
@@ -286,9 +272,9 @@
                     <h2 class="profile-section-title" data-i18n="profile.section.password">Смена пароля</h2>
                     
                     <form id="changePasswordForm" class="profile-password-form" novalidate onsubmit="return false;">
-                        <!-- Текущий / временный пароль -->
+                        <!-- Текущий пароль -->
                         <div class="profile-form-group">
-                            <label for="currentPassword" class="profile-form-label" data-i18n="profile.password.current">Текущий / временный пароль</label>
+                            <label for="currentPassword" class="profile-form-label" data-i18n="profile.password.current">Текущий пароль</label>
                             <div class="profile-input-wrapper">
                                 <input type="password" id="currentPassword" class="profile-form-input" autocomplete="current-password" placeholder="••••••••" required>
                                 <button type="button" class="password-toggle-btn" data-target="currentPassword" aria-label="Показать пароль">
@@ -567,7 +553,6 @@
         var confirmPasswordInput = document.getElementById('confirmPassword');
         var savePasswordBtn      = document.getElementById('savePasswordBtn');
         var passwordNotice       = document.getElementById('passwordSaveNotice');
-        var mustChangeBanner     = document.getElementById('mustChangePasswordBanner');
 
         // Setup password show/hide eye toggles
         document.querySelectorAll('.password-toggle-btn[data-target]').forEach(function (btn) {
@@ -651,14 +636,6 @@
                     if (currentPasswordInput) currentPasswordInput.value = '';
                     if (newPasswordInput) newPasswordInput.value = '';
                     if (confirmPasswordInput) confirmPasswordInput.value = '';
-
-                    if (mustChangeBanner) {
-                        mustChangeBanner.style.transition = 'opacity 0.4s ease, max-height 0.4s ease';
-                        mustChangeBanner.style.opacity = '0';
-                        setTimeout(function () {
-                            mustChangeBanner.remove();
-                        }, 400);
-                    }
 
                     showPasswordNotice(window.ITS_I18n ? window.ITS_I18n.t('profile.password.success') : 'Пароль успешно обновлён', false);
                 } catch (err) {

@@ -44,6 +44,43 @@
     margin: 0;
 }
 
+.admin-users-header__actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.btn-create-user {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    font-size: 13.5px;
+    font-weight: 600;
+    border-radius: 8px;
+    background: #1e3a5f;
+    border: 1px solid #1e3a5f;
+    color: #ffffff;
+    cursor: pointer;
+    box-shadow: 0 1px 3px rgba(30, 58, 95, 0.15);
+    transition: all 0.15s ease;
+}
+
+.btn-create-user svg {
+    width: 16px;
+    height: 16px;
+}
+
+.btn-create-user:hover {
+    background: #2558a3;
+    border-color: #2558a3;
+    box-shadow: 0 2px 6px rgba(37, 88, 163, 0.25);
+}
+
+.btn-create-user:active {
+    transform: translateY(1px);
+}
+
 .admin-users-header__badge {
     display: flex;
     align-items: center;
@@ -308,6 +345,11 @@
     color: #059669;
 }
 
+.confirm-modal__icon-wrap--primary {
+    background: rgba(30, 58, 95, 0.12);
+    color: #1e3a5f;
+}
+
 .confirm-modal__icon-wrap svg {
     width: 22px;
     height: 22px;
@@ -354,6 +396,80 @@
     color: #065f46;
     background: #ecfdf5;
     border-color: #a7f3d0;
+}
+
+/* ── Modal Form ─────────────────────────────────────────── */
+.form-group-modal {
+    margin-bottom: 16px;
+}
+
+.form-group-modal:last-of-type {
+    margin-bottom: 12px;
+}
+
+.modal-form-label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    color: #334155;
+    margin-bottom: 6px;
+}
+
+.required-star {
+    color: #ef4444;
+}
+
+.modal-form-input {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 10px 14px;
+    font-size: 14px;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    background: #ffffff;
+    color: #0f172a;
+    transition: border-color 0.15s, box-shadow 0.15s;
+    outline: none;
+}
+
+.modal-form-input:focus {
+    border-color: #2558a3;
+    box-shadow: 0 0 0 3px rgba(37, 88, 163, 0.12);
+}
+
+.modal-form-input::placeholder {
+    color: #94a3b8;
+}
+
+.confirm-modal__role-note {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 12px;
+    background: #f1f5f9;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    font-size: 12.5px;
+    color: #475569;
+    margin-top: 6px;
+}
+
+.confirm-modal__role-note svg {
+    width: 16px;
+    height: 16px;
+    color: #1e3a5f;
+    flex-shrink: 0;
+}
+
+.modal-error-alert {
+    margin-top: 12px;
+    padding: 9px 12px;
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    border-radius: 8px;
+    font-size: 12.5px;
+    color: #b91c1c;
+    line-height: 1.4;
 }
 
 .confirm-modal__footer {
@@ -517,6 +633,19 @@
     color: #94a3b8;
 }
 
+[data-theme="dark"] .btn-create-user {
+    background: #2558a3;
+    border-color: #3b82f6;
+    color: #ffffff;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+[data-theme="dark"] .btn-create-user:hover {
+    background: #3b82f6;
+    border-color: #60a5fa;
+    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.35);
+}
+
 [data-theme="dark"] .badge-count {
     background: #334155;
     color: #e2e8f0;
@@ -575,6 +704,11 @@
     color: #f8fafc;
 }
 
+[data-theme="dark"] .confirm-modal__icon-wrap--primary {
+    background: rgba(59, 130, 246, 0.18);
+    color: #60a5fa;
+}
+
 [data-theme="dark"] .confirm-modal__desc {
     color: #cbd5e1;
 }
@@ -617,6 +751,41 @@
     color: #93c5fd;
 }
 
+[data-theme="dark"] .modal-form-label {
+    color: #cbd5e1;
+}
+
+[data-theme="dark"] .modal-form-input {
+    background: #0f172a;
+    border-color: #334155;
+    color: #f8fafc;
+}
+
+[data-theme="dark"] .modal-form-input:focus {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+}
+
+[data-theme="dark"] .modal-form-input::placeholder {
+    color: #64748b;
+}
+
+[data-theme="dark"] .confirm-modal__role-note {
+    background: #0f172a;
+    color: #94a3b8;
+    border-color: #24354a;
+}
+
+[data-theme="dark"] .confirm-modal__role-note svg {
+    color: #60a5fa;
+}
+
+[data-theme="dark"] .modal-error-alert {
+    background: rgba(239, 68, 68, 0.14);
+    border-color: rgba(239, 68, 68, 0.35);
+    color: #fca5a5;
+}
+
 /* ── Responsive ──────────────────────────────────────────── */
 
 @media (max-width: 768px) {
@@ -624,6 +793,11 @@
         flex-direction: column;
         align-items: flex-start;
         gap: 12px;
+    }
+
+    .admin-users-header__actions {
+        width: 100%;
+        justify-content: space-between;
     }
 
     .admin-users-page {

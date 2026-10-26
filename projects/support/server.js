@@ -15,7 +15,7 @@ const WordExtractor = require('word-extractor');
 
 const USE_STUB = (process.env.DB_STUB === 'true' || process.env.DB_STUB === '1') && fs.existsSync(path.join(__dirname, 'db-stub.js'));
 
-let pool, initDatabase, registerUser, authenticateUser, getUserById, updateProfile, getAllUsers, adminResetPassword, changeUserPassword, checkUserExists, resetPassword, initOrganizationTable, organizationsDB, initDatabases1CTable, databases1CDB, initUserPinsTable, userPinsDB, initFilesTable, filesDB;
+let pool, initDatabase, registerUser, authenticateUser, getUserById, updateProfile, getAllUsers, adminResetPassword, changeUserPassword, adminCreateUser, checkUserExists, resetPassword, initOrganizationTable, organizationsDB, initDatabases1CTable, databases1CDB, initUserPinsTable, userPinsDB, initFilesTable, filesDB;
 
 if (USE_STUB) {
     console.log('⚠️  Using in-memory DB stub (DB_STUB=true)');
@@ -29,6 +29,7 @@ if (USE_STUB) {
     getAllUsers = stub.getAllUsers || (() => []);
     adminResetPassword = stub.adminResetPassword || (() => ({ success: false }));
     changeUserPassword = stub.changeUserPassword || (() => ({ success: false }));
+    adminCreateUser = stub.adminCreateUser || (() => ({ success: false }));
     checkUserExists = stub.checkUserExists;
     resetPassword = stub.resetPassword;
     initOrganizationTable = stub.initOrganizationTable;
@@ -52,6 +53,7 @@ if (USE_STUB) {
     getAllUsers = authModule.getAllUsers;
     adminResetPassword = authModule.adminResetPassword;
     changeUserPassword = authModule.changeUserPassword;
+    adminCreateUser = authModule.adminCreateUser;
     initOrganizationTable = dbModule.initOrganizationTable;
     organizationsDB = dbModule.organizationsDB;
     initDatabases1CTable = dbModule.initDatabases1CTable;
@@ -191,22 +193,6 @@ async function requireAuth(req, res, next) {
         req.session.user.must_change_password = Boolean(user.must_change_password);
         req.session.user.tokenVersion = user.token_version || 1;
         req.session.token_version = user.token_version || 1;
-
-        // Блокировка доступа к рабочим разделам, если активен флаг обязательной смены пароля
-        if (user.must_change_password) {
-            const allowedPrefixes = ['/profile', '/api/profile', '/logout'];
-            const isAllowed = allowedPrefixes.some(p => req.path === p || req.path.startsWith(p));
-            if (!isAllowed) {
-                if (isApiRequest(req)) {
-                    return res.status(403).json({ 
-                        success: false, 
-                        error: 'Необходимо сменить временный пароль перед продолжением работы.',
-                        must_change_password: true 
-                    });
-                }
-                return res.redirect('/profile?must_change_password=1');
-            }
-        }
 
         next();
     } catch (err) {
@@ -445,7 +431,7 @@ app.post('/login', checkAuthRateLimit, async (req, res) => {
                     }
                     return res.render('login', { error: 'Ошибка сессии. Попробуйте ещё раз.', isStubMode: USE_STUB });
                 }
-                const redirectTarget = result.user.must_change_password ? '/profile?must_change_password=1' : '/';
+                const redirectTarget = '/';
                 if (req.is('json') || req.headers.accept?.includes('application/json')) {
                     return res.json({ success: true, redirect: redirectTarget });
                 }
@@ -575,11 +561,90 @@ app.post('/api/admin/users/:id/reset-password', requireAuth, requireAdmin, check
         return res.json({
             success: true,
             username: targetUser.username,
-            tempPassword
+            newPassword: tempPassword,
+            tempPassword: tempPassword // для обратной совместимости со старым кодом
         });
     } catch (err) {
         console.error('Ошибка административного сброса пароля:', err.message);
         return res.status(500).json({ success: false, error: 'Ошибка сервера при сбросе пароля' });
+    }
+});
+
+// Административное создание нового пользователя (Спринт 12)
+app.post('/api/admin/users', requireAuth, requireAdmin, checkAuthRateLimit, async (req, res) => {
+    const adminUser = req.session.user;
+    const { username, email } = req.body || {};
+
+    if (!username || typeof username !== 'string') {
+        return res.status(400).json({
+            success: false,
+            error: 'Логин должен содержать от 3 до 50 символов (буквы, цифры, дефис, точка, подчеркивание)'
+        });
+    }
+
+    const trimmedUsername = username.trim();
+    const USERNAME_REGEX = /^[a-zA-Z0-9_\-\.]+$/;
+
+    if (trimmedUsername.length < 3 || trimmedUsername.length > 50 || !USERNAME_REGEX.test(trimmedUsername)) {
+        return res.status(400).json({
+            success: false,
+            error: 'Логин должен содержать от 3 до 50 символов (буквы, цифры, дефис, точка, подчеркивание)'
+        });
+    }
+
+    let cleanEmail = null;
+    if (email !== undefined && email !== null && typeof email === 'string' && email.trim().length > 0) {
+        cleanEmail = email.trim();
+        const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (cleanEmail.length > 255 || !EMAIL_REGEX.test(cleanEmail)) {
+            return res.status(400).json({
+                success: false,
+                error: 'Неверный формат электронной почты'
+            });
+        }
+    } else if (email !== undefined && email !== null && typeof email === 'string' && email.trim().length === 0) {
+        cleanEmail = null;
+    } else if (email !== undefined && email !== null && typeof email !== 'string') {
+        return res.status(400).json({
+            success: false,
+            error: 'Неверный формат электронной почты'
+        });
+    }
+
+    try {
+        // Генерация криптографически стойкого 12-значного пароля
+        const charset = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%';
+        const randomBytes = crypto.randomBytes(12);
+        let generatedPassword = '';
+        for (let i = 0; i < 12; i++) {
+            generatedPassword += charset[randomBytes[i] % charset.length];
+        }
+
+        const result = await adminCreateUser(trimmedUsername, cleanEmail, generatedPassword);
+        if (!result.success) {
+            const statusCode = result.code === 'USER_EXISTS' ? 409 : 400;
+            return res.status(statusCode).json({
+                success: false,
+                error: result.error
+            });
+        }
+
+        // Безопасный аудит: фиксируем факт создания пользователя администратором без пароля
+        console.log(`[AUDIT] Администратор ${adminUser.username} (ID: ${adminUser.id}) создал пользователя ${result.user.username} (ID: ${result.user.id}) в ${new Date().toISOString()}`);
+
+        return res.status(201).json({
+            success: true,
+            message: 'Пользователь успешно создан',
+            user: result.user,
+            newPassword: generatedPassword,
+            tempPassword: generatedPassword // для совместимости
+        });
+    } catch (err) {
+        console.error('Ошибка создания пользователя администратором:', err.message);
+        return res.status(500).json({
+            success: false,
+            error: 'Ошибка сервера при создании пользователя'
+        });
     }
 });
 

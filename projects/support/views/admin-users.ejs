@@ -76,9 +76,17 @@
                     <h1 class="admin-users-title" data-i18n="admin.users.title">Управление пользователями</h1>
                     <p class="admin-users-subtitle" data-i18n="admin.users.subtitle">Административный сброс паролей и безопасность учетных записей</p>
                 </div>
-                <div class="admin-users-header__badge">
-                    <span class="badge-count" id="usersTotalBadge"><%= users ? users.length : 0 %></span>
-                    <span class="badge-label" data-i18n="admin.users.count">пользователей</span>
+                <div class="admin-users-header__actions">
+                    <button type="button" class="btn-create-user" id="btnOpenCreateUserModal">
+                        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                            <path d="M10 4v12M4 10h12" stroke-linecap="round"/>
+                        </svg>
+                        <span data-i18n="admin.users.btn.create">Добавить пользователя</span>
+                    </button>
+                    <div class="admin-users-header__badge">
+                        <span class="badge-count" id="usersTotalBadge"><%= users ? users.length : 0 %></span>
+                        <span class="badge-label" data-i18n="admin.users.count">пользователей</span>
+                    </div>
                 </div>
             </div>
 
@@ -163,6 +171,58 @@
         </div>
     </main>
 
+    <!-- ── Диалог добавления нового пользователя ── -->
+    <div class="confirm-modal" id="createUserModal" role="dialog" aria-modal="true" aria-hidden="true">
+        <div class="confirm-modal__overlay" id="createUserOverlay"></div>
+        <div class="confirm-modal__window" role="document">
+            <div class="confirm-modal__header">
+                <div class="confirm-modal__icon-wrap confirm-modal__icon-wrap--primary">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                        <circle cx="9" cy="7" r="4"/>
+                        <line x1="20" y1="8" x2="20" y2="14"/>
+                        <line x1="23" y1="11" x2="17" y2="11"/>
+                    </svg>
+                </div>
+                <h3 class="confirm-modal__title" data-i18n="admin.users.modal.create.title">Добавить пользователя</h3>
+            </div>
+            <form id="createUserForm" novalidate onsubmit="return false;">
+                <div class="confirm-modal__body">
+                    <div class="form-group-modal">
+                        <label for="newUsername" class="modal-form-label">
+                            <span data-i18n="admin.users.modal.create.username">Логин</span> <span class="required-star">*</span>
+                        </label>
+                        <input type="text" id="newUsername" name="username" class="modal-form-input"
+                               minlength="3" maxlength="50" required
+                               placeholder="Введите логин" data-i18n-placeholder="admin.users.modal.create.usernamePh"
+                               autocomplete="off">
+                    </div>
+                    <div class="form-group-modal">
+                        <label for="newEmail" class="modal-form-label" data-i18n="admin.users.modal.create.email">Электронная почта (необязательно)</label>
+                        <input type="email" id="newEmail" name="email" class="modal-form-input"
+                               placeholder="user@its-kom.kz" data-i18n-placeholder="admin.users.modal.create.emailPh"
+                               autocomplete="off">
+                    </div>
+                    <div class="confirm-modal__role-note">
+                        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
+                            <circle cx="10" cy="10" r="9"/>
+                            <path d="M10 6v4M10 14h.01"/>
+                        </svg>
+                        <span data-i18n="admin.users.modal.create.roleNote">Роль: Инженер (назначается автоматически)</span>
+                    </div>
+                    <div class="modal-error-alert" id="createUserError" style="display: none;"></div>
+                </div>
+                <div class="confirm-modal__footer">
+                    <button type="button" class="btn-confirm-cancel" id="btnCancelCreateUser" data-i18n="wiki.modal.cancel.btn">Отмена</button>
+                    <button type="submit" class="btn-confirm-primary" id="btnSubmitCreateUser">
+                        <span class="btn-spinner" id="createBtnSpinner" style="display: none;"></span>
+                        <span id="btnSubmitCreateUserText" data-i18n="admin.users.modal.create.submit">Создать пользователя</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- ── Диалог подтверждения сброса (Unified Modal Style) ── -->
     <div class="confirm-modal" id="confirmResetModal" role="dialog" aria-modal="true" aria-hidden="true">
         <div class="confirm-modal__overlay" id="confirmOverlay"></div>
@@ -185,20 +245,20 @@
                     <strong id="targetUsernameDisplay">username</strong>
                 </div>
                 <div class="confirm-modal__warning" data-i18n="admin.users.modal.confirm.warn">
-                    Будет сгенерирован новый временный пароль, а активные сессии пользователя будут немедленно завершены. При следующем входе потребуется обязательная смена пароля.
+                    Будет сгенерирован новый постоянный пароль, а активные сессии пользователя будут немедленно завершены. Новый пароль станет постоянным паролем учётной записи.
                 </div>
             </div>
             <div class="confirm-modal__footer">
                 <button type="button" class="btn-confirm-cancel" id="btnCancelReset" data-i18n="wiki.modal.cancel.btn">Отмена</button>
                 <button type="button" class="btn-confirm-warning" id="btnConfirmReset">
                     <span class="btn-spinner" id="resetBtnSpinner" style="display: none;"></span>
-                    <span id="btnConfirmResetText" data-i18n="admin.users.modal.confirm.btn">Сгенерировать временный пароль</span>
+                    <span id="btnConfirmResetText" data-i18n="admin.users.modal.confirm.btn">Сгенерировать новый пароль</span>
                 </button>
             </div>
         </div>
     </div>
 
-    <!-- ── Диалог одноразового отображения временного пароля ── -->
+    <!-- ── Диалог отображения сгенерированного пароля ── -->
     <div class="confirm-modal" id="tempPasswordModal" role="dialog" aria-modal="true" aria-hidden="true">
         <div class="confirm-modal__overlay" id="tempPasswordOverlay"></div>
         <div class="confirm-modal__window" role="document">
@@ -209,11 +269,11 @@
                         <polyline points="22 4 12 14.01 9 11.01"/>
                     </svg>
                 </div>
-                <h3 class="confirm-modal__title" data-i18n="admin.users.modal.result.title">Временный пароль создан</h3>
+                <h3 class="confirm-modal__title" id="resultModalTitle" data-i18n="admin.users.modal.result.title">Новый пароль установлен</h3>
             </div>
             <div class="confirm-modal__body">
-                <p class="confirm-modal__desc">
-                    Пароль для пользователя <strong id="resultUsernameDisplay"></strong> успешно обновлён:
+                <p class="confirm-modal__desc" id="resultModalDesc">
+                    Пароль для пользователя <strong id="resultUsernameDisplay"></strong> успешно установлен:
                 </p>
                 <div class="temp-password-box">
                     <input type="text" id="tempPasswordDisplay" class="temp-password-input" readonly value="">
@@ -258,10 +318,34 @@
             });
         }
 
-        /* ── Модальные окна и логика сброса ── */
+        /* ── Вспомогательные функции ── */
+        function escapeHtml(str) {
+            if (str == null) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
+        /* ── Элементы DOM ── */
+        var createUserModal     = document.getElementById('createUserModal');
+        var createUserForm      = document.getElementById('createUserForm');
+        var newUsernameInput    = document.getElementById('newUsername');
+        var newEmailInput       = document.getElementById('newEmail');
+        var btnOpenCreateUserModal = document.getElementById('btnOpenCreateUserModal');
+        var btnCancelCreateUser = document.getElementById('btnCancelCreateUser');
+        var btnSubmitCreateUser = document.getElementById('btnSubmitCreateUser');
+        var btnSubmitCreateUserText = document.getElementById('btnSubmitCreateUserText');
+        var createBtnSpinner    = document.getElementById('createBtnSpinner');
+        var createUserError     = document.getElementById('createUserError');
+
         var confirmResetModal   = document.getElementById('confirmResetModal');
         var tempPasswordModal   = document.getElementById('tempPasswordModal');
         var targetUsernameDisplay = document.getElementById('targetUsernameDisplay');
+        var resultModalTitle    = document.getElementById('resultModalTitle');
+        var resultModalDesc     = document.getElementById('resultModalDesc');
         var resultUsernameDisplay = document.getElementById('resultUsernameDisplay');
         var tempPasswordDisplay   = document.getElementById('tempPasswordDisplay');
         var btnConfirmReset     = document.getElementById('btnConfirmReset');
@@ -272,6 +356,7 @@
         var resetBtnSpinner     = document.getElementById('resetBtnSpinner');
         var btnConfirmResetText = document.getElementById('btnConfirmResetText');
         var adminToast          = document.getElementById('adminToast');
+        var usersTotalBadge     = document.getElementById('usersTotalBadge');
 
         var currentTargetId = null;
         var currentTargetUsername = null;
@@ -286,6 +371,195 @@
             }, 3500);
         }
 
+        /* ── Модальное окно создания пользователя ── */
+        function openCreateUserModal() {
+            if (!createUserModal) return;
+            if (createUserForm) createUserForm.reset();
+            hideCreateError();
+            createUserModal.classList.add('is-open');
+            createUserModal.setAttribute('aria-hidden', 'false');
+            setTimeout(function() {
+                if (newUsernameInput) newUsernameInput.focus();
+            }, 50);
+        }
+
+        function closeCreateUserModal() {
+            if (!createUserModal) return;
+            createUserModal.classList.remove('is-open');
+            createUserModal.setAttribute('aria-hidden', 'true');
+            if (createUserForm) createUserForm.reset();
+            hideCreateError();
+        }
+
+        function showCreateError(msg) {
+            if (!createUserError) return;
+            createUserError.textContent = msg;
+            createUserError.style.display = 'block';
+        }
+
+        function hideCreateError() {
+            if (!createUserError) return;
+            createUserError.textContent = '';
+            createUserError.style.display = 'none';
+        }
+
+        function setCreateLoading(loading) {
+            if (!btnSubmitCreateUser) return;
+            btnSubmitCreateUser.disabled = loading;
+            if (createBtnSpinner) {
+                createBtnSpinner.style.display = loading ? 'inline-block' : 'none';
+            }
+            if (btnSubmitCreateUserText) {
+                btnSubmitCreateUserText.textContent = loading ? 'Создание...' : (window.ITS_I18n ? window.ITS_I18n.t('admin.users.modal.create.submit') : 'Создать пользователя');
+            }
+        }
+
+        if (btnOpenCreateUserModal) {
+            btnOpenCreateUserModal.addEventListener('click', openCreateUserModal);
+        }
+        if (btnCancelCreateUser) {
+            btnCancelCreateUser.addEventListener('click', closeCreateUserModal);
+        }
+        document.getElementById('createUserOverlay')?.addEventListener('click', closeCreateUserModal);
+
+        if (createUserForm) {
+            createUserForm.addEventListener('submit', async function(e) {
+                e.preventDefault();
+                if (!newUsernameInput) return;
+
+                var username = newUsernameInput.value.trim();
+                var email = newEmailInput ? newEmailInput.value.trim() : '';
+
+                if (!username || username.length < 3 || username.length > 50) {
+                    showCreateError('Логин должен содержать от 3 до 50 символов');
+                    newUsernameInput.focus();
+                    return;
+                }
+
+                if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+                    showCreateError('Некорректный формат электронной почты');
+                    if (newEmailInput) newEmailInput.focus();
+                    return;
+                }
+
+                hideCreateError();
+                setCreateLoading(true);
+
+                try {
+                    var resp = await fetch('/api/admin/users', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            username: username,
+                            email: email || null
+                        })
+                    });
+                    var data = await resp.json();
+
+                    if (!resp.ok || !data.success) {
+                        showCreateError(data.error || 'Ошибка при создании пользователя');
+                        setCreateLoading(false);
+                        return;
+                    }
+
+                    closeCreateUserModal();
+                    showToast(window.ITS_I18n ? window.ITS_I18n.t('admin.users.modal.create.success') : 'Пользователь успешно создан');
+
+                    var pass = data.newPassword || data.tempPassword || data.password;
+                    var createdUser = data.user || {
+                        id: data.id || 'new',
+                        username: username,
+                        email: email,
+                        role: 'engineer',
+                        created_at: new Date().toISOString()
+                    };
+
+                    openPasswordResultModal(createdUser.username || username, pass, true);
+                    appendUserRow(createdUser);
+
+                    if (usersTotalBadge) {
+                        var currentCount = parseInt(usersTotalBadge.textContent || '0', 10);
+                        usersTotalBadge.textContent = isNaN(currentCount) ? '1' : String(currentCount + 1);
+                    }
+
+                } catch (err) {
+                    showCreateError('Ошибка соединения с сервером');
+                } finally {
+                    setCreateLoading(false);
+                }
+            });
+        }
+
+        /* ── Динамическое добавление строки в таблицу ── */
+        function appendUserRow(u) {
+            var tbody = document.querySelector('#usersTable tbody');
+            if (!tbody) return;
+
+            var emptyRow = tbody.querySelector('.td-empty');
+            if (emptyRow && emptyRow.parentElement) {
+                emptyRow.parentElement.remove();
+            }
+
+            var tr = document.createElement('tr');
+            tr.id = 'userRow-' + u.id;
+            tr.className = 'user-row';
+
+            var uAvatarLetter = (u.username || 'U').charAt(0).toUpperCase();
+            var emailHtml = u.email ? '<span class="user-email">' + escapeHtml(u.email) + '</span>' : '';
+            var roleText = u.role === 'admin' ? 'Администратор' : 'Инженер';
+            var roleClass = u.role || 'engineer';
+            var roleI18n = 'admin.users.role.' + roleClass;
+            var createdDate = u.created_at ? new Date(u.created_at).toLocaleDateString('ru-RU') : new Date().toLocaleDateString('ru-RU');
+
+            tr.innerHTML =
+                '<td class="td-id"><span class="user-id-mono">#' + escapeHtml(String(u.id)) + '</span></td>' +
+                '<td class="td-user">' +
+                    '<div class="user-cell">' +
+                        '<span class="user-avatar-mini">' + escapeHtml(uAvatarLetter) + '</span>' +
+                        '<div class="user-meta">' +
+                            '<span class="user-name">' + escapeHtml(u.username) + '</span>' +
+                            emailHtml +
+                        '</div>' +
+                    '</div>' +
+                '</td>' +
+                '<td class="td-role">' +
+                    '<span class="role-badge role-badge--' + escapeHtml(roleClass) + '" data-i18n="' + roleI18n + '">' +
+                        roleText +
+                    '</span>' +
+                '</td>' +
+                '<td class="td-status">' +
+                    '<span class="status-badge status-badge--active" id="statusBadge-' + escapeHtml(String(u.id)) + '" data-i18n="admin.users.status.active">' +
+                        (window.ITS_I18n ? window.ITS_I18n.t('admin.users.status.active') : 'Активен') +
+                    '</span>' +
+                '</td>' +
+                '<td class="td-created">' + escapeHtml(createdDate) + '</td>' +
+                '<td class="td-login">Никогда</td>' +
+                '<td class="td-actions">' +
+                    '<button type="button" class="btn-reset-password btnResetAction" data-user-id="' + escapeHtml(String(u.id)) + '" data-username="' + escapeHtml(u.username) + '">' +
+                        '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">' +
+                            '<path d="M10.5 5.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0z" stroke-linecap="round"/>' +
+                            '<path d="M8 8.5v4.5l2-1.5 2 1.5" stroke-linecap="round" stroke-linejoin="round"/>' +
+                        '</svg>' +
+                        '<span data-i18n="admin.users.btn.reset">' +
+                            (window.ITS_I18n ? window.ITS_I18n.t('admin.users.btn.reset') : 'Сбросить пароль') +
+                        '</span>' +
+                    '</button>' +
+                '</td>';
+
+            tbody.appendChild(tr);
+
+            var resetBtn = tr.querySelector('.btnResetAction');
+            if (resetBtn) {
+                resetBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    var uId = this.getAttribute('data-user-id');
+                    var uName = this.getAttribute('data-username');
+                    openConfirmModal(uId, uName);
+                });
+            }
+        }
+
+        /* ── Модальное окно сброса пароля ── */
         function openConfirmModal(userId, username) {
             currentTargetId = userId;
             currentTargetUsername = username;
@@ -301,9 +575,29 @@
             currentTargetUsername = null;
         }
 
-        function openTempPasswordModal(username, tempPass) {
+        /* ── Модальное окно сгенерированного пароля ── */
+        function openPasswordResultModal(username, pass, isCreated) {
             resultUsernameDisplay.textContent = username;
-            tempPasswordDisplay.value = tempPass;
+            tempPasswordDisplay.value = pass;
+
+            if (resultModalTitle) {
+                if (isCreated) {
+                    resultModalTitle.setAttribute('data-i18n', 'admin.users.modal.result.createdTitle');
+                    resultModalTitle.textContent = window.ITS_I18n ? window.ITS_I18n.t('admin.users.modal.result.createdTitle') : 'Пользователь создан';
+                } else {
+                    resultModalTitle.setAttribute('data-i18n', 'admin.users.modal.result.title');
+                    resultModalTitle.textContent = window.ITS_I18n ? window.ITS_I18n.t('admin.users.modal.result.title') : 'Новый пароль установлен';
+                }
+            }
+
+            if (resultModalDesc) {
+                if (isCreated) {
+                    resultModalDesc.innerHTML = 'Учётная запись создана. Пароль для пользователя <strong id="resultUsernameDisplay">' + escapeHtml(username) + '</strong>:';
+                } else {
+                    resultModalDesc.innerHTML = 'Пароль для пользователя <strong id="resultUsernameDisplay">' + escapeHtml(username) + '</strong> успешно установлен:';
+                }
+            }
+
             copyTempPasswordText.textContent = window.ITS_I18n ? window.ITS_I18n.t('admin.users.modal.result.copy') : 'Скопировать';
             tempPasswordModal.classList.add('is-open');
             tempPasswordModal.setAttribute('aria-hidden', 'false');
@@ -312,7 +606,6 @@
         function closeTempPasswordModal() {
             tempPasswordModal.classList.remove('is-open');
             tempPasswordModal.setAttribute('aria-hidden', 'true');
-            // Очищаем значение пароля из памяти DOM
             tempPasswordDisplay.value = '';
             resultUsernameDisplay.textContent = '';
         }
@@ -339,9 +632,11 @@
 
         document.addEventListener('keydown', function(e) {
             if (e.key === 'Escape') {
-                if (tempPasswordModal.classList.contains('is-open')) {
+                if (tempPasswordModal && tempPasswordModal.classList.contains('is-open')) {
                     closeTempPasswordModal();
-                } else if (confirmResetModal.classList.contains('is-open')) {
+                } else if (createUserModal && createUserModal.classList.contains('is-open')) {
+                    closeCreateUserModal();
+                } else if (confirmResetModal && confirmResetModal.classList.contains('is-open')) {
                     closeConfirmModal();
                 }
             }
@@ -375,14 +670,14 @@
                     // Обновляем статус пользователя в таблице
                     var statusBadge = document.getElementById('statusBadge-' + currentTargetId);
                     if (statusBadge) {
-                        statusBadge.className = 'status-badge status-badge--must-change';
-                        statusBadge.textContent = window.ITS_I18n ? window.ITS_I18n.t('admin.users.status.mustChange') : 'Смена пароля';
+                        statusBadge.className = 'status-badge status-badge--active';
+                        statusBadge.textContent = window.ITS_I18n ? window.ITS_I18n.t('admin.users.status.active') : 'Активен';
                     }
 
-                    var pass = data.tempPassword;
+                    var pass = data.newPassword || data.tempPassword;
                     var name = data.username || currentTargetUsername;
                     closeConfirmModal();
-                    openTempPasswordModal(name, pass);
+                    openPasswordResultModal(name, pass, false);
 
                 } catch (err) {
                     showToast('Ошибка соединения с сервером');
@@ -394,7 +689,7 @@
             });
         }
 
-        // Копирование временного пароля в буфер
+        // Копирование пароля в буфер
         if (copyTempPasswordBtn && tempPasswordDisplay) {
             copyTempPasswordBtn.addEventListener('click', async function() {
                 var text = tempPasswordDisplay.value;

@@ -271,7 +271,7 @@ async function adminResetPassword(targetUserId, tempPassword) {
         const nextTokenVersion = (targetUser.token_version || 1) + 1;
 
         await connection.query(
-            'UPDATE users SET password_hash = ?, must_change_password = 1, token_version = ? WHERE id = ?',
+            'UPDATE users SET password_hash = ?, must_change_password = 0, token_version = ? WHERE id = ?',
             [passwordHash, nextTokenVersion, targetUserId]
         );
 
@@ -341,6 +341,73 @@ async function changeUserPassword(userId, currentPassword, newPassword) {
     }
 }
 
+// Создание нового пользователя администратором (Спринт 12)
+async function adminCreateUser(username, email, password) {
+    if (!username || typeof username !== 'string') {
+        return { success: false, error: 'Логин должен содержать от 3 до 50 символов (буквы, цифры, дефис, точка, подчеркивание)' };
+    }
+
+    const trimmedUsername = username.trim();
+    const USERNAME_REGEX = /^[a-zA-Z0-9_\-\.]+$/;
+
+    if (trimmedUsername.length < 3 || trimmedUsername.length > 50 || !USERNAME_REGEX.test(trimmedUsername)) {
+        return { success: false, error: 'Логин должен содержать от 3 до 50 символов (буквы, цифры, дефис, точка, подчеркивание)' };
+    }
+
+    if (!password || typeof password !== 'string' || password.length === 0) {
+        return { success: false, error: 'Пароль не может быть пустым' };
+    }
+
+    let cleanEmail = null;
+    if (email && typeof email === 'string' && email.trim().length > 0) {
+        cleanEmail = email.trim();
+        const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (cleanEmail.length > 255 || !EMAIL_REGEX.test(cleanEmail)) {
+            return { success: false, error: 'Неверный формат электронной почты' };
+        }
+    }
+
+    let connection;
+    try {
+        connection = await pool.getConnection();
+
+        const [existing] = await connection.query(
+            'SELECT id FROM users WHERE LOWER(username) = LOWER(?)',
+            [trimmedUsername]
+        );
+
+        if (existing.length > 0) {
+            return {
+                success: false,
+                error: 'Пользователь с таким логином уже существует',
+                code: 'USER_EXISTS'
+            };
+        }
+
+        const passwordHash = await bcrypt.hash(password, 10);
+
+        const [result] = await connection.query(
+            "INSERT INTO users (username, password_hash, email, role, must_change_password, token_version) VALUES (?, ?, ?, 'engineer', 0, 1)",
+            [trimmedUsername, passwordHash, cleanEmail]
+        );
+
+        const [newUser] = await connection.query(
+            'SELECT id, username, email, role, created_at, last_login FROM users WHERE id = ?',
+            [result.insertId]
+        );
+
+        return {
+            success: true,
+            user: newUser[0]
+        };
+    } catch (err) {
+        console.error('Ошибка создания пользователя:', err.message);
+        return { success: false, error: 'Ошибка сервера при создании пользователя' };
+    } finally {
+        if (connection) connection.release();
+    }
+}
+
 module.exports = {
     pool,
     initDatabase,
@@ -350,6 +417,7 @@ module.exports = {
     updateProfile,
     getAllUsers,
     adminResetPassword,
-    changeUserPassword
+    changeUserPassword,
+    adminCreateUser
 };
 
