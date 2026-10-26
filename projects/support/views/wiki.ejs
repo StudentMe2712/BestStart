@@ -261,13 +261,13 @@
                             <line x1="16" y1="13" x2="8" y2="13"></line>
                             <line x1="16" y1="17" x2="8" y2="17"></line>
                         </svg>
-                        <span>Данные</span>
+                        <span data-i18n="wiki.tab.data">Данные</span>
                     </button>
                     <button type="button" class="org-tab-btn" id="tabBtnFiles" data-tab-target="files" data-tab="files" role="tab" aria-selected="false" aria-controls="tabPanelFiles">
                         <svg class="org-tab-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path>
                         </svg>
-                        <span>Файлы</span>
+                        <span data-i18n="wiki.tab.files">Файлы</span>
                         <span class="org-tab-badge tab-count-badge<%= (typeof files !== 'undefined' && files && files.length > 0) ? ' has-items has-files' : '' %>" id="filesTabCounter">
                             <%= (typeof files !== 'undefined' && files) ? files.length : 0 %>
                         </span>
@@ -360,17 +360,17 @@
                                 <svg class="wiki-attachments-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                     <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
                                 </svg>
-                                <h3 class="wiki-attachments-title">Присоединенные файлы</h3>
+                                <h3 class="wiki-attachments-title" data-i18n="wiki.files.title">Присоединенные файлы</h3>
                                 <span class="wiki-attachments-badge" id="filesCountBadge"><%= (typeof files !== 'undefined' && files) ? files.length : 0 %></span>
                             </div>
                             <div class="wiki-attachments-actions">
                                 <input type="file" id="fileInputUpload" multiple style="display: none;" accept=".xlsx,.xls,.csv,.pdf,.docx,.doc,.png,.jpg,.jpeg,.webp,.txt,.zip,.rdp,.xml">
-                                <button type="button" class="btn-attach-file" id="btnAttachFile" title="Прикрепить файл" aria-label="Прикрепить файл">
+                                <button type="button" class="btn-attach-file" id="btnAttachFile" title="Прикрепить файл" data-i18n-title="wiki.files.attach" aria-label="Прикрепить файл">
                                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
                                         <line x1="12" y1="5" x2="12" y2="19"/>
                                         <line x1="5" y1="12" x2="19" y2="12"/>
                                     </svg>
-                                    <span>Добавить файл</span>
+                                    <span data-i18n="wiki.files.add">Добавить файл</span>
                                 </button>
                             </div>
                         </div>
@@ -382,14 +382,14 @@
                                     <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
                                 </svg>
                             </div>
-                            <div class="attachments-empty-title">К этой организации еще не прикреплены файлы</div>
-                            <div class="attachments-empty-subtitle">Поддерживаются форматы Excel (.xlsx, .xls), Word (.docx, .doc), PDF, изображения (.png, .jpg, .webp), XML, TXT, ZIP и RDP</div>
+                            <div class="attachments-empty-title" data-i18n="wiki.files.empty.title">К этой организации еще не прикреплены файлы</div>
+                            <div class="attachments-empty-subtitle" data-i18n="wiki.files.empty.desc">Поддерживаются форматы Excel (.xlsx, .xls), Word (.docx, .doc), PDF, изображения (.png, .jpg, .webp), XML, TXT, ZIP и RDP</div>
                             <button type="button" class="btn-attach-file attachments-empty-btn" id="uploadFileBtn">
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
                                     <line x1="12" y1="5" x2="12" y2="19"/>
                                     <line x1="5" y1="12" x2="19" y2="12"/>
                                 </svg>
-                                <span>Прикрепить файл</span>
+                                <span data-i18n="wiki.files.attach">Прикрепить файл</span>
                             </button>
                         </div>
 
@@ -443,7 +443,7 @@
                                         }
                                     %>
                                     <div class="file-chip file-chip--<%= fileType %>" data-file-id="<%= file.id %>" data-file-name="<%= file.original_name %>" data-file-type="<%= fileType %>" data-previewable="<%= isPreviewable ? 'true' : 'false' %>">
-                                        <div class="file-chip-main<%= isPreviewable ? ' is-clickable' : '' %>" <%= isPreviewable ? 'role="button" tabindex="0" title="Нажмите для предпросмотра"' : '' %>>
+                                        <div class="file-chip-main<%= isPreviewable ? ' is-clickable' : '' %>" <%= isPreviewable ? 'role="button" tabindex="0" title="Нажмите для предпросмотра" data-i18n-title="wiki.files.preview"' : '' %>>
                                             <span class="file-chip-icon" style="color: <%= iconColor %>;">
                                                 <% if (fileType === 'excel') { %>
                                                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="17"/><line x1="16" y1="13" x2="8" y2="17"/></svg>
@@ -474,13 +474,13 @@
                                             </div>
                                         </div>
                                         <div class="file-chip-actions">
-                                            <a href="/api/files/<%= file.id %>/download" class="file-chip-btn file-chip-btn--download" title="Скачать файл" download="<%= file.original_name %>">
+                                            <a href="/api/files/<%= file.id %>/download" class="file-chip-btn file-chip-btn--download" title="Скачать файл" data-i18n-title="wiki.files.download" download="<%= file.original_name %>">
                                                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
                                                     <polyline points="7 10 12 15 17 10"/>
                                                     <line x1="12" y1="15" x2="12" y2="3"/>
                                                 </svg>
                                             </a>
-                                            <button type="button" class="file-chip-btn file-chip-btn--delete" data-file-id="<%= file.id %>" data-file-name="<%= file.original_name %>" title="Удалить файл">
+                                            <button type="button" class="file-chip-btn file-chip-btn--delete" data-file-id="<%= file.id %>" data-file-name="<%= file.original_name %>" title="Удалить файл" data-i18n-title="wiki.files.delete">
                                                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
                                             </button>
                                         </div>
@@ -640,10 +640,10 @@
                         <path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
                     </svg>
                 </div>
-                <h3 class="confirm-modal__title" id="confirmDialogTitle">Удалить вложение?</h3>
+                <h3 class="confirm-modal__title" id="confirmDialogTitle" data-i18n="confirm.delete.title">Удалить вложение?</h3>
             </div>
             <div class="confirm-modal__body">
-                <p class="confirm-modal__desc" id="confirmDialogDesc">Вы действительно хотите удалить этот объект?</p>
+                <p class="confirm-modal__desc" id="confirmDialogDesc" data-i18n="confirm.delete.desc">Вы действительно хотите удалить этот объект?</p>
                 <div class="confirm-modal__item-box" id="confirmDialogItemBox" style="display: none;">
                     <span class="confirm-modal__item-name" id="confirmDialogItemName"></span>
                 </div>
@@ -651,14 +651,14 @@
                     <svg width="15" height="15" viewBox="0 0 20 20" fill="currentColor">
                         <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
                     </svg>
-                    <span>Это действие необратимо. Восстановить данные будет невозможно.</span>
+                    <span data-i18n="confirm.delete.warning">Это действие необратимо. Восстановить данные будет невозможно.</span>
                 </div>
             </div>
             <div class="confirm-modal__footer">
-                <button type="button" class="btn-confirm-cancel" id="confirmDialogCancelBtn">Отмена</button>
+                <button type="button" class="btn-confirm-cancel" id="confirmDialogCancelBtn" data-i18n="confirm.cancel.btn">Отмена</button>
                 <button type="button" class="btn-confirm-danger" id="confirmDialogSubmitBtn">
                     <span class="btn-confirm-spinner" id="confirmDialogSpinner" style="display: none;"></span>
-                    <span class="btn-confirm-text" id="confirmDialogBtnText">Удалить</span>
+                    <span class="btn-confirm-text" id="confirmDialogBtnText" data-i18n="confirm.delete.btn">Удалить</span>
                 </button>
             </div>
         </div>

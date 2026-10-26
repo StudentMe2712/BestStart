@@ -189,10 +189,6 @@
                                         <span class="profile-lang-option-flag">🇰🇿</span>
                                         <span>Қазақша</span>
                                     </button>
-                                    <button type="button" class="profile-lang-option" data-value="en" role="option">
-                                        <span class="profile-lang-option-flag">🇬🇧</span>
-                                        <span>English</span>
-                                    </button>
                                 </div>
                             </div>
                         </span>
@@ -268,15 +264,20 @@
     (function () {
 
         /* ── Language dropdown ─────────────────────────────── */
-        var langData    = { ru: { flag: '🇷🇺', label: 'Русский' }, kk: { flag: '🇰🇿', label: 'Қазақша' }, en: { flag: '🇬🇧', label: 'English' } };
+        var langData    = { ru: { flag: '🇷🇺', label: 'Русский' }, kk: { flag: '🇰🇿', label: 'Қазақша' } };
         var langDropdown = document.getElementById('langDropdown');
         var langTrigger  = document.getElementById('langTrigger');
         var langMenu     = document.getElementById('langMenu');
         var langFlag     = document.getElementById('langFlag');
         var langLabel    = document.getElementById('langLabel');
         var currentLang  = localStorage.getItem('ui_lang') || 'ru';
+        if (currentLang === 'en' || !langData[currentLang]) {
+            currentLang = 'ru';
+            localStorage.setItem('ui_lang', 'ru');
+        }
 
         function setLang(lang) {
+            if (lang === 'en' || !langData[lang]) lang = 'ru';
             currentLang = lang;
             localStorage.setItem('ui_lang', lang);
             langFlag.textContent  = langData[lang].flag;

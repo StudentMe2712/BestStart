@@ -292,11 +292,27 @@ function formatTokens(str) {
     if (!str) return '';
     var safe = escapeHtmlText(str);
 
+    // Extract URLs to placeholders so IP/AnyDesk formatting doesn't corrupt URLs or href attributes
+    var urls = [];
+    safe = safe.replace(/https?:\/\/[^\s<>"']+/g, function(url) {
+        var idx = urls.length;
+        urls.push(url);
+        return '___URL_TOKEN_' + idx + '___';
+    });
+
     // Format IP addresses
     safe = safe.replace(/\b(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})\b/g, '<span class="wiki-token-ip">$1</span>');
 
     // Format AnyDesk numbers (e.g. 1 170 691 894 or 1218740083)
     safe = safe.replace(/\b(\d{1,4}\s\d{3}\s\d{3,4}|\d{9,10})\b/g, '<span class="wiki-token-anydesk">$1</span>');
+
+    // Restore URLs as clickable links
+    if (urls.length > 0) {
+        safe = safe.replace(/___URL_TOKEN_(\d+)___/g, function(match, index) {
+            var url = urls[parseInt(index, 10)];
+            return '<a href="' + url + '" target="_blank" rel="noopener noreferrer" class="wiki-token-link">' + url + '</a>';
+        });
+    }
 
     return safe;
 }
@@ -306,28 +322,20 @@ function formatLineContent(lineTrimmed) {
 
     // 1. Key: Value pattern (e.g., "Anydesk: 987 654 321", "RDP: arg.local\admin")
     var colonIdx = lineTrimmed.indexOf(':');
-    if (colonIdx > 0 && colonIdx < 35 && !lineTrimmed.slice(0, colonIdx).includes('http')) {
+    var isProtocolColon = colonIdx > 0 && (
+        lineTrimmed.slice(colonIdx, colonIdx + 3) === '://' ||
+        /^https?$/i.test(lineTrimmed.slice(0, colonIdx).trim()) ||
+        /https?:\/\//i.test(lineTrimmed.slice(0, colonIdx + 3))
+    );
+    var isIpPort = colonIdx > 0 && /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(lineTrimmed.slice(0, colonIdx).trim());
+
+    if (colonIdx > 0 && colonIdx < 35 && !isProtocolColon && !isIpPort) {
         var key = lineTrimmed.slice(0, colonIdx).trim();
         var val = lineTrimmed.slice(colonIdx + 1).trim();
         return '<span class="wiki-token-key">' + escapeHtmlText(key) + ':</span> <span class="wiki-token-val">' + formatTokens(val) + '</span>';
     }
 
-    // 2. Value - Description or Description - Value (e.g. "kuadmin123 - Пароль от Ани деск", "кластер серверов - terminal")
-    var dashMatch = lineTrimmed.match(/^([^\-–—]+)\s*[\-–—]\s*(.+)$/);
-    if (dashMatch) {
-        var left = dashMatch[1].trim();
-        var right = dashMatch[2].trim();
-
-        // If left is description ("кластер серверов", "сервер базы")
-        if (/^(?:кластер|сервер базы|база данных|хост|dns)/i.test(left)) {
-            return '<span class="wiki-token-key">' + escapeHtmlText(left) + ':</span> <span class="wiki-token-val">' + formatTokens(right) + '</span>';
-        }
-
-        // Default: left is password/token, right is explanation
-        return '<span class="wiki-token-val">' + formatTokens(left) + '</span> <span class="wiki-token-key">— ' + escapeHtmlText(right) + '</span>';
-    }
-
-    // 3. Standalone line with tokens
+    // 2. Standalone line with tokens (hyphens strictly preserved, no dash replacement)
     return formatTokens(lineTrimmed);
 }
 
@@ -393,7 +401,7 @@ function renderWikiSheet(rawContent) {
         var formattedText = formatLineContent(lineTrimmed);
         var lineClasses = 'wiki-line' + (isHeader ? ' wiki-line--header' : '');
 
-        html += '<div class="' + lineClasses + '" data-line-index="' + i + '">' +
+        html += '<div class="' + lineClasses + '" data-line-index="' + i + '" data-raw="' + escapeHtmlText(lineTrimmed).replace(/"/g, '&quot;') + '">' +
                     '<div class="wiki-line-text">' + formattedText + '</div>' +
                     '<button type="button" class="wiki-line-copy-btn" title="Копировать строку" aria-label="Копировать">' +
                         '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">' +
@@ -413,8 +421,11 @@ function renderWikiSheet(rawContent) {
             e.stopPropagation();
             var lineEl = btn.closest('.wiki-line');
             if (!lineEl) return;
-            var textEl = lineEl.querySelector('.wiki-line-text');
-            var rawTextToCopy = textEl ? textEl.innerText.trim() : '';
+            var rawTextToCopy = lineEl.getAttribute('data-raw');
+            if (rawTextToCopy === null || rawTextToCopy === undefined) {
+                var textEl = lineEl.querySelector('.wiki-line-text');
+                rawTextToCopy = textEl ? textEl.innerText.trim() : '';
+            }
             copyToClipboard(rawTextToCopy, btn, 'Строка');
         });
     });
@@ -1214,6 +1225,16 @@ if (wikiSearch && wikiOrgList) {
    WIKI SIDEBAR PINNING (Sprint 7)
    ============================================================ */
 
+function getAppUsername() {
+    var meta = document.querySelector('meta[name="app-user"]');
+    var val = meta ? meta.getAttribute('content') : '';
+    return (val && val.trim()) ? val.trim() : 'user';
+}
+
+function getPinnedCacheKey() {
+    return 'pinned_orgs_' + getAppUsername();
+}
+
 document.addEventListener('click', async function (e) {
     var pinBtn = e.target.closest('.wiki-pin-btn');
     if (!pinBtn) return;
@@ -1235,17 +1256,24 @@ document.addEventListener('click', async function (e) {
         var data = await res.json();
         if (data && data.success) {
             var isPinned = !!data.pinned;
+            var unpinnedTitle = window.ITS_I18n ? window.ITS_I18n.t('toast.unpinned') : 'Открепить организацию';
+            var pinnedTitle = window.ITS_I18n ? window.ITS_I18n.t('toast.pinned') : 'Закрепить организацию';
             if (isPinned) {
                 pinBtn.classList.add('is-pinned');
-                pinBtn.setAttribute('title', 'Открепить организацию');
-                showToast('Организация закреплена');
+                pinBtn.setAttribute('title', unpinnedTitle);
+                showToast(window.ITS_I18n ? window.ITS_I18n.t('toast.pinned') : 'Организация закреплена');
             } else {
                 pinBtn.classList.remove('is-pinned');
-                pinBtn.setAttribute('title', 'Закрепить организацию');
-                showToast('Организация откреплена');
+                pinBtn.setAttribute('title', pinnedTitle);
+                showToast(window.ITS_I18n ? window.ITS_I18n.t('toast.unpinned') : 'Организация откреплена');
             }
             if (!pinBtn.querySelector('.wiki-pin-icon')) {
                 pinBtn.innerHTML = '<span class="wiki-pin-icon" aria-hidden="true">📌</span>';
+            }
+            if (data.pins) {
+                try {
+                    localStorage.setItem(getPinnedCacheKey(), JSON.stringify(data.pins));
+                } catch (errCache) {}
             }
             reorganizeWikiSidebar(data.pins || []);
         } else {
@@ -1262,7 +1290,9 @@ function createOrgListItem(org, isPinned, isActive) {
     li.className = 'wiki-list-item';
     li.setAttribute('data-name', (org.name || '').toLowerCase());
     li.setAttribute('data-org-id', org.id);
-    var pinTitle = isPinned ? 'Открепить организацию' : 'Закрепить организацию';
+    var pinTitle = isPinned 
+        ? (window.ITS_I18n ? window.ITS_I18n.t('toast.unpinned') : 'Открепить организацию')
+        : (window.ITS_I18n ? window.ITS_I18n.t('toast.pinned') : 'Закрепить организацию');
     li.innerHTML = '<a href="/wiki/organization/' + org.id + '" class="wiki-list-link' + (isActive ? ' is-active' : '') + '">' +
         '<span class="wiki-active-bar" aria-hidden="true"></span>' +
         '<svg class="wiki-list-chevron" viewBox="0 0 8 12" fill="none" width="7" height="11">' +
@@ -1284,9 +1314,23 @@ function reorganizeWikiSidebar(pins) {
     var items = Array.from(list.querySelectorAll('.wiki-list-item'));
     if (!items.length) return;
 
+    if (pins && Array.isArray(pins)) {
+        try {
+            localStorage.setItem(getPinnedCacheKey(), JSON.stringify(pins));
+        } catch (e) {}
+    } else {
+        try {
+            var cached = localStorage.getItem(getPinnedCacheKey());
+            if (cached) pins = JSON.parse(cached);
+        } catch (e) {}
+    }
+
     var pinsNum = (pins || []).map(Number);
     var pinnedItems = [];
     var otherItems = [];
+
+    var unpinnedTitle = window.ITS_I18n ? window.ITS_I18n.t('toast.unpinned') : 'Открепить организацию';
+    var pinnedTitle = window.ITS_I18n ? window.ITS_I18n.t('toast.pinned') : 'Закрепить организацию';
 
     items.forEach(function(item) {
         var btn = item.querySelector('.wiki-pin-btn');
@@ -1296,10 +1340,10 @@ function reorganizeWikiSidebar(pins) {
         if (btn) {
             if (isPinned) {
                 btn.classList.add('is-pinned');
-                btn.setAttribute('title', 'Открепить организацию');
+                btn.setAttribute('title', unpinnedTitle);
             } else {
                 btn.classList.remove('is-pinned');
-                btn.setAttribute('title', 'Закрепить организацию');
+                btn.setAttribute('title', pinnedTitle);
             }
             if (!btn.querySelector('.wiki-pin-icon')) {
                 btn.innerHTML = '<span class="wiki-pin-icon" aria-hidden="true">📌</span>';
@@ -1320,11 +1364,14 @@ function reorganizeWikiSidebar(pins) {
     // Detach all items
     items.forEach(function(item) { item.remove(); });
 
+    var pinnedHeaderLabel = window.ITS_I18n ? window.ITS_I18n.t('wiki.sidebar.pinned') : 'ЗАКРЕПЛЕННЫЕ';
+    var allHeaderLabel = window.ITS_I18n ? window.ITS_I18n.t('wiki.sidebar.all') : 'ВСЕ ОРГАНИЗАЦИИ';
+
     if (pinnedItems.length > 0) {
         var pHeader = document.createElement('li');
         pHeader.className = 'wiki-list-section-header';
         pHeader.id = 'pinnedSectionHeader';
-        pHeader.innerHTML = '<span>ЗАКРЕПЛЕННЫЕ</span>';
+        pHeader.innerHTML = '<span data-i18n="wiki.sidebar.pinned">' + pinnedHeaderLabel + '</span>';
         list.appendChild(pHeader);
 
         pinnedItems.forEach(function(item) {
@@ -1334,7 +1381,7 @@ function reorganizeWikiSidebar(pins) {
         var aHeader = document.createElement('li');
         aHeader.className = 'wiki-list-section-header';
         aHeader.id = 'allSectionHeader';
-        aHeader.innerHTML = '<span>ВСЕ ОРГАНИЗАЦИИ</span>';
+        aHeader.innerHTML = '<span data-i18n="wiki.sidebar.all">' + allHeaderLabel + '</span>';
         list.appendChild(aHeader);
 
         otherItems.forEach(function(item) {
@@ -1462,9 +1509,15 @@ function reorganizeWikiSidebar(pins) {
         chip.setAttribute('data-file-type', info.type);
         chip.setAttribute('data-previewable', info.isPreviewable ? 'true' : 'false');
 
-        var previewAttr = info.isPreviewable ? ' role="button" tabindex="0" title="Нажмите для предпросмотра"' : '';
+        var previewTitle = window.ITS_I18n ? window.ITS_I18n.t('wiki.files.preview') : 'Нажмите для предпросмотра';
+        var downloadTitle = window.ITS_I18n ? window.ITS_I18n.t('wiki.files.download') : 'Скачать файл';
+        var deleteTitle = window.ITS_I18n ? window.ITS_I18n.t('wiki.files.delete') : 'Удалить файл';
+
+        var previewAttr = info.isPreviewable ? ' role="button" tabindex="0" title="' + previewTitle + '" data-i18n-title="wiki.files.preview"' : '';
         var clickableClass = info.isPreviewable ? ' is-clickable' : '';
-        var fileDate = file.created_at ? new Date(file.created_at).toLocaleDateString('ru-RU') : '';
+        var currentLang = localStorage.getItem('ui_lang') || 'ru';
+        var dateLocale = currentLang === 'kk' ? 'kk-KZ' : 'ru-RU';
+        var fileDate = file.created_at ? new Date(file.created_at).toLocaleDateString(dateLocale) : '';
 
         chip.innerHTML =
             '<div class="file-chip-main' + clickableClass + '"' + previewAttr + '>' +
@@ -1480,10 +1533,10 @@ function reorganizeWikiSidebar(pins) {
                 '</div>' +
             '</div>' +
             '<div class="file-chip-actions">' +
-                '<a href="/api/files/' + file.id + '/download" class="file-chip-btn file-chip-btn--download" title="Скачать файл" download="' + escapeHtmlText(file.original_name) + '">' +
+                '<a href="/api/files/' + file.id + '/download" class="file-chip-btn file-chip-btn--download" title="' + downloadTitle + '" data-i18n-title="wiki.files.download" download="' + escapeHtmlText(file.original_name) + '">' +
                     '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>' +
                 '</a>' +
-                '<button type="button" class="file-chip-btn file-chip-btn--delete" data-file-id="' + file.id + '" data-file-name="' + escapeHtmlText(file.original_name) + '" title="Удалить файл">' +
+                '<button type="button" class="file-chip-btn file-chip-btn--delete" data-file-id="' + file.id + '" data-file-name="' + escapeHtmlText(file.original_name) + '" title="' + deleteTitle + '" data-i18n-title="wiki.files.delete">' +
                     '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>' +
                 '</button>' +
             '</div>';
@@ -1552,7 +1605,7 @@ function reorganizeWikiSidebar(pins) {
                     var emptyEl = attachmentsEmpty || document.getElementById('attachmentsEmpty');
                     if (emptyEl) emptyEl.style.display = 'none';
                     updateBadgeCount(1);
-                    showToast('Файл "' + data.file.original_name + '" прикреплен');
+                    showToast(window.ITS_I18n ? window.ITS_I18n.t('toast.fileUploaded') : 'Файл прикреплен');
                 } else {
                     var errMsg = (data && data.error) ? data.error : 'Ошибка загрузки файла';
                     showToast(errMsg);
@@ -1639,10 +1692,11 @@ function reorganizeWikiSidebar(pins) {
                 var fileName = deleteBtn.getAttribute('data-file-name') || 'файл';
 
                 window.showConfirmDialog({
-                    title: 'Удалить вложение?',
-                    message: 'Вы действительно хотите удалить прикрепленный файл?',
+                    title: window.ITS_I18n ? window.ITS_I18n.t('confirm.delete.title') : 'Удалить вложение?',
+                    message: window.ITS_I18n ? window.ITS_I18n.t('confirm.delete.desc') : 'Вы действительно хотите удалить прикрепленный файл?',
                     itemName: fileName,
-                    confirmText: 'Удалить файл',
+                    confirmText: window.ITS_I18n ? window.ITS_I18n.t('confirm.delete.btn') : 'Удалить',
+                    cancelText: window.ITS_I18n ? window.ITS_I18n.t('confirm.cancel.btn') : 'Отмена',
                     onConfirm: async function() {
                         var res = await fetch('/api/files/' + fileId, { method: 'DELETE' });
                         var data = await res.json();
@@ -1654,7 +1708,7 @@ function reorganizeWikiSidebar(pins) {
                             if (emptyEl && attachmentsList && attachmentsList.querySelectorAll('.file-chip').length === 0) {
                                 emptyEl.style.display = '';
                             }
-                            showToast('Файл удален');
+                            showToast(window.ITS_I18n ? window.ITS_I18n.t('toast.fileDeleted') : 'Файл удален');
                         } else {
                             throw new Error((data && data.error) || 'Ошибка удаления файла');
                         }

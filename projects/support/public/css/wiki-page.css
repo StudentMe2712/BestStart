@@ -637,6 +637,16 @@ body.wiki-page-body {
     flex: 1;
 }
 
+/* ── Disable font ligatures for accurate code and symbol representation ── */
+.wiki-sheet,
+#orgEditor,
+.editor-body,
+.wiki-line-text,
+.wiki-lines-container {
+    font-variant-ligatures: none;
+    font-feature-settings: "liga" 0, "calt" 0;
+}
+
 /* ── Clean Wiki Sheet (Monospace 15px line-height 1.6) ── */
 .wiki-sheet,
 .wiki-content-sheet {
@@ -763,6 +773,16 @@ body.wiki-page-body {
     padding: 1px 6px;
     border-radius: 4px;
     font-weight: 600;
+}
+
+.wiki-token-link {
+    color: var(--brand-primary, #2563eb);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    word-break: break-all;
+}
+.wiki-token-link:hover {
+    color: var(--brand-primary-hover, #1d4ed8);
 }
 
 .wiki-token-badge {
@@ -1407,6 +1427,13 @@ body.wiki-page-body {
 [data-theme="dark"] .wiki-token-ip,
 [data-theme="dark"] .wiki-token-anydesk {
     background: rgba(59, 130, 246, 0.18);
+    color: #93c5fd;
+}
+
+[data-theme="dark"] .wiki-token-link {
+    color: #60a5fa;
+}
+[data-theme="dark"] .wiki-token-link:hover {
     color: #93c5fd;
 }
 

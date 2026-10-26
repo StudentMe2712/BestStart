@@ -141,7 +141,7 @@ app.use(session({
 
 // Middleware для проверки авторизации
 function requireAuth(req, res, next) {
-    if (req.session && req.session.user) {
+    if (req.session && (req.session.user || req.session.userId)) {
         next();
     } else {
         res.redirect('/login');
@@ -318,6 +318,7 @@ app.post('/login', checkAuthRateLimit, async (req, res) => {
         
         if (result.success) {
             clearRateLimit(clientIp);
+            req.session.userId = result.user.id;
             req.session.user = {
                 id: result.user.id,
                 username: result.user.username,
@@ -497,13 +498,14 @@ app.put('/api/profile', requireAuth, async (req, res) => {
 });
 
 // Главная страница (защищенная)
-app.get('/', requireAuth, async (req, res) => {
+app.get(['/', '/home'], requireAuth, async (req, res) => {
     try {
         const organizations = await organizationsDB.getAll();
         const serverCount = Array.isArray(organizations) ? organizations.length : 25;
         const allDatabases = await databases1CDB.getAll();
         const totalDatabasesCount = allDatabases ? allDatabases.length : 0;
-        const userPins = await userPinsDB.getUserPins(req.session.user.id);
+        const userId = (req.session.user && req.session.user.id) || req.session.userId;
+        const userPins = await userPinsDB.getUserPins(userId);
         const pinnedOrgs = Array.isArray(organizations) ? organizations.filter(o => (userPins || []).includes(o.id)) : [];
         const now = new Date();
         const formattedDate = now.toLocaleDateString('ru-RU', {
@@ -561,7 +563,8 @@ function getOrgMonogram(name) {
 app.get('/wiki', requireAuth, async (req, res) => {
     try {
         const organizations = await organizationsDB.getAll();
-        const userPins = await userPinsDB.getUserPins(req.session.user.id);
+        const userId = (req.session.user && req.session.user.id) || req.session.userId;
+        const userPins = await userPinsDB.getUserPins(userId);
         res.render('wiki', { 
             organizations, 
             currentOrg: null,
@@ -590,7 +593,8 @@ app.get('/wiki/organization/:id', requireAuth, async (req, res) => {
         }
 
         const databases = await databases1CDB.getByOrgId(orgId);
-        const userPins = await userPinsDB.getUserPins(req.session.user.id);
+        const userId = (req.session.user && req.session.user.id) || req.session.userId;
+        const userPins = await userPinsDB.getUserPins(userId);
         const files = await filesDB.getByOrgId(orgId);
         
         res.render('wiki', { 
@@ -703,10 +707,10 @@ app.delete('/api/organizations/:id', requireAuth, async (req, res) => {
 // ============================================================
 
 // Переключить закрепление организации
-app.post('/api/organizations/:id/pin', requireAuth, async (req, res) => {
+app.post(['/api/organizations/:id/pin', '/api/pins/toggle/:id'], requireAuth, async (req, res) => {
     try {
         const orgId = Number(req.params.id);
-        const userId = req.session.user.id;
+        const userId = (req.session.user && req.session.user.id) || req.session.userId;
         const result = await userPinsDB.toggleUserPin(userId, orgId);
         res.json({
             success: true,
@@ -720,9 +724,9 @@ app.post('/api/organizations/:id/pin', requireAuth, async (req, res) => {
 });
 
 // Получить список ID закрепленных организаций текущего пользователя
-app.get('/api/user/pins', requireAuth, async (req, res) => {
+app.get(['/api/user/pins', '/api/pins'], requireAuth, async (req, res) => {
     try {
-        const userId = req.session.user.id;
+        const userId = (req.session.user && req.session.user.id) || req.session.userId;
         const pins = await userPinsDB.getUserPins(userId);
         res.json({
             success: true,

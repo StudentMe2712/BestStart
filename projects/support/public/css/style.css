@@ -3997,3 +3997,29 @@ body {
 [data-theme="dark"] .events-db-empty-hint {
     color: #64748b;
 }
+
+/* ── Wiki Font Ligatures & Token Links ── */
+.wiki-sheet,
+#orgEditor,
+.editor-body,
+.wiki-line-text,
+.wiki-lines-container {
+    font-variant-ligatures: none;
+    font-feature-settings: "liga" 0, "calt" 0;
+}
+
+.wiki-token-link {
+    color: var(--brand-primary, #2563eb);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    word-break: break-all;
+}
+.wiki-token-link:hover {
+    color: var(--brand-primary-hover, #1d4ed8);
+}
+[data-theme="dark"] .wiki-token-link {
+    color: #60a5fa;
+}
+[data-theme="dark"] .wiki-token-link:hover {
+    color: #93c5fd;
+}

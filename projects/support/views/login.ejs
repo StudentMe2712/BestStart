@@ -146,8 +146,8 @@
             <!-- Контейнер двухшагового восстановления пароля -->
             <div id="resetContainer" class="reset-container" style="display: none;">
                 <div class="reset-header">
-                    <h2 class="reset-title" id="resetCardTitle">Восстановление пароля</h2>
-                    <p class="reset-subtitle" id="resetCardSubtitle">Шаг 1 из 2: Проверка учетной записи</p>
+                    <h2 class="reset-title" id="resetCardTitle" data-i18n="login.forgot">Восстановление пароля</h2>
+                    <p class="reset-subtitle" id="resetCardSubtitle" data-i18n="login.reset.step1">Шаг 1 из 2: Проверка учетной записи</p>
                 </div>
 
                 <!-- Баннер глобального статуса/успеха сброса -->
@@ -172,7 +172,7 @@
                     </div>
 
                     <div class="form-group">
-                        <label for="resetUsername" class="form-label">Логин</label>
+                        <label for="resetUsername" class="form-label" data-i18n="login.username.label">Логин</label>
                         <div class="input-wrapper">
                             <span class="input-icon" aria-hidden="true">
                                 <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8">
@@ -185,18 +185,19 @@
                                 id="resetUsername"
                                 class="form-input with-left-icon"
                                 placeholder="логин"
+                                data-i18n-placeholder="login.username.ph"
                                 autocomplete="username"
                                 required
                             >
                         </div>
                     </div>
 
-                    <button type="button" id="btnVerifyLogin" class="btn-login">Проверить</button>
+                    <button type="button" id="btnVerifyLogin" class="btn-login" data-i18n="login.reset.verify">Проверить</button>
 
                     <div class="reset-back-row">
                         <button type="button" id="backToLoginBtn1" class="btn-link-back">
                             <span aria-hidden="true">←</span>
-                            <span>Вернуться ко входу</span>
+                            <span data-i18n="login.reset.back">Вернуться ко входу</span>
                         </button>
                     </div>
                 </div>
@@ -210,7 +211,7 @@
                                 <path d="M5.5 8.5l2 2 3.5-4" stroke-linecap="round" stroke-linejoin="round"/>
                             </svg>
                         </span>
-                        <span class="verified-user-badge__label">Пользователь:</span>
+                        <span class="verified-user-badge__label" data-i18n="login.reset.user">Пользователь:</span>
                         <strong id="verifiedUsernameDisplay" class="verified-user-badge__name"></strong>
                     </div>
 
@@ -226,7 +227,7 @@
 
                     <!-- Поле нового пароля с глазком -->
                     <div class="form-group">
-                        <label for="newPassword" class="form-label">Новый пароль (мин. 8 символов)</label>
+                        <label for="newPassword" class="form-label" data-i18n="login.reset.newPass">Новый пароль</label>
                         <div class="input-wrapper">
                             <span class="input-icon" aria-hidden="true">
                                 <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8">
@@ -266,7 +267,7 @@
 
                     <!-- Поле подтверждения пароля с глазком -->
                     <div class="form-group">
-                        <label for="confirmNewPassword" class="form-label">Повторите новый пароль</label>
+                        <label for="confirmNewPassword" class="form-label" data-i18n="login.reset.confirmPass">Повторите пароль</label>
                         <div class="input-wrapper">
                             <span class="input-icon" aria-hidden="true">
                                 <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8">
@@ -304,12 +305,12 @@
                         </div>
                     </div>
 
-                    <button type="button" id="btnSaveNewPassword" class="btn-login">Сохранить новый пароль</button>
+                    <button type="button" id="btnSaveNewPassword" class="btn-login" data-i18n="login.reset.savePass">Сохранить пароль</button>
 
                     <div class="reset-back-row">
                         <button type="button" id="backToLoginBtn2" class="btn-link-back">
                             <span aria-hidden="true">←</span>
-                            <span>Вернуться ко входу</span>
+                            <span data-i18n="login.reset.back">Вернуться ко входу</span>
                         </button>
                     </div>
                 </div>
@@ -449,7 +450,10 @@
                 // Сброс состояния на Шаг 1
                 if (resetStep1) resetStep1.style.display = 'block';
                 if (resetStep2) resetStep2.style.display = 'none';
-                if (resetCardSubtitle) resetCardSubtitle.textContent = 'Шаг 1 из 2: Проверка учетной записи';
+                if (resetCardSubtitle) {
+                    resetCardSubtitle.setAttribute('data-i18n', 'login.reset.step1');
+                    resetCardSubtitle.textContent = window.ITS_I18n ? window.ITS_I18n.t('login.reset.step1') : 'Шаг 1 из 2: Проверка учетной записи';
+                }
                 if (resetStep1Alert) resetStep1Alert.style.display = 'none';
                 if (resetStep2Alert) resetStep2Alert.style.display = 'none';
                 if (resetSuccessBanner) resetSuccessBanner.style.display = 'none';
@@ -464,7 +468,7 @@
                 }
                 if (btnVerifyLogin) {
                     btnVerifyLogin.disabled = false;
-                    btnVerifyLogin.textContent = 'Проверить';
+                    btnVerifyLogin.textContent = window.ITS_I18n ? window.ITS_I18n.t('login.reset.verify') : 'Проверить';
                 }
                 if (btnSaveNewPassword) {
                     btnSaveNewPassword.style.display = '';
@@ -560,7 +564,10 @@
                         void resetStep2.offsetWidth;
                         resetStep2.classList.add('auth-view-fade-in');
                     }
-                    if (resetCardSubtitle) resetCardSubtitle.textContent = 'Шаг 2 из 2: Задание нового пароля';
+                    if (resetCardSubtitle) {
+                        resetCardSubtitle.setAttribute('data-i18n', 'login.reset.step2');
+                        resetCardSubtitle.textContent = window.ITS_I18n ? window.ITS_I18n.t('login.reset.step2') : 'Шаг 2 из 2: Новый пароль';
+                    }
                     if (resetStep2Alert) resetStep2Alert.style.display = 'none';
                     if (newPassword) {
                         newPassword.value = '';
