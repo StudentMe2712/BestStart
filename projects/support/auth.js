@@ -8,6 +8,7 @@ const pool = mysql.createPool({
     user: process.env.DB_USER || 'p-14802_adminits',
     password: process.env.DB_PASSWORD || 'ASDFzxcv@113525',
     database: process.env.DB_NAME || 'p-14802_wiki',
+    charset: 'utf8mb4',
     waitForConnections: true,
     connectionLimit: 10,
     queueLimit: 0
@@ -279,6 +280,7 @@ module.exports = {
     updateProfile,
     getAllUsers,
     checkUserExists,
+    verifyUser: checkUserExists,
     resetPassword
 };
 

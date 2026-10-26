@@ -7,6 +7,7 @@ const pool = mysql.createPool({
     user: process.env.DB_USER || 'p-14802_adminits',
     password: process.env.DB_PASSWORD || 'ASDFzxcv@113525',
     database: process.env.DB_NAME || 'p-14802_wiki',
+    charset: 'utf8mb4',
     waitForConnections: true,
     connectionLimit: 10,
     queueLimit: 0
@@ -20,7 +21,6 @@ pool.getConnection()
     })
     .catch(err => {
         console.error('Ошибка подключения к MariaDB для организаций:', err.message);
-        process.exit(1);
     });
 
 // Инициализация таблицы организаций
@@ -32,10 +32,10 @@ async function initOrganizationTable() {
             CREATE TABLE IF NOT EXISTS organizations (
                 id INT AUTO_INCREMENT PRIMARY KEY,
                 name VARCHAR(255) NOT NULL UNIQUE,
-                content TEXT DEFAULT '',
+                content LONGTEXT DEFAULT '',
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-            )
+            ) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
         `);
         console.log('✓ Таблица organizations готова');
     } catch (err) {
@@ -360,7 +360,8 @@ async function initFilesTable() {
                 file_size INT NOT NULL,
                 uploaded_by VARCHAR(50) DEFAULT NULL,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                INDEX (org_id)
+                INDEX (org_id),
+                FOREIGN KEY (org_id) REFERENCES organizations(id) ON DELETE CASCADE
             ) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
         `);
         console.log('✓ Таблица organization_files готова');
@@ -438,6 +439,12 @@ const filesDB = {
         }
     }
 };
+
+// Алиасы методов filesDB для обратной совместимости
+filesDB.getFilesByOrg = filesDB.getByOrgId;
+filesDB.getFileById = filesDB.getById;
+filesDB.addFile = filesDB.create;
+filesDB.deleteFile = filesDB.delete;
 
 module.exports = {
     initOrganizationTable,

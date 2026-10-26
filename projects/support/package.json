@@ -5,13 +5,7 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "nodemon server.js",
-    "testdb": "node testdb.js",
-    "migrate": "node migrate.js",
-    "test:e2e:home": "node test-e2e-home.js",
-    "test:e2e:wiki": "node test-e2e-wiki.js",
-    "test:e2e:login": "node test-e2e-login.js",
-    "test:e2e:events": "node test-stage2-events.js"
+    "dev": "nodemon server.js"
   },
   "keywords": [
     "wiki",
@@ -23,7 +17,6 @@
   "dependencies": {
     "bcrypt": "^6.0.0",
     "body-parser": "^1.20.3",
-    "connect-pg-simple": "^10.0.0",
     "dompurify": "^3.3.0",
     "dotenv": "^16.6.1",
     "ejs": "^3.1.10",
@@ -35,9 +28,6 @@
     "marked": "^11.2.0",
     "multer": "^2.5.0",
     "mysql2": "^3.15.3",
-    "pg": "^8.16.3",
-    "puppeteer": "^21.11.0",
-    "sqlite3": "^5.1.7",
     "word-extractor": "^1.0.4",
     "xlsx": "^0.18.5"
   },

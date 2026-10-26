@@ -140,28 +140,7 @@
                 <!-- Кнопка отправки формы -->
                 <button type="submit" id="submitBtn" class="btn-login" data-i18n="login.btn">Войти</button>
 
-                <!-- Информационный бейдж с автозаполнением admin / admin (только для локального dev-окружения) -->
-                <% if (typeof isStubMode !== 'undefined' && isStubMode) { %>
-                <div class="quick-creds-container">
-                    <button
-                        type="button"
-                        id="quickCredsBadge"
-                        class="quick-creds-badge"
-                        title="Нажмите для быстрой подстановки admin / admin"
-                        aria-label="Автозаполнение учетных данных локального администратора"
-                    >
-                        <span class="quick-creds-badge__icon" aria-hidden="true">
-                            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6">
-                                <circle cx="6" cy="6" r="3.5" stroke-linecap="round"/>
-                                <path d="M8.5 8.5L13.5 13.5M11.5 11.5L13 10M10 13L11.5 14.5" stroke-linecap="round" stroke-linejoin="round"/>
-                            </svg>
-                        </span>
-                        <span class="quick-creds-badge__label" data-i18n="login.quickHint">Локальный доступ:</span>
-                        <span class="quick-creds-badge__creds">admin / admin</span>
-                        <span class="quick-creds-badge__action" data-i18n="login.quickFill">Заполнить</span>
-                    </button>
-                </div>
-                <% } %>
+
             </form>
 
             <!-- Контейнер двухшагового восстановления пароля -->
@@ -354,7 +333,6 @@
             var usernameInput = document.getElementById('username');
             var passwordInput = document.getElementById('password');
             var toggleBtn = document.getElementById('passwordToggleBtn');
-            var quickCreds = document.getElementById('quickCredsBadge');
             var loginForm = document.getElementById('loginForm');
 
             // 1. Автофокус
@@ -399,44 +377,7 @@
             setupPasswordToggle('newPasswordToggleBtn', 'newPassword');
             setupPasswordToggle('confirmNewPasswordToggleBtn', 'confirmNewPassword');
 
-            // 3. Подсказка локального входа (автозаполнение admin / admin)
-            <% if (typeof isStubMode !== 'undefined' && isStubMode) { %>
-            if (quickCreds && usernameInput && passwordInput) {
-                quickCreds.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    usernameInput.value = 'admin';
-                    passwordInput.value = 'admin';
 
-                    // Добавляем акцентную подсветку полей
-                    usernameInput.classList.remove('input-filled-flash');
-                    passwordInput.classList.remove('input-filled-flash');
-                    void usernameInput.offsetWidth; // Триггер reflow для перезапуска CSS-анимации
-                    usernameInput.classList.add('input-filled-flash');
-                    passwordInput.classList.add('input-filled-flash');
-
-                    // Визуальный отклик на кнопке бейджа
-                    var actionEl = quickCreds.querySelector('.quick-creds-badge__action');
-                    if (actionEl) {
-                        var originalText = actionEl.getAttribute('data-orig-text') || actionEl.textContent;
-                        actionEl.setAttribute('data-orig-text', originalText);
-                        var doneText = (window.ITS_I18n && window.ITS_I18n.t) ? window.ITS_I18n.t('login.quickDone') : '✓ Заполнено!';
-                        actionEl.textContent = doneText;
-                        actionEl.classList.add('is-done');
-
-                        setTimeout(function() {
-                            actionEl.textContent = originalText;
-                            actionEl.classList.remove('is-done');
-                        }, 1600);
-                    }
-
-                    // Переводим фокус на кнопку отправки для удобного быстрого входа по Enter
-                    var submitBtn = document.getElementById('submitBtn');
-                    if (submitBtn) {
-                        submitBtn.focus();
-                    }
-                });
-            }
-            <% } %>
 
             // 4. Валидация перед отправкой формы входа
             if (loginForm) {

@@ -487,104 +487,7 @@ body.auth-body {
     box-shadow: 0 4px 16px rgba(37, 99, 235, 0.4);
 }
 
-/* ── Quick Access Badge (admin / admin) ── */
-.quick-creds-container {
-    margin-top: 14px;
-}
 
-.quick-creds-badge {
-    width: 100%;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    padding: 8px 12px;
-    background: rgba(37, 99, 235, 0.05);
-    border: 1px dashed rgba(37, 99, 235, 0.32);
-    border-radius: 9px;
-    font-size: 12.5px;
-    color: var(--text-secondary, #334155);
-    font-family: inherit;
-    cursor: pointer;
-    box-sizing: border-box;
-    transition: all var(--transition-fast, 150ms ease);
-}
-
-.quick-creds-badge:hover {
-    background: rgba(37, 99, 235, 0.10);
-    border-color: rgba(37, 99, 235, 0.55);
-    color: var(--color-accent, #2563eb);
-    transform: translateY(-1px);
-}
-
-.quick-creds-badge:active {
-    transform: translateY(0);
-}
-
-.quick-creds-badge:focus-visible {
-    outline: none;
-    box-shadow: 0 0 0 2px var(--color-accent, #2563eb);
-}
-
-[data-theme="dark"] .quick-creds-badge {
-    background: rgba(59, 130, 246, 0.08);
-    border-color: rgba(59, 130, 246, 0.28);
-    color: var(--text-secondary, #cbd5e1);
-}
-
-[data-theme="dark"] .quick-creds-badge:hover {
-    background: rgba(59, 130, 246, 0.16);
-    border-color: rgba(59, 130, 246, 0.5);
-    color: #93c5fd;
-}
-
-.quick-creds-badge__icon {
-    width: 16px;
-    height: 16px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--color-accent, #2563eb);
-    flex-shrink: 0;
-}
-
-[data-theme="dark"] .quick-creds-badge__icon {
-    color: #60a5fa;
-}
-
-.quick-creds-badge__label {
-    font-weight: 500;
-}
-
-.quick-creds-badge__creds {
-    font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace);
-    font-size: 12px;
-    font-weight: 600;
-    color: var(--text-primary, #0f172a);
-    background: rgba(15, 23, 42, 0.06);
-    padding: 1px 6px;
-    border-radius: 5px;
-}
-
-[data-theme="dark"] .quick-creds-badge__creds {
-    color: #f1f5f9;
-    background: rgba(255, 255, 255, 0.1);
-}
-
-.quick-creds-badge__action {
-    margin-left: auto;
-    font-size: 11px;
-    font-weight: 600;
-    padding: 2px 8px;
-    background: var(--color-accent, #2563eb);
-    color: #ffffff;
-    border-radius: 999px;
-    transition: background-color var(--transition-fast, 150ms ease);
-}
-
-.quick-creds-badge__action.is-done {
-    background-color: var(--color-success, #10b981);
-}
 
 /* ── Form Footer (Registration Link) ── */
 .form-footer {
@@ -815,12 +718,5 @@ body.auth-body {
         font-size: 18px;
     }
 
-    .quick-creds-badge {
-        flex-wrap: wrap;
-        gap: 6px;
-    }
 
-    .quick-creds-badge__action {
-        margin-left: 0;
-    }
 }

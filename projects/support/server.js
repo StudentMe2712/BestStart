@@ -12,7 +12,7 @@ const XLSX = require('xlsx');
 const mammoth = require('mammoth');
 const WordExtractor = require('word-extractor');
 
-const USE_STUB = process.env.DB_STUB === 'true' || process.env.DB_STUB === '1';
+const USE_STUB = (process.env.DB_STUB === 'true' || process.env.DB_STUB === '1') && fs.existsSync(path.join(__dirname, 'db-stub.js'));
 
 let pool, initDatabase, registerUser, authenticateUser, getUserById, updateProfile, checkUserExists, resetPassword, initOrganizationTable, organizationsDB, initDatabases1CTable, databases1CDB, initUserPinsTable, userPinsDB, initFilesTable, filesDB;
 

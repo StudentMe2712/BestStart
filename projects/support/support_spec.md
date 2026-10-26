@@ -3,6 +3,7 @@
 **Версия:** 2.7.2  
 **Статус:** Завершен (Спринт 7 — Full-Width Hero Dashboard, Mammoth DOCX/DOC Support, 1:1 Image Preview, Unified Confirm Modal, Smart Red Pushpin 📌 & Security Hardening)  
 **Локация:** `projects/support`  
+**Спецификация для развертывания на хостинге:** 👉 [spec.md](./spec.md)  
 **Стек:** Node.js 18+, Express 4.x, EJS, Vanilla CSS/JS, SheetJS (XLSX), Mammoth (DOCX), MariaDB (Прод Plesk) / Mock Stub (Dev)  
 **Корпоративный навык:** `its-support`
 
@@ -121,3 +122,36 @@
   - [x] Проверить все автотесты (`test-sprint7-uiux-refinements.js`, `test-backend-tasks-1-2-3.js`, `test-frontend-refinements.js`, `test-sprint7-iteration.js`, `test-sprint7-all.js`, `test-sprint7-backend.js`) — 100% PASS
   - [x] Проверить запуск через `start-local.bat`
   - [x] Выполнить `./sync.sh`
+
+---
+
+## 5. СПРИНТ 8 — Production Release & Cleanup (Plesk MySQL) (Завершен на 100%)
+
+- [x] **views/login.ejs и auth.js**:
+  - [x] Физически удален блок `#quickCredsBadge` («Локальный доступ: admin / admin [Заполнить]»), стили `.quick-creds-badge` и JS-обработчики автозаполнения логина/пароля в `views/login.ejs` и `public/css/login.css`.
+  - [x] Форма входа чистая и не содержит дефолтных значений.
+  - [x] В `auth.js` настроен `pool` с `charset: 'utf8mb4'`, `host: process.env.DB_HOST || 'localhost'`, `port: process.env.DB_PORT || 3306`, `user: process.env.DB_USER || 'p-14802_adminits'`, `password: process.env.DB_PASSWORD || 'ASDFzxcv@113525'`, `database: process.env.DB_NAME || 'p-14802_wiki'`.
+  - [x] Авторизация и 2-шаговый сброс пароля работают строго через SQL (`SELECT id, username, password_hash FROM users WHERE username = ?`, `bcrypt.compare`, `UPDATE users SET password_hash = ? WHERE id = ?`).
+  - [x] `initDatabase()` создает пользователя только если таблица users пуста (`COUNT(*) === 0`).
+  - [x] Экспортирован алиас `verifyUser: checkUserExists`.
+
+- [x] **database.js**:
+  - [x] Настроен `pool` с `charset: 'utf8mb4'`.
+  - [x] В `initOrganizationTable()` задано поле `content LONGTEXT DEFAULT ''`.
+  - [x] В `initDatabases1CTable()` и `initFilesTable()` заданы внешние ключи с `ON DELETE CASCADE`.
+  - [x] В `filesDB` добавлены алиасы методов `getFilesByOrg: getByOrgId`, `getFileById: getById`, `addFile: create`, `deleteFile: delete`.
+  - [x] Все запросы строго параметризованы знаком `?`.
+
+- [x] **server.js, .env, package.json, tmp/restart.txt**:
+  - [x] В `server.js` `USE_STUB` по умолчанию `false` (`const USE_STUB = (process.env.DB_STUB === 'true' || process.env.DB_STUB === '1') && fs.existsSync(path.join(__dirname, 'db-stub.js'));`).
+  - [x] В `projects/support/.env` записаны production-переменные окружения Plesk (MariaDB/MySQL).
+  - [x] В `package.json` удалены `puppeteer`, `pg`, `connect-pg-simple`, `sqlite3` из `dependencies`.
+  - [x] Создан `tmp/restart.txt` и обеспечена папка `uploads/` с `.gitkeep`.
+
+- [x] **Очистка от мусора**:
+  - [x] Удалены все файлы тестов `test-*.js`.
+  - [x] Удалены `testdb.js`, `migrate.js`, `seed-data.js`.
+  - [x] Удалены все `.bat` файлы (`start-local.bat`, `start.bat`, `stop.bat`, `install.bat`, `seed.bat`, `setup-domain.bat`).
+  - [x] Удален бинарный файл `p-14802_wiki` и `db-stub.js`.
+  - [x] Удалены лишние `.md` и `.txt` файлы из корня `projects/support` (`PROJECT_STRUCTURE.md`, `QUICKSTART.md`, `README.md`, `VISUAL_GUIDE.md`, `ОБНОВЛЕНИЯ.md`, `УЧЕТНЫЕ_ДАННЫЕ.txt`, `DOCUMENTATION.md`), сохранены спецификации `spec.md` и `support_spec.md`.
+
