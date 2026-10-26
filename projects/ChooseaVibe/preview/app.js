@@ -2234,7 +2234,35 @@ class UIController {
     });
 
     // Dev Tools Actions
-    document.getElementById('btn-dev-add-xp').addEventListener('click', () => {
+    // Mobile Dev Tools Dropdown & Handlers
+    const devDropdown = document.getElementById('mobile-dev-dropdown');
+    const btnDevToggle = document.getElementById('btn-mobile-dev-toggle');
+    const btnMDevClose = document.getElementById('btn-mdev-close');
+
+    if (btnDevToggle && devDropdown) {
+      btnDevToggle.addEventListener('click', (e) => {
+        e.stopPropagation();
+        Sound.playHaptic();
+        devDropdown.classList.toggle('open');
+      });
+    }
+
+    if (btnMDevClose && devDropdown) {
+      btnMDevClose.addEventListener('click', (e) => {
+        e.stopPropagation();
+        devDropdown.classList.remove('open');
+      });
+    }
+
+    document.addEventListener('click', (e) => {
+      if (devDropdown && devDropdown.classList.contains('open')) {
+        if (!devDropdown.contains(e.target) && e.target !== btnDevToggle) {
+          devDropdown.classList.remove('open');
+        }
+      }
+    });
+
+    const triggerAddXP = () => {
       const res = State.addXP(100);
       Sound.playHaptic();
       this.showToast('+100 XP начислено!');
@@ -2243,17 +2271,17 @@ class UIController {
         this.showLevelUpToast(res.newLevel);
       }
       this.render();
-    });
+    };
 
-    document.getElementById('btn-dev-unlock-chapters').addEventListener('click', () => {
+    const triggerUnlockChapters = () => {
       State.unlockedChapters.push('ch_02', 'ch_03');
       State.save();
       Sound.playHaptic();
       this.showToast('Все 3 главы разблокированы!');
       this.render();
-    });
+    };
 
-    document.getElementById('btn-dev-reset').addEventListener('click', () => {
+    const triggerReset = () => {
       if (confirm('Сбросить весь прогресс и перезапустить онбординг?')) {
         State.reset();
         Sound.playHaptic();
@@ -2261,7 +2289,42 @@ class UIController {
         this.render();
         this.showToast('Прогресс сброшен!');
       }
-    });
+    };
+
+    // Mobile Dev Tools Buttons
+    const btnMDevAddXP = document.getElementById('btn-mdev-add-xp');
+    if (btnMDevAddXP) {
+      btnMDevAddXP.addEventListener('click', () => {
+        if (devDropdown) devDropdown.classList.remove('open');
+        triggerAddXP();
+      });
+    }
+
+    const btnMDevUnlock = document.getElementById('btn-mdev-unlock-chapters');
+    if (btnMDevUnlock) {
+      btnMDevUnlock.addEventListener('click', () => {
+        if (devDropdown) devDropdown.classList.remove('open');
+        triggerUnlockChapters();
+      });
+    }
+
+    const btnMDevReset = document.getElementById('btn-mdev-reset');
+    if (btnMDevReset) {
+      btnMDevReset.addEventListener('click', () => {
+        if (devDropdown) devDropdown.classList.remove('open');
+        triggerReset();
+      });
+    }
+
+    // Desktop Dev Tools Bar Buttons
+    const btnDevAddXP = document.getElementById('btn-dev-add-xp');
+    if (btnDevAddXP) btnDevAddXP.addEventListener('click', triggerAddXP);
+
+    const btnDevUnlock = document.getElementById('btn-dev-unlock-chapters');
+    if (btnDevUnlock) btnDevUnlock.addEventListener('click', triggerUnlockChapters);
+
+    const btnDevReset = document.getElementById('btn-dev-reset');
+    if (btnDevReset) btnDevReset.addEventListener('click', triggerReset);
 
     // Onboarding Navigation
     document.getElementById('btn-ob-next').addEventListener('click', () => {
@@ -2310,6 +2373,8 @@ class UIController {
         const targetTab = tab.dataset.tab;
         document.querySelectorAll('.tab-content').forEach(tc => tc.classList.remove('active'));
         const activeTabContent = document.getElementById(targetTab);
+        const fab = document.getElementById('btn-open-vibe-sheet');
+        if (fab) fab.style.display = (targetTab === 'tab-map') ? 'flex' : 'none';
         if (activeTabContent) activeTabContent.classList.add('active');
       });
     });
@@ -2642,52 +2707,79 @@ class UIController {
         State.unlockedChapters
       );
       const chapterAdventures = EMBEDDED_CATALOG.adventures.filter(a => a.chapterId === chapter.id);
+      const completedCount = chapterAdventures.filter(a => completedIds.has(a.id)).length;
 
       const section = document.createElement('div');
       section.className = `chapter-section ${isUnlocked ? '' : 'locked'}`;
 
       section.innerHTML = `
         <div class="chapter-header">
-          <div class="chapter-tag">
-            <span>ГЛАВА ${chapter.chapterNumber}</span>
-            ${!isUnlocked ? '<svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg>' : ''}
+          <div class="chapter-header-top-row">
+            <div class="chapter-badge">
+              <span>ГЛАВА ${chapter.chapterNumber}</span>
+              ${!isUnlocked ? '<svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg>' : ''}
+            </div>
+            <div class="chapter-progress-pill ${completedCount === 4 ? 'completed' : ''}">
+              ${isUnlocked ? `${completedCount} / 4 пройдено` : 'Заблокировано'}
+            </div>
           </div>
           <h3 class="chapter-title">${chapter.title}</h3>
           <p class="chapter-subtitle">${chapter.subtitle}</p>
         </div>
-        <div class="nodes-path"></div>
+        <div class="nodes-timeline"></div>
       `;
 
-      const nodesPath = section.querySelector('.nodes-path');
+      const nodesTimeline = section.querySelector('.nodes-timeline');
 
       chapterAdventures.forEach((adv, idx) => {
         const questNum = (chapter.chapterNumber - 1) * 4 + (idx + 1);
         const isCompleted = completedIds.has(adv.id);
         const isActive = State.activeSession && State.activeSession.adventureId === adv.id;
+        const isCurrent = isActive || (isUnlocked && !isCompleted && (idx === 0 || completedIds.has(chapterAdventures[idx - 1].id)));
 
-        let nodeStateClass = 'active';
-        if (!isUnlocked) nodeStateClass = 'locked';
-        else if (isCompleted) nodeStateClass = 'completed';
-        else if (isActive) nodeStateClass = 'active';
-
-        const row = document.createElement('div');
-        row.className = `map-node-row ${idx % 2 === 0 ? 'offset-left' : 'offset-right'}`;
+        let stateClass = 'is-locked';
+        if (isCompleted) {
+          stateClass = 'is-completed';
+        } else if (isCurrent) {
+          stateClass = 'is-current';
+        } else if (isUnlocked) {
+          stateClass = 'is-available';
+        }
 
         const card = document.createElement('div');
-        card.className = `map-node-card ${nodeStateClass}`;
+        card.className = `adventure-node-card ${stateClass}`;
 
         const sealContent = isCompleted
           ? '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>'
           : (isUnlocked ? questNum : '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg>');
 
+        const budgetFormatted = adv.budget === 0 ? '0 ₸' : `до ${adv.budget.toLocaleString('ru-RU')} ₸`;
+
         card.innerHTML = `
-          <div class="node-seal">${sealContent}</div>
-          <div class="node-info">
-            <span class="node-title">${adv.title}</span>
-            <div class="node-vibes-row">
-              <span class="node-vibe-pill">${adv.vibes[0]}</span>
-              <span class="node-vibe-pill">• ${adv.duration}</span>
+          <div class="node-badge-slot">${sealContent}</div>
+          <div class="node-body">
+            <h4 class="adventure-node-title">${adv.title}</h4>
+            <div class="node-meta-chips">
+              <span class="node-meta-chip vibe">
+                <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+                ${adv.vibes[0]}
+              </span>
+              <span class="node-meta-chip duration">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                ${adv.duration}
+              </span>
+              <span class="node-meta-chip budget">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 12V8H4v4m16 0v8H4v-8m16 0H4m8-8V2m0 6v14"/></svg>
+                ${budgetFormatted}
+              </span>
+              <span class="node-meta-chip location">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg>
+                ${adv.location}
+              </span>
             </div>
+          </div>
+          <div class="node-arrow-slot">
+            ${isCompleted ? '<span style="font-size:14px; font-weight:800; color:#10B981;">✓</span>' : (isUnlocked ? '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"></polyline></svg>' : '<span style="font-size:12px; color:var(--text-muted);">🔒</span>')}
           </div>
         `;
 
@@ -2702,8 +2794,7 @@ class UIController {
           });
         }
 
-        row.appendChild(card);
-        nodesPath.appendChild(row);
+        nodesTimeline.appendChild(card);
       });
 
       container.appendChild(section);

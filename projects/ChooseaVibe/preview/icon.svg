@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="0%" r="100%">
+      <stop offset="0%" stop-color="#3D1A3B"/>
+      <stop offset="60%" stop-color="#140D1D"/>
+      <stop offset="100%" stop-color="#09070D"/>
+    </radialGradient>
+    <linearGradient id="roseGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FF5A8D"/>
+      <stop offset="50%" stop-color="#FF3B70"/>
+      <stop offset="100%" stop-color="#9C27B0"/>
+    </linearGradient>
+    <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFE082"/>
+      <stop offset="100%" stop-color="#FFB300"/>
+    </linearGradient>
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="16" result="blur"/>
+      <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+    </filter>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
+  <rect width="504" height="504" x="4" y="4" rx="108" fill="none" stroke="rgba(255,255,255,0.12)" stroke-width="2"/>
+  <g filter="url(#glow)">
+    <path d="M256 420l-26.1-23.76C127.2 284.48 64 227.12 64 156 64 98.48 109.48 53 167 53c32.44 0 63.56 15.1 89 38.86C281.44 68.1 312.56 53 345 53c57.52 0 103 45.48 103 103 0 71.12-63.2 128.48-165.9 240.24L256 420z" fill="url(#roseGrad)"/>
+    <path d="M380 95l10.3 20.9 23 3.3-16.7 16.2 3.9 22.9-20.5-10.8-20.5 10.8 3.9-22.9-16.7-16.2 23-3.3z" fill="url(#goldGrad)"/>
+  </g>
+</svg>
