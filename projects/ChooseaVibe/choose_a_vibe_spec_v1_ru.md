@@ -5,7 +5,9 @@
 **Категория:** Lifestyle / Игры для пар / Развлечения  
 **Платформа:** iOS 17+, SwiftUI, SwiftData (Offline-first, Pass & Play)  
 **Язык интерфейса и контента:** Русский (100% локализация UI, названий глав, уровней, достижений и карточек)  
-**Валюта по умолчанию:** Казахстанский тенге (₸)
+**Валюта по умолчанию:** Казахстанский тенге (₸)  
+**Корень воркспейса:** `C:\Users\Mila\Desktop\BestStart`  
+**Директория проекта:** `C:\Users\Mila\Desktop\BestStart\projects\ChooseaVibe` (`projects/ChooseaVibe`)
 
 ---
 
@@ -33,7 +35,7 @@
    * **Решение v1.0:** Введена ротация ходов. Игроки указывают свои имена на старте. Нечётные карточки (Этапы 1 и 3) стирает и зачитывает Партнёр 1, чётные (Этапы 2 и 4) — Партнёр 2. Для карточек с индивидуальной подготовкой предусмотрен режим «Секретный экран» (подсказка видна только ведущему хода).
 5. **Защита от потери сессии при блокировке экрана:**
    * **Проблема v0.1:** Выполнение одного задания занимает 15–20 минут реальной жизни. Выгрузка приложения из памяти iOS сбрасывала бы прогресс текущего вечера.
-   * **Решение v1.0:** Состояние активного приключения (`ActiveAdventureState`) мгновенно сохраняется в `SwiftData` после каждого действия (выбор приключения, стирание карточки, замена, переход к следующему шагу). При повторном открытии приложение сразу возвращает пару на активную карточку.
+   * **Решение v1.0:** Состояние активного приключения (`AdventureSessionRecord`) мгновенно сохраняется в `SwiftData` после каждого действия (выбор приключения, стирание карточки, замена, переход к следующему шагу). При повторном открытии приложение сразу возвращает пару на активную карточку.
 
 ---
 
@@ -473,38 +475,44 @@ final class AdventureSessionRecord {
    * При движении пальца каждые 8 новых задетых ячеек вызывают мягкий импульс `UIImpactFeedbackGenerator(style: .soft)`.
    * При достижении порога в 45 ячеек вызывается `UINotificationFeedbackGenerator().notificationOccurred(.success)`, флаг `isCurrentCardScratched` переходит в `true` (и сохраняется в `SwiftData`), а остаток покрытия плавно исчезает (`withAnimation(.spring(duration: 0.45))`).
 
-## 6.4. Структура модулей проекта
+## 6.4. Структура директории проекта (`C:\Users\Mila\Desktop\BestStart\projects\ChooseaVibe`)
+
+Вся разработка ведётся строго внутри папки `projects/ChooseaVibe` относительно корня репозитория `BestStart`:
 
 ```text
-ChooseAVibe/
-├── App/
-│   ├── ChooseAVibeApp.swift          // Контейнер SwiftData и корневой роутер
-│   └── AppTheme.swift                // Цветовые палитры вайбов, шрифты и константы
-├── Domain/
-│   ├── Models/                       // Статические структуры и SwiftData @Model
-│   └── Services/
-│       ├── CatalogRepository.swift   // Загрузка и валидация adventures_catalog_ru.json
-│       ├── VibeMatcherService.swift  // Алгоритм Weighted Soft-Matching
-│       └── ProgressionEngine.swift   // Идемпотентный расчёт XP, уровней и достижений
-├── Features/
-│   ├── Onboarding/
-│   │   └── OnboardingFlowView.swift  // Ввод имён партнёров и комфорт-фильтр
-│   ├── JourneyMap/
-│   │   ├── JourneyMapView.swift      // Карта 3 глав + баннер активной сессии
-│   │   └── MapNodeView.swift         // Узел приключения на извилистой дорожке
-│   ├── VibeSelection/
-│   │   └── VibePickerSheet.swift     // Выбор настроения, времени, бюджета и локации
-│   ├── AdventureSession/
-│   │   ├── AdventureBriefingView.swift // Анонс приключения ("Секретный конверт")
-│   │   ├── ScratchCardContainer.swift  // Управление этапами, очередью и заменой
-│   │   ├── ScratchCanvasOverlay.swift  // Canvas + DragGesture + Grid 10x10
-│   │   └── AdventureSummaryView.swift  // Праздничный финал, XP, Level Up и значки
-│   ├── Collection/
-│   │   └── CollectionView.swift      // Музей значков, история и выбор рубашек карт
-│   └── Settings/
-│       └── SettingsView.swift        // Имена, границы комфорта и сброс прогресса
-└── Resources/
-    └── adventures_catalog_ru.json    // Полный каталог из 12 приключений (48 карточек)
+C:\Users\Mila\Desktop\BestStart\
+└── projects/
+    └── ChooseaVibe/
+        ├── choose_a_vibe_spec_v1_ru.md       // Актуальная спецификация проекта (Version 1.0)
+        └── ChooseAVibe/                      // Исходный код приложения (SwiftUI / iOS 17+)
+            ├── App/
+            │   ├── ChooseAVibeApp.swift      // Контейнер SwiftData и корневой роутер
+            │   └── AppTheme.swift            // Цветовые палитры вайбов, шрифты и константы
+            ├── Domain/
+            │   ├── Models/                   // Статические структуры и SwiftData @Model
+            │   └── Services/
+            │       ├── CatalogRepository.swift   // Загрузка и валидация adventures_catalog_ru.json
+            │       ├── VibeMatcherService.swift  // Алгоритм Weighted Soft-Matching
+            │       └── ProgressionEngine.swift   // Идемпотентный расчёт XP, уровней и достижений
+            ├── Features/
+            │   ├── Onboarding/
+            │   │   └── OnboardingFlowView.swift  // Ввод имён партнёров и комфорт-фильтр
+            │   ├── JourneyMap/
+            │   │   ├── JourneyMapView.swift      // Карта 3 глав + баннер активной сессии
+            │   │   └── MapNodeView.swift         // Узел приключения на извилистой дорожке
+            │   ├── VibeSelection/
+            │   │   └── VibePickerSheet.swift     // Выбор настроения, времени, бюджета и локации
+            │   ├── AdventureSession/
+            │   │   ├── AdventureBriefingView.swift // Анонс приключения ("Секретный конверт")
+            │   │   ├── ScratchCardContainer.swift  // Управление этапами, очередью и заменой
+            │   │   ├── ScratchCanvasOverlay.swift  // Canvas + DragGesture + Grid 10x10
+            │   │   └── AdventureSummaryView.swift  // Праздничный финал, XP, Level Up и значки
+            │   ├── Collection/
+            │   │   └── CollectionView.swift      // Музей значков, история и выбор рубашек карт
+            │   └── Settings/
+            │       └── SettingsView.swift        // Имена, границы комфорта и сброс прогресса
+            └── Resources/
+                └── adventures_catalog_ru.json    // Полный каталог из 12 приключений (48 карточек)
 ```
 
 ---
@@ -524,3 +532,4 @@ ChooseAVibe/
 3. **Тактильное удовольствие от Scratch Card:** Стирание пальцем работает плавно, автоматически дооткрывает карточку на 45% площади и имеет дублирующую кнопку «Открыть сразу».
 4. **Живучесть сессии:** Принудительное закрытие приложения (Swipe-up) на 2-й или 3-й карточке не сбрасывает прогресс вечера — при перезапуске пара продолжает с того же места.
 5. **Честная прогрессия:** За 12 приключений пара открывает все 3 главы, получает 5-й уровень и разблокирует все 5 визуальных рубашек для скретч-карточек.
+
