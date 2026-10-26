@@ -27,16 +27,39 @@ async function initDatabase() {
                 username VARCHAR(50) UNIQUE NOT NULL,
                 password_hash VARCHAR(255) NOT NULL,
                 email VARCHAR(255) DEFAULT NULL,
+                role VARCHAR(20) NOT NULL DEFAULT 'engineer',
+                must_change_password TINYINT(1) NOT NULL DEFAULT 0,
+                token_version INT UNSIGNED NOT NULL DEFAULT 1,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 last_login TIMESTAMP
             )
         `);
 
-        await connection.query(`
-            ALTER TABLE users ADD COLUMN IF NOT EXISTS email VARCHAR(255) DEFAULT NULL
-        `);
+        // Идемпотентные миграции колонок для существующей таблицы users
+        const alterStatements = [
+            { col: 'email', sql: "ALTER TABLE users ADD COLUMN email VARCHAR(255) DEFAULT NULL" },
+            { col: 'role', sql: "ALTER TABLE users ADD COLUMN role VARCHAR(20) NOT NULL DEFAULT 'engineer'" },
+            { col: 'must_change_password', sql: "ALTER TABLE users ADD COLUMN must_change_password TINYINT(1) NOT NULL DEFAULT 0" },
+            { col: 'token_version', sql: "ALTER TABLE users ADD COLUMN token_version INT UNSIGNED NOT NULL DEFAULT 1" }
+        ];
 
-        console.log('✓ Таблица users готова');
+        for (const stmt of alterStatements) {
+            try {
+                await connection.query(stmt.sql);
+            } catch (alterErr) {
+                // Игнорируем ошибку существующей колонки (1060 / ER_DUP_FIELDNAME)
+                if (alterErr.errno !== 1060 && !alterErr.message.includes('Duplicate column')) {
+                    console.warn(`Примечание к миграции колонки ${stmt.col}:`, alterErr.message);
+                }
+            }
+        }
+
+        // Назначение роли администратора для штатной учетной записи 'admin'
+        await connection.query("UPDATE users SET role = 'admin' WHERE username = 'admin'");
+        // Всем остальным пользователям без роли назначаем роль 'engineer'
+        await connection.query("UPDATE users SET role = 'engineer' WHERE username != 'admin' AND (role IS NULL OR role = '')");
+
+        console.log('✓ Таблица users готова (Sprint 12: роли и сессионные токены)');
         
         const [rows] = await connection.query('SELECT COUNT(*) as count FROM users');
         const count = rows[0].count;
@@ -44,8 +67,8 @@ async function initDatabase() {
         if (count === 0) {
             const adminPassword = await bcrypt.hash('admin123', 10);
             await connection.query(
-                'INSERT INTO users (username, password_hash) VALUES (?, ?)',
-                ['admin', adminPassword]
+                'INSERT INTO users (username, password_hash, role, must_change_password, token_version) VALUES (?, ?, ?, ?, ?)',
+                ['admin', adminPassword, 'admin', 0, 1]
             );
             console.log('✓ Создан администратор по умолчанию (admin / admin123)');
         }
@@ -108,14 +131,14 @@ async function registerUser(username, password) {
     }
 }
 
-// Аутентификация пользователя
+// Аутентификация пользователя (Спринт 12: роли, признак смены пароля и версия сессии)
 async function authenticateUser(username, password) {
     let connection;
     try {
         connection = await pool.getConnection();
 
         const [rows] = await connection.query(
-            'SELECT id, username, password_hash FROM users WHERE username = ?',
+            'SELECT id, username, password_hash, role, must_change_password, token_version FROM users WHERE username = ?',
             [username]
         );
         
@@ -142,7 +165,10 @@ async function authenticateUser(username, password) {
             success: true, 
             user: {
                 id: user.id,
-                username: user.username
+                username: user.username,
+                role: user.role || 'engineer',
+                must_change_password: Boolean(user.must_change_password),
+                token_version: user.token_version || 1
             }
         };
         
@@ -154,14 +180,14 @@ async function authenticateUser(username, password) {
     }
 }
 
-// Получение пользователя по ID
+// Получение пользователя по ID (Спринт 12: выборка роли, обязательной смены и версии токена)
 async function getUserById(userId) {
     let connection;
     try {
         connection = await pool.getConnection();
 
         const [rows] = await connection.query(
-            'SELECT id, username, email, created_at, last_login FROM users WHERE id = ?',
+            'SELECT id, username, email, role, must_change_password, token_version, created_at, last_login FROM users WHERE id = ?',
             [userId]
         );
         
@@ -197,14 +223,15 @@ async function updateProfile(userId, { email }) {
     }
 }
 
-// Получение всех пользователей (для админки)
+// Получение всех пользователей (для закрытой админки, Спринт 12)
+// Примечание: password_hash и сессионные секреты категорически исключены из выборки!
 async function getAllUsers() {
     let connection;
     try {
         connection = await pool.getConnection();
 
         const [rows] = await connection.query(
-            'SELECT id, username, created_at, last_login FROM users ORDER BY created_at DESC'
+            'SELECT id, username, email, role, must_change_password, created_at, last_login FROM users ORDER BY id ASC'
         );
         
         return rows;
@@ -217,55 +244,98 @@ async function getAllUsers() {
     }
 }
 
-// Проверка существования пользователя по логину (Спринт 7)
-async function checkUserExists(username) {
-    if (!username || typeof username !== 'string' || !username.trim()) {
-        return { exists: false };
+// Административный сброс пароля целевого пользователя (Спринт 12)
+async function adminResetPassword(targetUserId, tempPassword) {
+    if (!targetUserId || !tempPassword) {
+        return { success: false, error: 'Не указаны обязательные параметры' };
     }
     let connection;
     try {
         connection = await pool.getConnection();
-        const [rows] = await connection.query(
-            'SELECT id FROM users WHERE LOWER(username) = LOWER(?)',
-            [username.trim()]
+
+        const [users] = await connection.query(
+            'SELECT id, username, role, token_version FROM users WHERE id = ?',
+            [targetUserId]
         );
-        return { exists: rows.length > 0 };
+
+        if (users.length === 0) {
+            return { success: false, error: 'Пользователь не найден' };
+        }
+
+        const targetUser = users[0];
+        if (targetUser.role === 'admin') {
+            return { success: false, error: 'Сброс пароля учётной записи администратора запрещён' };
+        }
+
+        const passwordHash = await bcrypt.hash(tempPassword, 10);
+        const nextTokenVersion = (targetUser.token_version || 1) + 1;
+
+        await connection.query(
+            'UPDATE users SET password_hash = ?, must_change_password = 1, token_version = ? WHERE id = ?',
+            [passwordHash, nextTokenVersion, targetUserId]
+        );
+
+        return {
+            success: true,
+            user: {
+                id: targetUser.id,
+                username: targetUser.username
+            }
+        };
     } catch (err) {
-        console.error('Ошибка проверки пользователя:', err.message);
-        return { exists: false, error: 'Ошибка сервера при проверке пользователя' };
+        console.error('Ошибка административного сброса пароля:', err.message);
+        return { success: false, error: 'Ошибка сервера при сбросе пароля' };
     } finally {
         if (connection) connection.release();
     }
 }
 
-// Сброс пароля пользователя (Спринт 7)
-async function resetPassword(username, newPassword) {
-    if (!username || typeof username !== 'string' || !username.trim()) {
-        return { success: false, error: 'Логин не указан' };
+// Безопасная смена пароля пользователем (Спринт 12)
+async function changeUserPassword(userId, currentPassword, newPassword) {
+    if (!userId || !currentPassword || !newPassword) {
+        return { success: false, error: 'Заполните все обязательные поля' };
     }
-    if (!newPassword || typeof newPassword !== 'string' || newPassword.length < 8) {
-        return { success: false, error: 'Пароль должен содержать минимум 8 символов' };
+    if (typeof newPassword !== 'string' || newPassword.length < 8) {
+        return { success: false, error: 'Новый пароль должен содержать минимум 8 символов' };
     }
+    if (currentPassword === newPassword) {
+        return { success: false, error: 'Новый пароль должен отличаться от текущего' };
+    }
+
     let connection;
     try {
         connection = await pool.getConnection();
+
         const [rows] = await connection.query(
-            'SELECT id FROM users WHERE LOWER(username) = LOWER(?)',
-            [username.trim()]
+            'SELECT id, username, password_hash, token_version FROM users WHERE id = ?',
+            [userId]
         );
+
         if (rows.length === 0) {
             return { success: false, error: 'Пользователь не найден' };
         }
-        const passwordHash = await bcrypt.hash(newPassword, 10);
+
+        const user = rows[0];
+        const match = await bcrypt.compare(currentPassword, user.password_hash);
+        if (!match) {
+            return { success: false, error: 'Неверный текущий пароль' };
+        }
+
+        const newHash = await bcrypt.hash(newPassword, 10);
+        const nextTokenVersion = (user.token_version || 1) + 1;
+
         await connection.query(
-            'UPDATE users SET password_hash = ? WHERE id = ?',
-            [passwordHash, rows[0].id]
+            'UPDATE users SET password_hash = ?, must_change_password = 0, token_version = ? WHERE id = ?',
+            [newHash, nextTokenVersion, userId]
         );
-        console.log(`✓ Пароль пользователя ${username.trim()} успешно обновлен`);
-        return { success: true };
+
+        return {
+            success: true,
+            nextTokenVersion
+        };
     } catch (err) {
-        console.error('Ошибка сброса пароля:', err.message);
-        return { success: false, error: 'Ошибка сервера при сбросе пароля' };
+        console.error('Ошибка смены пароля:', err.message);
+        return { success: false, error: 'Ошибка сервера при смене пароля' };
     } finally {
         if (connection) connection.release();
     }
@@ -279,8 +349,7 @@ module.exports = {
     getUserById,
     updateProfile,
     getAllUsers,
-    checkUserExists,
-    verifyUser: checkUserExists,
-    resetPassword
+    adminResetPassword,
+    changeUserPassword
 };
 

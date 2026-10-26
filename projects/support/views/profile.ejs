@@ -23,8 +23,11 @@
         </div>
 
         <nav class="home-topbar__nav" aria-label="Основная навигация">
-            <a href="/" class="home-topbar__nav-link">Главная</a>
+            <a href="/" class="home-topbar__nav-link" data-i18n="nav.home">Главная</a>
             <a href="/wiki" class="home-topbar__nav-link">Wiki</a>
+            <% if (user && user.role === 'admin') { %>
+            <a href="/admin/users" class="home-topbar__nav-link" data-i18n="nav.adminUsers">Пользователи</a>
+            <% } %>
         </nav>
 
         <div class="home-topbar__account">
@@ -51,8 +54,21 @@
                             <path d="M4 21C4.8 17.8 7.5 16 12 16C16.5 16 19.2 17.8 20 21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
                         </svg>
                     </span>
-                    <span>Профиль</span>
+                    <span data-i18n="nav.profile">Профиль</span>
                 </a>
+                <% if (user && user.role === 'admin') { %>
+                <a href="/admin/users" class="home-account-menu__item">
+                    <span class="home-account-menu__icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                            <circle cx="9" cy="7" r="4"/>
+                            <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                            <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                        </svg>
+                    </span>
+                    <span data-i18n="nav.adminUsers">Управление пользователями</span>
+                </a>
+                <% } %>
                 <a href="/logout" class="home-account-menu__item">
                     <span class="home-account-menu__icon" aria-hidden="true">
                         <svg viewBox="0 0 24 24" fill="none">
@@ -102,6 +118,20 @@
 
             <!-- ── Body ── -->
             <div class="profile-card-body">
+                <% if ((userDetails && userDetails.must_change_password) || (user && user.must_change_password)) { %>
+                <div class="profile-warning-banner" role="alert" id="mustChangePasswordBanner">
+                    <div class="profile-warning-banner__icon">
+                        <svg viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                        </svg>
+                    </div>
+                    <div class="profile-warning-banner__content">
+                        <h3 class="profile-warning-banner__title" data-i18n="profile.mustChange.title">Требуется сменить пароль</h3>
+                        <p class="profile-warning-banner__text" data-i18n="profile.mustChange.desc">Ваш пароль был сброшен администратором. Для продолжения работы в системе установите новый постоянный пароль.</p>
+                    </div>
+                </div>
+                <% } %>
+
                 <h2 class="profile-section-title" data-i18n="section.account">Информация об аккаунте</h2>
 
                 <div class="profile-info-table">
@@ -117,6 +147,22 @@
                         <span class="profile-info-label" data-i18n="field.login">Логин</span>
                         <span class="profile-info-value">
                             <span class="profile-info-value--mono"><%= user.username %></span>
+                        </span>
+                    </div>
+
+                    <!-- Роль -->
+                    <% const currentRole = (userDetails && userDetails.role) || (user && user.role) || 'engineer'; %>
+                    <div class="profile-info-row">
+                        <span class="profile-info-icon" aria-hidden="true">
+                            <svg viewBox="0 0 20 20" fill="none">
+                                <path d="M10 2L3 6v5c0 4.5 3 8.5 7 9.5 4-1 7-5 7-9.5V6l-7-4z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+                            </svg>
+                        </span>
+                        <span class="profile-info-label" data-i18n="admin.users.col.role">Роль</span>
+                        <span class="profile-info-value">
+                            <span class="role-badge role-badge--<%= currentRole %>" data-i18n="admin.users.role.<%= currentRole %>">
+                                <%= currentRole === 'admin' ? 'Администратор' : 'Инженер' %>
+                            </span>
                         </span>
                     </div>
 
@@ -233,6 +279,60 @@
                     </div>
                     <% } %>
 
+                </div>
+
+                <!-- ── Секция: Смена пароля (Спринт 12) ── -->
+                <div class="profile-password-section">
+                    <h2 class="profile-section-title" data-i18n="profile.section.password">Смена пароля</h2>
+                    
+                    <form id="changePasswordForm" class="profile-password-form" novalidate onsubmit="return false;">
+                        <!-- Текущий / временный пароль -->
+                        <div class="profile-form-group">
+                            <label for="currentPassword" class="profile-form-label" data-i18n="profile.password.current">Текущий / временный пароль</label>
+                            <div class="profile-input-wrapper">
+                                <input type="password" id="currentPassword" class="profile-form-input" autocomplete="current-password" placeholder="••••••••" required>
+                                <button type="button" class="password-toggle-btn" data-target="currentPassword" aria-label="Показать пароль">
+                                    <svg class="eye-show" viewBox="0 0 20 20" fill="none" stroke="currentColor"><path d="M1.5 10s3-5.5 8.5-5.5 8.5 5.5 8.5 5.5-3 5.5-8.5 5.5S1.5 10 1.5 10z" stroke-linecap="round" stroke-linejoin="round"/><circle cx="10" cy="10" r="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                                    <svg class="eye-hide" viewBox="0 0 20 20" fill="none" stroke="currentColor" style="display:none;"><path d="M2.5 2.5l15 15" stroke-linecap="round" stroke-linejoin="round"/><path d="M8.5 8.5a2.5 2.5 0 003.5 3.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M5.5 5.5C3.5 7 2 10 2 10s3 5.5 8 5.5c2 0 3.7-.6 5-1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M9.5 4.5c.2 0 .3 0 .5 0 5 0 8 5.5 8 5.5s-.8 1.4-2.2 2.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Новый пароль -->
+                        <div class="profile-form-group">
+                            <label for="newPassword" class="profile-form-label" data-i18n="profile.password.new">Новый пароль</label>
+                            <div class="profile-input-wrapper">
+                                <input type="password" id="newPassword" class="profile-form-input" minlength="8" autocomplete="new-password" placeholder="••••••••" required>
+                                <button type="button" class="password-toggle-btn" data-target="newPassword" aria-label="Показать пароль">
+                                    <svg class="eye-show" viewBox="0 0 20 20" fill="none" stroke="currentColor"><path d="M1.5 10s3-5.5 8.5-5.5 8.5 5.5 8.5 5.5-3 5.5-8.5 5.5S1.5 10 1.5 10z" stroke-linecap="round" stroke-linejoin="round"/><circle cx="10" cy="10" r="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                                    <svg class="eye-hide" viewBox="0 0 20 20" fill="none" stroke="currentColor" style="display:none;"><path d="M2.5 2.5l15 15" stroke-linecap="round" stroke-linejoin="round"/><path d="M8.5 8.5a2.5 2.5 0 003.5 3.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M5.5 5.5C3.5 7 2 10 2 10s3 5.5 8 5.5c2 0 3.7-.6 5-1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M9.5 4.5c.2 0 .3 0 .5 0 5 0 8 5.5 8 5.5s-.8 1.4-2.2 2.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                                </button>
+                            </div>
+                            <span class="profile-form-hint" data-i18n="profile.password.hint">Минимум 8 символов</span>
+                        </div>
+
+                        <!-- Подтверждение нового пароля -->
+                        <div class="profile-form-group">
+                            <label for="confirmPassword" class="profile-form-label" data-i18n="profile.password.confirm">Подтверждение нового пароля</label>
+                            <div class="profile-input-wrapper">
+                                <input type="password" id="confirmPassword" class="profile-form-input" minlength="8" autocomplete="new-password" placeholder="••••••••" required>
+                                <button type="button" class="password-toggle-btn" data-target="confirmPassword" aria-label="Показать пароль">
+                                    <svg class="eye-show" viewBox="0 0 20 20" fill="none" stroke="currentColor"><path d="M1.5 10s3-5.5 8.5-5.5 8.5 5.5 8.5 5.5-3 5.5-8.5 5.5S1.5 10 1.5 10z" stroke-linecap="round" stroke-linejoin="round"/><circle cx="10" cy="10" r="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                                    <svg class="eye-hide" viewBox="0 0 20 20" fill="none" stroke="currentColor" style="display:none;"><path d="M2.5 2.5l15 15" stroke-linecap="round" stroke-linejoin="round"/><path d="M8.5 8.5a2.5 2.5 0 003.5 3.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M5.5 5.5C3.5 7 2 10 2 10s3 5.5 8 5.5c2 0 3.7-.6 5-1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M9.5 4.5c.2 0 .3 0 .5 0 5 0 8 5.5 8 5.5s-.8 1.4-2.2 2.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Сообщение о статусе смены пароля -->
+                        <div class="profile-save-notice" id="passwordSaveNotice"></div>
+
+                        <!-- Кнопка обновления пароля -->
+                        <div class="profile-form-actions">
+                            <button type="button" class="profile-email-save-btn profile-password-submit" id="savePasswordBtn">
+                                <span data-i18n="profile.password.btn">Обновить пароль</span>
+                            </button>
+                        </div>
+                    </form>
                 </div>
 
                 <!-- Save notice -->
@@ -460,6 +560,115 @@
             emailSaveBtn.disabled = false;
             emailSaveBtn.textContent = origText;
         });
+
+        /* ── Password change handler (Sprint 12) ────────────────────────── */
+        var currentPasswordInput = document.getElementById('currentPassword');
+        var newPasswordInput     = document.getElementById('newPassword');
+        var confirmPasswordInput = document.getElementById('confirmPassword');
+        var savePasswordBtn      = document.getElementById('savePasswordBtn');
+        var passwordNotice       = document.getElementById('passwordSaveNotice');
+        var mustChangeBanner     = document.getElementById('mustChangePasswordBanner');
+
+        // Setup password show/hide eye toggles
+        document.querySelectorAll('.password-toggle-btn[data-target]').forEach(function (btn) {
+            btn.addEventListener('click', function (e) {
+                e.preventDefault();
+                var targetId = this.getAttribute('data-target');
+                var input = document.getElementById(targetId);
+                if (!input) return;
+                var isPass = input.getAttribute('type') === 'password';
+                input.setAttribute('type', isPass ? 'text' : 'password');
+                var eyeShow = this.querySelector('.eye-show');
+                var eyeHide = this.querySelector('.eye-hide');
+                if (eyeShow) eyeShow.style.display = isPass ? 'none' : 'block';
+                if (eyeHide) eyeHide.style.display = isPass ? 'block' : 'none';
+                input.focus();
+            });
+        });
+
+        function showPasswordNotice(msg, isError) {
+            if (!passwordNotice) return;
+            passwordNotice.textContent = msg;
+            passwordNotice.className = 'profile-save-notice ' + (isError ? 'is-error' : 'is-success');
+            clearTimeout(passwordNotice._timer);
+            passwordNotice._timer = setTimeout(function () {
+                passwordNotice.className = 'profile-save-notice';
+                passwordNotice.textContent = '';
+            }, 4500);
+        }
+
+        if (savePasswordBtn) {
+            savePasswordBtn.addEventListener('click', async function () {
+                var curPass = currentPasswordInput ? currentPasswordInput.value : '';
+                var newPass = newPasswordInput ? newPasswordInput.value : '';
+                var cnfPass = confirmPasswordInput ? confirmPasswordInput.value : '';
+
+                if (!curPass) {
+                    showPasswordNotice(window.ITS_I18n ? window.ITS_I18n.t('profile.password.err.current') : 'Введите текущий пароль', true);
+                    if (currentPasswordInput) currentPasswordInput.focus();
+                    return;
+                }
+                if (!newPass || newPass.length < 8) {
+                    showPasswordNotice(window.ITS_I18n ? window.ITS_I18n.t('profile.password.err.length') : 'Пароль должен содержать минимум 8 символов', true);
+                    if (newPasswordInput) newPasswordInput.focus();
+                    return;
+                }
+                if (newPass !== cnfPass) {
+                    showPasswordNotice(window.ITS_I18n ? window.ITS_I18n.t('profile.password.err.match') : 'Пароли не совпадают', true);
+                    if (confirmPasswordInput) confirmPasswordInput.focus();
+                    return;
+                }
+                if (newPass === curPass) {
+                    showPasswordNotice(window.ITS_I18n ? window.ITS_I18n.t('profile.password.err.same') : 'Новый пароль должен отличаться от текущего', true);
+                    if (newPasswordInput) newPasswordInput.focus();
+                    return;
+                }
+
+                savePasswordBtn.disabled = true;
+                var origText = savePasswordBtn.textContent;
+                savePasswordBtn.textContent = '...';
+
+                try {
+                    var resp = await fetch('/api/profile/password', {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            currentPassword: curPass,
+                            newPassword: newPass,
+                            confirmPassword: cnfPass
+                        })
+                    });
+                    var data = await resp.json();
+
+                    if (!resp.ok || !data.success) {
+                        showPasswordNotice(data.error || (window.ITS_I18n ? window.ITS_I18n.t('profile.password.err.save') : 'Ошибка смены пароля'), true);
+                        savePasswordBtn.disabled = false;
+                        savePasswordBtn.textContent = origText;
+                        return;
+                    }
+
+                    // Success
+                    if (currentPasswordInput) currentPasswordInput.value = '';
+                    if (newPasswordInput) newPasswordInput.value = '';
+                    if (confirmPasswordInput) confirmPasswordInput.value = '';
+
+                    if (mustChangeBanner) {
+                        mustChangeBanner.style.transition = 'opacity 0.4s ease, max-height 0.4s ease';
+                        mustChangeBanner.style.opacity = '0';
+                        setTimeout(function () {
+                            mustChangeBanner.remove();
+                        }, 400);
+                    }
+
+                    showPasswordNotice(window.ITS_I18n ? window.ITS_I18n.t('profile.password.success') : 'Пароль успешно обновлён', false);
+                } catch (err) {
+                    showPasswordNotice(window.ITS_I18n ? window.ITS_I18n.t('email.err.conn') : 'Ошибка соединения', true);
+                } finally {
+                    savePasswordBtn.disabled = false;
+                    savePasswordBtn.textContent = origText;
+                }
+            });
+        }
 
     })();
     </script>

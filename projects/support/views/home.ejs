@@ -25,6 +25,9 @@
         <nav class="home-topbar__nav" aria-label="Основная навигация">
             <a href="/" class="home-topbar__nav-link is-active" data-i18n="nav.home">Главная</a>
             <a href="/wiki" class="home-topbar__nav-link">Wiki</a>
+            <% if (user && user.role === 'admin') { %>
+            <a href="/admin/users" class="home-topbar__nav-link" data-i18n="nav.adminUsers">Пользователи</a>
+            <% } %>
             <!-- <a href="/events" class="home-topbar__nav-link">События</a> -->
         </nav>
 
@@ -53,6 +56,14 @@
                     </span>
                     <span data-i18n="nav.profile">Профиль</span>
                 </a>
+                <% if (user && user.role === 'admin') { %>
+                <a href="/admin/users" class="home-account-menu__item">
+                    <span class="home-account-menu__icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                    </span>
+                    <span data-i18n="nav.adminUsers">Управление пользователями</span>
+                </a>
+                <% } %>
                 <a href="/logout" class="home-account-menu__item">
                     <span class="home-account-menu__icon" aria-hidden="true">
                         <svg viewBox="0 0 24 24" fill="none">

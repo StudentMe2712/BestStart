@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="ru" id="htmlRoot">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Управление пользователями — ИТС-Ком</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="/css/admin-users.css">
+    <meta name="app-user" content="<%= user.username %>">
+    <link rel="icon" type="image/png" href="/favicon.png">
+    <script>(function(){var m=document.querySelector('meta[name="app-user"]');var u=m&&m.getAttribute('content');var k=u?'ui_theme_'+u:'ui_theme';var t=localStorage.getItem(k);if(t)document.documentElement.setAttribute('data-theme',t);})()</script>
+</head>
+<body class="home-body admin-users-body">
+    <% const displayName = user.username === 'admin' ? 'Администратор' : user.username; %>
+    <% const avatarLetter = displayName.charAt(0).toUpperCase(); %>
+
+    <!-- Верхняя панель навигации -->
+    <header class="home-topbar">
+        <div class="home-topbar__brand">
+            <a href="/" class="home-brand-link">
+                <img src="/logo.png" alt="ИТС-Ком" class="home-brand-logo">
+                <span class="home-brand-name">ИТС-Ком</span>
+            </a>
+        </div>
+
+        <nav class="home-topbar__nav" aria-label="Основная навигация">
+            <a href="/" class="home-topbar__nav-link" data-i18n="nav.home">Главная</a>
+            <a href="/wiki" class="home-topbar__nav-link">Wiki</a>
+            <a href="/admin/users" class="home-topbar__nav-link is-active" data-i18n="nav.adminUsers">Пользователи</a>
+        </nav>
+
+        <div class="home-topbar__account">
+            <button class="theme-toggle-btn" id="themeToggle" type="button" aria-label="Переключить тему">
+                <svg class="theme-icon theme-icon--sun" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="4" stroke="currentColor" stroke-width="1.5"/><path d="M10 2V4M10 16V18M2 10H4M16 10H18M4.22 4.22L5.64 5.64M14.36 14.36L15.78 15.78M15.78 4.22L14.36 5.64M5.64 14.36L4.22 15.78" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                <svg class="theme-icon theme-icon--moon" viewBox="0 0 20 20" fill="none"><path d="M17 11C16.4 15 12.8 18 8.5 17.5C4.2 17 1 13.3 1.5 9C2 4.7 5.8 1.8 10 2.5C8.5 4.5 8.5 8 11 10C13.5 12 16.5 11.5 17 11Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+            <button class="home-account-button" type="button" id="homeAccountToggle"
+                    aria-expanded="false" aria-controls="homeAccountMenu">
+                <span class="home-account-avatar"><%= avatarLetter %></span>
+                <span class="home-account-name"><%= displayName %></span>
+                <span class="home-account-caret" aria-hidden="true">
+                    <svg viewBox="0 0 20 20" fill="none">
+                        <path d="M5 7.5L10 12.5L15 7.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </span>
+            </button>
+            <div class="home-account-menu" id="homeAccountMenu">
+                <a href="/profile" class="home-account-menu__item">
+                    <span class="home-account-menu__icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none"><path d="M12 13C14.7614 13 17 10.7614 17 8C17 5.23858 14.7614 3 12 3C9.23858 3 7 5.23858 7 8C7 10.7614 9.23858 13 12 13Z" stroke="currentColor" stroke-width="2"/><path d="M4 21C4.8 17.8 7.5 16 12 16C16.5 16 19.2 17.8 20 21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                    </span>
+                    <span data-i18n="nav.profile">Профиль</span>
+                </a>
+                <a href="/admin/users" class="home-account-menu__item is-highlighted is-current-page">
+                    <span class="home-account-menu__icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                    </span>
+                    <span data-i18n="nav.adminUsers">Управление пользователями</span>
+                </a>
+                <a href="/logout" class="home-account-menu__item">
+                    <span class="home-account-menu__icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none"><path d="M10 17L15 12L10 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M15 12H4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M13 4H18C19.1046 4 20 4.89543 20 6V18C20 19.1046 19.1046 20 18 20H13" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                    </span>
+                    <span data-i18n="nav.logout.short">Выйти</span>
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <!-- Основной рабочий контейнер -->
+    <main class="admin-users-page" id="mainContent">
+        <div class="admin-users-container">
+            <!-- Заголовочная секция -->
+            <div class="admin-users-header">
+                <div class="admin-users-header__info">
+                    <h1 class="admin-users-title" data-i18n="admin.users.title">Управление пользователями</h1>
+                    <p class="admin-users-subtitle" data-i18n="admin.users.subtitle">Административный сброс паролей и безопасность учетных записей</p>
+                </div>
+                <div class="admin-users-header__badge">
+                    <span class="badge-count" id="usersTotalBadge"><%= users ? users.length : 0 %></span>
+                    <span class="badge-label" data-i18n="admin.users.count">пользователей</span>
+                </div>
+            </div>
+
+            <!-- Таблица пользователей -->
+            <div class="admin-users-card">
+                <div class="table-responsive">
+                    <table class="admin-users-table" id="usersTable">
+                        <thead>
+                            <tr>
+                                <th class="th-id" data-i18n="admin.users.col.id">#</th>
+                                <th class="th-user" data-i18n="admin.users.col.user">Пользователь</th>
+                                <th class="th-role" data-i18n="admin.users.col.role">Роль</th>
+                                <th class="th-status" data-i18n="admin.users.col.status">Статус</th>
+                                <th class="th-created" data-i18n="admin.users.col.created">Создан</th>
+                                <th class="th-login" data-i18n="admin.users.col.lastLogin">Последний вход</th>
+                                <th class="th-actions" data-i18n="admin.users.col.actions">Действия</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <% if (users && users.length > 0) { %>
+                                <% users.forEach(function(u) { %>
+                                    <% const isCurrent = u.id === user.id; %>
+                                    <% const isAdmin = u.role === 'admin'; %>
+                                    <% const uAvatarLetter = (u.username || 'U').charAt(0).toUpperCase(); %>
+                                    <tr id="userRow-<%= u.id %>" class="user-row <%= isAdmin ? 'is-admin-row' : '' %>">
+                                        <td class="td-id"><span class="user-id-mono">#<%= u.id %></span></td>
+                                        <td class="td-user">
+                                            <div class="user-cell">
+                                                <span class="user-avatar-mini"><%= uAvatarLetter %></span>
+                                                <div class="user-meta">
+                                                    <span class="user-name"><%= u.username %></span>
+                                                    <% if (u.email) { %>
+                                                        <span class="user-email"><%= u.email %></span>
+                                                    <% } %>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td class="td-role">
+                                            <span class="role-badge role-badge--<%= u.role || 'engineer' %>" data-i18n="admin.users.role.<%= u.role || 'engineer' %>">
+                                                <%= u.role === 'admin' ? 'Администратор' : 'Инженер' %>
+                                            </span>
+                                        </td>
+                                        <td class="td-status">
+                                            <% if (u.must_change_password) { %>
+                                                <span class="status-badge status-badge--must-change" id="statusBadge-<%= u.id %>" data-i18n="admin.users.status.mustChange">Смена пароля</span>
+                                            <% } else { %>
+                                                <span class="status-badge status-badge--active" id="statusBadge-<%= u.id %>" data-i18n="admin.users.status.active">Активен</span>
+                                            <% } %>
+                                        </td>
+                                        <td class="td-created">
+                                            <%= u.created_at ? new Date(u.created_at).toLocaleDateString('ru-RU') : '—' %>
+                                        </td>
+                                        <td class="td-login">
+                                            <%= u.last_login ? new Date(u.last_login).toLocaleString('ru-RU', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' }) : 'Никогда' %>
+                                        </td>
+                                        <td class="td-actions">
+                                            <% if (isAdmin || isCurrent) { %>
+                                                <span class="action-protected-badge" data-i18n="admin.users.protected">Защищено</span>
+                                            <% } else { %>
+                                                <button type="button" class="btn-reset-password btnResetAction"
+                                                        data-user-id="<%= u.id %>"
+                                                        data-username="<%= u.username %>">
+                                                    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
+                                                        <path d="M10.5 5.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0z" stroke-linecap="round"/>
+                                                        <path d="M8 8.5v4.5l2-1.5 2 1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                                                    </svg>
+                                                    <span data-i18n="admin.users.btn.reset">Сбросить пароль</span>
+                                                </button>
+                                            <% } %>
+                                        </td>
+                                    </tr>
+                                <% }); %>
+                            <% } else { %>
+                                <tr>
+                                    <td colspan="7" class="td-empty" data-i18n="admin.users.empty">Пользователи не найдены</td>
+                                </tr>
+                            <% } %>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- ── Диалог подтверждения сброса (Unified Modal Style) ── -->
+    <div class="confirm-modal" id="confirmResetModal" role="dialog" aria-modal="true" aria-hidden="true">
+        <div class="confirm-modal__overlay" id="confirmOverlay"></div>
+        <div class="confirm-modal__window" role="document">
+            <div class="confirm-modal__header">
+                <div class="confirm-modal__icon-wrap confirm-modal__icon-wrap--warning">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"/>
+                        <line x1="12" y1="8" x2="12" y2="12"/>
+                        <line x1="12" y1="16" x2="12.01" y2="16"/>
+                    </svg>
+                </div>
+                <h3 class="confirm-modal__title" data-i18n="admin.users.modal.confirm.title">Сброс пароля пользователя</h3>
+            </div>
+            <div class="confirm-modal__body">
+                <p class="confirm-modal__desc">
+                    Вы действительно хотите сбросить пароль для пользователя:
+                </p>
+                <div class="confirm-modal__item-box">
+                    <strong id="targetUsernameDisplay">username</strong>
+                </div>
+                <div class="confirm-modal__warning" data-i18n="admin.users.modal.confirm.warn">
+                    Будет сгенерирован новый временный пароль, а активные сессии пользователя будут немедленно завершены. При следующем входе потребуется обязательная смена пароля.
+                </div>
+            </div>
+            <div class="confirm-modal__footer">
+                <button type="button" class="btn-confirm-cancel" id="btnCancelReset" data-i18n="wiki.modal.cancel.btn">Отмена</button>
+                <button type="button" class="btn-confirm-warning" id="btnConfirmReset">
+                    <span class="btn-spinner" id="resetBtnSpinner" style="display: none;"></span>
+                    <span id="btnConfirmResetText" data-i18n="admin.users.modal.confirm.btn">Сгенерировать временный пароль</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Диалог одноразового отображения временного пароля ── -->
+    <div class="confirm-modal" id="tempPasswordModal" role="dialog" aria-modal="true" aria-hidden="true">
+        <div class="confirm-modal__overlay" id="tempPasswordOverlay"></div>
+        <div class="confirm-modal__window" role="document">
+            <div class="confirm-modal__header">
+                <div class="confirm-modal__icon-wrap confirm-modal__icon-wrap--success">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                        <polyline points="22 4 12 14.01 9 11.01"/>
+                    </svg>
+                </div>
+                <h3 class="confirm-modal__title" data-i18n="admin.users.modal.result.title">Временный пароль создан</h3>
+            </div>
+            <div class="confirm-modal__body">
+                <p class="confirm-modal__desc">
+                    Пароль для пользователя <strong id="resultUsernameDisplay"></strong> успешно обновлён:
+                </p>
+                <div class="temp-password-box">
+                    <input type="text" id="tempPasswordDisplay" class="temp-password-input" readonly value="">
+                    <button type="button" id="copyTempPasswordBtn" class="btn-copy-temp">
+                        <svg class="copy-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8">
+                            <rect x="7" y="7" width="10" height="10" rx="2"/>
+                            <path d="M4 13V4a1 1 0 011-1h9" stroke-linecap="round"/>
+                        </svg>
+                        <span id="copyTempPasswordText" data-i18n="admin.users.modal.result.copy">Скопировать</span>
+                    </button>
+                </div>
+                <div class="confirm-modal__warning confirm-modal__warning--notice" data-i18n="admin.users.modal.result.warn">
+                    ⚠️ Сохраните или передайте пароль сотруднику. Он отображается один раз и не будет доступен повторно.
+                </div>
+            </div>
+            <div class="confirm-modal__footer">
+                <button type="button" class="btn-confirm-primary" id="btnCloseTempModal" data-i18n="admin.users.modal.result.close">Закрыть</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Всплывающее Toast-уведомление -->
+    <div class="admin-toast" id="adminToast" role="status" aria-live="polite"></div>
+
+    <script src="/js/i18n.js"></script>
+    <script>
+    (function() {
+        /* ── Dropdown аккаунта ── */
+        var toggle = document.getElementById('homeAccountToggle');
+        var menu   = document.getElementById('homeAccountMenu');
+        if (toggle && menu) {
+            toggle.addEventListener('click', function(e) {
+                e.stopPropagation();
+                var isOpen = menu.classList.toggle('is-open');
+                toggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+            });
+            document.addEventListener('click', function(e) {
+                if (!menu.contains(e.target) && !toggle.contains(e.target)) {
+                    menu.classList.remove('is-open');
+                    toggle.setAttribute('aria-expanded', 'false');
+                }
+            });
+        }
+
+        /* ── Модальные окна и логика сброса ── */
+        var confirmResetModal   = document.getElementById('confirmResetModal');
+        var tempPasswordModal   = document.getElementById('tempPasswordModal');
+        var targetUsernameDisplay = document.getElementById('targetUsernameDisplay');
+        var resultUsernameDisplay = document.getElementById('resultUsernameDisplay');
+        var tempPasswordDisplay   = document.getElementById('tempPasswordDisplay');
+        var btnConfirmReset     = document.getElementById('btnConfirmReset');
+        var btnCancelReset      = document.getElementById('btnCancelReset');
+        var btnCloseTempModal   = document.getElementById('btnCloseTempModal');
+        var copyTempPasswordBtn = document.getElementById('copyTempPasswordBtn');
+        var copyTempPasswordText= document.getElementById('copyTempPasswordText');
+        var resetBtnSpinner     = document.getElementById('resetBtnSpinner');
+        var btnConfirmResetText = document.getElementById('btnConfirmResetText');
+        var adminToast          = document.getElementById('adminToast');
+
+        var currentTargetId = null;
+        var currentTargetUsername = null;
+
+        function showToast(msg) {
+            if (!adminToast) return;
+            adminToast.textContent = msg;
+            adminToast.classList.add('is-visible');
+            clearTimeout(adminToast._timer);
+            adminToast._timer = setTimeout(function() {
+                adminToast.classList.remove('is-visible');
+            }, 3500);
+        }
+
+        function openConfirmModal(userId, username) {
+            currentTargetId = userId;
+            currentTargetUsername = username;
+            targetUsernameDisplay.textContent = username;
+            confirmResetModal.classList.add('is-open');
+            confirmResetModal.setAttribute('aria-hidden', 'false');
+        }
+
+        function closeConfirmModal() {
+            confirmResetModal.classList.remove('is-open');
+            confirmResetModal.setAttribute('aria-hidden', 'true');
+            currentTargetId = null;
+            currentTargetUsername = null;
+        }
+
+        function openTempPasswordModal(username, tempPass) {
+            resultUsernameDisplay.textContent = username;
+            tempPasswordDisplay.value = tempPass;
+            copyTempPasswordText.textContent = window.ITS_I18n ? window.ITS_I18n.t('admin.users.modal.result.copy') : 'Скопировать';
+            tempPasswordModal.classList.add('is-open');
+            tempPasswordModal.setAttribute('aria-hidden', 'false');
+        }
+
+        function closeTempPasswordModal() {
+            tempPasswordModal.classList.remove('is-open');
+            tempPasswordModal.setAttribute('aria-hidden', 'true');
+            // Очищаем значение пароля из памяти DOM
+            tempPasswordDisplay.value = '';
+            resultUsernameDisplay.textContent = '';
+        }
+
+        // Привязка кликов к кнопкам «Сбросить пароль»
+        document.querySelectorAll('.btnResetAction').forEach(function(btn) {
+            btn.addEventListener('click', function(e) {
+                e.preventDefault();
+                var uId = this.getAttribute('data-user-id');
+                var uName = this.getAttribute('data-username');
+                openConfirmModal(uId, uName);
+            });
+        });
+
+        if (btnCancelReset) {
+            btnCancelReset.addEventListener('click', closeConfirmModal);
+        }
+        document.getElementById('confirmOverlay')?.addEventListener('click', closeConfirmModal);
+
+        if (btnCloseTempModal) {
+            btnCloseTempModal.addEventListener('click', closeTempPasswordModal);
+        }
+        document.getElementById('tempPasswordOverlay')?.addEventListener('click', closeTempPasswordModal);
+
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                if (tempPasswordModal.classList.contains('is-open')) {
+                    closeTempPasswordModal();
+                } else if (confirmResetModal.classList.contains('is-open')) {
+                    closeConfirmModal();
+                }
+            }
+        });
+
+        // Отправка запроса сброса пароля
+        if (btnConfirmReset) {
+            btnConfirmReset.addEventListener('click', async function() {
+                if (!currentTargetId) return;
+
+                btnConfirmReset.disabled = true;
+                if (resetBtnSpinner) resetBtnSpinner.style.display = 'inline-block';
+                var origText = btnConfirmResetText.textContent;
+                btnConfirmResetText.textContent = 'Генерация...';
+
+                try {
+                    var resp = await fetch('/api/admin/users/' + currentTargetId + '/reset-password', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' }
+                    });
+                    var data = await resp.json();
+
+                    if (!resp.ok || !data.success) {
+                        showToast(data.error || 'Ошибка сброса пароля');
+                        btnConfirmReset.disabled = false;
+                        if (resetBtnSpinner) resetBtnSpinner.style.display = 'none';
+                        btnConfirmResetText.textContent = origText;
+                        return;
+                    }
+
+                    // Обновляем статус пользователя в таблице
+                    var statusBadge = document.getElementById('statusBadge-' + currentTargetId);
+                    if (statusBadge) {
+                        statusBadge.className = 'status-badge status-badge--must-change';
+                        statusBadge.textContent = window.ITS_I18n ? window.ITS_I18n.t('admin.users.status.mustChange') : 'Смена пароля';
+                    }
+
+                    var pass = data.tempPassword;
+                    var name = data.username || currentTargetUsername;
+                    closeConfirmModal();
+                    openTempPasswordModal(name, pass);
+
+                } catch (err) {
+                    showToast('Ошибка соединения с сервером');
+                } finally {
+                    btnConfirmReset.disabled = false;
+                    if (resetBtnSpinner) resetBtnSpinner.style.display = 'none';
+                    btnConfirmResetText.textContent = origText;
+                }
+            });
+        }
+
+        // Копирование временного пароля в буфер
+        if (copyTempPasswordBtn && tempPasswordDisplay) {
+            copyTempPasswordBtn.addEventListener('click', async function() {
+                var text = tempPasswordDisplay.value;
+                if (!text) return;
+
+                try {
+                    if (navigator.clipboard && navigator.clipboard.writeText) {
+                        await navigator.clipboard.writeText(text);
+                    } else {
+                        tempPasswordDisplay.select();
+                        document.execCommand('copy');
+                    }
+                    copyTempPasswordText.textContent = window.ITS_I18n ? window.ITS_I18n.t('admin.users.modal.result.copied') : 'Скопировано!';
+                    showToast(window.ITS_I18n ? window.ITS_I18n.t('admin.users.modal.result.copied') : 'Скопировано в буфер обмена');
+                    setTimeout(function() {
+                        copyTempPasswordText.textContent = window.ITS_I18n ? window.ITS_I18n.t('admin.users.modal.result.copy') : 'Скопировать';
+                    }, 2500);
+                } catch (e) {
+                    tempPasswordDisplay.select();
+                    document.execCommand('copy');
+                    showToast('Скопировано в буфер обмена');
+                }
+            });
+        }
+    })();
+    </script>
+</body>
+</html>

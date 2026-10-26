@@ -4,6 +4,7 @@ const bodyParser = require('body-parser');
 const session = require('express-session');
 const path = require('path');
 const fs = require('fs');
+const crypto = require('crypto');
 const multer = require('multer');
 const { marked } = require('marked');
 const createDOMPurify = require('dompurify');
@@ -14,7 +15,7 @@ const WordExtractor = require('word-extractor');
 
 const USE_STUB = (process.env.DB_STUB === 'true' || process.env.DB_STUB === '1') && fs.existsSync(path.join(__dirname, 'db-stub.js'));
 
-let pool, initDatabase, registerUser, authenticateUser, getUserById, updateProfile, checkUserExists, resetPassword, initOrganizationTable, organizationsDB, initDatabases1CTable, databases1CDB, initUserPinsTable, userPinsDB, initFilesTable, filesDB;
+let pool, initDatabase, registerUser, authenticateUser, getUserById, updateProfile, getAllUsers, adminResetPassword, changeUserPassword, checkUserExists, resetPassword, initOrganizationTable, organizationsDB, initDatabases1CTable, databases1CDB, initUserPinsTable, userPinsDB, initFilesTable, filesDB;
 
 if (USE_STUB) {
     console.log('⚠️  Using in-memory DB stub (DB_STUB=true)');
@@ -25,6 +26,9 @@ if (USE_STUB) {
     authenticateUser = stub.authenticateUser;
     getUserById = stub.getUserById;
     updateProfile = stub.updateProfile;
+    getAllUsers = stub.getAllUsers || (() => []);
+    adminResetPassword = stub.adminResetPassword || (() => ({ success: false }));
+    changeUserPassword = stub.changeUserPassword || (() => ({ success: false }));
     checkUserExists = stub.checkUserExists;
     resetPassword = stub.resetPassword;
     initOrganizationTable = stub.initOrganizationTable;
@@ -45,8 +49,9 @@ if (USE_STUB) {
     authenticateUser = authModule.authenticateUser;
     getUserById = authModule.getUserById;
     updateProfile = authModule.updateProfile;
-    checkUserExists = authModule.checkUserExists;
-    resetPassword = authModule.resetPassword;
+    getAllUsers = authModule.getAllUsers;
+    adminResetPassword = authModule.adminResetPassword;
+    changeUserPassword = authModule.changeUserPassword;
     initOrganizationTable = dbModule.initOrganizationTable;
     organizationsDB = dbModule.organizationsDB;
     initDatabases1CTable = dbModule.initDatabases1CTable;
@@ -139,12 +144,109 @@ app.use(session({
     }
 }));
 
-// Middleware для проверки авторизации
-function requireAuth(req, res, next) {
-    if (req.session && (req.session.user || req.session.userId)) {
+// Определение типа запроса: API/JSON или стандартный браузерный HTML переход
+function isApiRequest(req) {
+    return req.path.startsWith('/api/') ||
+           req.xhr ||
+           req.is('json') ||
+           Boolean(req.headers.accept && req.headers.accept.includes('application/json'));
+}
+
+// Middleware для проверки авторизации (Спринт 12)
+// Проверяет наличие сессии, валидирует token_version в БД и контролирует обязательную смену пароля
+async function requireAuth(req, res, next) {
+    const sessionUserId = (req.session && req.session.user && req.session.user.id) || (req.session && req.session.userId);
+    if (!sessionUserId) {
+        if (isApiRequest(req)) {
+            return res.status(401).json({ success: false, error: 'Требуется авторизация' });
+        }
+        return res.redirect('/login');
+    }
+
+    try {
+        const user = await getUserById(sessionUserId);
+        if (!user) {
+            req.session.destroy(() => {});
+            if (isApiRequest(req)) {
+                return res.status(401).json({ success: false, error: 'Пользователь не найден' });
+            }
+            return res.redirect('/login');
+        }
+
+        // Проверка инвалидации сессии: при сбросе/смене пароля token_version увеличивается
+        const sessionTokenVersion = req.session.token_version || (req.session.user && req.session.user.tokenVersion);
+        if (sessionTokenVersion && user.token_version !== sessionTokenVersion) {
+            req.session.destroy(() => {});
+            if (isApiRequest(req)) {
+                return res.status(401).json({ success: false, error: 'Сессия устарела. Войдите снова.' });
+            }
+            return res.redirect('/login?expired=1');
+        }
+
+        // Актуализируем объект пользователя в сессии из доверенной БД
+        if (!req.session.user) {
+            req.session.user = { id: user.id, username: user.username };
+        }
+        req.session.user.role = user.role || 'engineer';
+        req.session.user.must_change_password = Boolean(user.must_change_password);
+        req.session.user.tokenVersion = user.token_version || 1;
+        req.session.token_version = user.token_version || 1;
+
+        // Блокировка доступа к рабочим разделам, если активен флаг обязательной смены пароля
+        if (user.must_change_password) {
+            const allowedPrefixes = ['/profile', '/api/profile', '/logout'];
+            const isAllowed = allowedPrefixes.some(p => req.path === p || req.path.startsWith(p));
+            if (!isAllowed) {
+                if (isApiRequest(req)) {
+                    return res.status(403).json({ 
+                        success: false, 
+                        error: 'Необходимо сменить временный пароль перед продолжением работы.',
+                        must_change_password: true 
+                    });
+                }
+                return res.redirect('/profile?must_change_password=1');
+            }
+        }
+
         next();
-    } else {
-        res.redirect('/login');
+    } catch (err) {
+        console.error('Ошибка в requireAuth:', err.message);
+        if (isApiRequest(req)) {
+            return res.status(500).json({ success: false, error: 'Ошибка проверки авторизации' });
+        }
+        return res.redirect('/login');
+    }
+}
+
+// Middleware для проверки прав администратора (Спринт 12)
+// Проверяет актуальную роль пользователя напрямую в БД (никаких клиентских подмен роли)
+async function requireAdmin(req, res, next) {
+    const sessionUserId = (req.session && req.session.user && req.session.user.id) || (req.session && req.session.userId);
+    if (!sessionUserId) {
+        if (isApiRequest(req)) {
+            return res.status(401).json({ success: false, error: 'Требуется авторизация' });
+        }
+        return res.redirect('/login');
+    }
+
+    try {
+        const user = await getUserById(sessionUserId);
+        if (!user || user.role !== 'admin') {
+            if (isApiRequest(req)) {
+                return res.status(403).json({ success: false, error: 'Доступ запрещен: требуются права администратора' });
+            }
+            return res.status(403).render('login', {
+                error: 'Доступ запрещен: требуются права администратора',
+                isStubMode: USE_STUB
+            });
+        }
+        next();
+    } catch (err) {
+        console.error('Ошибка в requireAdmin:', err.message);
+        if (isApiRequest(req)) {
+            return res.status(500).json({ success: false, error: 'Ошибка проверки прав' });
+        }
+        return res.status(500).send('Ошибка проверки прав');
     }
 }
 
@@ -223,12 +325,12 @@ const uploadSingleFile = (req, res, next) => {
 };
 
 // ============================================================
-// ВСТРОЕННЫЙ IN-MEMORY RATE LIMITER (Спринт 7)
+// ВСТРОЕННЫЙ IN-MEMORY RATE LIMITER (Спринт 7 & Спринт 12)
 // Ограничение: максимум 5 неудачных попыток за 15 минут с одного IP.
 // Защищаемые маршруты:
 // - POST /login
-// - POST /api/auth/verify-login
-// - POST /api/auth/reset-password
+// - POST /api/admin/users/:id/reset-password
+// - PUT /api/profile/password
 // ============================================================
 const RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000; // 15 минут
 const RATE_LIMIT_MAX_FAILURES = 5;
@@ -319,9 +421,13 @@ app.post('/login', checkAuthRateLimit, async (req, res) => {
         if (result.success) {
             clearRateLimit(clientIp);
             req.session.userId = result.user.id;
+            req.session.token_version = result.user.token_version || 1;
             req.session.user = {
                 id: result.user.id,
                 username: result.user.username,
+                role: result.user.role || 'engineer',
+                must_change_password: result.user.must_change_password,
+                tokenVersion: result.user.token_version || 1,
                 loginTime: new Date()
             };
 
@@ -339,10 +445,11 @@ app.post('/login', checkAuthRateLimit, async (req, res) => {
                     }
                     return res.render('login', { error: 'Ошибка сессии. Попробуйте ещё раз.', isStubMode: USE_STUB });
                 }
+                const redirectTarget = result.user.must_change_password ? '/profile?must_change_password=1' : '/';
                 if (req.is('json') || req.headers.accept?.includes('application/json')) {
-                    return res.json({ success: true, redirect: '/' });
+                    return res.json({ success: true, redirect: redirectTarget });
                 }
-                res.redirect('/');
+                res.redirect(redirectTarget);
             });
         } else {
             recordFailedAttempt(clientIp);
@@ -374,7 +481,7 @@ app.post('/login', checkAuthRateLimit, async (req, res) => {
 });
 
 // ============================================================
-// ПУБЛИЧНАЯ РЕГИСТРАЦИЯ ЗАКРЫТА (Спринт 7)
+// ПУБЛИЧНАЯ РЕГИСТРАЦИЯ ЗАКРЫТА
 // Публичная регистрация отключена в целях корпоративной безопасности.
 // Доступ предоставляется только системным администратором.
 // ============================================================
@@ -387,67 +494,140 @@ app.post('/register', (req, res) => {
 });
 
 // ============================================================
-// API ДВУХШАГОВОГО СБРОСА ПАРОЛЯ И ВЕРИФИКАЦИИ (Спринт 7)
+// АДМИНИСТРАТИВНОЕ УПРАВЛЕНИЕ ПОЛЬЗОВАТЕЛЯМИ (Спринт 12)
+// Доступ разрешён исключительно авторизованным пользователям с ролью 'admin'
+// Все публичные API проверки/сброса пароля (verify-login, reset-password) полностью удалены!
 // ============================================================
 
-// Шаг 1: Проверка существования логина
-app.post('/api/auth/verify-login', checkAuthRateLimit, async (req, res) => {
-    const { username } = req.body;
-    const clientIp = getClientIp(req);
-
-    if (!username || typeof username !== 'string' || !username.trim()) {
-        recordFailedAttempt(clientIp);
-        return res.status(404).json({ success: false, error: 'Пользователь не найден' });
-    }
-
+// Страница управления пользователями (HTML)
+app.get('/admin/users', requireAuth, requireAdmin, async (req, res) => {
     try {
-        const check = await checkUserExists(username.trim());
-        if (check && check.exists) {
-            return res.json({ success: true, exists: true });
-        } else {
-            recordFailedAttempt(clientIp);
-            return res.status(404).json({ success: false, error: 'Пользователь не найден' });
-        }
+        const users = await getAllUsers();
+        res.render('admin-users', {
+            user: req.session.user,
+            users: users || [],
+            currentRoute: '/admin/users'
+        });
     } catch (err) {
-        console.error('Ошибка проверки существования пользователя:', err);
-        recordFailedAttempt(clientIp);
-        return res.status(500).json({ success: false, error: 'Ошибка сервера' });
+        console.error('Ошибка рендеринга страницы пользователей:', err.message);
+        res.status(500).send('Ошибка сервера при загрузке страницы пользователей');
     }
 });
 
-// Шаг 2: Установка нового пароля
-app.post('/api/auth/reset-password', checkAuthRateLimit, async (req, res) => {
-    const { username, password, confirmPassword } = req.body;
-    const clientIp = getClientIp(req);
+// Безопасный список пользователей (JSON API)
+// password_hash и сессионные секреты исключены из выборки
+app.get('/api/admin/users', requireAuth, requireAdmin, async (req, res) => {
+    try {
+        const users = await getAllUsers();
+        res.json({ success: true, users: users || [] });
+    } catch (err) {
+        console.error('Ошибка получения списка пользователей:', err.message);
+        res.status(500).json({ success: false, error: 'Ошибка сервера' });
+    }
+});
 
-    if (!username || typeof username !== 'string' || !username.trim()) {
-        recordFailedAttempt(clientIp);
-        return res.status(400).json({ success: false, error: 'Логин не указан' });
+// Административный сброс пароля пользователя с генерацией криптостойкого временного пароля
+app.post('/api/admin/users/:id/reset-password', requireAuth, requireAdmin, checkAuthRateLimit, async (req, res) => {
+    const targetId = parseInt(req.params.id, 10);
+    const adminUser = req.session.user;
+
+    if (isNaN(targetId) || targetId <= 0) {
+        return res.status(400).json({ success: false, error: 'Некорректный ID пользователя' });
     }
 
-    if (!password || typeof password !== 'string' || password.length < 8) {
-        recordFailedAttempt(clientIp);
-        return res.status(400).json({ success: false, error: 'Пароль должен содержать минимум 8 символов' });
-    }
-
-    if (password !== confirmPassword) {
-        recordFailedAttempt(clientIp);
-        return res.status(400).json({ success: false, error: 'Пароли не совпадают' });
+    if (targetId === adminUser.id) {
+        return res.status(400).json({
+            success: false,
+            error: 'Сброс собственного пароля через административную панель запрещён. Используйте страницу профиля.'
+        });
     }
 
     try {
-        const result = await resetPassword(username.trim(), password);
-        if (result.success) {
-            clearRateLimit(clientIp);
-            return res.json({ success: true, message: 'Пароль успешно изменен' });
-        } else {
-            recordFailedAttempt(clientIp);
-            return res.status(400).json({ success: false, error: result.error || 'Ошибка сброса пароля' });
+        const targetUser = await getUserById(targetId);
+        if (!targetUser) {
+            return res.status(404).json({ success: false, error: 'Пользователь не найден' });
         }
+
+        if (targetUser.role === 'admin') {
+            return res.status(403).json({
+                success: false,
+                error: 'Сброс пароля учётной записи администратора запрещён'
+            });
+        }
+
+        // Генерация криптографически стойкого временного пароля (12 символов: верхний/нижний регистр, цифры, символы)
+        const charset = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%';
+        const randomBytes = crypto.randomBytes(12);
+        let tempPassword = '';
+        for (let i = 0; i < 12; i++) {
+            tempPassword += charset[randomBytes[i] % charset.length];
+        }
+
+        const resetResult = await adminResetPassword(targetId, tempPassword);
+        if (!resetResult.success) {
+            console.warn(`[AUDIT] ОШИБКА сброса: админ ID=${adminUser.id} для пользователя ID=${targetId} - ${resetResult.error}`);
+            return res.status(500).json({ success: false, error: resetResult.error || 'Ошибка сброса пароля' });
+        }
+
+        // Безопасный аудит: фиксируем только ID и имена без паролей и хешей
+        console.log(`[AUDIT] Администратор ${adminUser.username} (ID: ${adminUser.id}) выполнил сброс пароля для ${targetUser.username} (ID: ${targetId}) в ${new Date().toISOString()}`);
+
+        return res.json({
+            success: true,
+            username: targetUser.username,
+            tempPassword
+        });
     } catch (err) {
-        console.error('Ошибка сброса пароля:', err);
-        recordFailedAttempt(clientIp);
+        console.error('Ошибка административного сброса пароля:', err.message);
         return res.status(500).json({ success: false, error: 'Ошибка сервера при сбросе пароля' });
+    }
+});
+
+// ============================================================
+// СМЕНА ПАРОЛЯ ПОЛЬЗОВАТЕЛЕМ (Спринт 12)
+// Доступно авторизованному пользователю, в том числе при обязательном must_change_password
+// ============================================================
+app.put('/api/profile/password', requireAuth, checkAuthRateLimit, async (req, res) => {
+    const { currentPassword, newPassword, confirmPassword } = req.body;
+    const userId = req.session.user.id;
+
+    if (!currentPassword || !newPassword || !confirmPassword) {
+        return res.status(400).json({ success: false, error: 'Заполните все обязательные поля' });
+    }
+
+    if (newPassword.length < 8) {
+        return res.status(400).json({ success: false, error: 'Новый пароль должен содержать минимум 8 символов' });
+    }
+
+    if (newPassword !== confirmPassword) {
+        return res.status(400).json({ success: false, error: 'Новый пароль и подтверждение не совпадают' });
+    }
+
+    if (newPassword === currentPassword) {
+        return res.status(400).json({ success: false, error: 'Новый пароль должен отличаться от текущего' });
+    }
+
+    try {
+        const result = await changeUserPassword(userId, currentPassword, newPassword);
+        if (!result.success) {
+            return res.status(400).json({ success: false, error: result.error });
+        }
+
+        // Обновляем версию токена в текущей сессии
+        req.session.token_version = result.nextTokenVersion;
+        req.session.user.tokenVersion = result.nextTokenVersion;
+        req.session.user.must_change_password = false;
+
+        req.session.save((saveErr) => {
+            if (saveErr) {
+                console.error('Ошибка сохранения сессии после смены пароля:', saveErr);
+            }
+            console.log(`[AUDIT] Пользователь ${req.session.user.username} (ID: ${userId}) успешно сменил пароль в ${new Date().toISOString()}`);
+            return res.json({ success: true, message: 'Пароль успешно обновлен' });
+        });
+    } catch (err) {
+        console.error('Ошибка смены пароля:', err.message);
+        return res.status(500).json({ success: false, error: 'Ошибка сервера при смене пароля' });
     }
 });
 
