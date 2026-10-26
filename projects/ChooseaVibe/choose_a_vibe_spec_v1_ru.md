@@ -492,6 +492,10 @@ C:\Users\Mila\Desktop\BestStart\
         └── ChooseAVibe/                      // Исходный код приложения (SwiftUI / iOS 17+)
             ├── project.yml                   // Спецификация генерации проекта XcodeGen (macOS / CI)
             ├── Package.swift                 // Манифест Swift Package Manager (модульное ядро + тесты)
+            ├── build.sh                      // Скрипт сборки, валидации и прогона тестов для CI/macOS
+            ├── fastlane/                     // Автоматизация сборки и доставки
+            │   ├── Fastfile                  // Lanes: test, build, beta (TestFlight), release (App Store)
+            │   └── Appfile                   // Идентификатор приложения и параметры учётной записи
             ├── App/
             │   ├── ChooseAVibeApp.swift      // Контейнер SwiftData и корневой роутер
             │   ├── AppTheme.swift            // Цветовые палитры вайбов, шрифты и константы
@@ -501,7 +505,8 @@ C:\Users\Mila\Desktop\BestStart\
             │   └── Services/
             │       ├── CatalogRepository.swift   // Загрузка и валидация adventures_catalog_ru.json
             │       ├── VibeMatcherService.swift  // Алгоритм Weighted Soft-Matching
-            │       └── ProgressionEngine.swift   // Идемпотентный расчёт XP, уровней и достижений
+            │       ├── ProgressionEngine.swift   // Идемпотентный расчёт XP, уровней и достижений
+            │       └── PeerSyncService.swift     // P2P синхронизация двух устройств (Multipeer & CloudKit)
             ├── Features/
             │   ├── Onboarding/
             │   │   └── OnboardingFlowView.swift  // Ввод имён партнёров и комфорт-фильтр
@@ -514,27 +519,36 @@ C:\Users\Mila\Desktop\BestStart\
             │   │   ├── AdventureBriefingView.swift // Анонс приключения ("Секретный конверт")
             │   │   ├── ScratchCardContainer.swift  // Управление этапами, очередью и заменой
             │   │   ├── ScratchCanvasOverlay.swift  // Canvas + DragGesture + Grid 10x10
-            │   │   └── AdventureSummaryView.swift  // Праздничный финал, XP, Level Up и значки
+            │   │   ├── AdventureSummaryView.swift  // Праздничный финал, XP, Level Up и значки
+            │   │   └── WaitingTurnOverlayView.swift // Экран ожидания хода партнёра в режиме «Два iPhone»
             │   ├── Collection/
             │   │   └── CollectionView.swift      // Музей значков, история и выбор рубашек карт
             │   └── Settings/
             │       └── SettingsView.swift        // Имена, границы комфорта и сброс прогресса
             ├── Resources/
-            │   └── adventures_catalog_ru.json    // Полный каталог из 12 приключений (48 карточек)
+            │   ├── adventures_catalog_ru.json    // Полный каталог из 12 приключений (48 карточек)
+            │   ├── AppStore/
+            │   │   └── metadata_ru.json          // Русскоязычные метаданные, описание и ключевые слова
+            │   └── Assets.xcassets/              // AppIcon и AccentColor каталоги ассетов
             └── Tests/
                 └── ChooseAVibeTests/
                     ├── VibeMatcherTests.swift    // Тесты алгоритма подбора и мягкого скоринга
                     ├── ProgressionEngineTests.swift // Тесты начисления XP, уровней и 8 значков
-                    └── CatalogValidationTests.swift // Тесты целостности 12 квестов и 48 карточек
+                    ├── CatalogValidationTests.swift // Тесты целостности 12 квестов и 48 карточек
+                    └── PeerSyncTests.swift       // Тесты протокола синхронизации и смены ходов
 ```
 
 ---
 
-# 7. Готовность к будущему режиму «Два iPhone» (v2.0)
+# 7. Архитектура режима «Два iPhone» (v2.0 Dual-Device Protocol)
 
-Несмотря на то, что версия 1.0 работает полностью локально на одном устройстве в режиме Pass & Play, модели данных спроектированы так, чтобы переход к синхронизации двух телефонов не потребовал переписывания UI:
-* Каждое действие внутри `AdventureSessionRecord` фиксируется через явный индекс шага `currentStepIndex` и массив состояний `stepStatuses`.
-* Поле `partnerOneName` / `partnerTwoName` и детерминированное правило очереди (`stepIndex % 2`) позволяют во второй версии легко разделить роли: на одном телефоне отображается активный скретч-слой, а на втором — экран ожидания хода партнёра через `CKShare` (CloudKit Shared Records) или лёгкий WebSocket/Supabase-бэкенд.
+В приложении заложен протокол взаимодействия двух устройств через единый слой `PeerSyncService`:
+* **P2P Transport (MultipeerConnectivity):** Локальное соединение без интернета (по Wi-Fi или Bluetooth) с помощью 4-значного кода сопряжения (`pairCode`).
+* **CloudKit / WebSocket Ready:** Тот же протокол сообщений (`PeerSyncPacket`) транслируется через облачные очереди при удалённой игре.
+* **Синхронизация прогресса в реальном времени:**
+  - Пакеты `scratchProgress(percent)` передают динамику стирания слоя с ведущего телефона на экран ожидания партнёра (`WaitingTurnOverlayView`).
+  - Пакет `turnHandover(nextStepIndex, activePartner)` передаёт право хода партнёру с вызовом тактильного импульса `HapticFeedback.success()`.
+* **Секретный режим подсказок:** На экране ожидания доступен просмотр блока «Подготовка / Идея» без спойлеров к основному тексту задания.
 
 ---
 
@@ -545,5 +559,9 @@ C:\Users\Mila\Desktop\BestStart\
 3. **Тактильное удовольствие от Scratch Card:** Стирание пальцем работает плавно, автоматически дооткрывает карточку на 45% площади и имеет дублирующую кнопку «Открыть сразу».
 4. **Живучесть сессии:** Принудительное закрытие приложения (Swipe-up) на 2-й или 3-й карточке не сбрасывает прогресс вечера — при перезапуске пара продолжает с того же места.
 5. **Честная прогрессия:** За 12 приключений пара открывает все 3 главы, получает 5-й уровень и разблокирует все 5 визуальных рубашек для скретч-карточек (покрыто тестами `ProgressionEngineTests`).
-6. **Готовность к сборке:** Наличие чистых манифестов `project.yml` (XcodeGen) и `Package.swift` (SPM) для моментальной генерации `.xcodeproj` и сборки в CI/macOS.
+6. **Готовность к сборке и релизу:**
+   - Наличие манифестов `project.yml` (XcodeGen), `Package.swift` (SPM) и скрипта `build.sh`.
+   - Полная конфигурация `fastlane/Fastfile` (test, build, beta, release).
+   - Готовые русскоязычные метаданные `Resources/AppStore/metadata_ru.json` и структура ассетов `Assets.xcassets`.
+7. **Готовность к v2.0:** Реализован и протестирован протокол синхронизации двух телефонов (`PeerSyncService`, `WaitingTurnOverlayView`, `PeerSyncTests`).
 

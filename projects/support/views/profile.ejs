@@ -136,22 +136,6 @@
                         </span>
                     </div>
 
-                    <!-- Роль -->
-                    <% const currentRole = (userDetails && userDetails.role) || (user && user.role) || 'engineer'; %>
-                    <div class="profile-info-row">
-                        <span class="profile-info-icon" aria-hidden="true">
-                            <svg viewBox="0 0 20 20" fill="none">
-                                <path d="M10 2L3 6v5c0 4.5 3 8.5 7 9.5 4-1 7-5 7-9.5V6l-7-4z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
-                            </svg>
-                        </span>
-                        <span class="profile-info-label" data-i18n="admin.users.col.role">Роль</span>
-                        <span class="profile-info-value">
-                            <span class="role-badge role-badge--<%= currentRole %>" data-i18n="admin.users.role.<%= currentRole %>">
-                                <%= currentRole === 'admin' ? 'Администратор' : 'Инженер' %>
-                            </span>
-                        </span>
-                    </div>
-
                     <!-- Email (editable) -->
                     <div class="profile-info-row" id="emailRow">
                         <span class="profile-info-icon" aria-hidden="true">
@@ -265,60 +249,6 @@
                     </div>
                     <% } %>
 
-                </div>
-
-                <!-- ── Секция: Смена пароля (Спринт 12) ── -->
-                <div class="profile-password-section">
-                    <h2 class="profile-section-title" data-i18n="profile.section.password">Смена пароля</h2>
-                    
-                    <form id="changePasswordForm" class="profile-password-form" novalidate onsubmit="return false;">
-                        <!-- Текущий пароль -->
-                        <div class="profile-form-group">
-                            <label for="currentPassword" class="profile-form-label" data-i18n="profile.password.current">Текущий пароль</label>
-                            <div class="profile-input-wrapper">
-                                <input type="password" id="currentPassword" class="profile-form-input" autocomplete="current-password" placeholder="••••••••" required>
-                                <button type="button" class="password-toggle-btn" data-target="currentPassword" aria-label="Показать пароль">
-                                    <svg class="eye-show" viewBox="0 0 20 20" fill="none" stroke="currentColor"><path d="M1.5 10s3-5.5 8.5-5.5 8.5 5.5 8.5 5.5-3 5.5-8.5 5.5S1.5 10 1.5 10z" stroke-linecap="round" stroke-linejoin="round"/><circle cx="10" cy="10" r="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                                    <svg class="eye-hide" viewBox="0 0 20 20" fill="none" stroke="currentColor" style="display:none;"><path d="M2.5 2.5l15 15" stroke-linecap="round" stroke-linejoin="round"/><path d="M8.5 8.5a2.5 2.5 0 003.5 3.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M5.5 5.5C3.5 7 2 10 2 10s3 5.5 8 5.5c2 0 3.7-.6 5-1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M9.5 4.5c.2 0 .3 0 .5 0 5 0 8 5.5 8 5.5s-.8 1.4-2.2 2.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                                </button>
-                            </div>
-                        </div>
-
-                        <!-- Новый пароль -->
-                        <div class="profile-form-group">
-                            <label for="newPassword" class="profile-form-label" data-i18n="profile.password.new">Новый пароль</label>
-                            <div class="profile-input-wrapper">
-                                <input type="password" id="newPassword" class="profile-form-input" minlength="8" autocomplete="new-password" placeholder="••••••••" required>
-                                <button type="button" class="password-toggle-btn" data-target="newPassword" aria-label="Показать пароль">
-                                    <svg class="eye-show" viewBox="0 0 20 20" fill="none" stroke="currentColor"><path d="M1.5 10s3-5.5 8.5-5.5 8.5 5.5 8.5 5.5-3 5.5-8.5 5.5S1.5 10 1.5 10z" stroke-linecap="round" stroke-linejoin="round"/><circle cx="10" cy="10" r="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                                    <svg class="eye-hide" viewBox="0 0 20 20" fill="none" stroke="currentColor" style="display:none;"><path d="M2.5 2.5l15 15" stroke-linecap="round" stroke-linejoin="round"/><path d="M8.5 8.5a2.5 2.5 0 003.5 3.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M5.5 5.5C3.5 7 2 10 2 10s3 5.5 8 5.5c2 0 3.7-.6 5-1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M9.5 4.5c.2 0 .3 0 .5 0 5 0 8 5.5 8 5.5s-.8 1.4-2.2 2.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                                </button>
-                            </div>
-                            <span class="profile-form-hint" data-i18n="profile.password.hint">Минимум 8 символов</span>
-                        </div>
-
-                        <!-- Подтверждение нового пароля -->
-                        <div class="profile-form-group">
-                            <label for="confirmPassword" class="profile-form-label" data-i18n="profile.password.confirm">Подтверждение нового пароля</label>
-                            <div class="profile-input-wrapper">
-                                <input type="password" id="confirmPassword" class="profile-form-input" minlength="8" autocomplete="new-password" placeholder="••••••••" required>
-                                <button type="button" class="password-toggle-btn" data-target="confirmPassword" aria-label="Показать пароль">
-                                    <svg class="eye-show" viewBox="0 0 20 20" fill="none" stroke="currentColor"><path d="M1.5 10s3-5.5 8.5-5.5 8.5 5.5 8.5 5.5-3 5.5-8.5 5.5S1.5 10 1.5 10z" stroke-linecap="round" stroke-linejoin="round"/><circle cx="10" cy="10" r="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                                    <svg class="eye-hide" viewBox="0 0 20 20" fill="none" stroke="currentColor" style="display:none;"><path d="M2.5 2.5l15 15" stroke-linecap="round" stroke-linejoin="round"/><path d="M8.5 8.5a2.5 2.5 0 003.5 3.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M5.5 5.5C3.5 7 2 10 2 10s3 5.5 8 5.5c2 0 3.7-.6 5-1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M9.5 4.5c.2 0 .3 0 .5 0 5 0 8 5.5 8 5.5s-.8 1.4-2.2 2.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                                </button>
-                            </div>
-                        </div>
-
-                        <!-- Сообщение о статусе смены пароля -->
-                        <div class="profile-save-notice" id="passwordSaveNotice"></div>
-
-                        <!-- Кнопка обновления пароля -->
-                        <div class="profile-form-actions">
-                            <button type="button" class="profile-email-save-btn profile-password-submit" id="savePasswordBtn">
-                                <span data-i18n="profile.password.btn">Обновить пароль</span>
-                            </button>
-                        </div>
-                    </form>
                 </div>
 
                 <!-- Save notice -->
@@ -547,105 +477,6 @@
             emailSaveBtn.textContent = origText;
         });
 
-        /* ── Password change handler (Sprint 12) ────────────────────────── */
-        var currentPasswordInput = document.getElementById('currentPassword');
-        var newPasswordInput     = document.getElementById('newPassword');
-        var confirmPasswordInput = document.getElementById('confirmPassword');
-        var savePasswordBtn      = document.getElementById('savePasswordBtn');
-        var passwordNotice       = document.getElementById('passwordSaveNotice');
-
-        // Setup password show/hide eye toggles
-        document.querySelectorAll('.password-toggle-btn[data-target]').forEach(function (btn) {
-            btn.addEventListener('click', function (e) {
-                e.preventDefault();
-                var targetId = this.getAttribute('data-target');
-                var input = document.getElementById(targetId);
-                if (!input) return;
-                var isPass = input.getAttribute('type') === 'password';
-                input.setAttribute('type', isPass ? 'text' : 'password');
-                var eyeShow = this.querySelector('.eye-show');
-                var eyeHide = this.querySelector('.eye-hide');
-                if (eyeShow) eyeShow.style.display = isPass ? 'none' : 'block';
-                if (eyeHide) eyeHide.style.display = isPass ? 'block' : 'none';
-                input.focus();
-            });
-        });
-
-        function showPasswordNotice(msg, isError) {
-            if (!passwordNotice) return;
-            passwordNotice.textContent = msg;
-            passwordNotice.className = 'profile-save-notice ' + (isError ? 'is-error' : 'is-success');
-            clearTimeout(passwordNotice._timer);
-            passwordNotice._timer = setTimeout(function () {
-                passwordNotice.className = 'profile-save-notice';
-                passwordNotice.textContent = '';
-            }, 4500);
-        }
-
-        if (savePasswordBtn) {
-            savePasswordBtn.addEventListener('click', async function () {
-                var curPass = currentPasswordInput ? currentPasswordInput.value : '';
-                var newPass = newPasswordInput ? newPasswordInput.value : '';
-                var cnfPass = confirmPasswordInput ? confirmPasswordInput.value : '';
-
-                if (!curPass) {
-                    showPasswordNotice(window.ITS_I18n ? window.ITS_I18n.t('profile.password.err.current') : 'Введите текущий пароль', true);
-                    if (currentPasswordInput) currentPasswordInput.focus();
-                    return;
-                }
-                if (!newPass || newPass.length < 8) {
-                    showPasswordNotice(window.ITS_I18n ? window.ITS_I18n.t('profile.password.err.length') : 'Пароль должен содержать минимум 8 символов', true);
-                    if (newPasswordInput) newPasswordInput.focus();
-                    return;
-                }
-                if (newPass !== cnfPass) {
-                    showPasswordNotice(window.ITS_I18n ? window.ITS_I18n.t('profile.password.err.match') : 'Пароли не совпадают', true);
-                    if (confirmPasswordInput) confirmPasswordInput.focus();
-                    return;
-                }
-                if (newPass === curPass) {
-                    showPasswordNotice(window.ITS_I18n ? window.ITS_I18n.t('profile.password.err.same') : 'Новый пароль должен отличаться от текущего', true);
-                    if (newPasswordInput) newPasswordInput.focus();
-                    return;
-                }
-
-                savePasswordBtn.disabled = true;
-                var origText = savePasswordBtn.textContent;
-                savePasswordBtn.textContent = '...';
-
-                try {
-                    var resp = await fetch('/api/profile/password', {
-                        method: 'PUT',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            currentPassword: curPass,
-                            newPassword: newPass,
-                            confirmPassword: cnfPass
-                        })
-                    });
-                    var data = await resp.json();
-
-                    if (!resp.ok || !data.success) {
-                        showPasswordNotice(data.error || (window.ITS_I18n ? window.ITS_I18n.t('profile.password.err.save') : 'Ошибка смены пароля'), true);
-                        savePasswordBtn.disabled = false;
-                        savePasswordBtn.textContent = origText;
-                        return;
-                    }
-
-                    // Success
-                    if (currentPasswordInput) currentPasswordInput.value = '';
-                    if (newPasswordInput) newPasswordInput.value = '';
-                    if (confirmPasswordInput) confirmPasswordInput.value = '';
-
-                    showPasswordNotice(window.ITS_I18n ? window.ITS_I18n.t('profile.password.success') : 'Пароль успешно обновлён', false);
-                } catch (err) {
-                    showPasswordNotice(window.ITS_I18n ? window.ITS_I18n.t('email.err.conn') : 'Ошибка соединения', true);
-                } finally {
-                    savePasswordBtn.disabled = false;
-                    savePasswordBtn.textContent = origText;
-                }
-            });
-        }
 
     })();
     </script>

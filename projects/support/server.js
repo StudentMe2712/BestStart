@@ -773,54 +773,6 @@ app.delete('/api/admin/users/:id', requireAuth, requireAdmin, checkAuthRateLimit
     }
 });
 
-// ============================================================
-// СМЕНА ПАРОЛЯ ПОЛЬЗОВАТЕЛЕМ (Спринт 12)
-// Доступно авторизованному пользователю, в том числе при обязательном must_change_password
-// ============================================================
-app.put('/api/profile/password', requireAuth, checkAuthRateLimit, async (req, res) => {
-    const { currentPassword, newPassword, confirmPassword } = req.body;
-    const userId = req.session.user.id;
-
-    if (!currentPassword || !newPassword || !confirmPassword) {
-        return res.status(400).json({ success: false, error: 'Заполните все обязательные поля' });
-    }
-
-    if (newPassword.length < 8) {
-        return res.status(400).json({ success: false, error: 'Новый пароль должен содержать минимум 8 символов' });
-    }
-
-    if (newPassword !== confirmPassword) {
-        return res.status(400).json({ success: false, error: 'Новый пароль и подтверждение не совпадают' });
-    }
-
-    if (newPassword === currentPassword) {
-        return res.status(400).json({ success: false, error: 'Новый пароль должен отличаться от текущего' });
-    }
-
-    try {
-        const result = await changeUserPassword(userId, currentPassword, newPassword);
-        if (!result.success) {
-            return res.status(400).json({ success: false, error: result.error });
-        }
-
-        // Обновляем версию токена в текущей сессии
-        req.session.token_version = result.nextTokenVersion;
-        req.session.user.tokenVersion = result.nextTokenVersion;
-        req.session.user.must_change_password = false;
-
-        req.session.save((saveErr) => {
-            if (saveErr) {
-                console.error('Ошибка сохранения сессии после смены пароля:', saveErr);
-            }
-            console.log(`[AUDIT] Пользователь ${req.session.user.username} (ID: ${userId}) успешно сменил пароль в ${new Date().toISOString()}`);
-            return res.json({ success: true, message: 'Пароль успешно обновлен' });
-        });
-    } catch (err) {
-        console.error('Ошибка смены пароля:', err.message);
-        return res.status(500).json({ success: false, error: 'Ошибка сервера при смене пароля' });
-    }
-});
-
 // Выход
 app.get('/logout', (req, res) => {
     req.session.destroy((err) => {

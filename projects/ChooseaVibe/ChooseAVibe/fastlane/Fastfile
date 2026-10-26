@@ -1,0 +1,101 @@
+# frozen_string_literal: true
+
+# ==============================================================================
+# Choose a Vibe — iOS CI/CD Automation Fastfile
+# ==============================================================================
+# Автоматизация процессов тестирования, сборки .ipa и дистрибуции в TestFlight / App Store
+# Платформа: iOS (целевой симулятор: iPhone 16 Pro, iOS 17.0+)
+
+default_platform(:ios)
+
+platform :ios do
+  before_all do
+    ENV["FASTLANE_XCODEBUILD_SETTINGS_TIMEOUT"] = "120"
+    ENV["LANG"] = "en_US.UTF-8"
+  end
+
+  desc "Запуск xcodebuild unit тестов таргета ChooseAVibeTests для симулятора iPhone 16 Pro (iOS 17.0+)"
+  lane :test do
+    # Синхронизация и генерация проекта через xcodegen перед тестированием
+    if File.exist?("../project.yml")
+      sh("cd .. && xcodegen generate")
+    elsif File.exist?("project.yml")
+      sh("xcodegen generate")
+    end
+
+    scan(
+      project: "ChooseAVibe.xcodeproj",
+      scheme: "ChooseAVibe",
+      destination: "platform=iOS Simulator,name=iPhone 16 Pro,OS=latest",
+      devices: ["iPhone 16 Pro"],
+      clean: true,
+      code_coverage: true,
+      output_directory: "./fastlane/test_output",
+      output_types: "html,junit",
+      fail_build: true,
+      result_bundle: true
+    )
+  end
+
+  desc "Генерация xcodegen и сборка gym/build_app в релизный .ipa"
+  lane :build do
+    # Синхронизация структуры проекта перед сборкой
+    if File.exist?("../project.yml")
+      sh("cd .. && xcodegen generate")
+    elsif File.exist?("project.yml")
+      sh("xcodegen generate")
+    end
+
+    build_app(
+      project: "ChooseAVibe.xcodeproj",
+      scheme: "ChooseAVibe",
+      clean: true,
+      export_method: "app-store",
+      output_directory: "./build",
+      output_name: "ChooseAVibe.ipa",
+      configuration: "Release",
+      include_bitcode: false,
+      include_symbols: true,
+      export_options: {
+        method: "app-store",
+        signingStyle: "automatic",
+        manageAppVersionAndBuildNumber: false
+      },
+      xcargs: "-allowProvisioningUpdates"
+    )
+  end
+
+  desc "Сборка и отправка бета-версии в Apple TestFlight (upload_to_testflight)"
+  lane :beta do
+    test
+    build
+
+    upload_to_testflight(
+      skip_waiting_for_build_processing: true,
+      apple_id: ENV["APPLE_ID"] || "dev@beststart.app",
+      app_identifier: "com.beststart.chooseavibe",
+      changelog: "Choose a Vibe: свежая бета-версия приложения для пар. 12 скретч-квестов, интерактивная карта и механика Pass & Play."
+    )
+  end
+
+  desc "Финализация, валидация и отправка релиза в App Store (upload_to_app_store)"
+  lane :release do
+    test
+    build
+
+    upload_to_app_store(
+      force: true,
+      submit_for_review: false,
+      automatic_release: false,
+      app_identifier: "com.beststart.chooseavibe",
+      metadata_path: "./Resources/AppStore",
+      skip_screenshots: true,
+      skip_metadata: false,
+      phased_release: true
+    )
+  end
+
+  error do |lane, exception|
+    UI.error("Произошла ошибка при выполнении lane :#{lane} — #{exception.message}")
+  end
+end

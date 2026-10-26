@@ -1,0 +1,18 @@
+# frozen_string_literal: true
+
+# ==============================================================================
+# Choose a Vibe — Fastlane Appfile Configuration
+# ==============================================================================
+# Конфигурация идентификаторов приложения и учетных данных разработчика Apple
+
+# Bundle Identifier приложения в App Store
+app_identifier("com.beststart.chooseavibe")
+
+# Apple ID учетной записи разработчика
+apple_id(ENV["APPLE_ID"] || "dev@beststart.app")
+
+# Идентификатор команды Apple Developer Program (Team ID)
+team_id(ENV["APPLE_TEAM_ID"] || "")
+
+# Идентификатор команды App Store Connect при необходимости
+itc_team_id(ENV["ITC_TEAM_ID"] || "") if ENV["ITC_TEAM_ID"]
