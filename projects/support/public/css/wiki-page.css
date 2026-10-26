@@ -490,6 +490,50 @@ body.wiki-page-body {
     flex-shrink: 0;
 }
 
+.org-edit-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.org-header-right .btn-save-main,
+.org-header-right .btn-cancel-edit {
+    padding: 6px 14px;
+    font-size: 12.5px;
+    border-radius: 6px;
+    line-height: 1.4;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-family: inherit;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+}
+
+.org-header-right .btn-save-main {
+    background: #2563eb;
+    color: #fff;
+    border: 1px solid #1d4ed8;
+    font-weight: 600;
+}
+
+.org-header-right .btn-save-main:hover {
+    background: #1d4ed8;
+}
+
+.org-header-right .btn-cancel-edit {
+    background: #fff;
+    border: 1px solid #c8d3de;
+    color: #475569;
+    font-weight: 500;
+}
+
+.org-header-right .btn-cancel-edit:hover {
+    background: #f1f5f9;
+    border-color: #94a3b8;
+    color: #0f172a;
+}
+
 .org-action-btn {
     background: #fff;
     border: 1px solid #c8d3de;
@@ -1515,6 +1559,17 @@ body.wiki-page-body {
     background: #1e2c40;
     color: #f8fafc;
     border-color: #334155;
+}
+
+[data-theme="dark"] .org-header-right .btn-cancel-edit {
+    background: #1e293b;
+    border-color: #334155;
+    color: #cbd5e1;
+}
+
+[data-theme="dark"] .org-header-right .btn-cancel-edit:hover {
+    background: #334155;
+    color: #f1f5f9;
 }
 
 [data-theme="dark"] .modal-content {

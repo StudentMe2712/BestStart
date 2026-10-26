@@ -207,6 +207,10 @@
                         </div>
                     </div>
                     <div class="org-header-right">
+                        <div class="org-edit-actions" id="orgEditActions" style="display: none;">
+                            <button class="btn-save-main" id="saveBtn" data-i18n="wiki.save.btn">Сохранить</button>
+                            <button class="btn-cancel-edit" id="cancelEditBtn" type="button" data-i18n="wiki.cancel.btn">Отмена</button>
+                        </div>
                         <button class="org-action-btn" id="editBtnTop" data-i18n="wiki.edit.btn">Редактировать</button>
                         <div class="org-more-wrap">
                             <button class="org-action-btn" id="moreBtnTop"><span data-i18n="wiki.more.btn">Ещё</span> <span class="more-caret">▾</span></button>
@@ -339,10 +343,6 @@
 
                     <!-- BOTTOM BAR (shown in edit mode) -->
                     <div class="editor-bottom-bar" id="editorBottomBar" style="display: none;">
-                        <div class="editor-bottom-bar__left">
-                            <button class="btn-save-main" id="saveBtn" data-i18n="wiki.save.btn">Сохранить</button>
-                            <button class="btn-cancel-edit" id="cancelEditBtn" type="button" data-i18n="wiki.cancel.btn">Отмена</button>
-                        </div>
                         <div class="editor-bar-status">
                             <span class="draft-status" id="draftStatus"></span>
                             <% if (currentOrg.updated_at) { %>

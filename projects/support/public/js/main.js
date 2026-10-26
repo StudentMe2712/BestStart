@@ -25,6 +25,7 @@ const deleteBtnMore   = document.getElementById('deleteBtnMore');
 
 // ── Editor & Viewer ────────────────────────────────────────
 const editBtnTop             = document.getElementById('editBtnTop');
+const orgEditActions         = document.getElementById('orgEditActions');
 const saveBtn                = document.getElementById('saveBtn');
 const cancelEditBtn          = document.getElementById('cancelEditBtn');
 const currentOrgId           = document.getElementById('currentOrgId');
@@ -457,10 +458,8 @@ function enterEditMode() {
     orgEditor.contentEditable = 'true';
     orgEditor.focus();
 
-    if (editBtnTop) {
-        editBtnTop.textContent = _t('wiki.view.btn') || 'Просмотр';
-        editBtnTop.classList.add('is-active');
-    }
+    if (editBtnTop) editBtnTop.style.display = 'none';
+    if (orgEditActions) orgEditActions.style.display = 'inline-flex';
 }
 
 function exitEditMode() {
@@ -481,7 +480,9 @@ function exitEditMode() {
 
     if (wikiSheet) wikiSheet.style.display = 'block';
 
+    if (orgEditActions) orgEditActions.style.display = 'none';
     if (editBtnTop) {
+        editBtnTop.style.display = '';
         editBtnTop.textContent = _t('wiki.edit.btn') || 'Редактировать';
         editBtnTop.classList.remove('is-active');
     }

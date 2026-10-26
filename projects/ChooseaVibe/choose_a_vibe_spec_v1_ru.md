@@ -484,6 +484,11 @@ C:\Users\Mila\Desktop\BestStart\
 └── projects/
     └── ChooseaVibe/
         ├── choose_a_vibe_spec_v1_ru.md       // Актуальная спецификация проекта (Version 1.0)
+        ├── sync.sh                           // Скрипт синхронизации проекта
+        ├── preview/                          // Интерактивный Web-симулятор iPhone 16 Pro (для тестирования на Windows/Desktop)
+        │   ├── index.html                    // Корпус iPhone, Dynamic Island, Dev-панель и структура экранов
+        │   ├── styles.css                    // iOS 17 Design System, палитры вайбов, рубашки карт, анимации
+        │   └── app.js                        // Движок игры, Scratch Canvas, Web Audio API, embedded-каталог
         └── ChooseAVibe/                      // Исходный код приложения (SwiftUI / iOS 17+)
             ├── App/
             │   ├── ChooseAVibeApp.swift      // Контейнер SwiftData и корневой роутер
