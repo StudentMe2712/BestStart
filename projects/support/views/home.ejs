@@ -13,28 +13,6 @@
     <% const avatarLetter = (user.username || 'A').charAt(0).toUpperCase(); %>
     <% const totalServers = (typeof serverCount !== 'undefined' && serverCount !== null) ? serverCount : (typeof organizations !== 'undefined' && organizations ? organizations.length : 25); %>
     <% const dateDisplay = typeof currentDateStr !== 'undefined' ? currentDateStr : 'Четверг, 22 октября 2026 г.'; %>
-    <%
-    function computeOrgMonogram(name) {
-        if (!name || typeof name !== 'string') return '';
-        var clean = name.trim();
-        if (!clean) return '';
-        if (/^астанагенплан/i.test(clean)) return 'АП';
-
-        var words = clean.split(/[\s\-_–—/\\()]+/).filter(function(w) { return /[a-zA-Zа-яА-ЯёЁ]/.test(w); });
-        if (words.length >= 2) {
-            var m1 = words[0].match(/[a-zA-Zа-яА-ЯёЁ]/);
-            var m2 = words[1].match(/[a-zA-Zа-яА-ЯёЁ]/);
-            if (m1 && m2) return (m1[0] + m2[0]).toUpperCase();
-        }
-        var letters = clean.replace(/[^a-zA-Zа-яА-ЯёЁ]/g, '');
-        if (letters.length >= 2) {
-            return letters.substring(0, 2).toUpperCase();
-        }
-        return letters.toUpperCase();
-    }
-    const pinnedList = (typeof pinnedOrgs !== 'undefined' && Array.isArray(pinnedOrgs)) ? pinnedOrgs : [];
-    const orgsList = (typeof organizations !== 'undefined' && Array.isArray(organizations)) ? organizations : [];
-    %>
 
     <!-- Верхний бар (Top Navigation Bar) -->
     <header class="home-topbar">
@@ -230,36 +208,6 @@
                             <path d="M105 42 C 105 52, 60 55, 60 70" stroke="#3b82f6" stroke-width="1.6" stroke-opacity="0.8" fill="none"/>
                             <path d="M133 42 C 133 60, 85 85, 85 105" stroke="#60a5fa" stroke-width="1.6" stroke-opacity="0.8" fill="none"/>
                         </svg>
-                    </div>
-
-                    <!-- Live интерактивный блок: Мои закрепленные организации -->
-                    <div class="hero-pinned-card">
-                        <div class="hero-pinned-header">
-                            <span class="hero-pinned-title" data-i18n="home.pinned.title">Мои закрепленные организации</span>
-                            <span class="hero-pinned-badge" data-i18n="home.pinned.badge">Быстрый доступ</span>
-                        </div>
-                        <% if (pinnedList && pinnedList.length > 0) { %>
-                            <div class="hero-pinned-list">
-                                <% pinnedList.forEach(function(org) { %>
-                                    <a href="/wiki/organization/<%= org.id %>" class="hero-pinned-pill" title="<%= org.name %>">
-                                        <span class="hero-pinned-monogram"><%= computeOrgMonogram(org.name) %></span>
-                                        <span class="hero-pinned-name"><%= org.name %></span>
-                                        <span class="hero-pinned-arrow" aria-hidden="true">→</span>
-                                    </a>
-                                <% }); %>
-                            </div>
-                        <% } else { %>
-                            <div class="hero-pinned-list">
-                                <% const sampleOrgs = (orgsList && orgsList.length > 0) ? orgsList.slice(0, 3) : []; %>
-                                <% sampleOrgs.forEach(function(org) { %>
-                                    <a href="/wiki/organization/<%= org.id %>" class="hero-pinned-pill" title="<%= org.name %>">
-                                        <span class="hero-pinned-monogram"><%= computeOrgMonogram(org.name) %></span>
-                                        <span class="hero-pinned-name"><%= org.name %></span>
-                                        <span class="hero-pinned-arrow" aria-hidden="true">→</span>
-                                    </a>
-                                <% }); %>
-                            </div>
-                        <% } %>
                     </div>
                 </div>
             </article>
