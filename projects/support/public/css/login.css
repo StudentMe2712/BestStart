@@ -15,13 +15,15 @@ body.auth-body {
     line-height: 1.5;
     color: var(--text-primary, #0f172a);
     background-color: var(--bg-page, #f8fafc);
-    /* Subtle dot grid + ambient top/bottom radial lighting */
+    /* Clean ambient top/bottom radial lighting without dot pattern in light mode */
     background-image:
-        radial-gradient(1000px 500px at 50% -50px, rgba(37, 99, 235, 0.08) 0%, transparent 80%),
-        radial-gradient(800px 500px at 50% 100%, rgba(30, 74, 122, 0.06) 0%, transparent 80%),
-        radial-gradient(rgba(148, 163, 184, 0.22) 1px, transparent 1px);
-    background-size: 100% 100%, 100% 100%, 24px 24px;
+        radial-gradient(1000px 500px at 50% -50px, rgba(37, 99, 235, 0.06) 0%, transparent 80%),
+        radial-gradient(800px 500px at 50% 100%, rgba(30, 74, 122, 0.04) 0%, transparent 80%),
+        linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+    background-size: 100% 100%, 100% 100%, 100% 100%;
     background-position: center top, center bottom, 0 0;
+    background-repeat: no-repeat, no-repeat, no-repeat;
+    background-attachment: fixed, fixed, fixed;
     position: relative;
     overflow-x: hidden;
 }
@@ -34,6 +36,9 @@ body.auth-body {
         radial-gradient(800px 500px at 50% 100%, rgba(30, 58, 138, 0.16) 0%, transparent 80%),
         radial-gradient(rgba(255, 255, 255, 0.06) 1px, transparent 1px);
     background-size: 100% 100%, 100% 100%, 24px 24px;
+    background-position: center top, center bottom, 0 0;
+    background-repeat: no-repeat, no-repeat, repeat;
+    background-attachment: fixed, fixed, fixed;
 }
 
 /* ── Container & Ambient Halo ── */
@@ -94,12 +99,54 @@ body.auth-body {
         inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 
-/* ── Topbar Brand Presentation (No Logo) ── */
+/* ── Topbar Brand Presentation (Unified Logo) ── */
+.home-topbar--public .home-brand-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+    line-height: 1;
+    padding: 3px 6px;
+    margin: 0;
+    border-radius: var(--radius-sm, 6px);
+    transition: opacity var(--transition-fast, 150ms ease),
+                background-color var(--transition-fast, 150ms ease),
+                transform var(--transition-fast, 150ms ease);
+}
+
+.home-topbar--public .home-brand-link:hover {
+    opacity: 0.94;
+    background-color: rgba(255, 255, 255, 0.08);
+}
+
+.home-topbar--public .home-brand-link:hover .home-brand-logo {
+    filter: brightness(1.08) drop-shadow(0 0 8px rgba(96, 165, 250, 0.45));
+    transform: scale(1.02);
+}
+
+.home-topbar--public .home-brand-link:active .home-brand-logo {
+    transform: scale(0.98);
+}
+
+.home-topbar--public .home-brand-link:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--color-accent, #3b82f6);
+}
+
+.home-topbar--public .home-brand-logo {
+    display: block;
+    width: auto;
+    height: 32px;
+    max-height: 32px;
+    object-fit: contain;
+    border-radius: 0;
+    flex: 0 0 auto;
+    transition: filter var(--transition-fast, 150ms ease),
+                transform var(--transition-fast, 150ms ease);
+}
+
 .home-topbar--public .home-brand-name {
-    font-size: 15px;
-    font-weight: 700;
-    letter-spacing: -0.01em;
-    color: #ffffff;
+    display: none;
 }
 
 /* ── Card Header & Brand Presentation (Minimalist Elegant Text) ── */

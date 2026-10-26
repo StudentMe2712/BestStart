@@ -11,7 +11,19 @@
     <link rel="stylesheet" href="/css/wiki-page.css">
     <link rel="icon" type="image/png" href="/favicon.png">
     <meta name="app-user" content="<%= user ? user.username : 'admin' %>">
-    <script>(function(){var m=document.querySelector('meta[name="app-user"]');var u=m&&m.getAttribute('content');var k=u?'ui_theme_'+u:'ui_theme';var t=localStorage.getItem(k);if(t)document.documentElement.setAttribute('data-theme',t);})()</script>
+    <script>
+      (function() {
+        try {
+          var t = localStorage.getItem('ui_theme');
+          if (!t) {
+            var m = document.querySelector('meta[name="app-user"]');
+            var u = m && m.getAttribute('content');
+            if (u) t = localStorage.getItem('ui_theme_' + u);
+          }
+          if (t) document.documentElement.setAttribute('data-theme', t);
+        } catch(e) {}
+      })();
+    </script>
 </head>
 <body class="home-body events-page-body">
     <% 
@@ -34,9 +46,7 @@
     <!-- Topbar Navigation -->
     <header class="home-topbar">
         <div class="home-topbar__brand">
-            <a href="/" class="home-brand-link" title="ИТС-Ком">
-                <span class="home-brand-name">ИТС-Ком</span>
-            </a>
+            <a href="/" class="home-brand-link" title="ИТС-Ком"><img src="/logo.png" alt="ИТС-Ком" class="home-brand-logo"></a>
         </div>
         <nav class="home-topbar__nav" aria-label="Основная навигация">
             <a href="/" class="home-topbar__nav-link" data-i18n="nav.home">Главная</a>
@@ -196,6 +206,7 @@
     </footer>
 
     <!-- Theme & Account & Strict 1C Tree Scripts -->
+    <script src="/js/i18n.js"></script>
     <script>
         // User account menu toggle
         (function () {
@@ -212,22 +223,6 @@
                     menu.classList.remove('is-open');
                     toggle.setAttribute('aria-expanded', 'false');
                 }
-            });
-        })();
-
-        // Theme toggle
-        (function () {
-            const btn = document.getElementById('themeToggle');
-            if (!btn) return;
-            const meta = document.querySelector('meta[name="app-user"]');
-            const user = meta ? meta.getAttribute('content') : 'admin';
-            const storageKey = user ? ('ui_theme_' + user) : 'ui_theme';
-
-            btn.addEventListener('click', function () {
-                const current = document.documentElement.getAttribute('data-theme') || 'light';
-                const next = current === 'dark' ? 'light' : 'dark';
-                document.documentElement.setAttribute('data-theme', next);
-                localStorage.setItem(storageKey, next);
             });
         })();
 

@@ -7,7 +7,19 @@
     <link rel="stylesheet" href="/css/style.css">
     <link rel="icon" type="image/png" href="/favicon.png">
     <meta name="app-user" content="<%= user.username %>">
-    <script>(function(){var m=document.querySelector('meta[name="app-user"]');var u=m&&m.getAttribute('content');var k=u?'ui_theme_'+u:'ui_theme';var t=localStorage.getItem(k);if(t)document.documentElement.setAttribute('data-theme',t);})()</script>
+    <script>
+      (function() {
+        try {
+          var t = localStorage.getItem('ui_theme');
+          if (!t) {
+            var m = document.querySelector('meta[name="app-user"]');
+            var u = m && m.getAttribute('content');
+            if (u) t = localStorage.getItem('ui_theme_' + u);
+          }
+          if (t) document.documentElement.setAttribute('data-theme', t);
+        } catch(e) {}
+      })();
+    </script>
 </head>
 <body class="home-body">
     <% const avatarLetter = (user.username || 'A').charAt(0).toUpperCase(); %>
@@ -17,9 +29,7 @@
     <!-- Верхний бар (Top Navigation Bar) -->
     <header class="home-topbar">
         <div class="home-topbar__brand">
-            <a href="/" class="home-brand-link" title="ИТС-Ком">
-                <span class="home-brand-name">ИТС-Ком</span>
-            </a>
+            <a href="/" class="home-brand-link" title="ИТС-Ком"><img src="/logo.png" alt="ИТС-Ком" class="home-brand-logo"></a>
         </div>
 
         <nav class="home-topbar__nav" aria-label="Основная навигация">

@@ -2230,23 +2230,50 @@ body {
 .home-brand-link {
     display: inline-flex;
     align-items: center;
-    gap: 10px;
+    justify-content: center;
     text-decoration: none;
+    line-height: 1;
+    padding: 3px 6px;
+    margin: 0;
+    border-radius: var(--radius-sm, 6px);
+    transition: opacity var(--transition-fast, 150ms ease),
+                background-color var(--transition-fast, 150ms ease),
+                transform var(--transition-fast, 150ms ease);
+}
+
+.home-brand-link:hover {
+    opacity: 0.94;
+    background-color: rgba(255, 255, 255, 0.08);
+}
+
+.home-brand-link:hover .home-brand-logo {
+    filter: brightness(1.08) drop-shadow(0 0 8px rgba(96, 165, 250, 0.45));
+    transform: scale(1.02);
+}
+
+.home-brand-link:active .home-brand-logo {
+    transform: scale(0.98);
+}
+
+.home-brand-link:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--color-accent, #3b82f6);
 }
 
 .home-brand-logo {
+    display: block;
     width: auto;
-    height: 34px;
+    height: 32px;
+    max-height: 32px;
     object-fit: contain;
     border-radius: 0;
     flex: 0 0 auto;
+    transition: filter var(--transition-fast, 150ms ease),
+                transform var(--transition-fast, 150ms ease);
 }
 
 .home-brand-name {
-    color: #fff;
-    font-size: 13px;
-    font-weight: 600;
-    letter-spacing: 0;
+    display: none;
 }
 
 .home-topbar__nav {
@@ -2636,8 +2663,13 @@ body {
         padding-top: 84px;
     }
 
+    .home-brand-logo {
+        height: 28px;
+        max-height: 28px;
+    }
+
     .home-brand-name {
-        font-size: 13px;
+        display: none;
     }
 
     .home-topbar__nav {
@@ -2758,25 +2790,44 @@ body {
     color-scheme: dark;
 }
 
-/* ── Body / backgrounds ── */
-[data-theme="dark"] body.home-body {
-    background-color: #0b111e;
+/* ── Body / backgrounds (Unified dark dot grid & ambient lighting across all pages) ── */
+[data-theme="dark"] body,
+[data-theme="dark"] body.home-body,
+[data-theme="dark"] body.wiki-page-body,
+[data-theme="dark"] body.auth-body,
+[data-theme="dark"] body.admin-users-body,
+[data-theme="dark"] body.events-page-body,
+[data-theme="dark"] body.profile-body {
+    background-color: var(--bg-page, #0b111e);
+    color: var(--text-primary, #f8fafc);
     background-image:
-        radial-gradient(ellipse 80% 50% at 50% -20%, rgba(59, 130, 246, 0.10), transparent 70%),
-        radial-gradient(ellipse 60% 40% at 100% 100%, rgba(16, 185, 129, 0.04), transparent 60%),
-        linear-gradient(180deg, #0b111e 0%, #070c16 100%);
+        radial-gradient(1000px 500px at 50% -50px, rgba(37, 99, 235, 0.18) 0%, transparent 80%),
+        radial-gradient(800px 500px at 50% 100%, rgba(30, 58, 138, 0.16) 0%, transparent 80%),
+        radial-gradient(rgba(255, 255, 255, 0.06) 1px, transparent 1px);
+    background-size: 100% 100%, 100% 100%, 24px 24px;
+    background-position: center top, center bottom, 0 0;
+    background-repeat: no-repeat, no-repeat, repeat;
+    background-attachment: fixed, fixed, fixed;
+}
+
+/* ── Light theme explicit baseline background (No dot grid) ── */
+[data-theme="light"] body.home-body,
+[data-theme="light"] body.admin-users-body,
+[data-theme="light"] body.events-page-body,
+[data-theme="light"] body.profile-body {
+    background-color: #f8fafc;
+    background-image:
+        radial-gradient(ellipse 80% 50% at 50% -20%, rgba(37, 99, 235, 0.06), transparent 70%),
+        radial-gradient(ellipse 60% 40% at 100% 100%, rgba(16, 185, 129, 0.03), transparent 60%),
+        linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
     background-attachment: fixed;
-    color: var(--text-primary);
+    color: var(--text-primary, #0f172a);
 }
 
-[data-theme="dark"] body.wiki-page-body {
-    background: #0f1623;
-    color: #d0dcea;
-}
-
-[data-theme="dark"] body.auth-body {
-    background: #0f1623;
-    color: #d0dcea;
+[data-theme="light"] body.wiki-page-body {
+    background: #ffffff;
+    background-image: none;
+    color: #333333;
 }
 
 /* ── Topbar ── */
@@ -2828,7 +2879,7 @@ body {
 
 /* ── Wiki main content ── */
 [data-theme="dark"] .wiki-main {
-    background: #141f2e;
+    background: transparent;
 }
 
 [data-theme="dark"] .wiki-welcome {

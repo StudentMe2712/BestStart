@@ -9,21 +9,24 @@
     <link rel="stylesheet" href="/css/login.css">
     <link rel="icon" type="image/png" href="/favicon.png">
     <script>
-        (function() {
-            var theme = localStorage.getItem('ui_theme') || localStorage.getItem('ui_theme_admin');
-            if (theme) {
-                document.documentElement.setAttribute('data-theme', theme);
-            }
-        })();
+      (function() {
+        try {
+          var t = localStorage.getItem('ui_theme');
+          if (!t) {
+            var m = document.querySelector('meta[name="app-user"]');
+            var u = m && m.getAttribute('content');
+            if (u) t = localStorage.getItem('ui_theme_' + u);
+          }
+          if (t) document.documentElement.setAttribute('data-theme', t);
+        } catch(e) {}
+      })();
     </script>
 </head>
 <body class="auth-body">
     <!-- Верхняя панель навигации -->
     <header class="home-topbar home-topbar--public">
         <div class="home-topbar__brand">
-            <a href="/" class="home-brand-link" title="ИТС-Ком">
-                <span class="home-brand-name">ИТС-Ком</span>
-            </a>
+            <a href="/" class="home-brand-link" title="ИТС-Ком"><img src="/logo.png" alt="ИТС-Ком" class="home-brand-logo"></a>
         </div>
         <nav class="home-topbar__nav" aria-label="Основная навигация">
             <a href="/" class="home-topbar__nav-link" data-i18n="nav.home">Главная</a>
