@@ -556,6 +556,9 @@ if (editBtnTop) {
         if (isEditMode) {
             exitEditMode();
         } else {
+            if (typeof window.switchCompanyTab === 'function') {
+                window.switchCompanyTab('data', true);
+            }
             enterEditMode();
         }
     });
@@ -911,82 +914,87 @@ if (wikiSearch && wikiOrgList) {
 }
 
 /* ============================================================
-   COMPANY TABS (Данные / Базы 1С — Спринт 4)
+   COMPANY TABS (Данные / Файлы — Спринт 9)
    ============================================================ */
 
 (function initCompanyTabs() {
-    var tabDataBtn = document.getElementById('tabBtnData');
-    var tab1cBtn   = document.getElementById('tabBtn1c');
-    var paneData   = document.getElementById('tabPaneData');
-    var pane1c     = document.getElementById('tabPane1c');
-    var orgIdInput = document.getElementById('currentOrgId');
-
-    if (!tabDataBtn || !tab1cBtn || !paneData || !pane1c) return;
-
-    var orgId = orgIdInput ? orgIdInput.value : '';
+    var tabBtnData    = document.getElementById('tabBtnData');
+    var tabBtnFiles   = document.getElementById('tabBtnFiles');
+    var tabPanelData  = document.getElementById('tabPanelData') || document.getElementById('tabPaneData');
+    var tabPanelFiles = document.getElementById('tabPanelFiles') || document.getElementById('tabPaneFiles');
+    var orgIdInput    = document.getElementById('currentOrgId');
 
     function switchTab(tabKey, updateUrl) {
-        if (tabKey === '1c') {
-            tabDataBtn.classList.remove('is-active');
-            tabDataBtn.setAttribute('aria-selected', 'false');
-            tab1cBtn.classList.add('is-active');
-            tab1cBtn.setAttribute('aria-selected', 'true');
+        if (!tabBtnData || !tabBtnFiles || !tabPanelData || !tabPanelFiles) return;
+        var orgId = orgIdInput ? orgIdInput.value : '';
 
-            paneData.style.display = 'none';
-            pane1c.style.display = 'block';
+        if (tabKey === 'files') {
+            tabBtnFiles.classList.add('is-active');
+            tabBtnFiles.setAttribute('aria-selected', 'true');
+            tabBtnData.classList.remove('is-active');
+            tabBtnData.setAttribute('aria-selected', 'false');
+
+            tabPanelFiles.style.display = 'block';
+            tabPanelData.style.display = 'none';
 
             if (window.sessionStorage) {
-                sessionStorage.setItem('wiki_active_tab', '1c');
-                if (orgId) sessionStorage.setItem('wiki_active_tab_' + orgId, '1c');
+                sessionStorage.setItem('wiki_active_tab', 'files');
+                if (orgId) sessionStorage.setItem('wiki_active_tab_' + orgId, 'files');
             }
             if (updateUrl && window.history && history.replaceState) {
-                history.replaceState(null, null, '#tab-1c');
+                history.replaceState(null, '', '#files');
             }
         } else {
-            tab1cBtn.classList.remove('is-active');
-            tab1cBtn.setAttribute('aria-selected', 'false');
-            tabDataBtn.classList.add('is-active');
-            tabDataBtn.setAttribute('aria-selected', 'true');
+            tabBtnData.classList.add('is-active');
+            tabBtnData.setAttribute('aria-selected', 'true');
+            tabBtnFiles.classList.remove('is-active');
+            tabBtnFiles.setAttribute('aria-selected', 'false');
 
-            pane1c.style.display = 'none';
-            paneData.style.display = 'block';
+            tabPanelData.style.display = 'block';
+            tabPanelFiles.style.display = 'none';
 
             if (window.sessionStorage) {
                 sessionStorage.setItem('wiki_active_tab', 'data');
                 if (orgId) sessionStorage.setItem('wiki_active_tab_' + orgId, 'data');
             }
             if (updateUrl && window.history && history.replaceState) {
-                history.replaceState(null, null, '#tab-data');
+                history.replaceState(null, '', window.location.pathname);
             }
         }
     }
 
-    tabDataBtn.addEventListener('click', function() { switchTab('data', true); });
-    tab1cBtn.addEventListener('click', function() { switchTab('1c', true); });
+    window.switchCompanyTab = switchTab;
 
-    // Initial tab detection
+    if (!tabBtnData || !tabBtnFiles || !tabPanelData || !tabPanelFiles) return;
+
+    var orgId = orgIdInput ? orgIdInput.value : '';
+
+    tabBtnData.addEventListener('click', function() { switchTab('data', true); });
+    tabBtnFiles.addEventListener('click', function() { switchTab('files', true); });
+
+    // Initial detection on page load
     var initialTab = 'data';
-    if (window.location.hash === '#tab-1c') {
-        initialTab = '1c';
-    } else if (window.location.hash === '#tab-data') {
+    var hash = window.location.hash;
+    if (hash === '#files' || hash === '#tab-files') {
+        initialTab = 'files';
+    } else if (hash === '#data' || hash === '#tab-data') {
         initialTab = 'data';
     } else if (window.sessionStorage) {
         var savedOrgTab = orgId ? sessionStorage.getItem('wiki_active_tab_' + orgId) : null;
         var savedTab = savedOrgTab || sessionStorage.getItem('wiki_active_tab');
-        if (savedTab === '1c') initialTab = '1c';
+        if (savedTab === 'files') initialTab = 'files';
     }
 
     switchTab(initialTab, false);
 
     window.addEventListener('hashchange', function() {
-        if (window.location.hash === '#tab-1c') {
-            switchTab('1c', false);
-        } else if (window.location.hash === '#tab-data') {
+        var currentHash = window.location.hash;
+        if (currentHash === '#files' || currentHash === '#tab-files') {
+            switchTab('files', false);
+        } else {
             switchTab('data', false);
         }
     });
-
-    window.switchCompanyTab = switchTab;
 })();
 
 /* ============================================================
@@ -1358,6 +1366,9 @@ function reorganizeWikiSidebar(pins) {
     var btnAttach = document.getElementById('btnAttachFile');
     var attachmentsList = document.getElementById('attachmentsList');
     var filesCountBadge = document.getElementById('filesCountBadge');
+    var filesTabCounter = document.getElementById('filesTabCounter');
+    var attachmentsEmpty = document.getElementById('attachmentsEmpty');
+    var uploadFileBtn = document.getElementById('uploadFileBtn');
     var orgIdInput = document.getElementById('currentOrgId');
 
     // Lightbox elements
@@ -1453,6 +1464,7 @@ function reorganizeWikiSidebar(pins) {
 
         var previewAttr = info.isPreviewable ? ' role="button" tabindex="0" title="Нажмите для предпросмотра"' : '';
         var clickableClass = info.isPreviewable ? ' is-clickable' : '';
+        var fileDate = file.created_at ? new Date(file.created_at).toLocaleDateString('ru-RU') : '';
 
         chip.innerHTML =
             '<div class="file-chip-main' + clickableClass + '"' + previewAttr + '>' +
@@ -1461,7 +1473,10 @@ function reorganizeWikiSidebar(pins) {
                 '</span>' +
                 '<div class="file-chip-info">' +
                     '<span class="file-chip-name" title="' + escapeHtmlText(file.original_name) + '">' + escapeHtmlText(file.original_name) + '</span>' +
-                    '<span class="file-chip-size">' + info.sizeFormatted + '</span>' +
+                    '<div class="file-chip-details">' +
+                        '<span class="file-chip-size">' + info.sizeFormatted + '</span>' +
+                        '<span class="file-chip-date">• ' + (fileDate || 'только что') + '</span>' +
+                    '</div>' +
                 '</div>' +
             '</div>' +
             '<div class="file-chip-actions">' +
@@ -1477,10 +1492,36 @@ function reorganizeWikiSidebar(pins) {
     }
 
     function updateBadgeCount(delta) {
-        if (!filesCountBadge) return;
-        var current = parseInt(filesCountBadge.textContent, 10) || 0;
+        var current = 0;
+        if (filesCountBadge) {
+            current = parseInt(filesCountBadge.textContent, 10) || 0;
+        } else if (filesTabCounter) {
+            current = parseInt(filesTabCounter.textContent, 10) || 0;
+        }
         var next = Math.max(0, current + delta);
-        filesCountBadge.textContent = String(next);
+
+        if (filesCountBadge) {
+            filesCountBadge.textContent = String(next);
+        }
+        if (filesTabCounter) {
+            filesTabCounter.textContent = String(next);
+            if (next > 0) {
+                filesTabCounter.classList.add('has-items');
+                filesTabCounter.classList.add('has-files');
+            } else {
+                filesTabCounter.classList.remove('has-items');
+                filesTabCounter.classList.remove('has-files');
+            }
+        }
+
+        var emptyEl = attachmentsEmpty || document.getElementById('attachmentsEmpty');
+        if (emptyEl) {
+            if (next === 0) {
+                emptyEl.style.display = '';
+            } else {
+                emptyEl.style.display = 'none';
+            }
+        }
     }
 
     async function uploadFiles(files) {
@@ -1508,7 +1549,7 @@ function reorganizeWikiSidebar(pins) {
                     if (attachmentsList) {
                         attachmentsList.appendChild(chip);
                     }
-                    var emptyEl = document.getElementById('attachmentsEmpty');
+                    var emptyEl = attachmentsEmpty || document.getElementById('attachmentsEmpty');
                     if (emptyEl) emptyEl.style.display = 'none';
                     updateBadgeCount(1);
                     showToast('Файл "' + data.file.original_name + '" прикреплен');
@@ -1521,6 +1562,14 @@ function reorganizeWikiSidebar(pins) {
                 showToast('Ошибка при загрузке файла');
             }
         }
+    }
+
+    // Empty-state upload button click -> trigger hidden file input
+    if (uploadFileBtn && fileInput) {
+        uploadFileBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            fileInput.click();
+        });
     }
 
     // Attach button click -> trigger hidden file input
@@ -1600,11 +1649,11 @@ function reorganizeWikiSidebar(pins) {
                         if (res.ok && data && data.success) {
                             var chip = deleteBtn.closest('.file-chip');
                             if (chip) chip.remove();
-                            var emptyEl = document.getElementById('attachmentsEmpty');
+                            updateBadgeCount(-1);
+                            var emptyEl = attachmentsEmpty || document.getElementById('attachmentsEmpty');
                             if (emptyEl && attachmentsList && attachmentsList.querySelectorAll('.file-chip').length === 0) {
                                 emptyEl.style.display = '';
                             }
-                            updateBadgeCount(-1);
                             showToast('Файл удален');
                         } else {
                             throw new Error((data && data.error) || 'Ошибка удаления файла');

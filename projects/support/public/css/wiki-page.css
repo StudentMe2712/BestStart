@@ -1527,23 +1527,27 @@ body.wiki-page-body {
 }
 
 /* ============================================================
-   COMPANY TABS (Данные / Базы 1С — Спринт 4)
+   ORGANIZATION TABS (Sprint 9)
    ============================================================ */
 
+.org-tabs-nav,
 .company-tabs-bar {
     display: flex;
     align-items: center;
     gap: 8px;
     border-bottom: 2px solid #e2e8f0;
-    margin-bottom: 22px;
-    padding: 0 4px;
+    margin-bottom: 0;
+    padding: 0 28px;
+    background: #ffffff;
+    flex-shrink: 0;
 }
 
+.org-tab-btn,
 .company-tab-btn {
     display: inline-flex;
     align-items: center;
     gap: 8px;
-    padding: 11px 20px;
+    padding: 12px 18px;
     font-size: 14px;
     font-weight: 600;
     color: #64748b;
@@ -1558,18 +1562,21 @@ body.wiki-page-body {
     user-select: none;
 }
 
+.org-tab-btn:hover,
 .company-tab-btn:hover {
     color: #0f172a;
     background: #f8fafc;
 }
 
+.org-tab-btn.is-active,
 .company-tab-btn.is-active {
-    color: #2563eb;
-    border-bottom-color: #2563eb;
+    color: var(--brand-primary, #2563eb);
+    border-bottom: 2px solid var(--brand-primary, #2563eb);
     font-weight: 700;
     background: transparent;
 }
 
+.org-tab-icon,
 .company-tab-icon {
     display: inline-flex;
     align-items: center;
@@ -1578,8 +1585,10 @@ body.wiki-page-body {
     height: 16px;
     line-height: 1;
     flex-shrink: 0;
+    color: inherit;
 }
 
+.org-tab-icon svg,
 .company-tab-icon svg {
     width: 16px;
     height: 16px;
@@ -1590,6 +1599,8 @@ body.wiki-page-body {
     letter-spacing: -0.01em;
 }
 
+.org-tab-badge,
+.tab-count-badge,
 .company-tab-badge {
     display: inline-flex;
     align-items: center;
@@ -1599,45 +1610,79 @@ body.wiki-page-body {
     padding: 0 7px;
     border-radius: 10px;
     font-size: 11px;
-    font-weight: 700;
+    font-weight: 600;
     background: #e2e8f0;
     color: #475569;
+    line-height: 1;
     transition: background 0.15s ease, color 0.15s ease;
 }
 
+.org-tab-badge.has-items,
+.org-tab-badge.has-files,
+.tab-count-badge.has-items,
+.tab-count-badge.has-files {
+    background: #2563eb;
+    color: #ffffff;
+    font-weight: 700;
+    border-radius: 10px;
+    padding: 0 7px;
+    min-width: 20px;
+    height: 20px;
+}
+
+.org-tab-btn.is-active .org-tab-badge:not(.has-items):not(.has-files),
 .company-tab-btn.is-active .company-tab-badge {
     background: #dbeafe;
     color: #1d4ed8;
 }
 
+.org-tab-pane,
 .company-tab-pane {
     display: block;
+    width: 100%;
 }
 
+[data-theme="dark"] .org-tabs-nav,
 [data-theme="dark"] .company-tabs-bar {
+    background: transparent;
     border-bottom-color: #1e293b;
 }
 
+[data-theme="dark"] .org-tab-btn,
 [data-theme="dark"] .company-tab-btn {
     color: #94a3b8;
 }
 
+[data-theme="dark"] .org-tab-btn:hover,
 [data-theme="dark"] .company-tab-btn:hover {
     color: #f8fafc;
     background: #141f2e;
 }
 
+[data-theme="dark"] .org-tab-btn.is-active,
 [data-theme="dark"] .company-tab-btn.is-active {
-    color: #60a5fa;
-    border-bottom-color: #60a5fa;
+    color: var(--brand-primary, #3b82f6);
+    border-bottom: 2px solid var(--brand-primary, #3b82f6);
     background: transparent;
 }
 
+[data-theme="dark"] .org-tab-badge,
+[data-theme="dark"] .tab-count-badge,
 [data-theme="dark"] .company-tab-badge {
     background: #1e293b;
     color: #94a3b8;
 }
 
+[data-theme="dark"] .org-tab-badge.has-items,
+[data-theme="dark"] .org-tab-badge.has-files,
+[data-theme="dark"] .tab-count-badge.has-items,
+[data-theme="dark"] .tab-count-badge.has-files {
+    background: #3b82f6;
+    color: #ffffff;
+    font-weight: 700;
+}
+
+[data-theme="dark"] .org-tab-btn.is-active .org-tab-badge:not(.has-items):not(.has-files),
 [data-theme="dark"] .company-tab-btn.is-active .company-tab-badge {
     background: #1e3a8a;
     color: #bfdbfe;
@@ -1966,12 +2011,24 @@ body.wiki-page-body {
     border-top-color: #1e293b;
 }
 
+/* Dedicated Tab Panel Attachments (Sprint 9) */
+.wiki-attachments-section.wiki-attachments-tab-section {
+    margin-top: 0;
+    padding: 24px 28px;
+    border-top: none;
+    width: 100%;
+}
+
+[data-theme="dark"] .wiki-attachments-section.wiki-attachments-tab-section {
+    border-top: none;
+}
+
 .wiki-attachments-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 16px;
-    margin-bottom: 16px;
+    margin-bottom: 20px;
 }
 
 .wiki-attachments-title-wrap {
@@ -2065,21 +2122,73 @@ body.wiki-page-body {
     stroke: #ffffff;
 }
 
+/* Empty State */
 .attachments-empty {
-    padding: 16px 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
     text-align: center;
+    padding: 48px 24px;
     font-size: 13.5px;
     color: var(--text-tertiary, #94a3b8);
-    background: var(--bg-subtle, rgba(248, 250, 252, 0.5));
-    border: 1px dashed var(--border-subtle, #cbd5e1);
-    border-radius: var(--radius-md, 8px);
-    margin: 8px 0 12px 0;
+    background: var(--bg-subtle, rgba(248, 250, 252, 0.6));
+    border: 2px dashed var(--border-subtle, #cbd5e1);
+    border-radius: 12px;
+    margin: 16px 0;
+    gap: 8px;
+    transition: border-color 0.15s ease, background-color 0.15s ease;
 }
 
 [data-theme="dark"] .attachments-empty {
-    background: rgba(255, 255, 255, 0.02);
-    border-color: rgba(255, 255, 255, 0.1);
+    background: rgba(30, 41, 59, 0.35);
+    border-color: #334155;
     color: #94a3b8;
+}
+
+.attachments-empty-icon {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    background: #e2e8f0;
+    color: #64748b;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 6px;
+    transition: transform 0.2s ease, background-color 0.2s ease;
+}
+
+[data-theme="dark"] .attachments-empty-icon {
+    background: #1e293b;
+    color: #94a3b8;
+}
+
+.attachments-empty-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: #1e293b;
+    line-height: 1.4;
+}
+
+[data-theme="dark"] .attachments-empty-title {
+    color: #f1f5f9;
+}
+
+.attachments-empty-subtitle {
+    font-size: 13px;
+    color: #64748b;
+    max-width: 520px;
+    line-height: 1.5;
+    margin-bottom: 8px;
+}
+
+[data-theme="dark"] .attachments-empty-subtitle {
+    color: #94a3b8;
+}
+
+.attachments-empty-btn {
+    margin-top: 4px;
 }
 
 /* Dropzone Drag & Drop */
@@ -2160,7 +2269,7 @@ body.wiki-page-body {
     border: 1px solid #e2e8f0;
     border-radius: 8px;
     box-shadow: 0 1px 3px rgba(15, 23, 42, 0.03);
-    transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+    transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
 }
 
 [data-theme="dark"] .file-chip {
@@ -2170,14 +2279,14 @@ body.wiki-page-body {
 }
 
 .file-chip:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(15, 23, 42, 0.06);
-    border-color: #cbd5e1;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 18px rgba(15, 23, 42, 0.08);
+    border-color: var(--brand-primary, #3b82f6);
 }
 
 [data-theme="dark"] .file-chip:hover {
-    border-color: #334155;
-    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+    border-color: var(--brand-primary, #3b82f6);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45);
 }
 
 .file-chip-main {
@@ -2220,9 +2329,25 @@ body.wiki-page-body {
     transition: color 0.15s ease;
 }
 
+.file-chip-details {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-wrap: wrap;
+}
+
 .file-chip-size {
     font-size: 11.5px;
     color: var(--text-muted);
+}
+
+.file-chip-date {
+    font-size: 11.5px;
+    color: var(--text-muted);
+}
+
+[data-theme="dark"] .file-chip-date {
+    color: #94a3b8;
 }
 
 .file-chip-actions {

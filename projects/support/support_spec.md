@@ -1,7 +1,7 @@
 # 📘 Спецификация проекта: ИТС-Ком Wiki & Server Hub (BestStart)
 
-**Версия:** 2.7.2  
-**Статус:** Завершен (Спринт 7 — Full-Width Hero Dashboard, Mammoth DOCX/DOC Support, 1:1 Image Preview, Unified Confirm Modal, Smart Red Pushpin 📌 & Security Hardening)  
+**Версия:** 2.9.0  
+**Статус:** Завершен (Спринт 9 — Вкладка «📎 Файлы» как в 1С, 100% готовность)  
 **Локация:** `projects/support`  
 **Спецификация для развертывания на хостинге:** 👉 [spec.md](./spec.md)  
 **Стек:** Node.js 18+, Express 4.x, EJS, Vanilla CSS/JS, SheetJS (XLSX), Mammoth (DOCX), MariaDB (Прод Plesk) / Mock Stub (Dev)  
@@ -154,4 +154,35 @@
   - [x] Удалены все `.bat` файлы (`start-local.bat`, `start.bat`, `stop.bat`, `install.bat`, `seed.bat`, `setup-domain.bat`).
   - [x] Удален бинарный файл `p-14802_wiki` и `db-stub.js`.
   - [x] Удалены лишние `.md` и `.txt` файлы из корня `projects/support` (`PROJECT_STRUCTURE.md`, `QUICKSTART.md`, `README.md`, `VISUAL_GUIDE.md`, `ОБНОВЛЕНИЯ.md`, `УЧЕТНЫЕ_ДАННЫЕ.txt`, `DOCUMENTATION.md`), сохранены спецификации `spec.md` и `support_spec.md`.
+
+---
+
+## 6. СПРИНТ 9 — Перенос прикрепленных файлов в отдельную вкладку «📎 Файлы» (Завершен на 100%)
+
+- [x] **Архитектура вкладок в `views/wiki.ejs`**:
+  - [x] Внедрена навигационная панель вкладок `.org-tabs-nav` (`#companyTabsBar`) сразу под `.org-page-header`.
+  - [x] Создана вкладка 1: «Данные» (`#tabBtnData`, активна по умолчанию) с векторной SVG-иконкой документа.
+  - [x] Создана вкладка 2: «Файлы» (`#tabBtnFiles`) с векторной SVG-скрепкой и динамическим счетчиком-бейджем `#filesTabCounter`.
+  - [x] Содержимое разделено на две изолированные панели: `#tabPanelData` (заметки и редактор `#editorBottomBar`) и `#tabPanelFiles` (секция прикрепленных файлов на всю ширину).
+  - [x] Из подвала заметок во вкладке «Данные» полностью удален старый блок файлов, предотвращая уход информации в слепую зону.
+  - [x] Сохранены 100% существующих атрибутов (`id`, `class`, `data-*`) файлового блока (`#wikiAttachmentsSection`, `#filesCountBadge`, `#fileInputUpload`, `#btnAttachFile`, `#attachmentsList`, `#attachmentsEmpty`).
+  - [x] Добавлено аккуратное пустое состояние `#attachmentsEmpty` с контурной SVG-скрепкой, информационным текстом и кнопкой `#uploadFileBtn` («Прикрепить файл»).
+  - [x] Модальные окна (`#fileLightboxModal`, `#unifiedConfirmModal`, `#addOrgModal`) сохранены вне вкладок перед `</body>`.
+
+- [x] **Стилизация в `public/css/wiki-page.css`**:
+  - [x] Оформлены компоненты `.org-tabs-nav`, `.org-tab-btn`, `.org-tab-icon`, `.org-tab-badge`, `.tab-count-badge`.
+  - [x] Активная вкладка акцентирована нижней границей 2px `var(--brand-primary)` и фирменным цветом текста.
+  - [x] Бейдж счетчика файлов оформлен сапфирово-синим цветом (`.has-items`, `.has-files`) при наличии файлов (>0) и нейтральным серым при 0 файлов.
+  - [x] Добавлена полная поддержка темной темы `[data-theme="dark"]` для всех элементов вкладок и файлового раздела.
+  - [x] Файловый раздел `.wiki-attachments-tab-section` адаптирован под комфортное полноэкранное отображение без паразитных отступов и верхних разделителей.
+
+- [x] **Клиентская логика в `public/js/main.js`**:
+  - [x] Реализована функция `switchCompanyTab(tabKey, updateUrl)` с мгновенным переключением без перезагрузки страницы и экспортом в `window.switchCompanyTab`.
+  - [x] Добавлена поддержка URL-хэша `#files` / `#tab-files` с синхронизацией через `history.replaceState` и обработчиком `hashchange`.
+  - [x] Сохранение активной вкладки в `sessionStorage` по организациям (`wiki_active_tab_${orgId}`).
+  - [x] Умное поведение кнопки «Редактировать» (`#editBtnTop`): если пользователь находится на вкладке «Файлы», скрипт автоматически переключает на вкладку «Данные» и включает редактор.
+  - [x] Динамическое живое обновление счетчика `#filesTabCounter` и `#filesCountBadge` при добавлении (`POST /api/organizations/:id/files`) и удалении (`DELETE /api/files/:id`) без перезагрузки страницы.
+  - [x] Автоматическое переключение классов `.has-items` / `.has-files` и видимости `#attachmentsEmpty`.
+  - [x] Привязка обработчика загрузки к кнопке `#uploadFileBtn` в пустом состоянии.
+
 
