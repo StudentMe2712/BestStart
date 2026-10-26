@@ -15,11 +15,15 @@ public struct VibePickerSheet: View {
     public init(
         profile: CoupleProfile,
         completedAdventureIds: Set<String>,
+        initialVibe: VibeTag? = nil,
         onAdventureSelected: @escaping (AdventureDefinition) -> Void
     ) {
         self.profile = profile
         self.completedAdventureIds = completedAdventureIds
         self.onAdventureSelected = onAdventureSelected
+        if let initial = initialVibe {
+            _selectedVibes = State(initialValue: [initial])
+        }
     }
 
     public var body: some View {

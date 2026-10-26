@@ -62,26 +62,32 @@ public struct RootCoordinatorView: View {
         }
     }
 
-    // MARK: - Главный TabView из 3 вкладок
+    // MARK: - Главный TabView из 4 вкладок (Apple HIG iOS 18)
     private var mainTabView: some View {
         TabView(selection: $selectedTab) {
-            JourneyMapView()
+            TodayView()
                 .tabItem {
-                    Label("Карта", systemImage: "map.fill")
+                    Label("Сегодня", systemImage: "sparkles")
                 }
                 .tag(0)
+
+            JourneyMapView()
+                .tabItem {
+                    Label("Путь", systemImage: "map.fill")
+                }
+                .tag(1)
 
             CollectionView()
                 .tabItem {
                     Label("Коллекция", systemImage: "trophy.fill")
                 }
-                .tag(1)
+                .tag(2)
 
             SettingsView()
                 .tabItem {
-                    Label("Настройки", systemImage: "gearshape.fill")
+                    Label("Пара", systemImage: "person.2.fill")
                 }
-                .tag(2)
+                .tag(3)
         }
         .tint(AppTheme.primaryRose)
     }

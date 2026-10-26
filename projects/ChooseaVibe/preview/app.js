@@ -1492,6 +1492,7 @@ class GameState {
         selectedScratchThemeId: 'classic_silver',
         excludedBoundaries: [],
         hasCompletedOnboarding: false,
+        hasSeenWalkthrough: false,
         soundEnabled: true
       },
       activeSession: null,
@@ -1960,11 +1961,19 @@ class ScratchCanvasController {
     ctx.arc(cx, cy, 56, 0, Math.PI * 2);
     ctx.stroke();
 
+    // Draw 4-point golden sparkle star (no text emojis)
     ctx.fillStyle = '#FFD166';
-    ctx.font = 'bold 24px -apple-system, BlinkMacSystemFont, sans-serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText('✨', cx, cy - 14);
+    ctx.beginPath();
+    for (let i = 0; i < 8; i++) {
+      const radius = i % 2 === 0 ? 14 : 4;
+      const angle = (i * Math.PI) / 4 - Math.PI / 2;
+      const sx = cx + Math.cos(angle) * radius;
+      const sy = (cy - 14) + Math.sin(angle) * radius;
+      if (i === 0) ctx.moveTo(sx, sy);
+      else ctx.lineTo(sx, sy);
+    }
+    ctx.closePath();
+    ctx.fill();
 
     ctx.font = 'bold 13px -apple-system, BlinkMacSystemFont, sans-serif';
     ctx.fillStyle = '#FFFFFF';
@@ -2181,6 +2190,10 @@ class UIController {
     this.scratchController = null;
     this.selectedAdventureForBriefing = null;
     this.onboardingCurrentStep = 1;
+    this.currentTabId = 'tab-today';
+    this.currentPathChapterId = 'ch_01';
+    this.walkthroughCurrentSlide = 1;
+    this.isDemoScratchInitialized = false;
 
     // Vibe picker state
     this.pickerCriteria = {
@@ -2194,6 +2207,7 @@ class UIController {
     this.initClock();
     this.initEvents();
     this.render();
+    this.switchTab('tab-today');
   }
 
   initElements() {
@@ -2205,6 +2219,7 @@ class UIController {
     this.bottomSheetVibe = document.getElementById('bottom-sheet-vibe');
     this.sheetBackdrop = document.getElementById('sheet-backdrop');
     this.modalBriefing = document.getElementById('modal-briefing');
+    this.modalWalkthrough = document.getElementById('modal-walkthrough');
 
     this.scratchCanvas = document.getElementById('scratch-canvas');
     this.card3dInner = document.getElementById('card-3d-inner');
@@ -2286,6 +2301,8 @@ class UIController {
         State.reset();
         Sound.playHaptic();
         this.onboardingCurrentStep = 1;
+        this.currentTabId = 'tab-today';
+        this.currentPathChapterId = 'ch_01';
         this.render();
         this.showToast('Прогресс сброшен!');
       }
@@ -2363,21 +2380,121 @@ class UIController {
       });
     });
 
-    // Main TabBar Navigation
+    // Main TabBar Navigation (4 tabs)
     const tabItems = document.querySelectorAll('.ios-tab-bar .tab-item');
     tabItems.forEach(tab => {
       tab.addEventListener('click', () => {
         Sound.playHaptic();
-        tabItems.forEach(t => t.classList.remove('active'));
-        tab.classList.add('active');
         const targetTab = tab.dataset.tab;
-        document.querySelectorAll('.tab-content').forEach(tc => tc.classList.remove('active'));
-        const activeTabContent = document.getElementById(targetTab);
-        const fab = document.getElementById('btn-open-vibe-sheet');
-        if (fab) fab.style.display = (targetTab === 'tab-map') ? 'flex' : 'none';
-        if (activeTabContent) activeTabContent.classList.add('active');
+        this.switchTab(targetTab);
       });
     });
+
+    // Today Tab: Active Banner Resume
+    const todayActiveBanner = document.getElementById('today-active-banner');
+    if (todayActiveBanner) {
+      todayActiveBanner.addEventListener('click', () => {
+        Sound.playHaptic();
+        if (State.activeSession) {
+          this.resumeActiveSession();
+        }
+      });
+    }
+
+    // Today Tab: Hero Card CTA
+    const btnTodayPick = document.getElementById('btn-today-pick-vibe');
+    if (btnTodayPick) {
+      btnTodayPick.addEventListener('click', () => {
+        Sound.playHaptic();
+        this.openVibeSheet();
+      });
+    }
+
+    // Today Tab: Quick Mood Selector (5 Cards)
+    const quickVibeCards = document.querySelectorAll('#today-quick-vibes .quick-vibe-card');
+    quickVibeCards.forEach(card => {
+      card.addEventListener('click', () => {
+        Sound.playHaptic();
+        const vibe = card.dataset.vibe;
+        if (!vibe) return;
+        this.pickerCriteria.vibes = [vibe];
+        const sheetChips = document.querySelectorAll('#picker-vibes-list .vibe-chip');
+        sheetChips.forEach(chip => {
+          chip.classList.toggle('selected', chip.dataset.vibe === vibe);
+        });
+        quickVibeCards.forEach(c => c.classList.toggle('selected', c === card));
+        this.runMatcher();
+      });
+    });
+
+    // Today Tab: Promo Guide Banner
+    const bannerOpenWalkthrough = document.getElementById('banner-open-walkthrough');
+    if (bannerOpenWalkthrough) {
+      bannerOpenWalkthrough.addEventListener('click', () => {
+        this.openWalkthrough();
+      });
+    }
+
+    // Header Walkthrough Help Button (?)
+    const btnOpenWalkthrough = document.getElementById('btn-open-walkthrough');
+    if (btnOpenWalkthrough) {
+      btnOpenWalkthrough.addEventListener('click', () => {
+        this.openWalkthrough();
+      });
+    }
+
+    // Tab 2 Path: Chapter Segmented Control
+    const chapterSegmentBtns = document.querySelectorAll('#path-chapters-segment .segment-btn');
+    chapterSegmentBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        Sound.playHaptic();
+        const chId = btn.dataset.chapter;
+        if (chId) {
+          this.currentPathChapterId = chId;
+          chapterSegmentBtns.forEach(b => b.classList.toggle('active', b === btn));
+          this.renderPathTrail();
+        }
+      });
+    });
+
+    // Walkthrough Modal Controls
+    const btnCloseWalkthrough = document.getElementById('btn-close-walkthrough');
+    if (btnCloseWalkthrough) {
+      btnCloseWalkthrough.addEventListener('click', () => {
+        this.closeWalkthrough();
+      });
+    }
+    if (this.modalWalkthrough) {
+      this.modalWalkthrough.addEventListener('click', (e) => {
+        if (e.target === this.modalWalkthrough) {
+          this.closeWalkthrough();
+        }
+      });
+    }
+
+    const btnWtBack = document.getElementById('btn-wt-back');
+    if (btnWtBack) {
+      btnWtBack.addEventListener('click', () => {
+        Sound.playHaptic();
+        if (this.walkthroughCurrentSlide > 1) {
+          this.updateWalkthroughSlide(this.walkthroughCurrentSlide - 1);
+        }
+      });
+    }
+
+    const btnWtNext = document.getElementById('btn-wt-next');
+    if (btnWtNext) {
+      btnWtNext.addEventListener('click', () => {
+        Sound.playHaptic();
+        if (this.walkthroughCurrentSlide < 3) {
+          this.updateWalkthroughSlide(this.walkthroughCurrentSlide + 1);
+        } else {
+          State.profile.hasSeenWalkthrough = true;
+          State.save();
+          this.closeWalkthrough();
+        }
+      });
+    }
 
     // Museum Segmented Control
     const segmentBtns = document.querySelectorAll('.segmented-control .segment-btn');
@@ -2534,6 +2651,7 @@ class UIController {
     document.getElementById('btn-postpone-quest').addEventListener('click', () => {
       Sound.playHaptic();
       this.showScreen('screen-main');
+      this.switchTab('tab-today');
       this.render();
       this.showToast('Вечер отложен на потом');
     });
@@ -2543,6 +2661,7 @@ class UIController {
       Sound.playHaptic();
       this.confetti.stop();
       this.showScreen('screen-main');
+      this.switchTab('tab-today');
       this.render();
     });
 
@@ -2572,6 +2691,8 @@ class UIController {
         State.reset();
         Sound.playHaptic();
         this.onboardingCurrentStep = 1;
+        this.currentTabId = 'tab-today';
+        this.currentPathChapterId = 'ch_01';
         this.render();
         this.showToast('Прогресс сброшен!');
       }
@@ -2608,6 +2729,34 @@ class UIController {
     this.sheetBackdrop.classList.remove('active');
   }
 
+  switchTab(tabId) {
+    this.currentTabId = tabId || 'tab-today';
+
+    const tabItems = document.querySelectorAll('.ios-tab-bar .tab-item');
+    tabItems.forEach(t => {
+      t.classList.toggle('active', t.dataset.tab === this.currentTabId);
+    });
+
+    document.querySelectorAll('.tab-content').forEach(tc => {
+      tc.classList.toggle('active', tc.id === this.currentTabId);
+    });
+
+    const fab = document.getElementById('btn-open-vibe-sheet');
+    if (fab) {
+      fab.style.display = 'none';
+    }
+
+    if (this.currentTabId === 'tab-today') {
+      this.renderToday();
+    } else if (this.currentTabId === 'tab-path') {
+      this.renderPathTrail();
+    } else if (this.currentTabId === 'tab-collection') {
+      this.renderMuseum();
+    } else if (this.currentTabId === 'tab-pair') {
+      this.renderSettings();
+    }
+  }
+
   render() {
     if (!State.profile.hasCompletedOnboarding) {
       this.showScreen('screen-onboarding');
@@ -2632,24 +2781,342 @@ class UIController {
     }
     document.getElementById('xp-fill-bar').style.width = `${Math.round(progress * 100)}%`;
 
-    const banner = document.getElementById('active-session-banner');
+    this.renderToday();
+    this.renderPathTrail();
+    this.renderMuseum();
+    this.renderSettings();
+  }
+
+  renderToday() {
+    const todayBanner = document.getElementById('today-active-banner');
+    const todayHero = document.getElementById('today-hero-card');
+    const legacyBanner = document.getElementById('active-session-banner');
+
     if (State.activeSession && !State.activeSession.isFinished) {
       const adv = EMBEDDED_CATALOG.adventures.find(a => a.id === State.activeSession.adventureId);
       if (adv) {
-        banner.style.display = 'flex';
-        document.getElementById('banner-quest-title').textContent = `${adv.title} (Этап ${State.activeSession.currentStepIndex} из 4)`;
-        document.getElementById('island-title').textContent = adv.title;
-        document.getElementById('island-sub').textContent = `Этап ${State.activeSession.currentStepIndex} из 4`;
+        if (todayBanner) {
+          todayBanner.style.display = 'flex';
+          const bannerDesc = document.getElementById('banner-quest-title');
+          if (bannerDesc) {
+            bannerDesc.textContent = `${adv.title} (Этап ${State.activeSession.currentStepIndex} из 4)`;
+          }
+        }
+        if (todayHero) todayHero.style.display = 'none';
+        if (legacyBanner) legacyBanner.style.display = 'flex';
+        const islandTitle = document.getElementById('island-title');
+        const islandSub = document.getElementById('island-sub');
+        if (islandTitle) islandTitle.textContent = adv.title;
+        if (islandSub) islandSub.textContent = `Этап ${State.activeSession.currentStepIndex} из 4`;
       }
     } else {
-      banner.style.display = 'none';
-      document.getElementById('island-title').textContent = 'Choose a Vibe';
-      document.getElementById('island-sub').textContent = 'Свидания для двоих';
+      if (todayBanner) todayBanner.style.display = 'none';
+      if (todayHero) todayHero.style.display = 'flex';
+      if (legacyBanner) legacyBanner.style.display = 'none';
+      const islandTitle = document.getElementById('island-title');
+      const islandSub = document.getElementById('island-sub');
+      if (islandTitle) islandTitle.textContent = 'Choose a Vibe';
+      if (islandSub) islandSub.textContent = 'Свидания для двоих';
+    }
+  }
+
+  renderPathTrail() {
+    const chapter = EMBEDDED_CATALOG.chapters.find(c => c.id === this.currentPathChapterId) || EMBEDDED_CATALOG.chapters[0];
+    const badgeText = document.getElementById('path-chapter-badge-text');
+    const titleEl = document.getElementById('path-chapter-title');
+    const subtitleEl = document.getElementById('path-chapter-subtitle');
+    const progressEl = document.getElementById('path-chapter-progress');
+    const trailContainer = document.getElementById('path-trail-container');
+
+    if (badgeText) badgeText.textContent = `ГЛАВА ${chapter.chapterNumber}`;
+    if (titleEl) titleEl.textContent = chapter.title;
+    if (subtitleEl) subtitleEl.textContent = chapter.subtitle;
+
+    const completedIds = new Set(State.finishedSessions.filter(s => s.isFinished).map(s => s.adventureId));
+    const isChapterUnlocked = ProgressionEngine.isChapterUnlocked(
+      chapter.id,
+      completedIds,
+      EMBEDDED_CATALOG.adventures,
+      State.unlockedChapters
+    );
+
+    const chapterAdventures = EMBEDDED_CATALOG.adventures.filter(a => a.chapterId === chapter.id);
+    const completedCount = chapterAdventures.filter(a => completedIds.has(a.id)).length;
+
+    if (progressEl) {
+      progressEl.textContent = isChapterUnlocked ? `${completedCount} из 4 открыто` : 'Заблокировано';
+      progressEl.classList.toggle('completed', completedCount === 4);
     }
 
+    // Segment buttons active state
+    const segmentBtns = document.querySelectorAll('#path-chapters-segment .segment-btn');
+    segmentBtns.forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.chapter === this.currentPathChapterId);
+    });
+
+    if (!trailContainer) return;
+    trailContainer.innerHTML = '';
+
+    // S-Curve SVG connector path
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('class', 's-curve-svg');
+    svg.setAttribute('viewBox', '0 0 340 460');
+    svg.setAttribute('fill', 'none');
+    svg.innerHTML = `
+      <defs>
+        <linearGradient id="trailGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stop-color="#FF3B70" stop-opacity="0.8" />
+          <stop offset="50%" stop-color="#FFD166" stop-opacity="0.8" />
+          <stop offset="100%" stop-color="#A259FF" stop-opacity="0.8" />
+        </linearGradient>
+        <filter id="trailGlow" x="-20%" y="-20%" width="140%" height="140%">
+          <feGaussianBlur stdDeviation="3" result="blur" />
+          <feComposite in="SourceGraphic" in2="blur" operator="over" />
+        </filter>
+      </defs>
+      <path d="M 68 50 C 270 90, 280 140, 272 170 C 260 210, 70 240, 68 290 C 65 340, 270 370, 272 410" 
+            stroke="rgba(255, 255, 255, 0.12)" stroke-width="6" stroke-linecap="round" stroke-dasharray="6 6" />
+      <path d="M 68 50 C 270 90, 280 140, 272 170 C 260 210, 70 240, 68 290 C 65 340, 270 370, 272 410" 
+            stroke="url(#trailGrad)" stroke-width="3" stroke-linecap="round" filter="url(#trailGlow)" />
+    `;
+    trailContainer.appendChild(svg);
+
+    // Nodes list
+    const nodesList = document.createElement('div');
+    nodesList.className = 'trail-nodes-list';
+
+    chapterAdventures.forEach((adv, idx) => {
+      const questNum = (chapter.chapterNumber - 1) * 4 + (idx + 1);
+      const isCompleted = completedIds.has(adv.id);
+      const isActive = State.activeSession && State.activeSession.adventureId === adv.id;
+      const isCurrent = isActive || (isChapterUnlocked && !isCompleted && (idx === 0 || completedIds.has(chapterAdventures[idx - 1].id)));
+
+      let stateClass = 'locked is-locked';
+      if (isCompleted) {
+        stateClass = 'completed is-completed';
+      } else if (isCurrent) {
+        stateClass = 'current is-current';
+      } else if (isChapterUnlocked) {
+        stateClass = 'available is-available';
+      }
+
+      const row = document.createElement('div');
+      const isRight = (idx % 2 === 1);
+      row.className = `trail-node-row ${isRight ? 'right' : 'left'}`;
+
+      const sphere = document.createElement('div');
+      sphere.className = `trail-node-sphere path-sphere-node ${stateClass}`;
+      sphere.setAttribute('role', 'button');
+      sphere.setAttribute('tabindex', '0');
+      sphere.setAttribute('title', adv.title);
+
+      if (isCompleted) {
+        sphere.innerHTML = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#10B981" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
+      } else if (isCurrent) {
+        sphere.innerHTML = '<svg width="24" height="24" viewBox="0 0 24 24" fill="#FFD166"><path d="M12 2l2.4 5.6L20 10l-4.4 4.3 1.1 6.1L12 17.3 7.3 20.4l1.1-6.1L4 10l5.6-2.4L12 2z"/></svg>';
+      } else if (!isChapterUnlocked) {
+        sphere.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>';
+      } else {
+        sphere.innerHTML = `<span class="trail-node-num">${questNum}</span>`;
+      }
+
+      const meta = document.createElement('div');
+      meta.className = 'trail-node-meta';
+      const singleVibe = (adv.vibes && adv.vibes[0]) ? adv.vibes[0] : 'Приключение';
+      meta.innerHTML = `
+        <div class="trail-node-title">${adv.title}</div>
+        <div class="trail-node-subtitle">${singleVibe}</div>
+      `;
+
+      if (isChapterUnlocked) {
+        sphere.addEventListener('click', () => {
+          Sound.playHaptic();
+          if (isActive) {
+            this.resumeActiveSession();
+          } else {
+            this.openBriefing(adv);
+          }
+        });
+      }
+
+      row.appendChild(sphere);
+      row.appendChild(meta);
+      nodesList.appendChild(row);
+    });
+
+    trailContainer.appendChild(nodesList);
+
+    // Keep fallback chapters map updated
     this.renderChaptersMap();
-    this.renderMuseum();
-    this.renderSettings();
+  }
+
+  openWalkthrough() {
+    Sound.playHaptic();
+    const modal = document.getElementById('modal-walkthrough');
+    if (modal) {
+      modal.classList.add('active');
+      this.updateWalkthroughSlide(1);
+    }
+  }
+
+  closeWalkthrough() {
+    Sound.playHaptic();
+    const modal = document.getElementById('modal-walkthrough');
+    if (modal) {
+      modal.classList.remove('active');
+    }
+  }
+
+  updateWalkthroughSlide(slideIndex) {
+    this.walkthroughCurrentSlide = slideIndex;
+    for (let i = 1; i <= 3; i++) {
+      const slide = document.getElementById(`wt-slide-${i}`);
+      const dot = document.getElementById(`wt-dot-${i}`);
+      if (slide) slide.classList.toggle('active', i === slideIndex);
+      if (dot) dot.classList.toggle('active', i === slideIndex);
+    }
+
+    const btnBack = document.getElementById('btn-wt-back');
+    if (btnBack) {
+      btnBack.style.display = slideIndex > 1 ? 'block' : 'none';
+    }
+
+    const btnNext = document.getElementById('btn-wt-next');
+    if (btnNext) {
+      const span = btnNext.querySelector('span');
+      if (span) {
+        span.textContent = slideIndex === 3 ? 'Начать приключение!' : 'Далее';
+      }
+    }
+
+    if (slideIndex === 2 && !this.isDemoScratchInitialized) {
+      this.initDemoScratchCanvas();
+    }
+  }
+
+  initDemoScratchCanvas() {
+    const canvas = document.getElementById('walkthrough-demo-canvas');
+    if (!canvas) return;
+    this.isDemoScratchInitialized = true;
+
+    canvas.style.opacity = '1';
+    canvas.style.pointerEvents = 'auto';
+
+    const ctx = canvas.getContext('2d');
+    const dpr = window.devicePixelRatio || 1;
+    const w = 280;
+    const h = 96;
+    canvas.width = Math.floor(w * dpr);
+    canvas.height = Math.floor(h * dpr);
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.scale(dpr, dpr);
+
+    // Silver metallic gradient foil
+    const grad = ctx.createLinearGradient(0, 0, w, h);
+    grad.addColorStop(0, '#B8B8C0');
+    grad.addColorStop(0.3, '#E6E6EE');
+    grad.addColorStop(0.6, '#A8A8B4');
+    grad.addColorStop(1, '#D8D8E0');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, w, h);
+
+    // Subtle shimmer particles
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.45)';
+    for (let i = 0; i < 40; i++) {
+      const px = (i * 17) % w;
+      const py = (i * 23) % h;
+      ctx.beginPath();
+      ctx.arc(px, py, (i % 3) + 1, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Border line
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(6, 6, w - 12, h - 12);
+
+    // Instruction label
+    ctx.fillStyle = '#4A4A5A';
+    ctx.font = 'bold 12px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('Потри меня', w / 2, h / 2);
+
+    let isScratching = false;
+    let isRevealed = false;
+    const scratchedGrid = new Set();
+    const gridCols = 10;
+    const gridRows = 4;
+    const cellW = w / gridCols;
+    const cellH = h / gridRows;
+
+    const markCells = (cx, cy, radius) => {
+      const minC = Math.max(0, Math.floor((cx - radius) / cellW));
+      const maxC = Math.min(gridCols - 1, Math.floor((cx + radius) / cellW));
+      const minR = Math.max(0, Math.floor((cy - radius) / cellH));
+      const maxR = Math.min(gridRows - 1, Math.floor((cy + radius) / cellH));
+      for (let r = minR; r <= maxR; r++) {
+        for (let c = minC; c <= maxC; c++) {
+          scratchedGrid.add(r * gridCols + c);
+        }
+      }
+    };
+
+    const erase = (cx, cy) => {
+      ctx.globalCompositeOperation = 'destination-out';
+      ctx.beginPath();
+      ctx.arc(cx, cy, 18, 0, Math.PI * 2);
+      ctx.fill();
+      markCells(cx, cy, 18);
+      Sound.playScratch();
+
+      const ratio = scratchedGrid.size / (gridCols * gridRows);
+      if (ratio > 0.35 && !isRevealed) {
+        isRevealed = true;
+        canvas.style.transition = 'opacity 0.4s ease';
+        canvas.style.opacity = '0';
+        canvas.style.pointerEvents = 'none';
+        Sound.playSuccess();
+        Sound.playHaptic();
+      }
+    };
+
+    const getPos = (e) => {
+      const rect = canvas.getBoundingClientRect();
+      const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+      const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+      return {
+        x: (clientX - rect.left) * (w / rect.width),
+        y: (clientY - rect.top) * (h / rect.height)
+      };
+    };
+
+    const handlePointerDown = (e) => {
+      if (isRevealed) return;
+      isScratching = true;
+      const pos = getPos(e);
+      erase(pos.x, pos.y);
+    };
+
+    const handlePointerMove = (e) => {
+      if (!isScratching || isRevealed) return;
+      if (e.cancelable) e.preventDefault();
+      const pos = getPos(e);
+      erase(pos.x, pos.y);
+    };
+
+    const handlePointerUp = () => {
+      isScratching = false;
+    };
+
+    canvas.addEventListener('pointerdown', handlePointerDown);
+    window.addEventListener('pointermove', handlePointerMove);
+    window.addEventListener('pointerup', handlePointerUp);
+    window.addEventListener('pointercancel', handlePointerUp);
+
+    canvas.addEventListener('touchstart', handlePointerDown, { passive: false });
+    canvas.addEventListener('touchmove', handlePointerMove, { passive: false });
+    window.addEventListener('touchend', handlePointerUp);
   }
 
   renderOnboardingStep() {
@@ -2691,7 +3158,11 @@ class UIController {
     State.save();
     Sound.playSuccess();
     this.showScreen('screen-main');
+    this.switchTab('tab-today');
     this.render();
+    if (!State.profile.hasSeenWalkthrough) {
+      setTimeout(() => this.openWalkthrough(), 400);
+    }
   }
 
   renderChaptersMap() {
@@ -2779,7 +3250,7 @@ class UIController {
             </div>
           </div>
           <div class="node-arrow-slot">
-            ${isCompleted ? '<span style="font-size:14px; font-weight:800; color:#10B981;">✓</span>' : (isUnlocked ? '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"></polyline></svg>' : '<span style="font-size:12px; color:var(--text-muted);">🔒</span>')}
+            ${isCompleted ? '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#10B981" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>' : (isUnlocked ? '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"></polyline></svg>' : '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>')}
           </div>
         `;
 
@@ -3228,5 +3699,5 @@ class UIController {
 // 9. APP INITIALIZATION ON DOM READY
 // =============================================================================
 document.addEventListener('DOMContentLoaded', () => {
-  window.ChooseAVibeApp = new UIController();
+  window.ChooseAVibeApp = window.app = new UIController();
 });

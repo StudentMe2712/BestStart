@@ -146,6 +146,7 @@ public enum AppTheme {
     public static let warmGold = Color(red: 1.00, green: 0.82, blue: 0.28)
     public static let softText = Color(red: 0.72, green: 0.72, blue: 0.82)
     public static let cardSurface = Color(red: 0.14, green: 0.14, blue: 0.22)
+    public static let cardSurfaceLight = Color(red: 0.20, green: 0.20, blue: 0.30)
     public static let heroGradient = Gradients.brandPrimary
 
     // MARK: 2. Палитры 5 вайбов
