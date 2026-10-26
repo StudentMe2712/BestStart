@@ -1,0 +1,794 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Choose a Vibe — iPhone 16 Pro Web-симулятор</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <!-- Floating Dev Tools Bar -->
+  <aside class="dev-tools-bar" aria-label="Панель разработчика">
+    <div class="dev-tools-left">
+      <span class="dev-badge">Dev Tools</span>
+      <div class="dev-storage-indicator">
+        <span class="status-dot"></span>
+        <span>localStorage: choose_a_vibe_state_v1</span>
+      </div>
+    </div>
+    <div class="dev-tools-actions">
+      <button class="dev-btn highlight" id="btn-dev-add-xp" title="Добавить 100 XP для проверки Level Up">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+        <span>+100 XP</span>
+      </button>
+      <button class="dev-btn" id="btn-dev-unlock-chapters" title="Разблокировать все 3 главы">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 9.9-1"></path></svg>
+        <span>Открыть все главы</span>
+      </button>
+      <button class="dev-btn danger" id="btn-dev-reset" title="Сбросить состояние и начать онбординг">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+        <span>Сбросить прогресс</span>
+      </button>
+    </div>
+  </aside>
+
+  <!-- iPhone 16 Pro Chassis Frame -->
+  <main class="device-container" id="iphone-frame">
+    <!-- Hardware side buttons (decoration) -->
+    <div class="device-button device-btn-action"></div>
+    <div class="device-button device-btn-volume-up"></div>
+    <div class="device-button device-btn-volume-down"></div>
+    <div class="device-button device-btn-power"></div>
+
+    <!-- iOS Status Bar & Dynamic Island -->
+    <header class="ios-status-bar">
+      <div class="ios-time" id="status-bar-time">09:41</div>
+
+      <!-- Interactive Dynamic Island -->
+      <div class="dynamic-island" id="dynamic-island" title="Нажмите для взаимодействия">
+        <div class="island-idle">
+          <div class="camera-lens"></div>
+          <div class="sensor-dot"></div>
+        </div>
+        <div class="dynamic-island-content">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="#FF3B70"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+            <div>
+              <div class="island-info-title" id="island-title">Choose a Vibe</div>
+              <div class="island-info-sub" id="island-sub">Свидания для двоих</div>
+            </div>
+          </div>
+          <span style="font-size:11px; font-weight:700; color:#FFD166;" id="island-status">Активно</span>
+        </div>
+      </div>
+
+      <!-- Right System Icons -->
+      <div class="ios-icons">
+        <div class="ios-signal" title="Сотовая сеть: 4 деления">
+          <div class="ios-signal-bar"></div>
+          <div class="ios-signal-bar"></div>
+          <div class="ios-signal-bar"></div>
+          <div class="ios-signal-bar"></div>
+        </div>
+        <div class="ios-wifi" title="Wi-Fi подключен">
+          <svg width="13" height="11" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><path d="M5 12.55a11 11 0 0 1 14.08 0M1.42 9a16 16 0 0 1 21.16 0M8.53 16.11a6 6 0 0 1 6.95 0M12 20h.01"/></svg>
+        </div>
+        <div class="ios-battery" title="Батарея 100%">
+          <div class="ios-battery-level"></div>
+        </div>
+      </div>
+    </header>
+
+    <!-- Screen Viewport -->
+    <div class="screen-viewport" id="screen-viewport">
+
+      <!-- Toast Banner (Pill message) -->
+      <div class="toast-banner" id="toast-banner">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="#10B981"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+        <span id="toast-text">Настройки сохранены</span>
+      </div>
+
+      <!-- Level Up Popover Notification -->
+      <div class="level-up-toast" id="level-up-toast">
+        <div class="level-up-toast-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="#FFD166"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+        </div>
+        <div style="flex:1;">
+          <div style="font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:1px; color:#FFD166;">Новый ранг пары!</div>
+          <div style="font-size:14px; font-weight:700;" id="level-up-title">Уровень 2 · Искатели моментов</div>
+        </div>
+      </div>
+
+      <!-- ===================================================================
+           SCREEN 1: ONBOARDING FLOW
+           =================================================================== -->
+      <section class="screen-view" id="screen-onboarding">
+        <!-- Step capsules -->
+        <div class="onboarding-progress">
+          <div class="progress-pill active" id="ob-pill-1"></div>
+          <div class="progress-pill" id="ob-pill-2"></div>
+          <div class="progress-pill" id="ob-pill-3"></div>
+          <div class="progress-pill" id="ob-pill-4"></div>
+        </div>
+
+        <div class="onboarding-steps-container">
+          <!-- Step 1: Welcome -->
+          <div class="onboarding-step active" id="ob-step-1">
+            <div class="step-hero-icon">
+              <svg viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+              </svg>
+            </div>
+            <span class="onboarding-tag">Choose a Vibe</span>
+            <h1 class="onboarding-title">Превратите вечер в приключение для двоих</h1>
+            <p class="onboarding-desc">
+              Выбирайте настроение вечера, стирайте защитный слой секретных карточек и проходите 4 неожиданных задания прямо сегодня.
+            </p>
+          </div>
+
+          <!-- Step 2: Names -->
+          <div class="onboarding-step" id="ob-step-2">
+            <div class="step-hero-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                <circle cx="9" cy="7" r="4"></circle>
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+              </svg>
+            </div>
+            <span class="onboarding-tag">Очередь ходов</span>
+            <h2 class="onboarding-title">Как вас зовут?</h2>
+            <p class="onboarding-desc">
+              Телефон будет переходить из рук в руки: нечётные карточки стирает первый партнёр, чётные — второй.
+            </p>
+            <div class="names-form">
+              <div class="form-group">
+                <label class="form-label p1" for="input-partner-one">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+                  <span>Партнёр 1 (Этапы 1 и 3)</span>
+                </label>
+                <input type="text" id="input-partner-one" class="ios-input" value="Алишер" placeholder="Имя первого партнёра">
+              </div>
+              <div class="form-group">
+                <label class="form-label p2" for="input-partner-two">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+                  <span>Партнёр 2 (Этапы 2 и 4)</span>
+                </label>
+                <input type="text" id="input-partner-two" class="ios-input" value="Дана" placeholder="Имя второго партнёра">
+              </div>
+            </div>
+          </div>
+
+          <!-- Step 3: Comfort Filter -->
+          <div class="onboarding-step" id="ob-step-3">
+            <span class="onboarding-tag">Безопасность и уют</span>
+            <h2 class="onboarding-title">Комфорт-фильтр</h2>
+            <p class="onboarding-desc">
+              Отметьте то, чего вы точно не хотите в заданиях. Мы никогда не предложим такие карточки.
+            </p>
+            <div class="comfort-list" id="onboarding-comfort-list">
+              <div class="comfort-item" data-tag="Без танцев и пения">
+                <div class="comfort-item-left">
+                  <svg class="comfort-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg>
+                  <span class="comfort-text">Без танцев и пения</span>
+                </div>
+                <div class="comfort-checkbox">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                </div>
+              </div>
+              <div class="comfort-item" data-tag="Без общения с прохожими">
+                <div class="comfort-item-left">
+                  <svg class="comfort-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><line x1="1" y1="1" x2="23" y2="23"></line></svg>
+                  <span class="comfort-text">Без общения с прохожими</span>
+                </div>
+                <div class="comfort-checkbox">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                </div>
+              </div>
+              <div class="comfort-item" data-tag="Без еды и напитков">
+                <div class="comfort-item-left">
+                  <svg class="comfort-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8h1a4 4 0 0 1 0 8h-1"></path><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"></path><line x1="6" y1="1" x2="6" y2="4"></line><line x1="10" y1="1" x2="10" y2="4"></line><line x1="14" y1="1" x2="14" y2="4"></line></svg>
+                  <span class="comfort-text">Без еды и напитков</span>
+                </div>
+                <div class="comfort-checkbox">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                </div>
+              </div>
+              <div class="comfort-item" data-tag="Без активной нагрузки">
+                <div class="comfort-item-left">
+                  <svg class="comfort-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="5" r="3"></circle><path d="M4 17l4-2 3 5 4-7 4 2"></path></svg>
+                  <span class="comfort-text">Без активной нагрузки</span>
+                </div>
+                <div class="comfort-checkbox">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Step 4: Ready -->
+          <div class="onboarding-step" id="ob-step-4">
+            <div class="step-hero-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="#FFD166" stroke-width="2">
+                <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"></polygon>
+                <line x1="8" y1="2" x2="8" y2="18"></line>
+                <line x1="16" y1="6" x2="16" y2="22"></line>
+              </svg>
+            </div>
+            <div class="team-preview-badge" id="ob-team-badge">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="#FF3B70"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+              <span id="ob-team-names">Алишер & Дана</span>
+            </div>
+            <h2 class="onboarding-title">Всё готово для старта!</h2>
+            <p class="onboarding-desc">
+              Вас ждут 3 сюжетные главы, 12 приключений и стираемые скретч-карты. Начните с первого вечера прямо сейчас!
+            </p>
+          </div>
+        </div>
+
+        <!-- Onboarding Navigation Buttons -->
+        <div class="onboarding-nav">
+          <button class="btn-ios-secondary" id="btn-ob-back" style="display:none;">Назад</button>
+          <button class="btn-ios-primary" id="btn-ob-next">
+            <span>Далее</span>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+          </button>
+        </div>
+      </section>
+
+
+      <!-- ===================================================================
+           SCREEN 2: MAIN VIEW WITH TABS (JOURNEY MAP, MUSEUM, SETTINGS)
+           =================================================================== -->
+      <section class="screen-view active" id="screen-main">
+
+        <!-- TAB 1: JOURNEY MAP -->
+        <div class="tab-content active" id="tab-map">
+          <!-- Couple Profile Card -->
+          <div class="profile-card">
+            <div class="profile-top">
+              <div>
+                <div class="profile-names">
+                  <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+                  <span id="profile-display-names">Алишер & Дана</span>
+                </div>
+                <div class="profile-level-title" id="profile-level-title">Уровень 1 · Любопытный дуэт</div>
+              </div>
+              <div class="profile-level-badge" id="profile-level-number">1</div>
+            </div>
+
+            <!-- XP Track -->
+            <div class="xp-progress-bar-container">
+              <div class="xp-labels">
+                <span class="xp-caption">Опыт приключений</span>
+                <span class="xp-value" id="xp-display-text">0 / 60 XP</span>
+              </div>
+              <div class="xp-track">
+                <div class="xp-fill" id="xp-fill-bar" style="width: 0%;"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Active Session Banner (hidden by default, shown if quest is in progress) -->
+          <div class="active-session-banner" id="active-session-banner" style="display:none;">
+            <div class="banner-left">
+              <div class="banner-flame">
+                <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 .587l3.668 7.431 8.2 1.192-5.934 5.784 1.399 8.163L12 19.31l-7.333 3.847 1.399-8.163-5.934-5.784 8.2-1.192zm0 5.702l-2.074 4.202-4.636.674 3.355 3.27-.791 4.615 4.146-2.176 4.146 2.176-.791-4.615 3.355-3.27-4.636-.674z"/></svg>
+              </div>
+              <div>
+                <div class="banner-title">Вечер в разгаре!</div>
+                <div class="banner-desc" id="banner-quest-title">Похищение вечера (Этап 1 из 4)</div>
+              </div>
+            </div>
+            <div class="banner-right">
+              <span>Продолжить</span>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"></polyline></svg>
+            </div>
+          </div>
+
+          <!-- Wavy Chapters Map -->
+          <div class="chapters-map" id="chapters-map-container">
+            <!-- Dynamically populated from catalog: ch_01, ch_02, ch_03 -->
+          </div>
+        </div>
+
+        <!-- TAB 2: MUSEUM / COLLECTION -->
+        <div class="tab-content" id="tab-collection">
+          <!-- Segmented Control -->
+          <div class="segmented-control">
+            <button class="segment-btn active" data-subview="subview-badges">Значки</button>
+            <button class="segment-btn" data-subview="subview-completed">Пройденные</button>
+            <button class="segment-btn" data-subview="subview-shirts">Рубашки</button>
+          </div>
+
+          <!-- Subview 1: Badges -->
+          <div class="museum-subview active" id="subview-badges">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+              <span style="font-size:14px; font-weight:700; color:white;" id="badges-count-label">Достижения (0 из 8)</span>
+              <span style="font-size:12px; font-weight:700; color:#FFD166;" id="badges-xp-label">+0 XP</span>
+            </div>
+            <div class="badges-grid" id="badges-grid-container">
+              <!-- Dynamically populated with 8 badges -->
+            </div>
+          </div>
+
+          <!-- Subview 2: Completed Evenings -->
+          <div class="museum-subview" id="subview-completed">
+            <div class="completed-list" id="completed-list-container">
+              <!-- Dynamically populated or empty state -->
+            </div>
+          </div>
+
+          <!-- Subview 3: Card Shirts -->
+          <div class="museum-subview" id="subview-shirts">
+            <div class="shirts-list" id="shirts-list-container">
+              <!-- Dynamically populated 5 shirts -->
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB 3: SETTINGS -->
+        <div class="tab-content" id="tab-settings">
+          <!-- Partners Names Section -->
+          <div class="settings-section">
+            <div class="settings-section-title">Имена пары</div>
+            <div class="settings-group" style="padding:16px; display:flex; flex-direction:column; gap:12px;">
+              <div class="form-group">
+                <label class="form-label p1">Партнёр 1 (нечётные этапы)</label>
+                <input type="text" id="settings-name-p1" class="ios-input" value="Алишер">
+              </div>
+              <div class="form-group">
+                <label class="form-label p2">Партнёр 2 (чётные этапы)</label>
+                <input type="text" id="settings-name-p2" class="ios-input" value="Дана">
+              </div>
+              <button class="btn-ios-secondary" id="btn-save-names" style="margin-top:4px;">Сохранить имена</button>
+            </div>
+          </div>
+
+          <!-- Comfort Filter Section -->
+          <div class="settings-section">
+            <div class="settings-section-title">Личные границы (Комфорт-фильтр)</div>
+            <div class="comfort-list" id="settings-comfort-list">
+              <!-- Dynamically filled with 4 boundary tags -->
+            </div>
+          </div>
+
+          <!-- Sound & Audio Section -->
+          <div class="settings-section">
+            <div class="settings-section-title">Звуковые эффекты</div>
+            <div class="settings-group">
+              <div class="settings-row">
+                <div class="settings-row-left">
+                  <div class="settings-row-icon pink">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
+                  </div>
+                  <span class="settings-row-label">Звуки скретча и фанфары</span>
+                </div>
+                <label class="ios-switch">
+                  <input type="checkbox" id="switch-sound" checked>
+                  <span class="ios-slider"></span>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <!-- About Application -->
+          <div class="settings-section">
+            <div class="settings-section-title">О приложении</div>
+            <div class="settings-group" style="padding:16px; font-size:13px; color:var(--text-secondary); line-height:1.5;">
+              <p><strong style="color:white;">Choose a Vibe</strong> — веб-симулятор свиданий-приключений для двоих.</p>
+              <p style="margin-top:6px;">Скретч-карты, 3 сюжетные главы, алгоритм подбора без тупиков и синтезированный звук через Web Audio API.</p>
+              <p style="margin-top:6px; font-size:11px; color:var(--text-muted);">Версия 1.0 • Валюта: Казахстанский тенге (₸)</p>
+            </div>
+          </div>
+
+          <!-- Danger Zone -->
+          <div class="settings-section">
+            <div class="settings-section-title" style="color:var(--rose-primary);">Опасная зона</div>
+            <div class="settings-group" style="padding:14px;">
+              <button class="btn-ios-secondary" id="btn-settings-reset" style="color:var(--rose-primary); border-color:rgba(255,59,112,0.3);">
+                Сбросить весь прогресс
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Floating Action Button: Pick a Vibe -->
+        <button class="fab-vibe-picker" id="btn-open-vibe-sheet">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+          <span>Подобрать вайб на вечер</span>
+        </button>
+
+        <!-- Bottom iOS TabBar -->
+        <nav class="ios-tab-bar">
+          <button class="tab-item active" data-tab="tab-map">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"></polygon><line x1="8" y1="2" x2="8" y2="18"></line><line x1="16" y1="6" x2="16" y2="22"></line></svg>
+            <span>Карта</span>
+          </button>
+          <button class="tab-item" data-tab="tab-collection">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="7"></circle><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"></polyline></svg>
+            <span>Музей</span>
+          </button>
+          <button class="tab-item" data-tab="tab-settings">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+            <span>Настройки</span>
+          </button>
+        </nav>
+      </section>
+
+
+      <!-- ===================================================================
+           BOTTOM SHEET: VIBE PICKER (WEAK-MATCHING CRITERIA)
+           =================================================================== -->
+      <div class="sheet-backdrop" id="sheet-backdrop"></div>
+      <div class="bottom-sheet" id="bottom-sheet-vibe">
+        <div class="sheet-handle-bar" id="sheet-handle-bar">
+          <div class="sheet-handle"></div>
+        </div>
+        <div class="sheet-scroll-body">
+          <div class="sheet-header">
+            <div class="sheet-title">Настройка вечера</div>
+            <button class="sheet-close-btn" id="btn-close-sheet">✕</button>
+          </div>
+
+          <!-- Section 1: Vibes (up to 2) -->
+          <div>
+            <div class="sheet-section-title">
+              <span>Настроение</span>
+              <small>(выберите 1 или 2)</small>
+            </div>
+            <div class="vibe-chips-list" id="picker-vibes-list">
+              <div class="vibe-chip selected" data-vibe="Романтика">
+                <div class="vibe-chip-left">
+                  <svg class="vibe-chip-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+                  <span class="vibe-chip-name">Романтика</span>
+                </div>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
+              </div>
+              <div class="vibe-chip" data-vibe="Игривое">
+                <div class="vibe-chip-left">
+                  <svg class="vibe-chip-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                  <span class="vibe-chip-name">Игривое</span>
+                </div>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
+              </div>
+              <div class="vibe-chip" data-vibe="Спонтанное">
+                <div class="vibe-chip-left">
+                  <svg class="vibe-chip-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+                  <span class="vibe-chip-name">Спонтанное</span>
+                </div>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
+              </div>
+              <div class="vibe-chip" data-vibe="Уютное">
+                <div class="vibe-chip-left">
+                  <svg class="vibe-chip-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M18.5 3H6c-1.1 0-2 .9-2 2v5.71c0 3.83 2.95 7.18 6.78 7.29 3.96.12 7.22-3.06 7.22-7v-1h.5c1.93 0 3.5-1.57 3.5-3.5S20.43 3 18.5 3zM16 5v3H6V5h10zm2.5 3H18V5h.5c.83 0 1.5.67 1.5 1.5S19.33 8 18.5 8zM4 19h16v2H4v-2z"/></svg>
+                  <span class="vibe-chip-name">Уютное</span>
+                </div>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
+              </div>
+              <div class="vibe-chip" data-vibe="Глубокое">
+                <div class="vibe-chip-left">
+                  <svg class="vibe-chip-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3a9 9 0 1 0 9 9c0-.46-.04-.92-.1-1.36a5.389 5.389 0 0 1-4.4 2.26 5.403 5.403 0 0 1-3.14-9.8c-.44-.06-.9-.1-1.36-.1z"/></svg>
+                  <span class="vibe-chip-name">Глубокое</span>
+                </div>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
+              </div>
+            </div>
+          </div>
+
+          <!-- Section 2: Duration -->
+          <div>
+            <div class="sheet-section-title">Сколько у вас времени?</div>
+            <div class="options-grid cols-3" id="picker-duration-grid">
+              <div class="option-chip" data-duration="15–30 мин">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                <span>15–30 мин</span>
+              </div>
+              <div class="option-chip selected" data-duration="30–60 мин">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 10"></polyline></svg>
+                <span>30–60 мин</span>
+              </div>
+              <div class="option-chip" data-duration="60–120 мин">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 22h14M5 2h14m-2 20v-5.5a4.5 4.5 0 0 0-4.5-4.5h-1a4.5 4.5 0 0 0-4.5 4.5V22M7 2v5.5a4.5 4.5 0 0 0 4.5 4.5h1A4.5 4.5 0 0 0 17 7.5V2"/></svg>
+                <span>60–120 мин</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Section 3: Budget (₸) -->
+          <div>
+            <div class="sheet-section-title">Бюджет вечера (₸)</div>
+            <div class="options-grid cols-2" id="picker-budget-grid">
+              <div class="option-chip" data-budget="0">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 12V8H4v4m16 0v8H4v-8m16 0H4m8-8V2m0 6v14"/></svg>
+                <span>0 ₸ (Бесплатно)</span>
+              </div>
+              <div class="option-chip selected" data-budget="2000">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="6" width="20" height="12" rx="2"></rect><circle cx="12" cy="12" r="2"></circle><path d="M6 12h.01M18 12h.01"/></svg>
+                <span>До 2 000 ₸</span>
+              </div>
+              <div class="option-chip" data-budget="5000">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>
+                <span>До 5 000 ₸</span>
+              </div>
+              <div class="option-chip" data-budget="15000">
+                <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                <span>Без лимита</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Section 4: Location -->
+          <div>
+            <div class="sheet-section-title">Где провести вечер?</div>
+            <div class="options-grid cols-3" id="picker-location-grid">
+              <div class="option-chip selected" data-location="Дома">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+                <span>Дома</span>
+              </div>
+              <div class="option-chip" data-location="Вне дома">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="5" r="3"></circle><path d="M10 22v-7l-2-2 3-5 3 2v5l2 7"></path></svg>
+                <span>Вне дома</span>
+              </div>
+              <div class="option-chip" data-location="Неважно">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
+                <span>Неважно</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- "Surprise Us" Matching CTA -->
+          <button class="btn-ios-primary" id="btn-submit-matcher" style="margin-top:8px; height:56px;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+            <span>Удиви нас</span>
+          </button>
+        </div>
+      </div>
+
+
+      <!-- ===================================================================
+           BRIEFING MODAL: SECRET ENVELOPE
+           =================================================================== -->
+      <div class="modal-overlay" id="modal-briefing">
+        <div class="envelope-card">
+          <div class="envelope-top">
+            <span class="envelope-tag" id="briefing-chapter-tag">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/></svg>
+              <span id="briefing-order-label">Приключение #1</span>
+            </span>
+            <span class="envelope-steps-pill">4 этапа</span>
+          </div>
+
+          <div>
+            <h2 class="envelope-title" id="briefing-title">Похищение вечера</h2>
+            <p class="envelope-subtitle" id="briefing-subtitle">Секретный стилист, артефакты со смыслом и слепая дегустация</p>
+          </div>
+
+          <div class="envelope-badges-row" id="briefing-badges-row">
+            <!-- Chips: vibes, duration, budget, location -->
+          </div>
+
+          <div class="envelope-box">
+            <span class="envelope-box-title">Что понадобится:</span>
+            <p class="envelope-box-desc" id="briefing-prep-note">Понадобятся только два телефона и то, что уже есть на кухне</p>
+          </div>
+
+          <div class="envelope-box" style="border-left-color: var(--rose-primary);">
+            <span class="envelope-box-title" style="color:var(--rose-primary);">Как это работает:</span>
+            <p class="envelope-box-desc">
+              Телефон переходит по кругу: 1 и 3 этапы открывает первый партнёр, 2 и 4 — второй. Стирайте слой пальцем!
+            </p>
+          </div>
+
+          <div style="display:flex; flex-direction:column; gap:10px; margin-top:8px;">
+            <button class="btn-ios-primary" id="btn-start-briefing-adventure" style="height:54px;">
+              <span>Начать приключение</span>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+            </button>
+            <button class="btn-ios-secondary" id="btn-cancel-briefing" style="height:44px;">
+              Закрыть
+            </button>
+          </div>
+        </div>
+      </div>
+
+
+      <!-- ===================================================================
+           SCREEN 4: SCRATCH CARD & STAGES (PASS & PLAY)
+           =================================================================== -->
+      <section class="screen-view" id="screen-scratch">
+        <div>
+          <!-- Header Bar with Steps -->
+          <div class="scratch-top-bar">
+            <div class="step-indicators-group">
+              <div class="step-dot active" id="scratch-step-dot-1"></div>
+              <div class="step-dot" id="scratch-step-dot-2"></div>
+              <div class="step-dot" id="scratch-step-dot-3"></div>
+              <div class="step-dot" id="scratch-step-dot-4"></div>
+              <span class="step-counter-text" id="scratch-step-text">Этап 1 из 4</span>
+            </div>
+            <button class="btn-postpone" id="btn-postpone-quest">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>
+              <span>Отложить</span>
+            </button>
+          </div>
+
+          <!-- Pass & Play Turn Banner -->
+          <div class="turn-banner" id="scratch-turn-banner">
+            <div class="turn-avatar" id="scratch-turn-avatar">
+              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M9 11.24V7.5a2.5 2.5 0 0 1 5 0v3.74c1.21-.81 2-2.18 2-3.74C16 5.01 13.99 3 11.5 3S7 5.01 7 7.5c0 1.56.79 2.93 2 3.74zm9.84 4.63l-4.54-2.26c-.17-.07-.35-.11-.54-.11H13v-6c0-.83-.67-1.5-1.5-1.5S10 6.67 10 7.5v10.74l-3.44-.72c-.15-.03-.31-.05-.47-.05-.62 0-1.18.25-1.59.66l-.77.77 5.74 5.74c.48.48 1.13.76 1.82.76h7.52c1.08 0 1.99-.79 2.14-1.86l.78-5.46c.16-1.13-.53-2.18-1.5-2.26z"/></svg>
+            </div>
+            <div class="turn-text-info">
+              <span class="turn-name" id="scratch-partner-turn-name">Ход Алишера</span>
+              <span class="turn-subtext" id="scratch-turn-instruction">Стирай защитный слой пальцем или мышкой!</span>
+            </div>
+          </div>
+
+          <!-- 3D Flippable Card with Scratch Canvas -->
+          <div class="card-3d-wrapper">
+            <div class="card-3d-inner" id="card-3d-inner">
+              
+              <!-- Front Face: Primary task -->
+              <div class="card-face front" id="card-face-front">
+                <div class="task-header">
+                  <div>
+                    <div class="task-badge-variant">ОСНОВНОЙ ВАРИАНТ</div>
+                    <h3 class="task-title" id="front-task-title">Секретный стилист</h3>
+                  </div>
+                  <div class="task-time-badge">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                    <span id="front-task-time">~10 мин</span>
+                  </div>
+                </div>
+
+                <div class="task-divider"></div>
+
+                <div class="task-body">
+                  <p class="task-instruction" id="front-task-instruction">
+                    Выберите друг другу в шкафу один необычный аксессуар или деталь домашнего образа. Задача — вызвать улыбку, но сохранить комфорт партнёра.
+                  </p>
+
+                  <div class="hint-accordion" id="front-hint-accordion">
+                    <div class="hint-header">
+                      <div class="hint-header-left">
+                        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C8.13 2 5 5.13 5 9c0 2.38 1.19 4.47 3 5.74V17c0 .55.45 1 1 1h6c.55 0 1-.45 1-1v-2.26c1.81-1.27 3-3.36 3-5.74 0-3.87-3.13-7-7-7zm-1 19h2v1h-2zm0-2h2v1h-2z"/></svg>
+                        <span>Подсказка / Идея</span>
+                      </div>
+                      <svg class="hint-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                    </div>
+                    <div class="hint-content" id="front-task-hint">
+                      Подойдут смешные носки, шарф, шляпа или очки.
+                    </div>
+                  </div>
+                </div>
+
+                <!-- HTML5 Scratch Canvas Overlay -->
+                <canvas class="scratch-canvas-overlay" id="scratch-canvas"></canvas>
+              </div>
+
+              <!-- Back Face: Fallback variant -->
+              <div class="card-face back" id="card-face-back">
+                <div class="task-header">
+                  <div>
+                    <div class="task-badge-variant" style="color:var(--rose-primary);">ДРУГОЙ ВАРИАНТ</div>
+                    <h3 class="task-title" id="back-task-title">Домашние титулы</h3>
+                  </div>
+                  <div class="task-time-badge" style="background:rgba(255,59,112,0.15); color:var(--rose-primary);">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                    <span id="back-task-time">~10 мин</span>
+                  </div>
+                </div>
+
+                <div class="task-divider"></div>
+
+                <div class="task-body">
+                  <p class="task-instruction" id="back-task-instruction">
+                    Придумайте друг другу новые смешные «домашние титулы» на этот вечер и обращайтесь друг к другу только так.
+                  </p>
+
+                  <div class="hint-accordion" id="back-hint-accordion">
+                    <div class="hint-header">
+                      <div class="hint-header-left">
+                        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C8.13 2 5 5.13 5 9c0 2.38 1.19 4.47 3 5.74V17c0 .55.45 1 1 1h6c.55 0 1-.45 1-1v-2.26c1.81-1.27 3-3.36 3-5.74 0-3.87-3.13-7-7-7zm-1 19h2v1h-2zm0-2h2v1h-2z"/></svg>
+                        <span>Подсказка / Идея</span>
+                      </div>
+                      <svg class="hint-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                    </div>
+                    <div class="hint-content" id="back-task-hint">
+                      Например: Барон Тёплых Пледов или Герцогиня Идеального Чая.
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+
+        <!-- Scratch Actions Panel -->
+        <div class="scratch-actions">
+          <button class="btn-quick-reveal" id="btn-quick-reveal" title="Открыть карточку без стирания">
+            ⚡ Открыть сразу
+          </button>
+          
+          <button class="btn-complete-step" id="btn-complete-step" disabled>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+            <span id="btn-complete-step-label">Мы сделали это! (+10 XP)</span>
+          </button>
+
+          <div class="scratch-secondary-actions">
+            <button class="btn-secondary-action" id="btn-flip-fallback" disabled>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="17 1 21 5 17 9"></polyline><path d="M3 11V9a4 4 0 0 1 4-4h14"></path><polyline points="7 23 3 19 7 15"></polyline><path d="M21 13v2a4 4 0 0 1-4 4H3"></path></svg>
+              <span id="btn-flip-fallback-label">Другой вариант</span>
+            </button>
+            <button class="btn-secondary-action skip" id="btn-skip-step" disabled>
+              <span>Пропустить этап</span>
+            </button>
+          </div>
+        </div>
+      </section>
+
+
+      <!-- ===================================================================
+           SCREEN 5: CELEBRATION & FINALE
+           =================================================================== -->
+      <section class="screen-view" id="screen-celebration">
+        <!-- Confetti Canvas -->
+        <canvas class="confetti-canvas" id="confetti-canvas"></canvas>
+
+        <div style="z-index:2; width:100%;">
+          <div class="celebration-trophy">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 5h-2V3H7v2H5c-1.1 0-2 .9-2 2v1c0 2.55 1.92 4.63 4.39 4.94A5.01 5.01 0 0 0 11 15.9V19H7v2h10v-2h-4v-3.1a5.01 5.01 0 0 0 3.61-2.96C19.08 12.63 21 10.55 21 8V7c0-1.1-.9-2-2-2zM5 8V7h2v3.82C5.84 10.4 5 9.3 5 8zm14 0c0 1.3-.84 2.4-2 2.82V7h2v1z"/></svg>
+          </div>
+
+          <h2 class="celebration-title">Приключение завершено!</h2>
+          <div class="celebration-quest-name" id="celebration-quest-name">«Похищение вечера»</div>
+          <p class="celebration-desc">
+            Вы провели этот вечер вместе, выполнили задания и создали тёплое общее воспоминание!
+          </p>
+
+          <!-- XP Breakdown Card -->
+          <div class="xp-summary-card">
+            <div class="xp-row">
+              <span>Выполненные этапы</span>
+              <span id="summary-steps-xp">+40 XP</span>
+            </div>
+            <div class="xp-row">
+              <span>Финал приключения</span>
+              <span id="summary-finish-bonus-xp">+25 XP</span>
+            </div>
+            <div class="xp-row" id="summary-achievements-xp-row" style="display:none;">
+              <span>Бонус за значки</span>
+              <span id="summary-achievements-xp">+0 XP</span>
+            </div>
+            <div class="xp-row total">
+              <span>Всего получено:</span>
+              <span id="summary-total-xp">+65 XP</span>
+            </div>
+          </div>
+
+          <!-- Unlocked Badges in Finale -->
+          <div class="new-badges-container" id="celebration-badges-container">
+            <!-- Dynamically populated if new badges achieved -->
+          </div>
+        </div>
+
+        <div style="width:100%; z-index:2;">
+          <button class="btn-ios-primary" id="btn-celebration-return-map" style="width:100%; height:54px;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"></polygon></svg>
+            <span>Вернуться на карту</span>
+          </button>
+        </div>
+      </section>
+
+      <!-- Bottom Home Indicator -->
+      <div class="ios-home-indicator"></div>
+
+    </div>
+  </main>
+
+  <!-- Application Logic (Standalone, NO ES6 module!) -->
+  <script src="app.js"></script>
+</body>
+</html>

@@ -9,7 +9,8 @@ if git diff --staged --quiet; then
     echo "No staged changes to commit."
 else
     echo "Committing staged changes..."
-    git commit -m "feat(ChooseaVibe): Sprint 1 - Spec v1.0 and Reference MVP Architecture (SwiftUI/SwiftData)"
+    COMMIT_MSG="${1:-feat(ChooseaVibe): Sprint 2 - Interactive iPhone 16 Pro Web Simulator (HTML5/Canvas/Vanilla JS)}"
+    git commit -m "$COMMIT_MSG"
 fi
 
 echo "=== Checking remote origin ==="
