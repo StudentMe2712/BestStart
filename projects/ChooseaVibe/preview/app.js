@@ -2343,6 +2343,13 @@ class UIController {
     const btnDevReset = document.getElementById('btn-dev-reset');
     if (btnDevReset) btnDevReset.addEventListener('click', triggerReset);
 
+    // Tab 4 Pair Dev Tools Buttons
+    const btnPairAddXP = document.getElementById('btn-pair-dev-add-xp');
+    if (btnPairAddXP) btnPairAddXP.addEventListener('click', triggerAddXP);
+
+    const btnPairUnlock = document.getElementById('btn-pair-dev-unlock');
+    if (btnPairUnlock) btnPairUnlock.addEventListener('click', triggerUnlockChapters);
+
     // Onboarding Navigation
     document.getElementById('btn-ob-next').addEventListener('click', () => {
       Sound.playHaptic();
@@ -2439,6 +2446,15 @@ class UIController {
     const btnOpenWalkthrough = document.getElementById('btn-open-walkthrough');
     if (btnOpenWalkthrough) {
       btnOpenWalkthrough.addEventListener('click', () => {
+        this.openWalkthrough();
+      });
+    }
+
+    // Pair Tab Walkthrough Row
+    const rowOpenWalkthrough = document.getElementById('row-open-walkthrough');
+    if (rowOpenWalkthrough) {
+      rowOpenWalkthrough.addEventListener('click', () => {
+        Sound.playHaptic();
         this.openWalkthrough();
       });
     }
@@ -2741,6 +2757,17 @@ class UIController {
       tc.classList.toggle('active', tc.id === this.currentTabId);
     });
 
+    const headerTitle = document.getElementById('ios-header-title');
+    if (headerTitle) {
+      const titles = {
+        'tab-today': 'Сегодня',
+        'tab-path': 'Путь',
+        'tab-collection': 'Коллекция',
+        'tab-pair': 'Пара'
+      };
+      headerTitle.textContent = titles[this.currentTabId] || 'Сегодня';
+    }
+
     const fab = document.getElementById('btn-open-vibe-sheet');
     if (fab) {
       fab.style.display = 'none';
@@ -2766,20 +2793,36 @@ class UIController {
 
     const p1 = State.profile.partnerOneName || 'Алишер';
     const p2 = State.profile.partnerTwoName || 'Дана';
-    document.getElementById('profile-display-names').textContent = `${p1} & ${p2}`;
-
     const level = ProgressionEngine.getLevel(State.profile.totalXP);
-    document.getElementById('profile-level-title').textContent = `Уровень ${level.levelNumber} · ${level.title}`;
-    document.getElementById('profile-level-number').textContent = level.levelNumber;
+
+    const eyebrowEl = document.getElementById('profile-eyebrow');
+    if (eyebrowEl) {
+      eyebrowEl.textContent = `${p1.toUpperCase()} & ${p2.toUpperCase()} · УРОВЕНЬ ${level.levelNumber}`;
+    }
+
+    const pNamesEl = document.getElementById('profile-display-names');
+    if (pNamesEl) pNamesEl.textContent = `${p1} & ${p2}`;
+
+    const pLevelTitleEl = document.getElementById('profile-level-title');
+    if (pLevelTitleEl) pLevelTitleEl.textContent = `Уровень ${level.levelNumber} · ${level.title}`;
+
+    const pLevelNumEl = document.getElementById('profile-level-number');
+    if (pLevelNumEl) pLevelNumEl.textContent = level.levelNumber;
 
     const nextXP = ProgressionEngine.getNextLevelXP(State.profile.totalXP);
     const progress = ProgressionEngine.getProgress(State.profile.totalXP);
-    if (nextXP !== null) {
-      document.getElementById('xp-display-text').textContent = `${State.profile.totalXP} / ${nextXP} XP`;
-    } else {
-      document.getElementById('xp-display-text').textContent = `${State.profile.totalXP} XP · Максимум`;
+    const xpTextEl = document.getElementById('xp-display-text');
+    if (xpTextEl) {
+      if (nextXP !== null) {
+        xpTextEl.textContent = `${State.profile.totalXP} / ${nextXP} XP`;
+      } else {
+        xpTextEl.textContent = `${State.profile.totalXP} XP · Максимум`;
+      }
     }
-    document.getElementById('xp-fill-bar').style.width = `${Math.round(progress * 100)}%`;
+    const xpBarEl = document.getElementById('xp-fill-bar');
+    if (xpBarEl) {
+      xpBarEl.style.width = `${Math.round(progress * 100)}%`;
+    }
 
     this.renderToday();
     this.renderPathTrail();
@@ -2821,6 +2864,23 @@ class UIController {
   }
 
   renderPathTrail() {
+    const completedIds = new Set(State.finishedSessions.filter(s => s.isFinished).map(s => s.adventureId));
+
+    // Update chapter segment buttons with lock status
+    EMBEDDED_CATALOG.chapters.forEach(ch => {
+      const isChUnlocked = ProgressionEngine.isChapterUnlocked(
+        ch.id,
+        completedIds,
+        EMBEDDED_CATALOG.adventures,
+        State.unlockedChapters
+      );
+      const btn = document.querySelector(`#path-chapters-segment .segment-btn[data-chapter="${ch.id}"]`);
+      if (btn) {
+        btn.textContent = isChUnlocked ? `Глава ${ch.chapterNumber}` : `Глава ${ch.chapterNumber} 🔒`;
+        btn.classList.toggle('active', ch.id === this.currentPathChapterId);
+      }
+    });
+
     const chapter = EMBEDDED_CATALOG.chapters.find(c => c.id === this.currentPathChapterId) || EMBEDDED_CATALOG.chapters[0];
     const badgeText = document.getElementById('path-chapter-badge-text');
     const titleEl = document.getElementById('path-chapter-title');
@@ -2832,7 +2892,6 @@ class UIController {
     if (titleEl) titleEl.textContent = chapter.title;
     if (subtitleEl) subtitleEl.textContent = chapter.subtitle;
 
-    const completedIds = new Set(State.finishedSessions.filter(s => s.isFinished).map(s => s.adventureId));
     const isChapterUnlocked = ProgressionEngine.isChapterUnlocked(
       chapter.id,
       completedIds,
@@ -2848,88 +2907,72 @@ class UIController {
       progressEl.classList.toggle('completed', completedCount === 4);
     }
 
-    // Segment buttons active state
-    const segmentBtns = document.querySelectorAll('#path-chapters-segment .segment-btn');
-    segmentBtns.forEach(btn => {
-      btn.classList.toggle('active', btn.dataset.chapter === this.currentPathChapterId);
-    });
-
     if (!trailContainer) return;
     trailContainer.innerHTML = '';
 
-    // S-Curve SVG connector path
-    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-    svg.setAttribute('class', 's-curve-svg');
-    svg.setAttribute('viewBox', '0 0 340 460');
-    svg.setAttribute('fill', 'none');
-    svg.innerHTML = `
-      <defs>
-        <linearGradient id="trailGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-          <stop offset="0%" stop-color="#FF3B70" stop-opacity="0.8" />
-          <stop offset="50%" stop-color="#FFD166" stop-opacity="0.8" />
-          <stop offset="100%" stop-color="#A259FF" stop-opacity="0.8" />
-        </linearGradient>
-        <filter id="trailGlow" x="-20%" y="-20%" width="140%" height="140%">
-          <feGaussianBlur stdDeviation="3" result="blur" />
-          <feComposite in="SourceGraphic" in2="blur" operator="over" />
-        </filter>
-      </defs>
-      <path d="M 68 50 C 270 90, 280 140, 272 170 C 260 210, 70 240, 68 290 C 65 340, 270 370, 272 410" 
-            stroke="rgba(255, 255, 255, 0.12)" stroke-width="6" stroke-linecap="round" stroke-dasharray="6 6" />
-      <path d="M 68 50 C 270 90, 280 140, 272 170 C 260 210, 70 240, 68 290 C 65 340, 270 370, 272 410" 
-            stroke="url(#trailGrad)" stroke-width="3" stroke-linecap="round" filter="url(#trailGlow)" />
-    `;
-    trailContainer.appendChild(svg);
-
-    // Nodes list
-    const nodesList = document.createElement('div');
-    nodesList.className = 'trail-nodes-list';
-
+    // Render clean native iOS vertical steps
     chapterAdventures.forEach((adv, idx) => {
       const questNum = (chapter.chapterNumber - 1) * 4 + (idx + 1);
       const isCompleted = completedIds.has(adv.id);
       const isActive = State.activeSession && State.activeSession.adventureId === adv.id;
       const isCurrent = isActive || (isChapterUnlocked && !isCompleted && (idx === 0 || completedIds.has(chapterAdventures[idx - 1].id)));
 
-      let stateClass = 'locked is-locked';
+      let stateClass = 'locked';
       if (isCompleted) {
-        stateClass = 'completed is-completed';
+        stateClass = 'completed';
       } else if (isCurrent) {
-        stateClass = 'current is-current';
+        stateClass = 'current';
       } else if (isChapterUnlocked) {
-        stateClass = 'available is-available';
+        stateClass = 'available';
       }
 
-      const row = document.createElement('div');
-      const isRight = (idx % 2 === 1);
-      row.className = `trail-node-row ${isRight ? 'right' : 'left'}`;
+      const card = document.createElement('div');
+      card.className = `path-step-card ${stateClass}`;
+      card.setAttribute('role', 'button');
+      card.setAttribute('tabindex', '0');
+      card.dataset.advId = adv.id;
 
+      // Sphere (52x52px)
       const sphere = document.createElement('div');
-      sphere.className = `trail-node-sphere path-sphere-node ${stateClass}`;
-      sphere.setAttribute('role', 'button');
-      sphere.setAttribute('tabindex', '0');
-      sphere.setAttribute('title', adv.title);
+      sphere.className = `path-step-sphere ${stateClass}`;
 
       if (isCompleted) {
-        sphere.innerHTML = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#10B981" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
+        sphere.innerHTML = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#30D158" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
       } else if (isCurrent) {
-        sphere.innerHTML = '<svg width="24" height="24" viewBox="0 0 24 24" fill="#FFD166"><path d="M12 2l2.4 5.6L20 10l-4.4 4.3 1.1 6.1L12 17.3 7.3 20.4l1.1-6.1L4 10l5.6-2.4L12 2z"/></svg>';
+        sphere.innerHTML = '<svg width="22" height="22" viewBox="0 0 24 24" fill="#FFFFFF"><path d="M12 2l2.4 5.6L20 10l-4.4 4.3 1.1 6.1L12 17.3 7.3 20.4l1.1-6.1L4 10l5.6-2.4L12 2z"/></svg>';
       } else if (!isChapterUnlocked) {
-        sphere.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>';
+        sphere.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>';
       } else {
-        sphere.innerHTML = `<span class="trail-node-num">${questNum}</span>`;
+        sphere.innerHTML = `<span class="step-num">${questNum}</span>`;
       }
 
-      const meta = document.createElement('div');
-      meta.className = 'trail-node-meta';
+      // Step Info
+      const info = document.createElement('div');
+      info.className = 'path-step-info';
       const singleVibe = (adv.vibes && adv.vibes[0]) ? adv.vibes[0] : 'Приключение';
-      meta.innerHTML = `
-        <div class="trail-node-title">${adv.title}</div>
-        <div class="trail-node-subtitle">${singleVibe}</div>
+      const duration = adv.duration || '30–60 мин';
+      const location = adv.location || 'Дома';
+
+      info.innerHTML = `
+        <div class="path-step-title">${adv.title}</div>
+        <div class="path-step-meta">${singleVibe} · ${duration} · ${location}</div>
       `;
 
+      // Chevron
+      const chevron = document.createElement('div');
+      chevron.className = 'path-step-chevron';
+      chevron.innerHTML = `
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="9 18 15 12 9 6"></polyline>
+        </svg>
+      `;
+
+      card.appendChild(sphere);
+      card.appendChild(info);
+      card.appendChild(chevron);
+
       if (isChapterUnlocked) {
-        sphere.addEventListener('click', () => {
+        card.addEventListener('click', () => {
           Sound.playHaptic();
           if (isActive) {
             this.resumeActiveSession();
@@ -2939,12 +2982,15 @@ class UIController {
         });
       }
 
-      row.appendChild(sphere);
-      row.appendChild(meta);
-      nodesList.appendChild(row);
-    });
+      trailContainer.appendChild(card);
 
-    trailContainer.appendChild(nodesList);
+      // Clean vertical connector between nodes (never crosses text)
+      if (idx < chapterAdventures.length - 1) {
+        const connector = document.createElement('div');
+        connector.className = 'path-step-connector';
+        trailContainer.appendChild(connector);
+      }
+    });
 
     // Keep fallback chapters map updated
     this.renderChaptersMap();
@@ -3280,18 +3326,54 @@ class UIController {
     document.getElementById('badges-count-label').textContent = `Достижения (${unlockedBadges.size} из ${EMBEDDED_CATALOG.achievements.length})`;
     document.getElementById('badges-xp-label').textContent = `+${unlockedBadges.size * 20} XP`;
 
+    // 8 Unique Apple SF Symbol style Vector Badges
+    const badgeIcons = {
+      first_step: {
+        color: '#FF375F',
+        svg: `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C12.3 6.4 15.6 9.7 20 10C15.6 10.3 12.3 13.6 12 18C11.7 13.6 8.4 10.3 4 10C8.4 9.7 11.7 6.4 12 2Z"/><path d="M19 15C19.2 17.2 20.8 18.8 23 19C20.8 19.2 19.2 20.8 19 23C18.8 20.8 17.2 19.2 15 19C17.2 18.8 18.8 17.2 19 15Z"/></svg>`
+      },
+      cozy_masters: {
+        color: '#FF9F0A',
+        svg: `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.5L2 11.5H5V21C5 21.55 5.45 22 6 22H10V16C10 14.9 10.9 14 12 14C13.1 14 14 14.9 14 16V22H18C18.55 22 19 21.55 19 21V11.5H22L12 2.5Z"/></svg>`
+      },
+      wind_of_change: {
+        color: '#64D2FF',
+        svg: `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1.2 5.1l4.8 10.2c.2.4-.2.8-.6.6L12 15.6l-5.4 2.3c-.4.2-.8-.2-.6-.6l4.8-10.2c.3-.6 1.1-.6 1.4 0z"/></svg>`
+      },
+      pure_improvisation: {
+        color: '#BF5AF2',
+        svg: `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M13 2L3 14H11V22L21 10H13V2Z"/></svg>`
+      },
+      priceless_evening: {
+        color: '#30D158',
+        svg: `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L2 12L12 22L22 12L12 2Z"/></svg>`
+      },
+      no_secrets: {
+        color: '#FF375F',
+        svg: `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M16 3H5C3.34 3 2 4.34 2 6V13C2 14.66 3.34 16 5 16H6V19L9.5 16H16C17.66 16 19 14.66 19 13V6C19 4.34 17.66 3 16 3Z"/><path d="M19 8H18V13C18 15.2 16.2 17 14 17H10V18C10 19.1 10.9 20 12 20H16.5L20 23V20H21C22.1 20 23 19.1 23 18V12C23 9.79 21.21 8 19 8Z" opacity="0.85"/></svg>`
+      },
+      chapter_closed: {
+        color: '#FFD60A',
+        svg: `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M2 19h20v2H2v-2zM2 6l5 6 5-8 5 8 5-6v11H2V6z"/></svg>`
+      },
+      perfect_wave: {
+        color: '#64D2FF',
+        svg: `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M18.6 6.62c-1.44 0-2.8.56-3.77 1.5l-2.83 2.76-2.83-2.76A5.334 5.334 0 0 0 5.4 6.62C2.42 6.62 0 9.04 0 12.02c0 2.98 2.42 5.4 5.4 5.4 1.44 0 2.8-.56 3.77-1.5l2.83-2.76 2.83 2.76c.97.94 2.33 1.5 3.77 1.5 2.98 0 5.4-2.42 5.4-5.4 0-2.98-2.42-5.4-5.4-5.4zm-13.2 8.4c-1.65 0-3-1.35-3-3s1.35-3 3-3c.83 0 1.58.34 2.12.88l2.12 2.12-2.12 2.12c-.54.54-1.29.88-2.12.88zm13.2 0c-.83 0-1.58-.34-2.12-.88l-2.12-2.12 2.12-2.12c.54-.54 1.29-.88 2.12-.88 1.65 0 3 1.35 3 3s-1.35 3-3 3z"/></svg>`
+      }
+    };
+
     EMBEDDED_CATALOG.achievements.forEach(ach => {
       const isUnlocked = unlockedBadges.has(ach.id);
+      const iconData = badgeIcons[ach.id] || badgeIcons.first_step;
       const card = document.createElement('div');
       card.className = `badge-card ${isUnlocked ? 'unlocked' : 'locked'}`;
 
       card.innerHTML = `
-        <div class="badge-icon-circle">
-          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+        <div class="badge-medallion" style="${isUnlocked ? `color: ${iconData.color};` : 'color: rgba(255,255,255,0.4);'}">
+          ${iconData.svg}
         </div>
         <div class="badge-card-title">${ach.title}</div>
         <div class="badge-card-desc">${ach.description}</div>
-        <div class="badge-card-status">${isUnlocked ? 'Открыто (+20 XP)' : 'Заблокировано'}</div>
       `;
       badgesContainer.appendChild(card);
     });
@@ -3386,11 +3468,15 @@ class UIController {
   }
 
   renderSettings() {
-    document.getElementById('settings-name-p1').value = State.profile.partnerOneName || 'Алишер';
-    document.getElementById('settings-name-p2').value = State.profile.partnerTwoName || 'Дана';
+    const p1Input = document.getElementById('settings-name-p1');
+    const p2Input = document.getElementById('settings-name-p2');
+    if (p1Input) p1Input.value = State.profile.partnerOneName || 'Алишер';
+    if (p2Input) p2Input.value = State.profile.partnerTwoName || 'Дана';
 
     const settingsComfortContainer = document.getElementById('settings-comfort-list');
+    if (!settingsComfortContainer) return;
     settingsComfortContainer.innerHTML = '';
+
     const boundaryTags = [
       'Без танцев и пения',
       'Без общения с прохожими',
@@ -3399,34 +3485,33 @@ class UIController {
     ];
 
     boundaryTags.forEach(tag => {
-      const isSelected = State.profile.excludedBoundaries.includes(tag);
-      const item = document.createElement('div');
-      item.className = `comfort-item ${isSelected ? 'selected' : ''}`;
+      const isExcluded = State.profile.excludedBoundaries.includes(tag);
+      const row = document.createElement('div');
+      row.className = 'ios-group-row';
 
-      item.innerHTML = `
-        <div class="comfort-item-left">
-          <svg class="comfort-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"></line></svg>
-          <span class="comfort-text">${tag}</span>
+      row.innerHTML = `
+        <div class="ios-row-left">
+          <span class="ios-row-title">${tag}</span>
         </div>
-        <div class="comfort-checkbox">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
-        </div>
+        <label class="ios-switch">
+          <input type="checkbox" class="comfort-switch-input" data-tag="${tag}" ${isExcluded ? 'checked' : ''}>
+          <span class="ios-slider"></span>
+        </label>
       `;
 
-      item.addEventListener('click', () => {
+      const input = row.querySelector('.comfort-switch-input');
+      input.addEventListener('change', () => {
         Sound.playHaptic();
         const idx = State.profile.excludedBoundaries.indexOf(tag);
-        if (idx >= 0) {
-          State.profile.excludedBoundaries.splice(idx, 1);
-          item.classList.remove('selected');
+        if (input.checked) {
+          if (idx < 0) State.profile.excludedBoundaries.push(tag);
         } else {
-          State.profile.excludedBoundaries.push(tag);
-          item.classList.add('selected');
+          if (idx >= 0) State.profile.excludedBoundaries.splice(idx, 1);
         }
         State.save();
       });
 
-      settingsComfortContainer.appendChild(item);
+      settingsComfortContainer.appendChild(row);
     });
   }
 

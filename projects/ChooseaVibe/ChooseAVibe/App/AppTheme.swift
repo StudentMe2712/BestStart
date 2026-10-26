@@ -141,12 +141,12 @@ public enum AppTheme {
 
     // MARK: 1. Системные цвета и фоны
 
-    public static let midnightBg = Color(red: 0.08, green: 0.08, blue: 0.14)
-    public static let primaryRose = Color(red: 1.00, green: 0.23, blue: 0.44)
-    public static let warmGold = Color(red: 1.00, green: 0.82, blue: 0.28)
-    public static let softText = Color(red: 0.72, green: 0.72, blue: 0.82)
-    public static let cardSurface = Color(red: 0.14, green: 0.14, blue: 0.22)
-    public static let cardSurfaceLight = Color(red: 0.20, green: 0.20, blue: 0.30)
+    public static let midnightBg = Color(red: 0.0, green: 0.0, blue: 0.0) // #000000 iOS 18 Dark Mode
+    public static let primaryRose = Color(red: 1.00, green: 0.22, blue: 0.37) // #FF375F iOS Pink
+    public static let warmGold = Color(red: 1.00, green: 0.84, blue: 0.04) // #FFD60A iOS Amber
+    public static let softText = Color(red: 0.92, green: 0.92, blue: 0.96, opacity: 0.60) // rgba(235, 235, 245, 0.60)
+    public static let cardSurface = Color(red: 22/255.0, green: 22/255.0, blue: 24/255.0) // #161618 (Level 1)
+    public static let cardSurfaceLight = Color(red: 33/255.0, green: 33/255.0, blue: 36/255.0) // #212124 (Level 2)
     public static let heroGradient = Gradients.brandPrimary
 
     // MARK: 2. Палитры 5 вайбов
@@ -383,7 +383,7 @@ public enum AppTheme {
     public enum CornerRadius {
         public static let small: CGFloat = 8
         public static let chip: CGFloat = 14
-        public static let medium: CGFloat = 18
+        public static let medium: CGFloat = 16
         public static let large: CGFloat = 24
         public static let card: CGFloat = 28
     }
@@ -546,7 +546,7 @@ public struct VibeSecondaryButtonStyle: ButtonStyle {
             .font(.system(size: 16, weight: .medium, design: .rounded))
             .foregroundColor(Color.primary)
             .frame(maxWidth: .infinity)
-            .frame(height: 50)
+            .frame(height: 54)
             .background(Color.secondary.opacity(configuration.isPressed ? 0.20 : 0.12))
             .clipShape(RoundedRectangle(cornerRadius: AppTheme.CornerRadius.medium, style: .continuous))
             .scaleEffect(configuration.isPressed ? 0.98 : 1.0)
