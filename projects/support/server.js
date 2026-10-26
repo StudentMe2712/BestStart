@@ -15,7 +15,7 @@ const WordExtractor = require('word-extractor');
 
 const USE_STUB = (process.env.DB_STUB === 'true' || process.env.DB_STUB === '1') && fs.existsSync(path.join(__dirname, 'db-stub.js'));
 
-let pool, initDatabase, registerUser, authenticateUser, getUserById, updateProfile, getAllUsers, adminResetPassword, changeUserPassword, adminCreateUser, checkUserExists, resetPassword, initOrganizationTable, organizationsDB, initDatabases1CTable, databases1CDB, initUserPinsTable, userPinsDB, initFilesTable, filesDB;
+let pool, initDatabase, registerUser, authenticateUser, getUserById, updateProfile, getAllUsers, adminResetPassword, changeUserPassword, adminCreateUser, adminUpdateUser, adminDeleteUser, checkUserExists, resetPassword, initOrganizationTable, organizationsDB, initDatabases1CTable, databases1CDB, initUserPinsTable, userPinsDB, initFilesTable, filesDB;
 
 if (USE_STUB) {
     console.log('⚠️  Using in-memory DB stub (DB_STUB=true)');
@@ -30,6 +30,8 @@ if (USE_STUB) {
     adminResetPassword = stub.adminResetPassword || (() => ({ success: false }));
     changeUserPassword = stub.changeUserPassword || (() => ({ success: false }));
     adminCreateUser = stub.adminCreateUser || (() => ({ success: false }));
+    adminUpdateUser = stub.adminUpdateUser || (() => ({ success: false }));
+    adminDeleteUser = stub.adminDeleteUser || (() => ({ success: false }));
     checkUserExists = stub.checkUserExists;
     resetPassword = stub.resetPassword;
     initOrganizationTable = stub.initOrganizationTable;
@@ -54,6 +56,8 @@ if (USE_STUB) {
     adminResetPassword = authModule.adminResetPassword;
     changeUserPassword = authModule.changeUserPassword;
     adminCreateUser = authModule.adminCreateUser;
+    adminUpdateUser = authModule.adminUpdateUser;
+    adminDeleteUser = authModule.adminDeleteUser;
     initOrganizationTable = dbModule.initOrganizationTable;
     organizationsDB = dbModule.organizationsDB;
     initDatabases1CTable = dbModule.initDatabases1CTable;
@@ -644,6 +648,127 @@ app.post('/api/admin/users', requireAuth, requireAdmin, checkAuthRateLimit, asyn
         return res.status(500).json({
             success: false,
             error: 'Ошибка сервера при создании пользователя'
+        });
+    }
+});
+
+// Административное редактирование данных пользователя (Спринт 13)
+app.put('/api/admin/users/:id', requireAuth, requireAdmin, checkAuthRateLimit, async (req, res) => {
+    const adminUser = req.session.user;
+    const targetId = parseInt(req.params.id, 10);
+
+    if (isNaN(targetId) || targetId <= 0) {
+        return res.status(400).json({ success: false, error: 'Некорректный ID пользователя' });
+    }
+
+    const { username, email } = req.body || {};
+
+    if (!username || typeof username !== 'string') {
+        return res.status(400).json({
+            success: false,
+            error: 'Логин должен содержать от 3 до 50 символов (буквы, цифры, дефис, точка, подчеркивание)'
+        });
+    }
+
+    const trimmedUsername = username.trim();
+    const USERNAME_REGEX = /^[a-zA-Z0-9_\-\.]+$/;
+
+    if (trimmedUsername.length < 3 || trimmedUsername.length > 50 || !USERNAME_REGEX.test(trimmedUsername)) {
+        return res.status(400).json({
+            success: false,
+            error: 'Логин должен содержать от 3 до 50 символов (буквы, цифры, дефис, точка, подчеркивание)'
+        });
+    }
+
+    let cleanEmail = null;
+    if (email !== undefined && email !== null && typeof email === 'string' && email.trim().length > 0) {
+        cleanEmail = email.trim();
+        const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (cleanEmail.length > 255 || !EMAIL_REGEX.test(cleanEmail)) {
+            return res.status(400).json({
+                success: false,
+                error: 'Неверный формат электронной почты'
+            });
+        }
+    } else if (email !== undefined && email !== null && typeof email === 'string' && email.trim().length === 0) {
+        cleanEmail = null;
+    } else if (email !== undefined && email !== null && typeof email !== 'string') {
+        return res.status(400).json({
+            success: false,
+            error: 'Неверный формат электронной почты'
+        });
+    }
+
+    try {
+        const result = await adminUpdateUser(targetId, { username: trimmedUsername, email: cleanEmail });
+        if (!result.success) {
+            const statusCode = result.code === 'USER_EXISTS' ? 409 : 400;
+            return res.status(statusCode).json({
+                success: false,
+                error: result.error
+            });
+        }
+
+        // Безопасный аудит: фиксируем факт обновления данных пользователя администратором
+        console.log(`[AUDIT] Администратор ${adminUser.username} (ID: ${adminUser.id}) обновил данные пользователя ${result.user.username} (ID: ${targetId}) в ${new Date().toISOString()}`);
+
+        // Если текущий администратор обновил свой логин: обновим имя пользователя в активной сессии
+        if (targetId === adminUser.id) {
+            req.session.user.username = result.user.username;
+        }
+
+        return res.status(200).json({
+            success: true,
+            message: 'Данные пользователя успешно обновлены',
+            user: result.user
+        });
+    } catch (err) {
+        console.error('Ошибка редактирования пользователя администратором:', err.message);
+        return res.status(500).json({
+            success: false,
+            error: 'Ошибка сервера при обновлении пользователя'
+        });
+    }
+});
+
+// Административное удаление пользователя (Спринт 13)
+app.delete('/api/admin/users/:id', requireAuth, requireAdmin, checkAuthRateLimit, async (req, res) => {
+    const adminUser = req.session.user;
+    const targetId = parseInt(req.params.id, 10);
+
+    if (isNaN(targetId) || targetId <= 0) {
+        return res.status(400).json({ success: false, error: 'Некорректный ID пользователя' });
+    }
+
+    // Проверка самоликвидации: удаление собственной учётной записи запрещено
+    if (targetId === adminUser.id) {
+        return res.status(400).json({
+            success: false,
+            error: 'Удаление собственной учётной записи запрещено'
+        });
+    }
+
+    try {
+        const result = await adminDeleteUser(targetId, adminUser.id);
+        if (!result.success) {
+            return res.status(400).json({
+                success: false,
+                error: result.error
+            });
+        }
+
+        // Безопасный аудит: фиксируем факт удаления пользователя администратором
+        console.log(`[AUDIT] Администратор ${adminUser.username} (ID: ${adminUser.id}) удалил пользователя ${result.user.username} (ID: ${targetId}) в ${new Date().toISOString()}`);
+
+        return res.status(200).json({
+            success: true,
+            message: 'Пользователь успешно удален'
+        });
+    } catch (err) {
+        console.error('Ошибка удаления пользователя администратором:', err.message);
+        return res.status(500).json({
+            success: false,
+            error: 'Ошибка сервера при удалении пользователя'
         });
     }
 });

@@ -9,7 +9,7 @@ if git diff --staged --quiet; then
     echo "No staged changes to commit."
 else
     echo "Committing staged changes..."
-    COMMIT_MSG="${1:-feat(ChooseaVibe): Sprint 2 - Interactive iPhone 16 Pro Web Simulator (HTML5/Canvas/Vanilla JS)}"
+    COMMIT_MSG="${1:-feat(ChooseaVibe): Sprint 3 - Native Unit Test Suite, SPM Manifest, and XcodeGen Specification}"
     git commit -m "$COMMIT_MSG"
 fi
 

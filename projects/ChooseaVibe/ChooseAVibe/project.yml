@@ -1,0 +1,42 @@
+name: ChooseAVibe
+
+options:
+  bundleIdPrefix: com.beststart
+  deploymentTarget:
+    iOS: "17.0"
+  xcodeVersion: "15.0"
+
+settings:
+  DEVELOPMENT_TEAM: ""
+  SWIFT_VERSION: "5.9"
+  PRODUCT_NAME: "Choose a Vibe"
+
+targets:
+  ChooseAVibe:
+    type: application
+    platform: iOS
+    deploymentTarget: "17.0"
+    info:
+      path: App/Info.plist
+    sources:
+      - path: App
+      - path: Domain
+      - path: Features
+      - path: Resources
+    settings:
+      PRODUCT_BUNDLE_IDENTIFIER: com.beststart.chooseavibe
+      INFOPLIST_FILE: App/Info.plist
+      DEVELOPMENT_REGION: ru
+      LOCALIZATION_PREFER_FALLBACK: YES
+      TARGETED_DEVICE_FAMILY: "1"
+      ENABLE_PREVIEWS: YES
+
+  ChooseAVibeTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: Tests/ChooseAVibeTests
+    dependencies:
+      - target: ChooseAVibe
+    settings:
+      PRODUCT_BUNDLE_IDENTIFIER: com.beststart.chooseavibe.tests

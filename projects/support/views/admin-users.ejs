@@ -143,19 +143,64 @@
                                             <%= u.last_login ? new Date(u.last_login).toLocaleString('ru-RU', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' }) : 'Никогда' %>
                                         </td>
                                         <td class="td-actions">
-                                            <% if (isAdmin || isCurrent) { %>
-                                                <span class="action-protected-badge" data-i18n="admin.users.protected">Защищено</span>
-                                            <% } else { %>
-                                                <button type="button" class="btn-reset-password btnResetAction"
+                                            <div class="user-actions-group">
+                                                <% if (isAdmin || isCurrent) { %>
+                                                    <span class="action-protected-badge" data-i18n="admin.users.protected">Защищено</span>
+                                                <% } else { %>
+                                                    <button type="button" class="btn-reset-password btnResetAction"
+                                                            data-user-id="<%= u.id %>"
+                                                            data-username="<%= u.username %>">
+                                                        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
+                                                            <path d="M10.5 5.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0z" stroke-linecap="round"/>
+                                                            <path d="M8 8.5v4.5l2-1.5 2 1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                                                        </svg>
+                                                        <span data-i18n="admin.users.btn.reset">Сбросить пароль</span>
+                                                    </button>
+                                                <% } %>
+                                                <button type="button" class="btn-action-icon btnEditAction"
+                                                        title="Редактировать пользователя"
+                                                        data-i18n-title="admin.users.btn.edit"
+                                                        aria-label="Редактировать пользователя"
                                                         data-user-id="<%= u.id %>"
-                                                        data-username="<%= u.username %>">
-                                                    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
-                                                        <path d="M10.5 5.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0z" stroke-linecap="round"/>
-                                                        <path d="M8 8.5v4.5l2-1.5 2 1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                                                        data-username="<%= u.username %>"
+                                                        data-email="<%= u.email || '' %>"
+                                                        data-role="<%= u.role || 'engineer' %>">
+                                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                                                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
                                                     </svg>
-                                                    <span data-i18n="admin.users.btn.reset">Сбросить пароль</span>
                                                 </button>
-                                            <% } %>
+                                                <% if (isCurrent) { %>
+                                                    <button type="button" class="btn-action-icon btn-action-icon--danger btn-action-icon--disabled btnDeleteAction"
+                                                            disabled
+                                                            title="Удаление собственной учётной записи запрещено"
+                                                            data-i18n-title="admin.users.btn.deleteSelfForbidden"
+                                                            aria-label="Удаление собственной учётной записи запрещено"
+                                                            data-user-id="<%= u.id %>"
+                                                            data-username="<%= u.username %>">
+                                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                                            <polyline points="3 6 5 6 21 6"/>
+                                                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                                                            <line x1="10" y1="11" x2="10" y2="17"/>
+                                                            <line x1="14" y1="11" x2="14" y2="17"/>
+                                                        </svg>
+                                                    </button>
+                                                <% } else { %>
+                                                    <button type="button" class="btn-action-icon btn-action-icon--danger btnDeleteAction"
+                                                            title="Удалить пользователя"
+                                                            data-i18n-title="admin.users.btn.delete"
+                                                            aria-label="Удалить пользователя"
+                                                            data-user-id="<%= u.id %>"
+                                                            data-username="<%= u.username %>">
+                                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                                            <polyline points="3 6 5 6 21 6"/>
+                                                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                                                            <line x1="10" y1="11" x2="10" y2="17"/>
+                                                            <line x1="14" y1="11" x2="14" y2="17"/>
+                                                        </svg>
+                                                    </button>
+                                                <% } %>
+                                            </div>
                                         </td>
                                     </tr>
                                 <% }); %>
@@ -220,6 +265,98 @@
                     </button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <!-- ── Диалог редактирования пользователя ── -->
+    <div class="confirm-modal" id="editUserModal" role="dialog" aria-modal="true" aria-hidden="true">
+        <div class="confirm-modal__overlay" id="editUserOverlay"></div>
+        <div class="confirm-modal__window" role="document">
+            <div class="confirm-modal__header">
+                <div class="confirm-modal__icon-wrap confirm-modal__icon-wrap--primary">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                    </svg>
+                </div>
+                <h3 class="confirm-modal__title" data-i18n="admin.users.modal.edit.title">Редактирование пользователя</h3>
+            </div>
+            <form id="editUserForm" novalidate onsubmit="return false;">
+                <input type="hidden" id="editUserId" name="id">
+                <div class="confirm-modal__body">
+                    <div class="form-group-modal">
+                        <label for="editUsername" class="modal-form-label">
+                            <span data-i18n="admin.users.modal.create.username">Логин</span> <span class="required-star">*</span>
+                        </label>
+                        <input type="text" id="editUsername" name="username" class="modal-form-input"
+                               minlength="3" maxlength="50" required
+                               placeholder="Введите логин" data-i18n-placeholder="admin.users.modal.create.usernamePh"
+                               autocomplete="off">
+                    </div>
+                    <div class="form-group-modal">
+                        <label for="editEmail" class="modal-form-label" data-i18n="admin.users.modal.create.email">Электронная почта (необязательно)</label>
+                        <input type="email" id="editEmail" name="email" class="modal-form-input"
+                               placeholder="user@its-kom.kz" data-i18n-placeholder="admin.users.modal.create.emailPh"
+                               autocomplete="off">
+                    </div>
+                    <div class="confirm-modal__role-note">
+                        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
+                            <circle cx="10" cy="10" r="9"/>
+                            <path d="M10 6v4M10 14h.01"/>
+                        </svg>
+                        <span>
+                            <span data-i18n="admin.users.modal.edit.roleLocked">Роль:</span>
+                            <strong id="editUserRoleDisplay">Инженер</strong>
+                            <span data-i18n="admin.users.modal.edit.roleNote">(изменение роли запрещено)</span>
+                        </span>
+                    </div>
+                    <div class="modal-error-alert" id="editUserError" style="display: none;"></div>
+                </div>
+                <div class="confirm-modal__footer">
+                    <button type="button" class="btn-confirm-cancel" id="btnCancelEditUser" data-i18n="wiki.modal.cancel.btn">Отмена</button>
+                    <button type="submit" class="btn-confirm-primary" id="btnSubmitEditUser">
+                        <span class="btn-spinner" id="editBtnSpinner" style="display: none;"></span>
+                        <span id="btnSubmitEditUserText" data-i18n="admin.users.modal.edit.save">Сохранить</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ── Диалог подтверждения удаления пользователя ── -->
+    <div class="confirm-modal" id="confirmDeleteModal" role="dialog" aria-modal="true" aria-hidden="true">
+        <div class="confirm-modal__overlay" id="deleteOverlay"></div>
+        <div class="confirm-modal__window" role="document">
+            <div class="confirm-modal__header">
+                <div class="confirm-modal__icon-wrap confirm-modal__icon-wrap--danger">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="3 6 5 6 21 6"/>
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                        <line x1="10" y1="11" x2="10" y2="17"/>
+                        <line x1="14" y1="11" x2="14" y2="17"/>
+                    </svg>
+                </div>
+                <h3 class="confirm-modal__title" data-i18n="admin.users.modal.delete.title">Удалить пользователя?</h3>
+            </div>
+            <div class="confirm-modal__body">
+                <p class="confirm-modal__desc" data-i18n="admin.users.modal.delete.desc">
+                    Вы действительно хотите удалить учётную запись пользователя:
+                </p>
+                <div class="confirm-modal__item-box">
+                    <strong id="deleteTargetUsername">username</strong>
+                </div>
+                <div class="confirm-modal__warning confirm-modal__warning--danger" data-i18n="admin.users.modal.delete.warn">
+                    ⚠️ Это действие необратимо. Доступ пользователя и его активные сессии будут немедленно прекращены.
+                </div>
+                <div class="modal-error-alert" id="deleteUserError" style="display: none;"></div>
+            </div>
+            <div class="confirm-modal__footer">
+                <button type="button" class="btn-confirm-cancel" id="btnCancelDelete" data-i18n="wiki.modal.cancel.btn">Отмена</button>
+                <button type="button" class="btn-confirm-danger" id="btnConfirmDelete">
+                    <span class="btn-spinner" id="deleteBtnSpinner" style="display: none;"></span>
+                    <span id="btnConfirmDeleteText" data-i18n="admin.users.modal.delete.btn">Удалить</span>
+                </button>
+            </div>
         </div>
     </div>
 
@@ -340,6 +477,29 @@
         var btnSubmitCreateUserText = document.getElementById('btnSubmitCreateUserText');
         var createBtnSpinner    = document.getElementById('createBtnSpinner');
         var createUserError     = document.getElementById('createUserError');
+
+        var editUserModal        = document.getElementById('editUserModal');
+        var editUserOverlay      = document.getElementById('editUserOverlay');
+        var editUserForm         = document.getElementById('editUserForm');
+        var editUserIdInput      = document.getElementById('editUserId');
+        var editUsernameInput    = document.getElementById('editUsername');
+        var editEmailInput       = document.getElementById('editEmail');
+        var editUserRoleDisplay  = document.getElementById('editUserRoleDisplay');
+        var editUserError        = document.getElementById('editUserError');
+        var btnCancelEditUser    = document.getElementById('btnCancelEditUser');
+        var btnSubmitEditUser    = document.getElementById('btnSubmitEditUser');
+        var btnSubmitEditUserText= document.getElementById('btnSubmitEditUserText');
+        var editBtnSpinner       = document.getElementById('editBtnSpinner');
+
+        var confirmDeleteModal   = document.getElementById('confirmDeleteModal');
+        var deleteOverlay        = document.getElementById('deleteOverlay');
+        var deleteTargetUsername = document.getElementById('deleteTargetUsername');
+        var deleteUserError      = document.getElementById('deleteUserError');
+        var btnCancelDelete      = document.getElementById('btnCancelDelete');
+        var btnConfirmDelete     = document.getElementById('btnConfirmDelete');
+        var btnConfirmDeleteText = document.getElementById('btnConfirmDeleteText');
+        var deleteBtnSpinner     = document.getElementById('deleteBtnSpinner');
+        var deleteTargetId       = null;
 
         var confirmResetModal   = document.getElementById('confirmResetModal');
         var tempPasswordModal   = document.getElementById('tempPasswordModal');
@@ -490,6 +650,299 @@
             });
         }
 
+        /* ── Модальное окно редактирования пользователя ── */
+        function openEditUserModal(userId, username, email, role) {
+            if (!editUserModal) return;
+            if (editUserIdInput) editUserIdInput.value = userId;
+            if (editUsernameInput) editUsernameInput.value = username || '';
+            if (editEmailInput) editEmailInput.value = email || '';
+            if (editUserRoleDisplay) {
+                var roleText = role === 'admin'
+                    ? (window.ITS_I18n ? window.ITS_I18n.t('admin.users.role.admin') : 'Администратор')
+                    : (window.ITS_I18n ? window.ITS_I18n.t('admin.users.role.engineer') : 'Инженер');
+                editUserRoleDisplay.textContent = roleText;
+            }
+            hideEditError();
+            editUserModal.classList.add('is-open');
+            editUserModal.setAttribute('aria-hidden', 'false');
+            setTimeout(function() {
+                if (editUsernameInput) editUsernameInput.focus();
+            }, 50);
+        }
+
+        function closeEditUserModal() {
+            if (!editUserModal) return;
+            editUserModal.classList.remove('is-open');
+            editUserModal.setAttribute('aria-hidden', 'true');
+            if (editUserForm) editUserForm.reset();
+            hideEditError();
+        }
+
+        function showEditError(msg) {
+            if (!editUserError) return;
+            editUserError.textContent = msg;
+            editUserError.style.display = 'block';
+        }
+
+        function hideEditError() {
+            if (!editUserError) return;
+            editUserError.textContent = '';
+            editUserError.style.display = 'none';
+        }
+
+        function setEditLoading(loading) {
+            if (!btnSubmitEditUser) return;
+            btnSubmitEditUser.disabled = loading;
+            if (editBtnSpinner) editBtnSpinner.style.display = loading ? 'inline-block' : 'none';
+            if (btnSubmitEditUserText) {
+                btnSubmitEditUserText.textContent = loading ? 'Сохранение...' : (window.ITS_I18n ? window.ITS_I18n.t('admin.users.modal.edit.save') : 'Сохранить');
+            }
+        }
+
+        if (btnCancelEditUser) {
+            btnCancelEditUser.addEventListener('click', closeEditUserModal);
+        }
+        if (editUserOverlay) {
+            editUserOverlay.addEventListener('click', closeEditUserModal);
+        }
+
+        if (editUserForm) {
+            editUserForm.addEventListener('submit', async function(e) {
+                e.preventDefault();
+                var id = editUserIdInput ? editUserIdInput.value : null;
+                var username = editUsernameInput ? editUsernameInput.value.trim() : '';
+                var email = editEmailInput ? editEmailInput.value.trim() : '';
+
+                if (!id) return;
+
+                if (!username || username.length < 3 || username.length > 50) {
+                    showEditError('Логин должен содержать от 3 до 50 символов');
+                    if (editUsernameInput) editUsernameInput.focus();
+                    return;
+                }
+
+                if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+                    showEditError('Некорректный формат электронной почты');
+                    if (editEmailInput) editEmailInput.focus();
+                    return;
+                }
+
+                hideEditError();
+                setEditLoading(true);
+
+                try {
+                    var resp = await fetch('/api/admin/users/' + encodeURIComponent(id), {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            username: username,
+                            email: email || null
+                        })
+                    });
+                    var data = await resp.json();
+
+                    if (!resp.ok || !data.success) {
+                        showEditError(data.error || 'Ошибка при обновлении пользователя');
+                        setEditLoading(false);
+                        return;
+                    }
+
+                    closeEditUserModal();
+                    showToast(window.ITS_I18n ? window.ITS_I18n.t('admin.users.modal.edit.success') : 'Данные пользователя успешно обновлены');
+
+                    var updatedUser = data.user || { username: username, email: email };
+                    var finalUsername = updatedUser.username || username;
+                    var finalEmail = updatedUser.email !== undefined ? updatedUser.email : email;
+
+                    var row = document.getElementById('userRow-' + id);
+                    if (row) {
+                        var avatarEl = row.querySelector('.user-avatar-mini');
+                        if (avatarEl) {
+                            avatarEl.textContent = finalUsername.charAt(0).toUpperCase();
+                        }
+                        var nameEl = row.querySelector('.user-name');
+                        if (nameEl) {
+                            nameEl.textContent = finalUsername;
+                        }
+                        var emailEl = row.querySelector('.user-email');
+                        if (finalEmail) {
+                            if (emailEl) {
+                                emailEl.textContent = finalEmail;
+                            } else {
+                                var userMeta = row.querySelector('.user-meta');
+                                if (userMeta) {
+                                    var newEmailSpan = document.createElement('span');
+                                    newEmailSpan.className = 'user-email';
+                                    newEmailSpan.textContent = finalEmail;
+                                    userMeta.appendChild(newEmailSpan);
+                                }
+                            }
+                        } else if (emailEl) {
+                            emailEl.remove();
+                        }
+
+                        var editBtn = row.querySelector('.btnEditAction');
+                        if (editBtn) {
+                            editBtn.setAttribute('data-username', finalUsername);
+                            editBtn.setAttribute('data-email', finalEmail || '');
+                        }
+                        var delBtn = row.querySelector('.btnDeleteAction');
+                        if (delBtn) {
+                            delBtn.setAttribute('data-username', finalUsername);
+                        }
+                        var resetBtn = row.querySelector('.btnResetAction');
+                        if (resetBtn) {
+                            resetBtn.setAttribute('data-username', finalUsername);
+                        }
+                    }
+
+                } catch (err) {
+                    showEditError('Ошибка соединения с сервером');
+                } finally {
+                    setEditLoading(false);
+                }
+            });
+        }
+
+        /* ── Модальное окно подтверждения удаления пользователя ── */
+        function openDeleteModal(userId, username) {
+            if (!confirmDeleteModal) return;
+            deleteTargetId = userId;
+            if (deleteTargetUsername) deleteTargetUsername.textContent = username;
+            hideDeleteError();
+            confirmDeleteModal.classList.add('is-open');
+            confirmDeleteModal.setAttribute('aria-hidden', 'false');
+        }
+
+        function closeDeleteModal() {
+            if (!confirmDeleteModal) return;
+            confirmDeleteModal.classList.remove('is-open');
+            confirmDeleteModal.setAttribute('aria-hidden', 'true');
+            deleteTargetId = null;
+            hideDeleteError();
+        }
+
+        function showDeleteError(msg) {
+            if (!deleteUserError) return;
+            deleteUserError.textContent = msg;
+            deleteUserError.style.display = 'block';
+        }
+
+        function hideDeleteError() {
+            if (!deleteUserError) return;
+            deleteUserError.textContent = '';
+            deleteUserError.style.display = 'none';
+        }
+
+        function setDeleteLoading(loading) {
+            if (!btnConfirmDelete) return;
+            btnConfirmDelete.disabled = loading;
+            if (deleteBtnSpinner) deleteBtnSpinner.style.display = loading ? 'inline-block' : 'none';
+            if (btnConfirmDeleteText) {
+                btnConfirmDeleteText.textContent = loading ? 'Удаление...' : (window.ITS_I18n ? window.ITS_I18n.t('admin.users.modal.delete.btn') : 'Удалить');
+            }
+        }
+
+        if (btnCancelDelete) {
+            btnCancelDelete.addEventListener('click', closeDeleteModal);
+        }
+        if (deleteOverlay) {
+            deleteOverlay.addEventListener('click', closeDeleteModal);
+        }
+
+        if (btnConfirmDelete) {
+            btnConfirmDelete.addEventListener('click', async function() {
+                if (!deleteTargetId) return;
+
+                hideDeleteError();
+                setDeleteLoading(true);
+
+                try {
+                    var resp = await fetch('/api/admin/users/' + encodeURIComponent(deleteTargetId), {
+                        method: 'DELETE',
+                        headers: { 'Content-Type': 'application/json' }
+                    });
+                    var data = await resp.json();
+
+                    if (!resp.ok || !data.success) {
+                        showDeleteError(data.error || 'Ошибка при удалении пользователя');
+                        setDeleteLoading(false);
+                        return;
+                    }
+
+                    var deletedId = deleteTargetId;
+                    closeDeleteModal();
+                    showToast(window.ITS_I18n ? window.ITS_I18n.t('admin.users.modal.delete.success') : 'Пользователь успешно удален');
+
+                    var row = document.getElementById('userRow-' + deletedId);
+                    if (row) {
+                        row.remove();
+                    }
+
+                    if (usersTotalBadge) {
+                        var currentCount = parseInt(usersTotalBadge.textContent || '0', 10);
+                        var nextCount = Math.max(0, (isNaN(currentCount) ? 0 : currentCount) - 1);
+                        usersTotalBadge.textContent = String(nextCount);
+                    }
+
+                    var tbody = document.querySelector('#usersTable tbody');
+                    if (tbody && tbody.querySelectorAll('.user-row').length === 0) {
+                        var emptyTr = document.createElement('tr');
+                        emptyTr.innerHTML = '<td colspan="7" class="td-empty" data-i18n="admin.users.empty">' +
+                            (window.ITS_I18n ? window.ITS_I18n.t('admin.users.empty') : 'Пользователи не найдены') +
+                            '</td>';
+                        tbody.appendChild(emptyTr);
+                    }
+
+                } catch (err) {
+                    showDeleteError('Ошибка соединения с сервером');
+                } finally {
+                    setDeleteLoading(false);
+                }
+            });
+        }
+
+        /* ── Привязка обработчиков действий к строке ── */
+        function bindRowActions(row) {
+            if (!row) return;
+
+            var resetBtn = row.querySelector('.btnResetAction');
+            if (resetBtn && !resetBtn._bound) {
+                resetBtn._bound = true;
+                resetBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    var uId = this.getAttribute('data-user-id');
+                    var uName = this.getAttribute('data-username');
+                    openConfirmModal(uId, uName);
+                });
+            }
+
+            var editBtn = row.querySelector('.btnEditAction');
+            if (editBtn && !editBtn._bound) {
+                editBtn._bound = true;
+                editBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    var uId = this.getAttribute('data-user-id');
+                    var uName = this.getAttribute('data-username');
+                    var uEmail = this.getAttribute('data-email');
+                    var uRole = this.getAttribute('data-role');
+                    openEditUserModal(uId, uName, uEmail, uRole);
+                });
+            }
+
+            var delBtn = row.querySelector('.btnDeleteAction');
+            if (delBtn && !delBtn._bound) {
+                delBtn._bound = true;
+                delBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    if (this.disabled || this.classList.contains('btn-action-icon--disabled')) return;
+                    var uId = this.getAttribute('data-user-id');
+                    var uName = this.getAttribute('data-username');
+                    openDeleteModal(uId, uName);
+                });
+            }
+        }
+
         /* ── Динамическое добавление строки в таблицу ── */
         function appendUserRow(u) {
             var tbody = document.querySelector('#usersTable tbody');
@@ -510,6 +963,10 @@
             var roleClass = u.role || 'engineer';
             var roleI18n = 'admin.users.role.' + roleClass;
             var createdDate = u.created_at ? new Date(u.created_at).toLocaleDateString('ru-RU') : new Date().toLocaleDateString('ru-RU');
+
+            var editTitle = window.ITS_I18n ? window.ITS_I18n.t('admin.users.btn.edit') : 'Редактировать пользователя';
+            var deleteTitle = window.ITS_I18n ? window.ITS_I18n.t('admin.users.btn.delete') : 'Удалить пользователя';
+            var resetText = window.ITS_I18n ? window.ITS_I18n.t('admin.users.btn.reset') : 'Сбросить пароль';
 
             tr.innerHTML =
                 '<td class="td-id"><span class="user-id-mono">#' + escapeHtml(String(u.id)) + '</span></td>' +
@@ -535,28 +992,45 @@
                 '<td class="td-created">' + escapeHtml(createdDate) + '</td>' +
                 '<td class="td-login">Никогда</td>' +
                 '<td class="td-actions">' +
-                    '<button type="button" class="btn-reset-password btnResetAction" data-user-id="' + escapeHtml(String(u.id)) + '" data-username="' + escapeHtml(u.username) + '">' +
-                        '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">' +
-                            '<path d="M10.5 5.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0z" stroke-linecap="round"/>' +
-                            '<path d="M8 8.5v4.5l2-1.5 2 1.5" stroke-linecap="round" stroke-linejoin="round"/>' +
-                        '</svg>' +
-                        '<span data-i18n="admin.users.btn.reset">' +
-                            (window.ITS_I18n ? window.ITS_I18n.t('admin.users.btn.reset') : 'Сбросить пароль') +
-                        '</span>' +
-                    '</button>' +
+                    '<div class="user-actions-group">' +
+                        '<button type="button" class="btn-reset-password btnResetAction" data-user-id="' + escapeHtml(String(u.id)) + '" data-username="' + escapeHtml(u.username) + '">' +
+                            '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">' +
+                                '<path d="M10.5 5.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0z" stroke-linecap="round"/>' +
+                                '<path d="M8 8.5v4.5l2-1.5 2 1.5" stroke-linecap="round" stroke-linejoin="round"/>' +
+                            '</svg>' +
+                            '<span data-i18n="admin.users.btn.reset">' + escapeHtml(resetText) + '</span>' +
+                        '</button>' +
+                        '<button type="button" class="btn-action-icon btnEditAction" ' +
+                                'title="' + escapeHtml(editTitle) + '" ' +
+                                'data-i18n-title="admin.users.btn.edit" ' +
+                                'aria-label="' + escapeHtml(editTitle) + '" ' +
+                                'data-user-id="' + escapeHtml(String(u.id)) + '" ' +
+                                'data-username="' + escapeHtml(u.username) + '" ' +
+                                'data-email="' + escapeHtml(u.email || '') + '" ' +
+                                'data-role="' + escapeHtml(u.role || 'engineer') + '">' +
+                            '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+                                '<path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>' +
+                                '<path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>' +
+                            '</svg>' +
+                        '</button>' +
+                        '<button type="button" class="btn-action-icon btn-action-icon--danger btnDeleteAction" ' +
+                                'title="' + escapeHtml(deleteTitle) + '" ' +
+                                'data-i18n-title="admin.users.btn.delete" ' +
+                                'aria-label="' + escapeHtml(deleteTitle) + '" ' +
+                                'data-user-id="' + escapeHtml(String(u.id)) + '" ' +
+                                'data-username="' + escapeHtml(u.username) + '">' +
+                            '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+                                '<polyline points="3 6 5 6 21 6"/>' +
+                                '<path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>' +
+                                '<line x1="10" y1="11" x2="10" y2="17"/>' +
+                                '<line x1="14" y1="11" x2="14" y2="17"/>' +
+                            '</svg>' +
+                        '</button>' +
+                    '</div>' +
                 '</td>';
 
             tbody.appendChild(tr);
-
-            var resetBtn = tr.querySelector('.btnResetAction');
-            if (resetBtn) {
-                resetBtn.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    var uId = this.getAttribute('data-user-id');
-                    var uName = this.getAttribute('data-username');
-                    openConfirmModal(uId, uName);
-                });
-            }
+            bindRowActions(tr);
         }
 
         /* ── Модальное окно сброса пароля ── */
@@ -610,15 +1084,8 @@
             resultUsernameDisplay.textContent = '';
         }
 
-        // Привязка кликов к кнопкам «Сбросить пароль»
-        document.querySelectorAll('.btnResetAction').forEach(function(btn) {
-            btn.addEventListener('click', function(e) {
-                e.preventDefault();
-                var uId = this.getAttribute('data-user-id');
-                var uName = this.getAttribute('data-username');
-                openConfirmModal(uId, uName);
-            });
-        });
+        // Привязка обработчиков к существующим строкам таблицы
+        document.querySelectorAll('.user-row').forEach(bindRowActions);
 
         if (btnCancelReset) {
             btnCancelReset.addEventListener('click', closeConfirmModal);
@@ -636,6 +1103,10 @@
                     closeTempPasswordModal();
                 } else if (createUserModal && createUserModal.classList.contains('is-open')) {
                     closeCreateUserModal();
+                } else if (editUserModal && editUserModal.classList.contains('is-open')) {
+                    closeEditUserModal();
+                } else if (confirmDeleteModal && confirmDeleteModal.classList.contains('is-open')) {
+                    closeDeleteModal();
                 } else if (confirmResetModal && confirmResetModal.classList.contains('is-open')) {
                     closeConfirmModal();
                 }

@@ -408,6 +408,157 @@ async function adminCreateUser(username, email, password) {
     }
 }
 
+// Административное редактирование данных пользователя (Спринт 13)
+async function adminUpdateUser(userId, { username, email }) {
+    const uid = parseInt(userId, 10);
+    if (isNaN(uid) || uid <= 0) {
+        return { success: false, error: 'Некорректный ID пользователя' };
+    }
+
+    if (!username || typeof username !== 'string') {
+        return { success: false, error: 'Логин должен содержать от 3 до 50 символов (буквы, цифры, дефис, точка, подчеркивание)' };
+    }
+
+    const trimmedUsername = username.trim();
+    const USERNAME_REGEX = /^[a-zA-Z0-9_\-\.]+$/;
+
+    if (trimmedUsername.length < 3 || trimmedUsername.length > 50 || !USERNAME_REGEX.test(trimmedUsername)) {
+        return { success: false, error: 'Логин должен содержать от 3 до 50 символов (буквы, цифры, дефис, точка, подчеркивание)' };
+    }
+
+    let cleanEmail = null;
+    if (email !== undefined && email !== null && typeof email === 'string' && email.trim().length > 0) {
+        cleanEmail = email.trim();
+        const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (cleanEmail.length > 255 || !EMAIL_REGEX.test(cleanEmail)) {
+            return { success: false, error: 'Неверный формат электронной почты' };
+        }
+    } else if (email !== undefined && email !== null && typeof email === 'string' && email.trim().length === 0) {
+        cleanEmail = null;
+    } else if (email !== undefined && email !== null && typeof email !== 'string') {
+        return { success: false, error: 'Неверный формат электронной почты' };
+    }
+
+    let connection;
+    try {
+        connection = await pool.getConnection();
+
+        const [existingUsers] = await connection.query(
+            'SELECT id FROM users WHERE id = ?',
+            [uid]
+        );
+
+        if (existingUsers.length === 0) {
+            return { success: false, error: 'Пользователь не найден' };
+        }
+
+        const [duplicateUsers] = await connection.query(
+            'SELECT id FROM users WHERE LOWER(username) = LOWER(?) AND id != ?',
+            [trimmedUsername, uid]
+        );
+
+        if (duplicateUsers.length > 0) {
+            return {
+                success: false,
+                error: 'Пользователь с таким логином уже существует',
+                code: 'USER_EXISTS'
+            };
+        }
+
+        await connection.query(
+            'UPDATE users SET username = ?, email = ? WHERE id = ?',
+            [trimmedUsername, cleanEmail, uid]
+        );
+
+        const [updatedUser] = await connection.query(
+            'SELECT id, username, email, role, must_change_password, token_version, created_at, last_login FROM users WHERE id = ?',
+            [uid]
+        );
+
+        return {
+            success: true,
+            user: updatedUser[0]
+        };
+    } catch (err) {
+        console.error('Ошибка обновления данных пользователя:', err.message);
+        return { success: false, error: 'Ошибка сервера при обновлении пользователя' };
+    } finally {
+        if (connection) connection.release();
+    }
+}
+
+// Административное удаление пользователя (Спринт 13)
+async function adminDeleteUser(targetUserId, currentAdminId) {
+    const targetId = parseInt(targetUserId, 10);
+    const adminId = parseInt(currentAdminId, 10);
+
+    if (isNaN(targetId) || targetId <= 0 || isNaN(adminId) || adminId <= 0) {
+        return { success: false, error: 'Некорректный ID пользователя' };
+    }
+
+    if (Number(targetUserId) === Number(currentAdminId)) {
+        return { success: false, error: 'Удаление собственной учётной записи запрещено' };
+    }
+
+    let connection;
+    try {
+        connection = await pool.getConnection();
+
+        const [users] = await connection.query(
+            'SELECT id, username, role FROM users WHERE id = ?',
+            [targetId]
+        );
+
+        if (users.length === 0) {
+            return { success: false, error: 'Пользователь не найден' };
+        }
+
+        const targetUser = users[0];
+
+        // Защита администратора: проверяем общее количество администраторов
+        if (targetUser.role === 'admin') {
+            const [adminRows] = await connection.query(
+                "SELECT COUNT(*) as adminCount FROM users WHERE role = 'admin'"
+            );
+            const adminCount = adminRows[0] ? adminRows[0].adminCount : 0;
+            if (adminCount <= 1) {
+                return {
+                    success: false,
+                    error: 'Нельзя удалить единственную учётную запись администратора'
+                };
+            }
+        }
+
+        // Транзакционное удаление
+        await connection.beginTransaction();
+        try {
+            await connection.query('DELETE FROM user_pins WHERE user_id = ?', [targetId]);
+            await connection.query('DELETE FROM users WHERE id = ?', [targetId]);
+            await connection.commit();
+        } catch (txErr) {
+            try {
+                await connection.rollback();
+            } catch (rbErr) {
+                console.error('Ошибка отката транзакции:', rbErr.message);
+            }
+            throw txErr;
+        }
+
+        return {
+            success: true,
+            user: {
+                id: targetUser.id,
+                username: targetUser.username
+            }
+        };
+    } catch (err) {
+        console.error('Ошибка удаления пользователя:', err.message);
+        return { success: false, error: 'Ошибка сервера при удалении пользователя' };
+    } finally {
+        if (connection) connection.release();
+    }
+}
+
 module.exports = {
     pool,
     initDatabase,
@@ -418,6 +569,8 @@ module.exports = {
     getAllUsers,
     adminResetPassword,
     changeUserPassword,
-    adminCreateUser
+    adminCreateUser,
+    adminUpdateUser,
+    adminDeleteUser
 };
 
