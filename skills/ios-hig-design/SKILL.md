@@ -122,3 +122,25 @@ The hero centerpiece embodies tactile Apple delight:
 * **Spring Transitions**: `cubic-bezier(0.22, 1, 0.36, 1)` for sheet slide-ins and modal reveals.
 * **Haptic Emulation**: Trigger micro-haptics on taps (`navigator.vibrate?.(10)`).
 * **Press Scale**: Buttons smoothly depress on touch: `transform: scale(0.97); transition: transform 0.15s ease;`.
+
+---
+
+## 8. 3-Block Dashboard Architecture & 2×2 Tile Grid (Smart Home / Health Style)
+
+When a screen requires selecting modes or exploring states without empty dead space, use the **Apple Smart Home 3-Block Layout**:
+
+### Block 1: Hero Status Widget (Weather / Level Status)
+* Large rounded card (`24px` radius, background `#161618` with subtle gradient sheen).
+* Left: Current status, level/mode, and thin neon progress bar.
+* Right: 3D illuminated emblem or trophy seal (`52×52px`).
+* Bottom metric strip: 3 compact values separated by vertical rules (e.g. `0 из 12 приключений | 0 ₸ | Pass & Play`).
+
+### Block 2: 2×2 Interactive Tile Grid
+* Two equal columns (`grid-template-columns: 1fr 1fr; gap: 14px;`).
+* Each tile (height `~130px`, radius `24px`):
+  * Resting: `#161618`, high-contrast vector icon (`32×32px`), title (`17px Semibold`), subtitle (`13px`), and tactile iOS toggle switch.
+  * Active (`.is-selected`): rich Apple gradient (`#FF375F` -> `#D92B6B`), soft color glow `box-shadow: 0 12px 28px rgba(255, 55, 95, 0.35);`, toggle knob activated.
+
+### Block 3: Primary Action & Settings Cell
+* Primary CTA button: `56px` tall, `18px` rounded, full width.
+* Native iOS Cell (`.ios-guide-cell`): rounded rectangle (`18px`, height `60px`, `#161618`), icon badge on left, two-line subtitle, chevron `›` on right. Never use unstyled raw text links.

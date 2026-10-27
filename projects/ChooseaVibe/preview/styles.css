@@ -458,16 +458,16 @@ body {
   padding: 6px 16px 14px;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 4px;
   border: none;
 }
 
 .ios-header-eyebrow {
   font-size: 13px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: rgba(235, 235, 245, 0.6);
+  font-weight: 500;
+  text-transform: none;
+  letter-spacing: -0.01em;
+  color: #8E8E93;
   margin-bottom: 2px;
 }
 
@@ -490,6 +490,31 @@ body {
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+.ios-profile-avatar-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: #1C1C1E;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #FFFFFF;
+  cursor: pointer;
+  box-shadow: inset 0 0.5px 0 rgba(255, 255, 255, 0.15);
+  transition: background 0.15s ease, transform 0.15s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.ios-profile-avatar-btn:hover {
+  background: #2C2C2E;
+}
+
+.ios-profile-avatar-btn:active {
+  transform: scale(0.92);
+  background: #3A3A3C;
 }
 
 .ios-xp-capsule,
@@ -3018,282 +3043,378 @@ body {
 }
 
 /* ==========================================================================
-   TAB 1: TODAY — ONE BIG ACTION (Apple HIG iOS 18)
+   TAB 1: TODAY — APPLE SMART HOME / APPLE HEALTH 3-BLOCK LAYOUT
    ========================================================================== */
 .today-container {
   display: flex;
   flex-direction: column;
   align-items: center;
   width: 100%;
-  padding: 8px 0 24px;
+  padding: 4px 0 24px;
 }
 
-.today-hero-card {
+/* Block 1: Hero Status Widget */
+.couple-status-card {
   width: 100%;
-  background: #161618;
-  border-radius: 28px;
+  background: linear-gradient(135deg, rgba(255, 55, 95, 0.18) 0%, rgba(191, 90, 242, 0.12) 100%), #161618;
+  border-radius: 24px;
   border: none;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
-  padding: 32px 24px;
+  padding: 20px;
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.55);
+  box-sizing: border-box;
+}
+
+.status-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 18px;
+}
+
+.status-card-left {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.status-level-badge {
+  font-size: 13px;
+  font-weight: 700;
+  color: #FFD60A;
+  letter-spacing: -0.01em;
+}
+
+.status-xp-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.status-xp-value {
+  font-size: 20px;
+  font-weight: 700;
+  color: #FFFFFF;
+  letter-spacing: -0.02em;
+}
+
+.status-xp-label {
+  font-size: 12px;
+  color: rgba(235, 235, 245, 0.6);
+  font-weight: 500;
+}
+
+.status-progress-track {
+  width: 100%;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  overflow: hidden;
+  margin-top: 4px;
+}
+
+.status-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #FF375F 0%, #FFD60A 100%);
+  border-radius: 999px;
+  transition: width 0.35s ease;
+}
+
+.status-trophy-wrap {
+  position: relative;
+  width: 56px;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-left: 12px;
+}
+
+.status-trophy-glow {
+  position: absolute;
+  width: 44px;
+  height: 44px;
+  background: radial-gradient(circle, rgba(255, 214, 10, 0.45) 0%, transparent 70%);
+  border-radius: 50%;
+  filter: blur(8px);
+}
+
+.status-trophy-icon {
+  position: relative;
+  font-size: 38px;
+  line-height: 1;
+  filter: drop-shadow(0 0 12px rgba(255, 214, 10, 0.6));
+}
+
+.status-metrics-strip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 14px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.status-metric-col {
+  flex: 1;
   text-align: center;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  position: relative;
-  overflow: hidden;
+  gap: 3px;
 }
 
-.today-hero-card::before {
-  content: "";
-  position: absolute;
-  top: -30px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 260px;
-  height: 140px;
-  background: radial-gradient(ellipse at center, rgba(255, 55, 95, 0.18) 0%, rgba(191, 90, 242, 0.08) 50%, transparent 75%);
-  pointer-events: none;
-  z-index: 0;
+.status-metric-divider {
+  width: 1px;
+  height: 26px;
+  background: rgba(255, 255, 255, 0.08);
 }
 
-/* Floating Magic Deck Scratch-Card Illustration */
-.today-deck-wrap {
-  position: relative;
-  width: 200px;
-  height: 156px;
-  margin: 6px auto 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  perspective: 900px;
+.status-metric-val {
+  font-size: 14px;
+  font-weight: 700;
+  color: #FFFFFF;
+  letter-spacing: -0.01em;
 }
 
-.deck-ambient-glow {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 180px;
+.status-metric-lbl {
+  font-size: 11px;
+  color: rgba(235, 235, 245, 0.6);
+  font-weight: 500;
+}
+
+/* Block 2: 2×2 Vibe Grid */
+.vibes-grid-2x2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin: 18px 0;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.vibe-tile {
+  background: #161618;
+  border-radius: 24px;
+  padding: 18px;
+  border: none;
   height: 130px;
-  background: radial-gradient(circle, rgba(255, 55, 95, 0.32) 0%, rgba(255, 214, 10, 0.18) 45%, transparent 70%);
-  filter: blur(22px);
-  pointer-events: none;
-  z-index: 1;
-}
-
-.deck-card-layer {
-  position: absolute;
-  border-radius: 20px;
-  transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-/* Layer 1: Peeking back card */
-.deck-card-back {
-  width: 122px;
-  height: 142px;
-  background: linear-gradient(135deg, rgba(88, 38, 80, 0.85), rgba(30, 16, 36, 0.95));
-  opacity: 0.55;
-  transform: rotate(7deg) translateY(6px);
-  z-index: 2;
-  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.5);
-}
-
-/* Layer 2: Peeking middle card */
-.deck-card-mid {
-  width: 124px;
-  height: 144px;
-  background: linear-gradient(145deg, rgba(123, 44, 191, 0.85), rgba(36, 18, 54, 0.95));
-  opacity: 0.8;
-  transform: rotate(-6deg) translateY(2px);
-  z-index: 3;
-  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.55);
-}
-
-/* Layer 3: Top Floating Scratch Card with Gold Foil & Sparkle */
-.deck-card-top {
-  width: 128px;
-  height: 148px;
-  border-radius: 20px;
-  background: linear-gradient(150deg, #2D1430 0%, #1A1324 55%, #100C18 100%);
-  z-index: 4;
-  box-shadow: 0 18px 36px rgba(0, 0, 0, 0.65), 0 0 24px rgba(255, 55, 95, 0.28);
-  position: relative;
-  overflow: hidden;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  animation: floatDeck 3.5s ease-in-out infinite;
-}
-
-@keyframes floatDeck {
-  0%, 100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(-6px);
-  }
-}
-
-/* Shimmer Foil Sweep */
-.deck-card-shimmer {
-  position: absolute;
-  top: -50%;
-  left: -50%;
-  width: 200%;
-  height: 200%;
-  background: linear-gradient(90deg, transparent 30%, rgba(255, 214, 10, 0.12) 47%, rgba(255, 255, 255, 0.28) 50%, rgba(255, 214, 10, 0.12) 53%, transparent 70%);
-  pointer-events: none;
-  animation: shimmerSweep 4s infinite linear;
-  z-index: 5;
-}
-
-@keyframes shimmerSweep {
-  0% { transform: translateX(-150%) rotate(25deg); }
-  100% { transform: translateX(200%) rotate(25deg); }
-}
-
-/* Ornate Inner Foil Frame */
-.deck-card-frame {
-  position: absolute;
-  inset: 7px;
-  border: 1px solid rgba(255, 214, 10, 0.45);
-  border-radius: 14px;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  background: radial-gradient(circle at center, rgba(255, 55, 95, 0.15) 0%, transparent 80%);
-  box-shadow: inset 0 0 14px rgba(255, 214, 10, 0.1);
-  z-index: 4;
-}
-
-.deck-corner-star {
-  position: absolute;
-  font-size: 8px;
-  color: #FFD60A;
-  opacity: 0.75;
-  line-height: 1;
-}
-.deck-corner-star.top-left { top: 4px; left: 5px; }
-.deck-corner-star.top-right { top: 4px; right: 5px; }
-.deck-corner-star.bottom-left { bottom: 4px; left: 5px; }
-.deck-corner-star.bottom-right { bottom: 4px; right: 5px; }
-
-.deck-emblem-wrap {
+  justify-content: space-between;
+  cursor: pointer;
+  transition: all 0.25s var(--ease-spring);
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
   position: relative;
-  width: 52px;
-  height: 52px;
+}
+
+.vibe-tile:hover {
+  background: #1C1C1F;
+}
+
+.vibe-tile:active {
+  transform: scale(0.97);
+}
+
+.tile-top-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.tile-icon-box {
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.08);
   display: flex;
   align-items: center;
   justify-content: center;
+  color: var(--ios-pink);
+  transition: background 0.2s ease, color 0.2s ease;
 }
 
-.deck-emblem-ring {
-  position: absolute;
-  inset: 0;
+.tile-indicator {
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
-  border: 1.5px dashed rgba(255, 214, 10, 0.55);
-  animation: spinRing 22s linear infinite;
+  background: transparent;
 }
 
-@keyframes spinRing {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
-}
-
-.deck-emblem-spark {
-  font-size: 26px;
-  line-height: 1;
-  filter: drop-shadow(0 0 10px rgba(255, 214, 10, 0.85));
-  animation: pulseSpark 2.2s ease-in-out infinite alternate;
-}
-
-@keyframes pulseSpark {
-  0% { transform: scale(0.92); opacity: 0.85; }
-  100% { transform: scale(1.1); opacity: 1; }
-}
-
-.deck-card-foil-pattern {
-  margin-top: 6px;
-}
-
-.foil-badge-text {
-  font-size: 8px;
-  font-weight: 800;
-  letter-spacing: 0.14em;
-  color: rgba(255, 214, 10, 0.85);
-  text-transform: uppercase;
-}
-
-/* Typography Hierarchy */
-.today-hero-title {
-  font-size: 24px;
-  font-weight: 700;
-  letter-spacing: -0.02em;
+.tile-title {
+  font-size: 17px;
+  font-weight: 600;
   color: #FFFFFF;
-  margin: 20px 0 8px;
-  line-height: 1.25;
+  letter-spacing: -0.01em;
+  text-align: left;
 }
 
-.today-hero-subtitle {
-  font-size: 15px;
-  color: rgba(235, 235, 245, 0.65);
-  line-height: 1.4;
-  margin: 0 0 28px;
-  max-width: 310px;
+.tile-bottom-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
 }
 
-/* Primary Button (Tall 56px Apple Gradient CTA) */
-.btn-today-hero {
+.tile-duration {
+  font-size: 13px;
+  color: rgba(235, 235, 245, 0.6);
+  font-weight: 500;
+  transition: color 0.2s ease;
+}
+
+.ios-switch {
+  width: 36px;
+  height: 22px;
+  border-radius: 11px;
+  background: rgba(255, 255, 255, 0.16);
+  position: relative;
+  transition: background 0.2s ease;
+  flex-shrink: 0;
+}
+
+.switch-knob {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #FFFFFF;
+  position: absolute;
+  left: 2px;
+  top: 2px;
+  transition: transform 0.2s cubic-bezier(0.22, 1, 0.36, 1);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+/* Selected state for vibe-tile */
+.vibe-tile.is-selected {
+  background: linear-gradient(145deg, #FF375F 0%, #D92B6B 100%);
+  box-shadow: 0 12px 28px rgba(255, 55, 95, 0.35);
+  transform: translateY(-2px);
+}
+
+.vibe-tile.is-selected .tile-icon-box {
+  background: rgba(255, 255, 255, 0.22);
+  color: #FFFFFF;
+}
+
+.vibe-tile.is-selected .tile-title {
+  color: #FFFFFF;
+}
+
+.vibe-tile.is-selected .tile-duration {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.vibe-tile.is-selected .ios-switch {
+  background: rgba(255, 255, 255, 0.35);
+}
+
+.vibe-tile.is-selected .switch-knob {
+  transform: translateX(14px);
+}
+
+/* Block 3: Primary Button & Native Guide Cell */
+.btn-start-evening {
   height: 56px;
   border-radius: 18px;
   width: 100%;
   font-size: 17px;
   font-weight: 600;
-  letter-spacing: -0.01em;
+  background: linear-gradient(135deg, #FF375F 0%, #BA134B 100%);
   color: #FFFFFF;
-  background: linear-gradient(135deg, #FF375F 0%, #D92B6B 100%);
   border: none;
   box-shadow: 0 10px 24px rgba(255, 55, 95, 0.35);
+  cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  cursor: pointer;
   transition: transform 0.15s ease, box-shadow 0.15s ease;
   -webkit-tap-highlight-color: transparent;
+  box-sizing: border-box;
 }
 
-.btn-today-hero:hover {
+.btn-start-evening:hover {
   box-shadow: 0 12px 28px rgba(255, 55, 95, 0.45);
 }
 
-.btn-today-hero:active {
+.btn-start-evening:active {
   transform: scale(0.97);
   box-shadow: 0 6px 16px rgba(255, 55, 95, 0.25);
 }
 
-/* Subtle Walkthrough Link Under Hero Card */
-.today-guide-link {
-  display: inline-flex;
+/* Native iOS Guide Cell */
+.ios-guide-cell {
+  background: #161618;
+  border-radius: 18px;
+  height: 60px;
+  padding: 0 16px;
+  display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 6px;
-  margin: 20px auto 8px;
-  background: transparent;
-  border: none;
-  font-size: 14px;
-  font-weight: 500;
-  color: rgba(235, 235, 245, 0.55);
+  gap: 14px;
+  margin-top: 14px;
+  width: 100%;
   cursor: pointer;
-  padding: 8px 12px;
-  transition: color 0.2s ease, transform 0.15s ease;
-  text-decoration: none;
+  transition: all 0.2s var(--ease-spring);
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
 }
 
-.today-guide-link:hover,
-.today-guide-link:active {
+.ios-guide-cell:hover {
+  background: #1F1F22;
+}
+
+.ios-guide-cell:active {
+  background: #252528;
+  transform: scale(0.99);
+}
+
+.guide-cell-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: rgba(255, 55, 95, 0.14);
+  color: var(--ios-pink);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.guide-cell-content {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  text-align: left;
+}
+
+.guide-cell-title {
+  font-size: 15px;
+  font-weight: 600;
   color: #FFFFFF;
+}
+
+.guide-cell-sub {
+  font-size: 12px;
+  color: rgba(235, 235, 245, 0.6);
+}
+
+.guide-cell-chevron {
+  font-size: 20px;
+  color: rgba(235, 235, 245, 0.35);
+  font-weight: 600;
+}
+
+/* Legacy today elements fallback */
+.today-hero-card,
+.today-guide-link,
+.btn-today-hero {
+  display: none !important;
 }
 
 /* ==========================================================================

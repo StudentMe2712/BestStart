@@ -2408,37 +2408,55 @@ class UIController {
       });
     }
 
-    // Today Tab: Hero Card CTA
-    const btnTodayPick = document.getElementById('btn-today-pick-vibe');
-    if (btnTodayPick) {
-      btnTodayPick.addEventListener('click', () => {
+    // Header Profile Avatar/Gear Button
+    const btnHeaderProfile = document.getElementById('btn-header-profile');
+    if (btnHeaderProfile) {
+      btnHeaderProfile.addEventListener('click', () => {
         Sound.playHaptic();
-        this.openVibeSheet();
+        this.switchTab('tab-pair');
       });
     }
 
-    // Today Tab: Quick Mood Selector (Legacy / if present)
-    const quickVibeCards = document.querySelectorAll('#today-quick-vibes .quick-vibe-card');
-    if (quickVibeCards && quickVibeCards.length > 0) {
-      quickVibeCards.forEach(card => {
-        card.addEventListener('click', () => {
-          Sound.playHaptic();
-          const vibe = card.dataset.vibe;
-          if (!vibe) return;
+    // Today Tab: 2x2 Vibe Tiles Grid
+    const vibeTiles = document.querySelectorAll('#today-vibes-grid .vibe-tile');
+    vibeTiles.forEach(tile => {
+      tile.addEventListener('click', () => {
+        Sound.playHaptic();
+        vibeTiles.forEach(t => t.classList.remove('is-selected'));
+        tile.classList.add('is-selected');
+        const vibe = tile.dataset.vibe;
+        if (vibe) {
           this.pickerCriteria.vibes = [vibe];
-          const sheetChips = document.querySelectorAll('#picker-vibes-list .vibe-chip');
-          sheetChips.forEach(chip => {
-            chip.classList.toggle('selected', chip.dataset.vibe === vibe);
-          });
-          quickVibeCards.forEach(c => c.classList.toggle('selected', c === card));
-          this.runMatcher();
-        });
+        }
+      });
+    });
+
+    // Today Tab: Start Evening CTA Button
+    const startBtn = document.getElementById('btn-start-evening') || document.getElementById('btn-today-pick-vibe');
+    if (startBtn) {
+      startBtn.addEventListener('click', () => {
+        Sound.playHaptic();
+        this.runMatcher();
+      });
+    }
+    const legacyStartBtn = document.getElementById('btn-today-pick-vibe');
+    if (legacyStartBtn && legacyStartBtn !== startBtn) {
+      legacyStartBtn.addEventListener('click', () => {
+        Sound.playHaptic();
+        this.runMatcher();
       });
     }
 
-    // Today Tab: Walkthrough Demo Link Under Hero Card
+    // Today Tab: Interactive Guide Cell
+    const guideBtn = document.getElementById('openGuideBtn') || document.getElementById('banner-open-walkthrough');
+    if (guideBtn) {
+      guideBtn.addEventListener('click', () => {
+        Sound.playHaptic();
+        this.openWalkthrough();
+      });
+    }
     const bannerOpenWalkthrough = document.getElementById('banner-open-walkthrough');
-    if (bannerOpenWalkthrough) {
+    if (bannerOpenWalkthrough && bannerOpenWalkthrough !== guideBtn) {
       bannerOpenWalkthrough.addEventListener('click', () => {
         Sound.playHaptic();
         this.openWalkthrough();
@@ -2798,9 +2816,9 @@ class UIController {
     const p2 = State.profile.partnerTwoName || 'Дана';
     const level = ProgressionEngine.getLevel(State.profile.totalXP);
 
-    const eyebrowEl = document.getElementById('profile-eyebrow');
-    if (eyebrowEl) {
-      eyebrowEl.textContent = `${p1.toUpperCase()} & ${p2.toUpperCase()} · УРОВЕНЬ ${level.levelNumber}`;
+    const greetingNamesEl = document.getElementById('profile-greeting-names');
+    if (greetingNamesEl) {
+      greetingNamesEl.textContent = `${p1} & ${p2}!`;
     }
 
     const pNamesEl = document.getElementById('profile-display-names');
@@ -2827,6 +2845,34 @@ class UIController {
       xpBarEl.style.width = `${Math.round(progress * 100)}%`;
     }
 
+    // Hero Status Widget Updates
+    const widgetLevelBadge = document.getElementById('widget-level-badge');
+    if (widgetLevelBadge) {
+      widgetLevelBadge.textContent = `Уровень ${level.levelNumber} · ${level.title}`;
+    }
+
+    const widgetXpText = document.getElementById('widget-xp-text');
+    if (widgetXpText) {
+      widgetXpText.textContent = `${State.profile.totalXP} / ${nextXP || State.profile.totalXP} XP`;
+    }
+
+    const widgetXpFill = document.getElementById('widget-xp-fill');
+    if (widgetXpFill) {
+      widgetXpFill.style.width = `${Math.round(progress * 100)}%`;
+    }
+
+    const metricCompletedCount = document.getElementById('metric-completed-count');
+    if (metricCompletedCount) {
+      const completedCount = State.finishedSessions.filter(s => s.isFinished).length;
+      metricCompletedCount.textContent = `${completedCount} из ${EMBEDDED_CATALOG.adventures.length}`;
+    }
+
+    const metricBudgetText = document.getElementById('metric-budget-text');
+    if (metricBudgetText) {
+      const budget = (this.pickerCriteria && typeof this.pickerCriteria.budget !== 'undefined') ? this.pickerCriteria.budget : 0;
+      metricBudgetText.textContent = `${budget === 0 ? '0 ₸' : 'до ' + budget + ' ₸'}`;
+    }
+
     this.renderToday();
     this.renderPathTrail();
     this.renderMuseum();
@@ -2835,9 +2881,13 @@ class UIController {
 
   renderToday() {
     const todayBanner = document.getElementById('today-active-banner');
-    const todayHero = document.getElementById('today-hero-card');
+    const todayStatusCard = document.getElementById('today-status-card');
+    const todayVibesGrid = document.getElementById('today-vibes-grid');
+    const btnStartEvening = document.getElementById('btn-start-evening');
+    const openGuideBtn = document.getElementById('openGuideBtn');
+    const legacyHero = document.getElementById('today-hero-card');
     const legacyBanner = document.getElementById('active-session-banner');
-    const guideLink = document.getElementById('banner-open-walkthrough');
+    const legacyGuideLink = document.getElementById('banner-open-walkthrough');
 
     if (State.activeSession && !State.activeSession.isFinished) {
       const adv = EMBEDDED_CATALOG.adventures.find(a => a.id === State.activeSession.adventureId);
@@ -2849,8 +2899,12 @@ class UIController {
             bannerDesc.textContent = `${adv.title} (Этап ${State.activeSession.currentStepIndex} из 4)`;
           }
         }
-        if (todayHero) todayHero.style.display = 'none';
-        if (guideLink) guideLink.style.display = 'none';
+        if (todayStatusCard) todayStatusCard.style.display = 'none';
+        if (todayVibesGrid) todayVibesGrid.style.display = 'none';
+        if (btnStartEvening) btnStartEvening.style.display = 'none';
+        if (openGuideBtn) openGuideBtn.style.display = 'none';
+        if (legacyHero) legacyHero.style.display = 'none';
+        if (legacyGuideLink) legacyGuideLink.style.display = 'none';
         if (legacyBanner) legacyBanner.style.display = 'flex';
         const islandTitle = document.getElementById('island-title');
         const islandSub = document.getElementById('island-sub');
@@ -2859,13 +2913,26 @@ class UIController {
       }
     } else {
       if (todayBanner) todayBanner.style.display = 'none';
-      if (todayHero) todayHero.style.display = 'flex';
-      if (guideLink) guideLink.style.display = 'inline-flex';
+      if (todayStatusCard) todayStatusCard.style.display = 'block';
+      if (todayVibesGrid) todayVibesGrid.style.display = 'grid';
+      if (btnStartEvening) btnStartEvening.style.display = 'flex';
+      if (openGuideBtn) openGuideBtn.style.display = 'flex';
+      if (legacyHero) legacyHero.style.display = 'none';
+      if (legacyGuideLink) legacyGuideLink.style.display = 'none';
       if (legacyBanner) legacyBanner.style.display = 'none';
       const islandTitle = document.getElementById('island-title');
       const islandSub = document.getElementById('island-sub');
       if (islandTitle) islandTitle.textContent = 'Choose a Vibe';
       if (islandSub) islandSub.textContent = 'Свидания для двоих';
+    }
+
+    // Sync vibe grid selection with current pickerCriteria
+    if (this.pickerCriteria && this.pickerCriteria.vibes && this.pickerCriteria.vibes.length > 0) {
+      const currentVibe = this.pickerCriteria.vibes[0];
+      const vibeTiles = document.querySelectorAll('#today-vibes-grid .vibe-tile');
+      vibeTiles.forEach(tile => {
+        tile.classList.toggle('is-selected', tile.dataset.vibe === currentVibe);
+      });
     }
   }
 
