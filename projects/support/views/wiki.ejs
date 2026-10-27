@@ -424,13 +424,19 @@
                                         let iconColor = '#64748b';
                                         let isPreviewable = false;
 
-                                        if (['xlsx', 'xls', 'csv'].includes(ext)) {
+                                        const TEXT_FORMATS = ['txt', 'xml', 'json', 'csv', 'conf', 'ini', 'rdp', 'sql', 'log', 'env', 'yml', 'yaml', 'sh', 'bat'];
+
+                                        if (['xlsx', 'xls'].includes(ext)) {
                                             fileType = 'excel';
                                             iconColor = '#10b981';
                                             isPreviewable = true;
                                         } else if (ext === 'xml') {
                                             fileType = 'xml';
                                             iconColor = '#06b6d4';
+                                            isPreviewable = true;
+                                        } else if (TEXT_FORMATS.includes(ext)) {
+                                            fileType = 'text';
+                                            iconColor = '#6366f1';
                                             isPreviewable = true;
                                         } else if (ext === 'pdf') {
                                             fileType = 'pdf';
@@ -444,11 +450,7 @@
                                             fileType = 'doc';
                                             iconColor = '#2563eb';
                                             isPreviewable = true;
-                                        } else if (ext === 'txt') {
-                                            fileType = 'text';
-                                            iconColor = '#6366f1';
-                                            isPreviewable = true;
-                                        } else if (['zip', 'rdp'].includes(ext)) {
+                                        } else if (['zip'].includes(ext)) {
                                             fileType = 'archive';
                                             iconColor = '#f59e0b';
                                         }
@@ -705,6 +707,8 @@
         var initialDatabases = <%- (typeof databases !== 'undefined' && databases) ? JSON.stringify(databases).replace(/<\//g, '<\\/') : '[]' %>;
         var initialFiles = <%- (typeof files !== 'undefined' && files) ? JSON.stringify(files).replace(/<\//g, '<\\/') : '[]' %>;
     </script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/html-docx-js@0.3.1/dist/html-docx.js"></script>
     <script src="/js/i18n.js"></script>
     <script src="/js/main.js"></script>
     <script>

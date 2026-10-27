@@ -1435,11 +1435,92 @@ function reorganizeWikiSidebar(pins) {
     var lightboxCancelBtn = document.getElementById('lightboxCancelBtn');
     var lightboxSaveBtn = document.getElementById('lightboxSaveBtn');
 
-    // Lightbox editing state (Sprint 11)
+    // Lightbox editing state (Sprint 12: Text, XML, Excel, Word)
     var currentFileId = null;
+    var currentFileExt = '';
+    var currentFileMode = null; // 'text' | 'excel' | 'word' | null
     var currentFileOriginalContent = '';
-    var currentFileIsText = false;
     var isSavingFile = false;
+
+    var TEXT_EDITABLE_EXTS = ['txt', 'xml', 'json', 'csv', 'sql', 'conf', 'ini', 'rdp', 'env', 'log', 'yaml', 'yml', 'sh', 'bat'];
+
+    function setLightboxDirty(isDirty) {
+        if (lightboxEditActions) {
+            lightboxEditActions.style.display = isDirty ? 'inline-flex' : 'none';
+        }
+    }
+
+    function checkIsLightboxDirty() {
+        if (!currentFileMode) return false;
+        if (currentFileMode === 'text') {
+            var editor = document.getElementById('lightboxFileEditor');
+            return Boolean(editor && editor.value !== currentFileOriginalContent);
+        }
+        if (currentFileMode === 'excel') {
+            var table = lightboxBody ? lightboxBody.querySelector('table') : null;
+            return Boolean(table && table.innerHTML !== currentFileOriginalContent);
+        }
+        if (currentFileMode === 'word') {
+            var wordSheet = lightboxBody ? lightboxBody.querySelector('.docx-page-sheet, .word-document-sheet, .lightbox-doc-content') : null;
+            return Boolean(wordSheet && wordSheet.innerHTML !== currentFileOriginalContent);
+        }
+        return false;
+    }
+
+    function setupExcelEditable(tableEl) {
+        var table = tableEl || (lightboxBody ? lightboxBody.querySelector('table') : null);
+        if (!table) return;
+        var cells = table.querySelectorAll('td');
+        cells.forEach(function(td) {
+            td.setAttribute('contenteditable', 'true');
+            td.setAttribute('spellcheck', 'false');
+            td.classList.add('excel-cell-editable');
+        });
+        currentFileOriginalContent = table.innerHTML;
+        table.removeEventListener('input', handleExcelInput);
+        table.addEventListener('input', handleExcelInput);
+    }
+
+    function handleExcelInput() {
+        var table = lightboxBody ? lightboxBody.querySelector('table') : null;
+        if (table) {
+            setLightboxDirty(table.innerHTML !== currentFileOriginalContent);
+        }
+    }
+
+    function setupWordEditable(sheetEl) {
+        var wordSheet = sheetEl || (lightboxBody ? lightboxBody.querySelector('.docx-page-sheet, .word-document-sheet, .lightbox-doc-content') : null);
+        if (!wordSheet) return;
+        wordSheet.setAttribute('contenteditable', 'true');
+        wordSheet.setAttribute('spellcheck', 'false');
+        wordSheet.classList.add('docx-page-sheet');
+        currentFileOriginalContent = wordSheet.innerHTML;
+        wordSheet.removeEventListener('input', handleWordInput);
+        wordSheet.addEventListener('input', handleWordInput);
+    }
+
+    function handleWordInput() {
+        var wordSheet = lightboxBody ? lightboxBody.querySelector('.docx-page-sheet, .word-document-sheet, .lightbox-doc-content') : null;
+        if (wordSheet) {
+            setLightboxDirty(wordSheet.innerHTML !== currentFileOriginalContent);
+        }
+    }
+
+    function ensureXlsxLoaded() {
+        if (typeof XLSX !== 'undefined') return Promise.resolve(window.XLSX);
+        return new Promise(function(resolve, reject) {
+            var script = document.createElement('script');
+            script.src = 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';
+            script.onload = function() {
+                if (typeof XLSX !== 'undefined') resolve(window.XLSX);
+                else reject(new Error('Библиотека SheetJS (XLSX) не загрузилась'));
+            };
+            script.onerror = function() {
+                reject(new Error('Сетевая ошибка при загрузке SheetJS (XLSX)'));
+            };
+            document.head.appendChild(script);
+        });
+    }
 
     if (!attachmentsSection) return;
 
@@ -1452,8 +1533,6 @@ function reorganizeWikiSidebar(pins) {
         var iconColor = '#64748b';
         var isPreviewable = false;
 
-        var TEXT_FORMATS = ['txt', 'xml', 'json', 'csv', 'conf', 'ini', 'rdp', 'sql', 'log', 'env', 'yml', 'yaml'];
-
         if (['xlsx', 'xls'].includes(ext)) {
             fileType = 'excel';
             iconColor = '#10b981';
@@ -1462,7 +1541,7 @@ function reorganizeWikiSidebar(pins) {
             fileType = 'xml';
             iconColor = '#06b6d4';
             isPreviewable = true;
-        } else if (TEXT_FORMATS.includes(ext)) {
+        } else if (TEXT_EDITABLE_EXTS.includes(ext)) {
             fileType = 'text';
             iconColor = '#6366f1';
             isPreviewable = true;
@@ -1750,15 +1829,15 @@ function reorganizeWikiSidebar(pins) {
 
         // Reset editing state for new file
         currentFileId = fileId;
+        currentFileExt = (fileName ? fileName.split('.').pop() : '').toLowerCase();
+        currentFileMode = null;
         currentFileOriginalContent = '';
-        currentFileIsText = false;
         isSavingFile = false;
-        if (lightboxEditActions) lightboxEditActions.style.display = 'none';
+        setLightboxDirty(false);
 
-        var ext = (fileName ? fileName.split('.').pop() : '').toLowerCase();
-        var isWordDoc = fileType === 'doc' || fileType === 'docx' || ext === 'docx' || ext === 'doc';
-        var TEXT_FORMATS = ['txt', 'xml', 'json', 'csv', 'conf', 'ini', 'rdp', 'sql', 'log', 'env', 'yml', 'yaml'];
-        var isTextFile = fileType === 'text' || fileType === 'xml' || TEXT_FORMATS.includes(ext);
+        var isWordDoc = fileType === 'doc' || fileType === 'docx' || currentFileExt === 'docx' || currentFileExt === 'doc';
+        var isExcelFile = fileType === 'excel' || currentFileExt === 'xlsx' || currentFileExt === 'xls';
+        var isTextFile = fileType === 'text' || fileType === 'xml' || TEXT_EDITABLE_EXTS.includes(currentFileExt);
 
         if (lightboxFileName) lightboxFileName.textContent = fileName || 'Просмотр файла';
         if (lightboxDownloadBtn) {
@@ -1770,7 +1849,7 @@ function reorganizeWikiSidebar(pins) {
             lightboxBody.innerHTML = '';
 
             if (fileType === 'image') {
-                currentFileIsText = false;
+                currentFileMode = null;
                 if (lightboxZoomBtn) {
                     lightboxZoomBtn.style.display = 'inline-flex';
                     lightboxZoomBtn.classList.remove('is-active');
@@ -1796,9 +1875,9 @@ function reorganizeWikiSidebar(pins) {
                 }
 
                 if (fileType === 'pdf') {
-                    currentFileIsText = false;
+                    currentFileMode = null;
                     lightboxBody.innerHTML = '<iframe class="lightbox-iframe" src="/api/files/' + fileId + '/view"></iframe>';
-                } else if (fileType === 'excel' || fileType === 'xml' || fileType === 'doc' || fileType === 'docx' || fileType === 'text' || isWordDoc || isTextFile) {
+                } else if (fileType === 'excel' || fileType === 'xml' || fileType === 'doc' || fileType === 'docx' || fileType === 'text' || isWordDoc || isExcelFile || isTextFile) {
                     lightboxBody.innerHTML = '<div class="lightbox-loading"><span class="lightbox-spinner"></span><span>Загрузка предпросмотра...</span></div>';
                     fetch('/api/files/' + fileId + '/preview')
                         .then(function(r) { return r.json(); })
@@ -1838,11 +1917,14 @@ function reorganizeWikiSidebar(pins) {
                                 lightboxBody.innerHTML = '<div class="lightbox-error"><span>Не удалось загрузить предпросмотр: ' + escapeHtmlText((data && data.error) || defaultErr) + '</span><br><a href="/api/files/' + fileId + '/download" class="lightbox-error-btn">Скачать файл</a></div>';
                                 return;
                             }
+
                             if (data.type === 'docx' || data.type === 'doc') {
-                                currentFileIsText = false;
-                                lightboxBody.innerHTML = '<div class="lightbox-doc-wrap"><div class="lightbox-doc-content">' + (data.html || '<p><em>Документ пуст</em></p>') + '</div></div>';
+                                currentFileMode = 'word';
+                                lightboxBody.innerHTML = '<div class="lightbox-doc-wrap"><div class="lightbox-doc-content docx-page-sheet" contenteditable="true" spellcheck="false">' + (data.html || '<p><em>Документ пуст</em></p>') + '</div></div>';
+                                setupWordEditable();
                             } else if (data.type === 'doc_fallback') {
-                                currentFileIsText = false;
+                                currentFileMode = null;
+                                setLightboxDirty(false);
                                 var docName = data.originalName || fileName || 'Документ Word';
                                 var docMsg = data.message || 'Формат .doc не поддерживает интерактивный веб-предпросмотр. Скачайте документ для открытия в Microsoft Word.';
                                 var dlUrl = data.downloadUrl || ('/api/files/' + fileId + '/download');
@@ -1871,8 +1953,7 @@ function reorganizeWikiSidebar(pins) {
                                         '</div>' +
                                     '</div>';
                             } else if (data.type === 'excel') {
-                                currentFileIsText = false;
-                                // Render sheet selector if multiple sheets, and spreadsheet table
+                                currentFileMode = 'excel';
                                 var html = '<div class="lightbox-spreadsheet-container">';
                                 if (data.sheetNames && data.sheetNames.length > 1) {
                                     html += '<div class="lightbox-sheet-tabs">';
@@ -1885,6 +1966,11 @@ function reorganizeWikiSidebar(pins) {
                                 html += '</div>';
                                 lightboxBody.innerHTML = html;
 
+                                var table = lightboxBody.querySelector('table');
+                                if (table) {
+                                    setupExcelEditable(table);
+                                }
+
                                 // Sheet tab switcher
                                 var tabs = lightboxBody.querySelectorAll('.lightbox-sheet-tab');
                                 tabs.forEach(function(tab) {
@@ -1895,17 +1981,20 @@ function reorganizeWikiSidebar(pins) {
                                             .then(function(resData) {
                                                 if (resData.success) {
                                                     var scrollEl = lightboxBody.querySelector('.lightbox-table-scroll');
-                                                    if (scrollEl) scrollEl.innerHTML = resData.html;
+                                                    if (scrollEl) {
+                                                        scrollEl.innerHTML = resData.html;
+                                                        var newTable = scrollEl.querySelector('table');
+                                                        if (newTable) setupExcelEditable(newTable);
+                                                    }
                                                     tabs.forEach(function(t) { t.classList.remove('is-active'); });
                                                     tab.classList.add('is-active');
                                                 }
                                             });
                                     });
                                 });
-                            } else if (data.type === 'xml' || data.type === 'text') {
-                                // Редактируемый текстовый файл (Спринт 11)
+                            } else if (data.type === 'xml' || data.type === 'text' || isTextFile) {
+                                currentFileMode = 'text';
                                 currentFileOriginalContent = typeof data.content === 'string' ? data.content : '';
-                                currentFileIsText = true;
 
                                 lightboxBody.innerHTML = '<div class="lightbox-editor-wrap"><textarea class="lightbox-file-editor" id="lightboxFileEditor" spellcheck="false"></textarea></div>';
                                 var editor = document.getElementById('lightboxFileEditor');
@@ -1913,25 +2002,22 @@ function reorganizeWikiSidebar(pins) {
                                     editor.value = currentFileOriginalContent;
 
                                     editor.addEventListener('input', function() {
-                                        var isDirty = editor.value !== currentFileOriginalContent;
-                                        if (lightboxEditActions) {
-                                            lightboxEditActions.style.display = isDirty ? 'inline-flex' : 'none';
-                                        }
+                                        setLightboxDirty(editor.value !== currentFileOriginalContent);
                                     });
 
                                     editor.addEventListener('keydown', function(e) {
                                         if (e.key === 'Tab') {
-                                            e.preventDefault();
-                                            var start = this.selectionStart;
-                                            var end = this.selectionEnd;
-                                            this.value = this.value.substring(0, start) + '    ' + this.value.substring(end);
-                                            this.selectionStart = this.selectionEnd = start + 4;
-                                            this.dispatchEvent(new Event('input'));
+                                             e.preventDefault();
+                                             var start = this.selectionStart;
+                                             var end = this.selectionEnd;
+                                             this.value = this.value.substring(0, start) + '    ' + this.value.substring(end);
+                                             this.selectionStart = this.selectionEnd = start + 4;
+                                             this.dispatchEvent(new Event('input'));
                                         } else if ((e.ctrlKey || e.metaKey) && (e.key === 's' || e.key === 'S' || e.key === 'ы' || e.key === 'Ы')) {
-                                            e.preventDefault();
-                                            if (editor.value !== currentFileOriginalContent) {
-                                                saveCurrentFile();
-                                            }
+                                             e.preventDefault();
+                                             if (checkIsLightboxDirty()) {
+                                                 saveCurrentFile();
+                                             }
                                         }
                                     });
                                 }
@@ -1970,7 +2056,8 @@ function reorganizeWikiSidebar(pins) {
                             lightboxBody.innerHTML = '<div class="lightbox-error"><span>Ошибка сети при загрузке предпросмотра</span><br><a href="/api/files/' + fileId + '/download" class="lightbox-error-btn">Скачать файл</a></div>';
                         });
                 } else {
-                    currentFileIsText = false;
+                    currentFileMode = null;
+                    setLightboxDirty(false);
                     if (isWordDoc) {
                         var docName = fileName || 'Документ Word';
                         var dlUrl = '/api/files/' + fileId + '/download';
@@ -2009,33 +2096,101 @@ function reorganizeWikiSidebar(pins) {
         document.body.style.overflow = 'hidden';
     }
 
-    // Сохранить изменения текстового файла в лайтбоксе (Спринт 11)
+    // Сохранить изменения файла в лайтбоксе (Спринт 12: Текст, XML, Excel, Word)
     async function saveCurrentFile() {
-        if (isSavingFile || !currentFileIsText || !currentFileId) return;
-        var editor = document.getElementById('lightboxFileEditor');
-        if (!editor) return;
+        if (isSavingFile || !currentFileMode || !currentFileId) return;
 
         isSavingFile = true;
         if (lightboxSaveBtn) lightboxSaveBtn.disabled = true;
 
+        try {
+            if (currentFileMode === 'text') {
+                var editor = document.getElementById('lightboxFileEditor');
+                if (!editor) {
+                    isSavingFile = false;
+                    if (lightboxSaveBtn) lightboxSaveBtn.disabled = false;
+                    return;
+                }
+                await doSavePayload({ content: editor.value }, editor.value);
+            } else if (currentFileMode === 'excel') {
+                var table = lightboxBody ? lightboxBody.querySelector('table') : null;
+                if (!table) {
+                    isSavingFile = false;
+                    if (lightboxSaveBtn) lightboxSaveBtn.disabled = false;
+                    return;
+                }
+
+                if (typeof XLSX === 'undefined') {
+                    await ensureXlsxLoaded();
+                }
+
+                if (typeof XLSX === 'undefined' || !XLSX.utils || !XLSX.utils.table_to_book) {
+                    throw new Error('Модуль SheetJS (XLSX) недоступен для сохранения');
+                }
+
+                var wb = XLSX.utils.table_to_book(table, { raw: true });
+                var bookType = (currentFileExt === 'xls') ? 'biff8' : 'xlsx';
+                var base64Data = XLSX.write(wb, { bookType: bookType, type: 'base64' });
+
+                await doSavePayload({ base64: base64Data }, table.innerHTML);
+            } else if (currentFileMode === 'word') {
+                var wordSheet = lightboxBody ? lightboxBody.querySelector('.docx-page-sheet, .word-document-sheet, .lightbox-doc-content') : null;
+                if (!wordSheet) {
+                    isSavingFile = false;
+                    if (lightboxSaveBtn) lightboxSaveBtn.disabled = false;
+                    return;
+                }
+
+                if (typeof htmlDocx !== 'undefined' && htmlDocx.asBlob) {
+                    try {
+                        var converted = htmlDocx.asBlob(wordSheet.innerHTML);
+                        var reader = new FileReader();
+                        reader.onloadend = async function() {
+                            try {
+                                var base64Data = reader.result.split(',')[1];
+                                await doSavePayload({ docxBase64: base64Data }, wordSheet.innerHTML);
+                            } catch(readErr) {
+                                console.error('Ошибка сохранения Word docxBase64:', readErr);
+                                showToast('Ошибка при сохранении документа Word', 'error');
+                                isSavingFile = false;
+                                if (lightboxSaveBtn) lightboxSaveBtn.disabled = false;
+                            }
+                        };
+                        reader.readAsDataURL(converted);
+                        return; // Async FileReader will finish save
+                    } catch(docxErr) {
+                        console.warn('Клиентская сборка htmlDocx дала сбой, переключаемся на серверную конвертацию:', docxErr);
+                    }
+                }
+
+                // Fallback: send docxHtml to server
+                await doSavePayload({ docxHtml: wordSheet.innerHTML }, wordSheet.innerHTML);
+            }
+        } catch (err) {
+            console.error('Ошибка сохранения файла:', err);
+            showToast(err.message || 'Ошибка сети при сохранении файла', 'error');
+            isSavingFile = false;
+            if (lightboxSaveBtn) lightboxSaveBtn.disabled = false;
+        }
+    }
+
+    async function doSavePayload(payload, newOriginalContent) {
         try {
             var res = await fetch('/api/files/' + currentFileId + '/content', {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({ content: editor.value })
+                body: JSON.stringify(payload)
             });
             var data = await res.json();
-            if (res.ok && data && data.success) {
-                currentFileOriginalContent = editor.value;
-                if (lightboxEditActions) {
-                    lightboxEditActions.style.display = 'none';
-                }
+            if (res.ok && data && (data.success || data.newSize !== undefined)) {
+                currentFileOriginalContent = newOriginalContent;
+                setLightboxDirty(false);
                 var msg = window.ITS_I18n ? window.ITS_I18n.t('lightbox.savedToast') : 'Файл успешно сохранен';
                 showToast(msg);
 
-                // Обновить размер файла в карточке файла (.file-chip)
+                // Update size in chip (.file-chip-size)
                 if (typeof data.newSize === 'number') {
                     var chip = document.querySelector('.file-chip[data-file-id="' + currentFileId + '"]');
                     if (chip) {
@@ -2051,8 +2206,8 @@ function reorganizeWikiSidebar(pins) {
                 var errMsg = (data && data.error) || 'Ошибка при сохранении файла';
                 showToast(errMsg, 'error');
             }
-        } catch (err) {
-            console.error('Ошибка сохранения файла:', err);
+        } catch(netErr) {
+            console.error('Сетевая ошибка сохранения:', netErr);
             showToast('Ошибка сети при сохранении файла', 'error');
         } finally {
             isSavingFile = false;
@@ -2064,13 +2219,23 @@ function reorganizeWikiSidebar(pins) {
     if (lightboxCancelBtn) {
         lightboxCancelBtn.addEventListener('click', function(e) {
             e.preventDefault();
-            var editor = document.getElementById('lightboxFileEditor');
-            if (editor) {
-                editor.value = currentFileOriginalContent;
+            if (currentFileMode === 'text') {
+                var editor = document.getElementById('lightboxFileEditor');
+                if (editor) editor.value = currentFileOriginalContent;
+            } else if (currentFileMode === 'excel') {
+                var table = lightboxBody ? lightboxBody.querySelector('table') : null;
+                if (table) {
+                    table.innerHTML = currentFileOriginalContent;
+                    setupExcelEditable(table);
+                }
+            } else if (currentFileMode === 'word') {
+                var wordSheet = lightboxBody ? lightboxBody.querySelector('.docx-page-sheet, .word-document-sheet, .lightbox-doc-content') : null;
+                if (wordSheet) {
+                    wordSheet.innerHTML = currentFileOriginalContent;
+                    setupWordEditable(wordSheet);
+                }
             }
-            if (lightboxEditActions) {
-                lightboxEditActions.style.display = 'none';
-            }
+            setLightboxDirty(false);
         });
     }
 
@@ -2081,10 +2246,9 @@ function reorganizeWikiSidebar(pins) {
         });
     }
 
-    // Защита от закрытия лайтбокса при наличии несохраненных правок (Спринт 11)
+    // Защита от закрытия лайтбокса при наличии несохраненных правок (Спринт 12)
     function requestCloseLightbox() {
-        var editor = document.getElementById('lightboxFileEditor');
-        var isDirty = currentFileIsText && editor && editor.value !== currentFileOriginalContent;
+        var isDirty = checkIsLightboxDirty();
 
         if (isDirty) {
             window.showConfirmDialog({
@@ -2093,9 +2257,7 @@ function reorganizeWikiSidebar(pins) {
                 confirmText: window.ITS_I18n ? window.ITS_I18n.t('lightbox.unsavedConfirm') : 'Закрыть без сохранения',
                 cancelText: window.ITS_I18n ? window.ITS_I18n.t('lightbox.unsavedContinue') : 'Продолжить редактирование',
                 onConfirm: function() {
-                    currentFileIsText = false;
-                    currentFileOriginalContent = '';
-                    if (lightboxEditActions) lightboxEditActions.style.display = 'none';
+                    setLightboxDirty(false);
                     closeLightbox();
                 }
             });
@@ -2109,11 +2271,12 @@ function reorganizeWikiSidebar(pins) {
         if (!lightboxModal) return;
         lightboxModal.style.display = 'none';
         document.body.style.overflow = '';
-        currentFileIsText = false;
+        currentFileMode = null;
+        currentFileExt = '';
         currentFileOriginalContent = '';
         currentFileId = null;
         isSavingFile = false;
-        if (lightboxEditActions) lightboxEditActions.style.display = 'none';
+        setLightboxDirty(false);
         if (lightboxZoomBtn) {
             lightboxZoomBtn.style.display = 'none';
             lightboxZoomBtn.classList.remove('is-active');
@@ -2131,12 +2294,19 @@ function reorganizeWikiSidebar(pins) {
     }
 
     document.addEventListener('keydown', function(e) {
-        if (e.key === 'Escape' && lightboxModal && lightboxModal.style.display === 'flex') {
-            var confirmModal = document.getElementById('unifiedConfirmModal');
-            if (confirmModal && confirmModal.style.display === 'flex') {
-                return;
+        if (lightboxModal && lightboxModal.style.display === 'flex') {
+            if (e.key === 'Escape') {
+                var confirmModal = document.getElementById('unifiedConfirmModal');
+                if (confirmModal && confirmModal.style.display === 'flex') {
+                    return;
+                }
+                requestCloseLightbox();
+            } else if ((e.ctrlKey || e.metaKey) && (e.key === 's' || e.key === 'S' || e.key === 'ы' || e.key === 'Ы')) {
+                e.preventDefault();
+                if (checkIsLightboxDirty()) {
+                    saveCurrentFile();
+                }
             }
-            requestCloseLightbox();
         }
     });
 })();

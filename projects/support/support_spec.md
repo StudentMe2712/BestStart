@@ -1,7 +1,7 @@
 # 📘 Спецификация проекта: ИТС-Ком Wiki & Server Hub (BestStart)
 
-**Версия:** 2.12.0  
-**Статус:** Завершен (Спринт 12 — Административное управление паролями, закрытие публичного сброса, ролевая модель admin/engineer, 100% готовность)  
+**Версия:** 2.13.0  
+**Статус:** Завершен (Спринт 12 — Универсальное инлайн-редактирование файлов в Lightbox: XML, Excel, Word, Текст, 100% готовность)  
 **Локация:** `projects/support`  
 **Спецификация для развертывания на хостинге:** 👉 [spec.md](./spec.md)  
 **Стек:** Node.js 18+, Express 4.x, EJS, Vanilla CSS/JS, SheetJS (XLSX), Mammoth (DOCX), MariaDB (Прод Plesk) / Mock Stub (Dev)  
@@ -371,6 +371,56 @@
   - Установлен `background-attachment: fixed` для предотвращения стыков и рывков при скролле.
   - Карточки, таблицы и рабочая область сохраняют высокую контрастность и читаемость.
   - Светлая тема (`[data-theme="light"]`) изолирована от точечного паттерна и сохраняет чистый светлый фон.
+
+---
+
+## 11. СПРИНТ 12 — Универсальное инлайн-редактирование файлов в Lightbox (XML, Excel, Word, Текст) (Завершен на 100%)
+
+### 11.1. Универсальный бэкенд сохранения файлов (`server.js`)
+- [x] **Маршрут `PUT /api/files/:id/content`**:
+  - Защищен middleware `requireAuth`.
+  - Поиск файла в базе MariaDB/MySQL через `filesDB.getFileById(fileId)`.
+  - Поддержка сохранения бинарных таблиц Excel (`.xlsx`, `.xls`): приём `base64` от SheetJS, конвертация в бинарный `Buffer` и запись через `fs.promises.writeFile`.
+  - Поддержка сохранения документов Word (`.docx`, `.doc`): приём `docxBase64` от клиентского `html-docx-js` либо приём `docxHtml` с конвертацией на сервере через `html-to-docx` (с резервным `html-docx-js`).
+  - Поддержка текстовых форматов (`.xml`, `.txt`, `.json`, `.csv`, `.sql`, `.conf`, `.ini`, `.rdp`, `.env`, `.log`, `.yaml`, `.yml`, `.sh`, `.bat`): запись строки utf-8.
+  - Автоматическое обновление физического размера файла в базе MariaDB/MySQL через `filesDB.updateFileSize(file.id, stats.size)`.
+  - Возврат `{ success: true, newSize: stats.size, message: 'Файл успешно сохранен' }`.
+- [x] **Предпросмотр файлов (`GET /api/files/:fileId/preview` в `server.js`)**:
+  - Расширен список `TEXT_EXTENSIONS` (`.txt`, `.xml`, `.json`, `.csv`, `.conf`, `.ini`, `.rdp`, `.sql`, `.log`, `.env`, `.yml`, `.yaml`, `.sh`, `.bat`).
+  - Файлы `.xml` и текстовые конфиги возвращаются со статусом `success: true` и `type: 'xml'` / `type: 'text'`.
+
+### 11.2. Клиентская логика инлайн-редактирования (`public/js/main.js`, `views/wiki.ejs`)
+- [x] **Текстовые файлы и конфигурации (`.xml`, `.txt`, `.json`, `.csv`, `.conf`, `.ini`, `.rdp`, etc.)**:
+  - Поддержка полного списка расширений `TEXT_EDITABLE_EXTS`.
+  - Открытие в моноширинном редакторе `<textarea class="lightbox-file-editor" id="lightboxFileEditor" spellcheck="false"></textarea>`.
+  - Исходный текст сохраняется в `currentFileOriginalContent`.
+  - При вводе активируется `setLightboxDirty(true)`.
+  - Поддержка клавиши `Tab` (вставка 4 пробелов) и `Ctrl + S`.
+- [x] **Таблицы Excel (`.xlsx`, `.xls`)**:
+  - После рендеринга таблицы каждой ячейке `td` добавляется атрибут `contenteditable="true"` и класс `.excel-cell-editable`.
+  - При редактировании ячеек отслеживается событие `input` с активацией `setLightboxDirty(true)`.
+  - При переключении листов таблицы через вкладки `.lightbox-sheet-tab` ячейки нового листа автоматически становятся редактируемыми (`setupExcelEditable()`).
+  - При сохранении таблица конвертируется через `XLSX.utils.table_to_book(table, { raw: true })`, упаковывается через `XLSX.write(wb, { bookType, type: 'base64' })` и отправляется на сервер в `{ base64: base64Data }`.
+- [x] **Документы Word (`.docx`, `.doc`)**:
+  - Контейнер листа документа `.docx-page-sheet` / `.lightbox-doc-content` получает атрибуты `contenteditable="true"` и `spellcheck="false"`.
+  - Пользователь может прямо на листе редактировать текст, заголовки, списки и таблицы.
+  - При сохранении формируется `.docx` через клиентский `htmlDocx.asBlob` -> FileReader base64, либо отправляется `{ docxHtml }` на сервер.
+- [x] **Zero-Friction UX & Защита от случайного закрытия**:
+  - Кнопки `[ Отмена ]` и `[ 💾 Сохранить ]` вместе с точкой ● плавно появляются в шапке лайтбокса (`transition: all 0.2s ease`) только при наличии реальных правок.
+  - Кнопка «Отмена» возвращает исходное состояние документа/таблицы/текста и скрывает панель действий.
+  - Защита закрытия через `#unifiedConfirmModal`: при попытке закрыть окно крестиком, оверлеем или клавишей `Escape` с несохранёнными правками запрашивается подтверждение.
+  - Глобальный хоткей `Ctrl + S` / `Cmd + S` для мгновенного сохранения в любом из активных редакторов.
+  - После сохранения размер файла автоматически обновляется в карточке `.file-chip-size` на странице без перезагрузки.
+
+### 11.3. Визуальное оформление и эргономика (`public/css/wiki-page.css`, `public/css/style.css`)
+- [x] Стили для `.excel-cell-editable`:
+  - `cursor: cell`.
+  - Hover: подсветка пунктирной синей границы `outline: 1px dashed var(--brand-accent)`.
+  - Focus: четкая рамка `outline: 2px solid var(--brand-primary)` и фоновая подсветка `background: rgba(59, 130, 246, 0.12)`.
+- [x] Стили для `.docx-page-sheet[contenteditable="true"]`:
+  - `cursor: text; outline: none;` с сохранением строгого вида белого листа формата А4 и естественных отступов.
+- [x] Плавная анимация кнопок в шапке `.lightbox-edit-actions` (`animation: fadeInActions 0.2s ease`).
+
 
 
 

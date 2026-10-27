@@ -4074,3 +4074,50 @@ body {
 [data-theme="dark"] .wiki-token-link:hover {
     color: #93c5fd;
 }
+
+/* ============================================================
+   LIGHTBOX SPRINT 12 — INLINE EDITING (EXCEL, WORD, TEXT)
+   ============================================================ */
+
+/* 1. Excel Editable Cells */
+.excel-cell-editable {
+    cursor: cell;
+    position: relative;
+    transition: outline 0.15s ease, background-color 0.15s ease;
+}
+
+.excel-cell-editable:hover {
+    outline: 1px dashed var(--brand-accent, #3b82f6);
+    outline-offset: -1px;
+}
+
+.excel-cell-editable:focus {
+    outline: 2px solid var(--brand-primary, #2563eb) !important;
+    outline-offset: -1px;
+    background: rgba(59, 130, 246, 0.12) !important;
+    z-index: 2;
+}
+
+[data-theme="light"] .excel-cell-editable:focus {
+    background: rgba(59, 130, 246, 0.08) !important;
+}
+
+/* 2. Word Editable Document Sheet */
+.docx-page-sheet[contenteditable="true"],
+.lightbox-doc-content[contenteditable="true"] {
+    cursor: text;
+    outline: none;
+    caret-color: var(--brand-primary, #2563eb);
+}
+
+.docx-page-sheet[contenteditable="true"]:focus,
+.lightbox-doc-content[contenteditable="true"]:focus {
+    outline: none;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.15), 0 20px 35px -5px rgba(0, 0, 0, 0.45);
+}
+
+[data-theme="light"] .docx-page-sheet[contenteditable="true"]:focus,
+[data-theme="light"] .lightbox-doc-content[contenteditable="true"]:focus {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1), 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+

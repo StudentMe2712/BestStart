@@ -1190,14 +1190,14 @@ app.get('/api/files/:fileId/preview', requireAuth, async (req, res) => {
             }
         }
 
-        // Текстовые форматы (.txt, .xml, .json, .csv, .conf, .ini, .rdp, .sql, .log, .env, .yml, .yaml)
-        const TEXT_EXTENSIONS = ['.txt', '.xml', '.json', '.csv', '.conf', '.ini', '.rdp', '.sql', '.log', '.env', '.yml', '.yaml'];
+        // Текстовые форматы (.txt, .xml, .json, .csv, .conf, .ini, .rdp, .sql, .log, .env, .yml, .yaml, .sh, .bat)
+        const TEXT_EXTENSIONS = ['.txt', '.xml', '.json', '.csv', '.conf', '.ini', '.rdp', '.sql', '.log', '.env', '.yml', '.yaml', '.sh', '.bat'];
         if (TEXT_EXTENSIONS.includes(ext) || mimeType.startsWith('text/')) {
             try {
                 const content = fs.readFileSync(filePath, 'utf-8');
                 return res.json({
                     success: true,
-                    type: 'text',
+                    type: ext === '.xml' ? 'xml' : 'text',
                     content: content,
                     originalName: file.original_name
                 });
@@ -1339,7 +1339,7 @@ app.delete('/api/files/:fileId', requireAuth, async (req, res) => {
     }
 });
 
-// Сохранить содержимое текстового файла прямо из лайтбокса (Спринт 11)
+// Сохранить содержимое файла прямо из лайтбокса (Спринт 12: Текст, XML, Excel, Word)
 app.put('/api/files/:id/content', requireAuth, async (req, res) => {
     try {
         const fileId = Number(req.params.id);
@@ -1347,22 +1347,63 @@ app.put('/api/files/:id/content', requireAuth, async (req, res) => {
             return res.status(400).json({ success: false, error: 'Некорректный ID файла' });
         }
 
-        const file = await filesDB.getById(fileId);
+        const file = await filesDB.getFileById(fileId);
         if (!file) {
             return res.status(404).json({ success: false, error: 'Файл не найден' });
         }
 
         const filePath = path.join(__dirname, 'uploads', `org_${file.org_id}`, file.filename);
-        const textContent = typeof req.body.content === 'string' ? req.body.content : '';
+        const ext = path.extname(file.original_name || file.filename || '').toLowerCase().replace('.', '');
 
-        await fs.promises.writeFile(filePath, textContent, 'utf8');
+        // 1. Бинарный Excel (xlsx / xls) — приходит base64 от SheetJS
+        if (req.body.base64 && (ext === 'xlsx' || ext === 'xls')) {
+            const buffer = Buffer.from(req.body.base64, 'base64');
+            await fs.promises.writeFile(filePath, buffer);
+        }
+        // 2. Документ Word (docx / doc) — приходит docxBase64 или html для конвертации
+        else if (req.body.docxBase64 && (ext === 'docx' || ext === 'doc')) {
+            const buffer = Buffer.from(req.body.docxBase64, 'base64');
+            await fs.promises.writeFile(filePath, buffer);
+        }
+        else if (req.body.docxHtml && (ext === 'docx' || ext === 'doc')) {
+            // Если передан HTML из редактируемого листа Word:
+            // Используем html-to-docx или html-docx-js (или сохраняем docx-буфер):
+            let buffer;
+            try {
+                const htmlToDocx = require('html-to-docx');
+                buffer = await htmlToDocx(req.body.docxHtml, null, {
+                    table: { row: { cantSplit: true } },
+                    footer: true,
+                    pageNumber: true
+                });
+            } catch (e) {
+                // Запасной легковесный вариант: html-docx-js
+                try {
+                    const htmlDocx = require('html-docx-js');
+                    const blob = htmlDocx.asBlob(req.body.docxHtml);
+                    buffer = Buffer.from(await blob.arrayBuffer());
+                } catch (e2) {
+                    console.error('Ошибка конвертации Word документа:', e, e2);
+                    return res.status(500).json({ success: false, error: 'Модуль конвертации docx недоступен на сервере' });
+                }
+            }
+            await fs.promises.writeFile(filePath, buffer);
+        }
+        // 3. Текстовые форматы (xml, txt, csv, json, sql, conf, ini, rdp, log, env, yml, yaml, etc.)
+        else if (typeof req.body.content === 'string') {
+            await fs.promises.writeFile(filePath, req.body.content, 'utf8');
+        } else {
+            return res.status(400).json({ success: false, error: 'Некорректный формат данных' });
+        }
+
+        // Обновляем размер файла в базе MySQL
         const stats = await fs.promises.stat(filePath);
         await filesDB.updateFileSize(file.id, stats.size);
 
-        return res.json({
-            success: true,
+        return res.json({ 
+            success: true, 
             newSize: stats.size,
-            message: 'Файл успешно сохранен'
+            message: 'Файл успешно сохранен' 
         });
     } catch (err) {
         console.error('Ошибка сохранения содержимого файла:', err);
