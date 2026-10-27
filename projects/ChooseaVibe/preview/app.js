@@ -2417,27 +2417,30 @@ class UIController {
       });
     }
 
-    // Today Tab: Quick Mood Selector (5 Cards)
+    // Today Tab: Quick Mood Selector (Legacy / if present)
     const quickVibeCards = document.querySelectorAll('#today-quick-vibes .quick-vibe-card');
-    quickVibeCards.forEach(card => {
-      card.addEventListener('click', () => {
-        Sound.playHaptic();
-        const vibe = card.dataset.vibe;
-        if (!vibe) return;
-        this.pickerCriteria.vibes = [vibe];
-        const sheetChips = document.querySelectorAll('#picker-vibes-list .vibe-chip');
-        sheetChips.forEach(chip => {
-          chip.classList.toggle('selected', chip.dataset.vibe === vibe);
+    if (quickVibeCards && quickVibeCards.length > 0) {
+      quickVibeCards.forEach(card => {
+        card.addEventListener('click', () => {
+          Sound.playHaptic();
+          const vibe = card.dataset.vibe;
+          if (!vibe) return;
+          this.pickerCriteria.vibes = [vibe];
+          const sheetChips = document.querySelectorAll('#picker-vibes-list .vibe-chip');
+          sheetChips.forEach(chip => {
+            chip.classList.toggle('selected', chip.dataset.vibe === vibe);
+          });
+          quickVibeCards.forEach(c => c.classList.toggle('selected', c === card));
+          this.runMatcher();
         });
-        quickVibeCards.forEach(c => c.classList.toggle('selected', c === card));
-        this.runMatcher();
       });
-    });
+    }
 
-    // Today Tab: Promo Guide Banner
+    // Today Tab: Walkthrough Demo Link Under Hero Card
     const bannerOpenWalkthrough = document.getElementById('banner-open-walkthrough');
     if (bannerOpenWalkthrough) {
       bannerOpenWalkthrough.addEventListener('click', () => {
+        Sound.playHaptic();
         this.openWalkthrough();
       });
     }
@@ -2834,6 +2837,7 @@ class UIController {
     const todayBanner = document.getElementById('today-active-banner');
     const todayHero = document.getElementById('today-hero-card');
     const legacyBanner = document.getElementById('active-session-banner');
+    const guideLink = document.getElementById('banner-open-walkthrough');
 
     if (State.activeSession && !State.activeSession.isFinished) {
       const adv = EMBEDDED_CATALOG.adventures.find(a => a.id === State.activeSession.adventureId);
@@ -2846,6 +2850,7 @@ class UIController {
           }
         }
         if (todayHero) todayHero.style.display = 'none';
+        if (guideLink) guideLink.style.display = 'none';
         if (legacyBanner) legacyBanner.style.display = 'flex';
         const islandTitle = document.getElementById('island-title');
         const islandSub = document.getElementById('island-sub');
@@ -2855,6 +2860,7 @@ class UIController {
     } else {
       if (todayBanner) todayBanner.style.display = 'none';
       if (todayHero) todayHero.style.display = 'flex';
+      if (guideLink) guideLink.style.display = 'inline-flex';
       if (legacyBanner) legacyBanner.style.display = 'none';
       const islandTitle = document.getElementById('island-title');
       const islandSub = document.getElementById('island-sub');

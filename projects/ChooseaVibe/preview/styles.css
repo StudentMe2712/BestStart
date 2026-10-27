@@ -463,11 +463,11 @@ body {
 }
 
 .ios-header-eyebrow {
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--ios-label-secondary);
+  letter-spacing: 0.04em;
+  color: rgba(235, 235, 245, 0.6);
   margin-bottom: 2px;
 }
 
@@ -478,7 +478,7 @@ body {
 }
 
 .ios-header-title {
-  font-size: 30px;
+  font-size: 34px;
   font-weight: 700;
   letter-spacing: -0.03em;
   color: #FFFFFF;
@@ -494,13 +494,13 @@ body {
 
 .ios-xp-capsule,
 .couple-xp-pill {
-  background: var(--ios-surface-2);
+  background: #1C1C1E;
   border: none;
   border-radius: 999px;
-  padding: 6px 12px;
+  padding: 6px 14px;
   font-size: 13px;
   font-weight: 600;
-  color: var(--ios-amber);
+  color: #FFD60A;
   display: flex;
   align-items: center;
   gap: 6px;
@@ -3017,304 +3017,283 @@ body {
   transform: scale(1.05);
 }
 
-/* TAB 1: TODAY HERO & QUICK VIBES */
+/* ==========================================================================
+   TAB 1: TODAY — ONE BIG ACTION (Apple HIG iOS 18)
+   ========================================================================== */
 .today-container {
   display: flex;
   flex-direction: column;
+  align-items: center;
   width: 100%;
+  padding: 8px 0 24px;
 }
 
 .today-hero-card {
-  position: relative;
-  border-radius: 24px;
-  padding: 22px;
-  background: linear-gradient(180deg, #261523 0%, #161618 100%);
+  width: 100%;
+  background: #161618;
+  border-radius: 28px;
   border: none;
-  backdrop-filter: blur(28px) saturate(180%);
-  -webkit-backdrop-filter: blur(28px) saturate(180%);
-  box-shadow: inset 0 0.5px 0 rgba(255, 255, 255, 0.10);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
+  padding: 32px 24px;
+  text-align: center;
   display: flex;
   flex-direction: column;
   align-items: center;
-  text-align: center;
+  position: relative;
   overflow: hidden;
 }
 
 .today-hero-card::before {
   content: "";
   position: absolute;
-  top: -40px;
+  top: -30px;
   left: 50%;
   transform: translateX(-50%);
-  width: 200px;
-  height: 120px;
-  background: radial-gradient(ellipse at center, rgba(255, 55, 95, 0.28), transparent 70%);
+  width: 260px;
+  height: 140px;
+  background: radial-gradient(ellipse at center, rgba(255, 55, 95, 0.18) 0%, rgba(191, 90, 242, 0.08) 50%, transparent 75%);
   pointer-events: none;
+  z-index: 0;
 }
 
-/* Fanned Cards Illustration */
-.fanned-cards-wrap {
+/* Floating Magic Deck Scratch-Card Illustration */
+.today-deck-wrap {
   position: relative;
-  width: 220px;
-  height: 110px;
-  margin: 4px auto 14px;
+  width: 200px;
+  height: 156px;
+  margin: 6px auto 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  perspective: 900px;
 }
 
-.fanned-card {
+.deck-ambient-glow {
   position: absolute;
-  top: 0;
+  top: 50%;
   left: 50%;
-  width: 82px;
-  height: 106px;
-  margin-left: -41px;
-  border-radius: 14px;
-  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.45);
-  border: none;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  transition: transform 0.35s var(--ease-spring);
-  transform-origin: 50% 120%;
-}
-
-.fanned-card-left {
-  background: linear-gradient(135deg, rgba(88, 38, 80, 0.90), rgba(30, 16, 36, 0.98));
-  transform: rotate(-14deg) translateX(-36px) translateY(8px);
+  transform: translate(-50%, -50%);
+  width: 180px;
+  height: 130px;
+  background: radial-gradient(circle, rgba(255, 55, 95, 0.32) 0%, rgba(255, 214, 10, 0.18) 45%, transparent 70%);
+  filter: blur(22px);
+  pointer-events: none;
   z-index: 1;
 }
 
-.fanned-card-center {
-  background: linear-gradient(135deg, rgba(255, 55, 95, 0.45), rgba(191, 90, 242, 0.45)), #211326;
-  border: none;
-  transform: rotate(0deg) translateY(-2px);
+.deck-card-layer {
+  position: absolute;
+  border-radius: 20px;
+  transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Layer 1: Peeking back card */
+.deck-card-back {
+  width: 122px;
+  height: 142px;
+  background: linear-gradient(135deg, rgba(88, 38, 80, 0.85), rgba(30, 16, 36, 0.95));
+  opacity: 0.55;
+  transform: rotate(7deg) translateY(6px);
   z-index: 2;
-  box-shadow: 0 14px 28px rgba(255, 55, 95, 0.35), 0 0 16px rgba(255, 214, 10, 0.25);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.5);
 }
 
-.fanned-card-right {
-  background: linear-gradient(135deg, rgba(123, 44, 191, 0.90), rgba(36, 18, 54, 0.98));
-  transform: rotate(14deg) translateX(36px) translateY(8px);
-  z-index: 1;
+/* Layer 2: Peeking middle card */
+.deck-card-mid {
+  width: 124px;
+  height: 144px;
+  background: linear-gradient(145deg, rgba(123, 44, 191, 0.85), rgba(36, 18, 54, 0.95));
+  opacity: 0.8;
+  transform: rotate(-6deg) translateY(2px);
+  z-index: 3;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.55);
 }
 
-.fanned-card-icon {
-  width: 26px;
-  height: 26px;
+/* Layer 3: Top Floating Scratch Card with Gold Foil & Sparkle */
+.deck-card-top {
+  width: 128px;
+  height: 148px;
+  border-radius: 20px;
+  background: linear-gradient(150deg, #2D1430 0%, #1A1324 55%, #100C18 100%);
+  z-index: 4;
+  box-shadow: 0 18px 36px rgba(0, 0, 0, 0.65), 0 0 24px rgba(255, 55, 95, 0.28);
+  position: relative;
+  overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.12);
-  color: #FFFFFF;
+  animation: floatDeck 3.5s ease-in-out infinite;
 }
 
-.fanned-card-center .fanned-card-icon {
-  background: rgba(255, 214, 10, 0.25);
-  color: var(--ios-amber);
+@keyframes floatDeck {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
 }
 
-.fanned-card-lines {
+/* Shimmer Foil Sweep */
+.deck-card-shimmer {
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: linear-gradient(90deg, transparent 30%, rgba(255, 214, 10, 0.12) 47%, rgba(255, 255, 255, 0.28) 50%, rgba(255, 214, 10, 0.12) 53%, transparent 70%);
+  pointer-events: none;
+  animation: shimmerSweep 4s infinite linear;
+  z-index: 5;
+}
+
+@keyframes shimmerSweep {
+  0% { transform: translateX(-150%) rotate(25deg); }
+  100% { transform: translateX(200%) rotate(25deg); }
+}
+
+/* Ornate Inner Foil Frame */
+.deck-card-frame {
+  position: absolute;
+  inset: 7px;
+  border: 1px solid rgba(255, 214, 10, 0.45);
+  border-radius: 14px;
   display: flex;
   flex-direction: column;
-  gap: 3px;
-  width: 48px;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(circle at center, rgba(255, 55, 95, 0.15) 0%, transparent 80%);
+  box-shadow: inset 0 0 14px rgba(255, 214, 10, 0.1);
+  z-index: 4;
 }
 
-.fanned-card-line {
-  height: 3px;
-  border-radius: 2px;
-  background: rgba(255, 255, 255, 0.2);
+.deck-corner-star {
+  position: absolute;
+  font-size: 8px;
+  color: #FFD60A;
+  opacity: 0.75;
+  line-height: 1;
+}
+.deck-corner-star.top-left { top: 4px; left: 5px; }
+.deck-corner-star.top-right { top: 4px; right: 5px; }
+.deck-corner-star.bottom-left { bottom: 4px; left: 5px; }
+.deck-corner-star.bottom-right { bottom: 4px; right: 5px; }
+
+.deck-emblem-wrap {
+  position: relative;
+  width: 52px;
+  height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.fanned-card-center .fanned-card-line {
-  background: rgba(255, 214, 10, 0.45);
+.deck-emblem-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 1.5px dashed rgba(255, 214, 10, 0.55);
+  animation: spinRing 22s linear infinite;
 }
 
+@keyframes spinRing {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.deck-emblem-spark {
+  font-size: 26px;
+  line-height: 1;
+  filter: drop-shadow(0 0 10px rgba(255, 214, 10, 0.85));
+  animation: pulseSpark 2.2s ease-in-out infinite alternate;
+}
+
+@keyframes pulseSpark {
+  0% { transform: scale(0.92); opacity: 0.85; }
+  100% { transform: scale(1.1); opacity: 1; }
+}
+
+.deck-card-foil-pattern {
+  margin-top: 6px;
+}
+
+.foil-badge-text {
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  color: rgba(255, 214, 10, 0.85);
+  text-transform: uppercase;
+}
+
+/* Typography Hierarchy */
 .today-hero-title {
-  font-size: 22px;
+  font-size: 24px;
   font-weight: 700;
-  letter-spacing: -0.025em;
+  letter-spacing: -0.02em;
   color: #FFFFFF;
-  margin-top: 14px;
-  margin-bottom: 0;
+  margin: 20px 0 8px;
   line-height: 1.25;
 }
 
 .today-hero-subtitle {
   font-size: 15px;
-  color: var(--ios-label-secondary);
+  color: rgba(235, 235, 245, 0.65);
   line-height: 1.4;
-  margin-top: 6px;
-  margin-bottom: 18px;
-  max-width: 320px;
+  margin: 0 0 28px;
+  max-width: 310px;
 }
 
+/* Primary Button (Tall 56px Apple Gradient CTA) */
 .btn-today-hero {
+  height: 56px;
+  border-radius: 18px;
   width: 100%;
-  height: 54px;
-  border-radius: 16px;
   font-size: 17px;
   font-weight: 600;
-  letter-spacing: -0.02em;
-  background: linear-gradient(135deg, #FF375F 0%, #D92B6B 100%);
+  letter-spacing: -0.01em;
   color: #FFFFFF;
+  background: linear-gradient(135deg, #FF375F 0%, #D92B6B 100%);
   border: none;
+  box-shadow: 0 10px 24px rgba(255, 55, 95, 0.35);
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  box-shadow: 0 8px 24px rgba(255, 55, 95, 0.35);
-}
-
-/* Quick Mood Row */
-.today-section-header {
-  font-size: 18px;
-  font-weight: 600;
-  letter-spacing: -0.02em;
-  margin: 24px 0 12px;
-  color: #FFFFFF;
-}
-
-.today-section-title {
-  font-size: 18px;
-  font-weight: 600;
-  letter-spacing: -0.02em;
-  color: #FFFFFF;
-}
-
-.quick-vibes-scroll {
-  display: flex;
-  gap: 12px;
-  overflow-x: auto;
-  scrollbar-width: none;
-  padding-bottom: 4px;
-  -webkit-overflow-scrolling: touch;
-}
-
-.quick-vibes-scroll::-webkit-scrollbar {
-  display: none;
-}
-
-.quick-vibe-card {
-  min-width: 104px;
-  padding: 16px 12px;
-  background: var(--ios-surface-1);
-  border: none;
-  border-radius: 18px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 10px;
   cursor: pointer;
-  box-shadow: inset 0 0.5px 0 rgba(255, 255, 255, 0.08);
-  transition: all 0.25s var(--ease-spring);
-  flex-shrink: 0;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  -webkit-tap-highlight-color: transparent;
 }
 
-.quick-vibe-card:hover,
-.quick-vibe-card:active {
-  background: var(--ios-surface-2);
-  transform: translateY(-2px) scale(1.02);
+.btn-today-hero:hover {
+  box-shadow: 0 12px 28px rgba(255, 55, 95, 0.45);
 }
 
-.quick-vibe-icon-wrap {
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-  display: flex;
+.btn-today-hero:active {
+  transform: scale(0.97);
+  box-shadow: 0 6px 16px rgba(255, 55, 95, 0.25);
+}
+
+/* Subtle Walkthrough Link Under Hero Card */
+.today-guide-link {
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  flex-shrink: 0;
-}
-
-.quick-vibe-icon-wrap.rose {
-  background: rgba(255, 55, 95, 0.16);
-  color: var(--ios-pink);
-}
-
-.quick-vibe-icon-wrap.gold {
-  background: rgba(255, 214, 10, 0.16);
-  color: var(--ios-amber);
-}
-
-.quick-vibe-icon-wrap.warm {
-  background: rgba(255, 159, 10, 0.16);
-  color: #FF9F0A;
-}
-
-.quick-vibe-icon-wrap.blue {
-  background: rgba(100, 210, 255, 0.16);
-  color: var(--ios-teal);
-}
-
-.quick-vibe-icon-wrap.purple {
-  background: rgba(191, 90, 242, 0.16);
-  color: var(--ios-purple);
-}
-
-.quick-vibe-name {
-  font-size: 13px;
+  gap: 6px;
+  margin: 20px auto 8px;
+  background: transparent;
+  border: none;
+  font-size: 14px;
   font-weight: 500;
-  color: #FFFFFF;
-}
-
-/* Guide Promo Banner (TipKit Style) */
-.guide-promo-banner {
-  background: var(--ios-surface-1);
-  border-radius: 18px;
-  padding: 14px 16px;
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  border: none;
-  margin-top: 18px;
+  color: rgba(235, 235, 245, 0.55);
   cursor: pointer;
-  box-shadow: inset 0 0.5px 0 rgba(255, 255, 255, 0.08);
-  transition: all 0.2s var(--ease-spring);
+  padding: 8px 12px;
+  transition: color 0.2s ease, transform 0.15s ease;
+  text-decoration: none;
 }
 
-.guide-promo-banner:hover,
-.guide-promo-banner:active {
-  background: var(--ios-surface-2);
-  transform: translateY(-1px);
-}
-
-.guide-promo-icon {
-  width: 40px;
-  height: 40px;
-  border-radius: 12px;
-  background: rgba(255, 55, 95, 0.12);
-  color: var(--ios-pink);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
-.guide-promo-content {
-  flex: 1;
-  min-width: 0;
-}
-
-.guide-promo-title {
-  font-size: 15px;
-  font-weight: 600;
+.today-guide-link:hover,
+.today-guide-link:active {
   color: #FFFFFF;
-  margin-bottom: 2px;
-}
-
-.guide-promo-desc {
-  font-size: 13px;
-  color: var(--ios-label-secondary);
-  line-height: 1.35;
-}
-
-.guide-promo-chevron {
-  color: var(--ios-label-tertiary);
-  margin-left: auto;
-  font-size: 18px;
 }
 
 /* ==========================================================================
