@@ -112,8 +112,8 @@ const window = new JSDOM('').window;
 const DOMPurify = createDOMPurify(window);
 
 // Middleware
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: true }));
+app.use(bodyParser.json({ limit: '25mb' }));
+app.use(bodyParser.urlencoded({ limit: '25mb', extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
@@ -1169,8 +1169,8 @@ app.get('/api/files/:fileId/preview', requireAuth, async (req, res) => {
         const IMAGE_EXTENSIONS = ['.png', '.jpg', '.jpeg', '.webp', '.gif', '.svg', '.bmp'];
         const isImage = IMAGE_EXTENSIONS.includes(ext) || (file.mime_type && file.mime_type.startsWith('image/'));
 
-        // Spreadsheet (.xlsx, .xls, .csv)
-        if (ext === '.xlsx' || ext === '.xls' || ext === '.csv') {
+        // Spreadsheet (.xlsx, .xls) — .csv открывается в текстовом редакторе (Спринт 11)
+        if (ext === '.xlsx' || ext === '.xls') {
             try {
                 const workbook = XLSX.readFile(filePath);
                 const sheetNames = workbook.SheetNames || [];
@@ -1190,13 +1190,14 @@ app.get('/api/files/:fileId/preview', requireAuth, async (req, res) => {
             }
         }
 
-        // XML (.xml) или текстовые (.txt)
-        if (ext === '.xml' || ext === '.txt') {
+        // Текстовые форматы (.txt, .xml, .json, .csv, .conf, .ini, .rdp, .sql, .log, .env, .yml, .yaml)
+        const TEXT_EXTENSIONS = ['.txt', '.xml', '.json', '.csv', '.conf', '.ini', '.rdp', '.sql', '.log', '.env', '.yml', '.yaml'];
+        if (TEXT_EXTENSIONS.includes(ext) || mimeType.startsWith('text/')) {
             try {
                 const content = fs.readFileSync(filePath, 'utf-8');
                 return res.json({
                     success: true,
-                    type: ext === '.xml' ? 'xml' : 'text',
+                    type: 'text',
                     content: content,
                     originalName: file.original_name
                 });
@@ -1335,6 +1336,37 @@ app.delete('/api/files/:fileId', requireAuth, async (req, res) => {
     } catch (err) {
         console.error('Ошибка удаления файла:', err);
         res.status(500).json({ success: false, error: 'Ошибка сервера при удалении файла' });
+    }
+});
+
+// Сохранить содержимое текстового файла прямо из лайтбокса (Спринт 11)
+app.put('/api/files/:id/content', requireAuth, async (req, res) => {
+    try {
+        const fileId = Number(req.params.id);
+        if (isNaN(fileId) || fileId <= 0) {
+            return res.status(400).json({ success: false, error: 'Некорректный ID файла' });
+        }
+
+        const file = await filesDB.getById(fileId);
+        if (!file) {
+            return res.status(404).json({ success: false, error: 'Файл не найден' });
+        }
+
+        const filePath = path.join(__dirname, 'uploads', `org_${file.org_id}`, file.filename);
+        const textContent = typeof req.body.content === 'string' ? req.body.content : '';
+
+        await fs.promises.writeFile(filePath, textContent, 'utf8');
+        const stats = await fs.promises.stat(filePath);
+        await filesDB.updateFileSize(file.id, stats.size);
+
+        return res.json({
+            success: true,
+            newSize: stats.size,
+            message: 'Файл успешно сохранен'
+        });
+    } catch (err) {
+        console.error('Ошибка сохранения содержимого файла:', err);
+        return res.status(500).json({ success: false, error: 'Ошибка сервера при сохранении файла' });
     }
 });
 

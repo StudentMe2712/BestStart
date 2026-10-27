@@ -631,6 +631,18 @@
                     <span class="lightbox-filename" id="lightboxFileName">Файл</span>
                 </div>
                 <div class="lightbox-controls">
+                    <div class="lightbox-edit-actions" id="lightboxEditActions" style="display: none;">
+                        <span class="lightbox-dirty-dot" title="Есть несохраненные изменения">●</span>
+                        <button type="button" class="lightbox-action-btn lightbox-btn-cancel" id="lightboxCancelBtn" data-i18n="lightbox.cancel">Отмена</button>
+                        <button type="button" class="lightbox-action-btn lightbox-btn-save" id="lightboxSaveBtn" data-i18n="lightbox.save">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                                <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                                <polyline points="7 3 7 8 15 8"></polyline>
+                            </svg>
+                            <span>Сохранить</span>
+                        </button>
+                    </div>
                     <button type="button" class="lightbox-btn lightbox-btn--zoom" id="lightboxZoomBtn" title="Переключить масштаб 1:1 (Исходный размер) / По размеру окна" aria-label="Масштаб 1:1" style="display: none;">
                         <span>1:1</span>
                     </button>

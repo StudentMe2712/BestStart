@@ -125,6 +125,15 @@
             'confirm.delete.btn':        'Удалить',
             'confirm.cancel.btn':        'Отмена',
 
+            /* ── Lightbox Editor (Sprint 11) ── */
+            'lightbox.save':             'Сохранить',
+            'lightbox.cancel':           'Отмена',
+            'lightbox.savedToast':       'Файл успешно сохранен',
+            'lightbox.unsavedTitle':     'Несохраненные изменения',
+            'lightbox.unsavedConfirm':   'Закрыть без сохранения',
+            'lightbox.unsavedConfirmDesc':'В файле есть несохраненные правки. Вы уверены, что хотите закрыть предпросмотр без сохранения?',
+            'lightbox.unsavedContinue':  'Продолжить редактирование',
+
             /* ── Toasts ── */
             'toast.pinned':              'Организация закреплена',
             'toast.unpinned':            'Организация откреплена',
@@ -373,6 +382,15 @@
             'confirm.delete.warning':    'Бұл әрекетті қайтару мүмкін емес. Деректерді қалпына келтіру мүмкін болмайды.',
             'confirm.delete.btn':        'Жою',
             'confirm.cancel.btn':        'Болдырмау',
+
+            /* ── Lightbox Editor (Sprint 11) ── */
+            'lightbox.save':             'Сақтау',
+            'lightbox.cancel':           'Болдырмау',
+            'lightbox.savedToast':       'Файл сәтті сақталды',
+            'lightbox.unsavedTitle':     'Сақталмаған өзгерістер',
+            'lightbox.unsavedConfirm':   'Сақтамай жабу',
+            'lightbox.unsavedConfirmDesc':'Файлда сақталмаған өзгерістер бар. Алдын ала қарауды сақтамай жапқыңыз келе ме?',
+            'lightbox.unsavedContinue':  'Өңдеуді жалғастыру',
 
             /* ── Toasts ── */
             'toast.pinned':              'Ұйым бекітілді',

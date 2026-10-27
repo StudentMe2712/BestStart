@@ -437,6 +437,24 @@ const filesDB = {
         } finally {
             if (connection) connection.release();
         }
+    },
+
+    // Обновить размер файла (Спринт 11)
+    updateFileSize: async (fileId, newSize) => {
+        let connection;
+        try {
+            connection = await pool.getConnection();
+            const [result] = await connection.query(
+                'UPDATE organization_files SET file_size = ? WHERE id = ?',
+                [Number(newSize), Number(fileId)]
+            );
+            return result.affectedRows;
+        } catch (err) {
+            console.error(`Ошибка обновления размера файла по ID ${fileId}:`, err.message);
+            throw err;
+        } finally {
+            if (connection) connection.release();
+        }
     }
 };
 
@@ -445,6 +463,7 @@ filesDB.getFilesByOrg = filesDB.getByOrgId;
 filesDB.getFileById = filesDB.getById;
 filesDB.addFile = filesDB.create;
 filesDB.deleteFile = filesDB.delete;
+filesDB.updateFileSize = filesDB.updateFileSize;
 
 module.exports = {
     initOrganizationTable,

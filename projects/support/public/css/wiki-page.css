@@ -3193,3 +3193,157 @@ body.wiki-page-body {
     0% { opacity: 0; transform: scale(0.95); }
     100% { opacity: 1; transform: scale(1); }
 }
+
+/* ============================================================
+   LIGHTBOX FILE EDITOR & EDIT ACTIONS (Sprint 11)
+   ============================================================ */
+
+.lightbox-edit-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-right: 6px;
+    animation: fadeInActions 0.15s ease-out;
+}
+
+@keyframes fadeInActions {
+    from {
+        opacity: 0;
+        transform: translateY(-2px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.lightbox-dirty-dot {
+    color: #f59e0b;
+    font-size: 15px;
+    line-height: 1;
+    margin-right: 2px;
+    animation: pulseDirty 1.8s infinite ease-in-out;
+    cursor: default;
+    user-select: none;
+}
+
+@keyframes pulseDirty {
+    0%, 100% {
+        opacity: 0.6;
+        transform: scale(0.9);
+    }
+    50% {
+        opacity: 1;
+        transform: scale(1.15);
+    }
+}
+
+.lightbox-action-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 6px 13px;
+    font-size: 13px;
+    font-weight: 500;
+    border-radius: 6px;
+    cursor: pointer;
+    line-height: 1;
+    transition: all 0.15s ease;
+    font-family: inherit;
+    border: 1px solid transparent;
+}
+
+.lightbox-btn-cancel {
+    background: rgba(255, 255, 255, 0.08);
+    color: #cbd5e1;
+    border-color: rgba(255, 255, 255, 0.12);
+}
+
+.lightbox-btn-cancel:hover {
+    background: rgba(255, 255, 255, 0.16);
+    color: #ffffff;
+    border-color: rgba(255, 255, 255, 0.2);
+}
+
+.lightbox-btn-save {
+    background: var(--brand-primary, #2563eb);
+    color: #ffffff;
+    box-shadow: 0 2px 8px rgba(37, 99, 235, 0.35);
+}
+
+.lightbox-btn-save:hover {
+    background: #1d4ed8;
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.5);
+}
+
+.lightbox-btn-save:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    box-shadow: none;
+}
+
+.lightbox-editor-wrap {
+    width: 100%;
+    height: 100%;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background: #0b1120;
+    box-sizing: border-box;
+}
+
+.lightbox-file-editor {
+    width: 100%;
+    height: 100%;
+    flex: 1;
+    box-sizing: border-box;
+    padding: 20px 24px;
+    background: transparent;
+    color: #f1f5f9;
+    border: none;
+    outline: none;
+    resize: none;
+    font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+    font-size: 14px;
+    line-height: 1.6;
+    tab-size: 4;
+    -moz-tab-size: 4;
+    white-space: pre;
+    overflow: auto;
+}
+
+.lightbox-file-editor::selection {
+    background: rgba(37, 99, 235, 0.4);
+}
+
+/* Light Theme overrides for Lightbox Editor (Sprint 11) */
+[data-theme="light"] .lightbox-editor-wrap {
+    background: #ffffff;
+}
+
+[data-theme="light"] .lightbox-file-editor {
+    background: #ffffff;
+    color: #0f172a;
+}
+
+[data-theme="light"] .lightbox-file-editor::selection {
+    background: rgba(37, 99, 235, 0.2);
+}
+
+[data-theme="light"] .lightbox-btn-cancel {
+    background: #f1f5f9;
+    color: #475569;
+    border-color: #cbd5e1;
+}
+
+[data-theme="light"] .lightbox-btn-cancel:hover {
+    background: #e2e8f0;
+    color: #0f172a;
+    border-color: #94a3b8;
+}
+
+[data-theme="light"] .lightbox-dirty-dot {
+    color: #d97706;
+}
