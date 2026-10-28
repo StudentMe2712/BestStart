@@ -52,6 +52,12 @@ self.addEventListener('activate', (event) => {
 // - Static assets (CSS, JS, images, fonts): Cache-First with Network fallback & cache update
 self.addEventListener('fetch', (event) => {
   const request = event.request;
+  const url = new URL(request.url);
+
+  // Never cache or intercept serverless API endpoints (/api/*)
+  if (url.pathname.startsWith('/api/')) {
+    return;
+  }
 
   // Only handle GET requests
   if (request.method !== 'GET') {

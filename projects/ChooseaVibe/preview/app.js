@@ -1518,9 +1518,13 @@ class GameState {
     return this.defaultState();
   }
 
-  save() {
+  save(skipCloud = false) {
     try {
+      this.state.updatedAt = Date.now();
       localStorage.setItem(STORAGE_KEY, JSON.stringify(this.state));
+      if (!skipCloud && typeof CloudSyncManager !== 'undefined' && CloudSyncManager.pushToCloud) {
+        CloudSyncManager.pushToCloud();
+      }
     } catch (e) {
       console.error('Failed to save state to localStorage:', e);
     }
@@ -1548,6 +1552,396 @@ class GameState {
 }
 
 const State = new GameState();
+
+// =============================================================================
+// 3.5. CLOUD SYNC & MASTER PASSWORD AUTH MANAGER (Upstash Redis + 24h Session)
+// =============================================================================
+const CloudSyncManager = {
+  AUTH_KEY: 'choose_a_vibe_auth_v1',
+  DEFAULT_FALLBACK_PASSWORD: 'Vibe2026!',
+  pushTimer: null,
+  isPushing: false,
+  isPulling: false,
+
+  getTokenData() {
+    try {
+      const raw = localStorage.getItem(this.AUTH_KEY);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      if (parsed && parsed.token && typeof parsed.expiresAt === 'number') {
+        return parsed;
+      }
+    } catch (e) {
+      console.warn('[CloudSync] Error reading auth token:', e);
+    }
+    return null;
+  },
+
+  getToken() {
+    const data = this.getTokenData();
+    return data ? data.token : null;
+  },
+
+  setToken(token, expiresAt) {
+    try {
+      localStorage.setItem(this.AUTH_KEY, JSON.stringify({ token, expiresAt }));
+      this.updateSessionBadge(expiresAt);
+    } catch (e) {
+      console.error('[CloudSync] Error saving auth token:', e);
+    }
+  },
+
+  clearToken() {
+    try {
+      localStorage.removeItem(this.AUTH_KEY);
+      this.updateSessionBadge(null);
+    } catch (e) {
+      console.error('[CloudSync] Error clearing auth token:', e);
+    }
+  },
+
+  isSessionValid() {
+    const data = this.getTokenData();
+    if (!data) return false;
+    return data.expiresAt > Date.now();
+  },
+
+  getRemainingTimeMs() {
+    const data = this.getTokenData();
+    if (!data) return 0;
+    return Math.max(0, data.expiresAt - Date.now());
+  },
+
+  formatRemainingTime(ms) {
+    if (ms <= 0) return 'Сессия истекла';
+    const hours = Math.floor(ms / (1000 * 60 * 60));
+    const minutes = Math.floor((ms % (1000 * 60 * 60)) / (1000 * 60));
+    if (hours > 0) {
+      return `Сессия активна ещё ${hours} ч. ${minutes > 0 ? minutes + ' мин.' : ''}`.trim();
+    }
+    return `Сессия активна ещё ${minutes} мин.`;
+  },
+
+  updateSessionBadge(expiresAt) {
+    const badge = document.getElementById('cloud-session-remaining');
+    if (!badge) return;
+    if (!expiresAt || expiresAt <= Date.now()) {
+      badge.textContent = 'Требуется ввод пароля (24 ч)';
+      badge.style.color = '#F87171';
+    } else {
+      const remainingMs = expiresAt - Date.now();
+      badge.textContent = this.formatRemainingTime(remainingMs);
+      badge.style.color = '#34D399';
+    }
+  },
+
+  updateCloudBadge(statusText, statusClass = '') {
+    const badge = document.getElementById('cloud-sync-status-badge');
+    if (!badge) return;
+    badge.textContent = statusText;
+    badge.className = 'ios-status-badge ' + statusClass;
+  },
+
+  async login(password) {
+    const trimmed = String(password || '').trim();
+    if (!trimmed) {
+      return { ok: false, error: 'Введите пароль' };
+    }
+
+    const isLocalFile = window.location.protocol === 'file:';
+
+    // If on file:// or offline, support local fallback
+    if (isLocalFile) {
+      if (trimmed === this.DEFAULT_FALLBACK_PASSWORD) {
+        const expiresAt = Date.now() + 86400000;
+        this.setToken('local_offline_token_' + Date.now(), expiresAt);
+        this.checkSession();
+        return { ok: true, offline: true, expiresAt };
+      } else {
+        return { ok: false, error: 'Неверный пароль доступа (локальный режим)' };
+      }
+    }
+
+    // Attempt server authentication via /api/auth
+    try {
+      const res = await fetch('/api/auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: trimmed })
+      });
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        return { ok: false, error: errData.error || 'Неверный пароль доступа' };
+      }
+
+      const data = await res.json();
+      if (data && data.token && data.expiresAt) {
+        this.setToken(data.token, data.expiresAt);
+        this.checkSession();
+        // Immediately sync from cloud upon successful authentication
+        this.pullFromCloud();
+        return { ok: true, expiresAt: data.expiresAt };
+      }
+      return { ok: false, error: 'Ошибка структуры ответа сервера' };
+    } catch (networkErr) {
+      console.warn('[CloudSync] Auth network error, testing local fallback:', networkErr);
+      // Offline fallback when server is unreachable
+      if (trimmed === this.DEFAULT_FALLBACK_PASSWORD) {
+        const expiresAt = Date.now() + 86400000;
+        this.setToken('local_offline_token_' + Date.now(), expiresAt);
+        this.checkSession();
+        return { ok: true, offline: true, expiresAt };
+      }
+      return { ok: false, error: 'Сетевая ошибка сервера. Проверьте пароль или подключение.' };
+    }
+  },
+
+  async pullFromCloud() {
+    if (!this.isSessionValid()) {
+      this.updateCloudBadge('🔒 Требуется вход', 'warning');
+      return null;
+    }
+    if (window.location.protocol === 'file:') {
+      this.updateCloudBadge('☁️ Локальный режим', '');
+      return null;
+    }
+
+    const token = this.getToken();
+    this.isPulling = true;
+    this.updateCloudBadge('☁️ Облако: Синхронизация...', 'syncing');
+
+    try {
+      const res = await fetch('/api/sync', {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (res.status === 401) {
+        this.clearToken();
+        this.checkSession();
+        this.updateCloudBadge('🔒 Сессия истекла', 'error');
+        return null;
+      }
+
+      if (!res.ok) {
+        throw new Error(`Sync HTTP ${res.status}`);
+      }
+
+      const data = await res.json();
+      if (data && data.warning === 'Redis not configured') {
+        this.updateCloudBadge('☁️ База Upstash не подключена', 'muted');
+        return null;
+      }
+
+      if (data && data.state) {
+        this.smartMerge(data.state);
+        this.updateCloudBadge('☁️ Облако Redis: Синхронизировано', 'success');
+        return data.state;
+      } else {
+        // Cloud key is empty yet, push our local state to initialize cloud
+        this.updateCloudBadge('☁️ Облако Redis: Инициализировано', 'success');
+        this.pushToCloud(true);
+        return null;
+      }
+    } catch (err) {
+      console.warn('[CloudSync] Pull error:', err);
+      this.updateCloudBadge('☁️ Облако: Оффлайн', 'muted');
+      return null;
+    } finally {
+      this.isPulling = false;
+      const data = this.getTokenData();
+      if (data) this.updateSessionBadge(data.expiresAt);
+    }
+  },
+
+  smartMerge(cloudState) {
+    if (!cloudState || typeof cloudState !== 'object') return;
+    const local = State.state;
+
+    // 1. totalXP: take max
+    const localXP = local.profile?.totalXP || 0;
+    const cloudXP = cloudState.profile?.totalXP ?? cloudState.totalXP ?? 0;
+    const mergedXP = Math.max(localXP, cloudXP);
+
+    // 2. Achievements: Set union
+    const localAchs = Array.isArray(local.profile?.unlockedAchievementIds) ? local.profile.unlockedAchievementIds : [];
+    const cloudAchs = Array.isArray(cloudState.profile?.unlockedAchievementIds) ? cloudState.profile.unlockedAchievementIds
+      : Array.isArray(cloudState.unlockedAchievementIds) ? cloudState.unlockedAchievementIds : [];
+    const mergedAchs = Array.from(new Set([...localAchs, ...cloudAchs]));
+
+    // 3. Chapters: Set union (always keep ch_01)
+    const localChapters = Array.isArray(local.unlockedChapters) ? local.unlockedChapters : ['ch_01'];
+    const cloudChapters = Array.isArray(cloudState.unlockedChapters) ? cloudState.unlockedChapters : ['ch_01'];
+    const mergedChapters = Array.from(new Set([...localChapters, ...cloudChapters, 'ch_01']));
+
+    // 4. Finished sessions: union by adventureId
+    const localFinished = Array.isArray(local.finishedSessions) ? local.finishedSessions : [];
+    const cloudFinished = Array.isArray(cloudState.finishedSessions) ? cloudState.finishedSessions : [];
+    const finishedMap = new Map();
+    localFinished.forEach(s => { if (s && s.adventureId) finishedMap.set(s.adventureId, s); });
+    cloudFinished.forEach(s => {
+      if (s && s.adventureId) {
+        if (!finishedMap.has(s.adventureId)) {
+          finishedMap.set(s.adventureId, s);
+        } else {
+          // If in both, take higher earnedXP or cloud one
+          const existing = finishedMap.get(s.adventureId);
+          if ((s.earnedXP || 0) > (existing.earnedXP || 0)) {
+            finishedMap.set(s.adventureId, s);
+          }
+        }
+      }
+    });
+    const mergedFinished = Array.from(finishedMap.values());
+
+    // 5. Excluded boundaries: union
+    const localBoundaries = Array.isArray(local.profile?.excludedBoundaries) ? local.profile.excludedBoundaries : [];
+    const cloudBoundaries = Array.isArray(cloudState.profile?.excludedBoundaries) ? cloudState.profile.excludedBoundaries
+      : Array.isArray(cloudState.excludedBoundaries) ? cloudState.excludedBoundaries : [];
+    const mergedBoundaries = Array.from(new Set([...localBoundaries, ...cloudBoundaries]));
+
+    // 6. Selected scratch theme: newer timestamp takes precedence
+    const localUpdatedAt = local.updatedAt || 0;
+    const cloudUpdatedAt = cloudState.updatedAt || 0;
+    const mergedTheme = cloudUpdatedAt > localUpdatedAt
+      ? (cloudState.profile?.selectedScratchThemeId || cloudState.selectedScratchThemeId || local.profile?.selectedScratchThemeId || 'classic_silver')
+      : (local.profile?.selectedScratchThemeId || 'classic_silver');
+
+    // 7. Partner names
+    const cloudP1 = cloudState.profile?.partnerOneName || cloudState.partnerOneName;
+    const cloudP2 = cloudState.profile?.partnerTwoName || cloudState.partnerTwoName;
+    const partnerOneName = (cloudUpdatedAt > localUpdatedAt && cloudP1) ? cloudP1 : (local.profile?.partnerOneName || 'Алишер');
+    const partnerTwoName = (cloudUpdatedAt > localUpdatedAt && cloudP2) ? cloudP2 : (local.profile?.partnerTwoName || 'Дана');
+
+    // 8. Active session: if cloud is newer, adopt it
+    let mergedActiveSession = local.activeSession;
+    if (cloudState.activeSession) {
+      const cloudActiveUpdated = cloudState.activeSession.updatedAt || cloudUpdatedAt;
+      const localActiveUpdated = local.activeSession ? (local.activeSession.updatedAt || localUpdatedAt) : 0;
+      if (!local.activeSession || cloudActiveUpdated >= localActiveUpdated) {
+        mergedActiveSession = cloudState.activeSession;
+      }
+    }
+
+    // 9. Flags
+    const hasCompletedOnboarding = Boolean(local.profile?.hasCompletedOnboarding || cloudState.profile?.hasCompletedOnboarding || cloudState.hasCompletedOnboarding);
+    const hasSeenWalkthrough = Boolean(local.profile?.hasSeenWalkthrough || cloudState.profile?.hasSeenWalkthrough || cloudState.hasSeenWalkthrough);
+    const soundEnabled = local.profile?.soundEnabled ?? cloudState.profile?.soundEnabled ?? true;
+
+    // Apply merged state
+    State.state = {
+      ...local,
+      version: 1,
+      updatedAt: Math.max(localUpdatedAt, cloudUpdatedAt, Date.now()),
+      profile: {
+        partnerOneName,
+        partnerTwoName,
+        totalXP: mergedXP,
+        unlockedAchievementIds: mergedAchs,
+        selectedScratchThemeId: mergedTheme,
+        excludedBoundaries: mergedBoundaries,
+        hasCompletedOnboarding,
+        hasSeenWalkthrough,
+        soundEnabled
+      },
+      activeSession: mergedActiveSession,
+      finishedSessions: mergedFinished,
+      unlockedChapters: mergedChapters
+    };
+
+    // Save locally without triggering re-push
+    State.save(true);
+
+    // Refresh UI
+    if (window.ChooseAVibeApp && typeof window.ChooseAVibeApp.render === 'function') {
+      window.ChooseAVibeApp.render();
+    } else if (window.app && typeof window.app.render === 'function') {
+      window.app.render();
+    }
+  },
+
+  pushToCloud(immediate = false) {
+    if (!this.isSessionValid()) return;
+    if (window.location.protocol === 'file:') return;
+
+    if (this.pushTimer) {
+      clearTimeout(this.pushTimer);
+      this.pushTimer = null;
+    }
+
+    const executePush = async () => {
+      const token = this.getToken();
+      if (!token) return;
+
+      this.isPushing = true;
+      this.updateCloudBadge('☁️ Облако: Сохранение...', 'syncing');
+
+      try {
+        State.state.updatedAt = Date.now();
+        const res = await fetch('/api/sync', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ state: State.state })
+        });
+
+        if (res.status === 401) {
+          this.clearToken();
+          this.checkSession();
+          this.updateCloudBadge('🔒 Сессия истекла', 'error');
+          return;
+        }
+
+        if (res.ok) {
+          this.updateCloudBadge('☁️ Облако Redis: Синхронизировано', 'success');
+        }
+      } catch (err) {
+        console.warn('[CloudSync] Push error:', err);
+        this.updateCloudBadge('☁️ Облако: Оффлайн', 'muted');
+      } finally {
+        this.isPushing = false;
+        const data = this.getTokenData();
+        if (data) this.updateSessionBadge(data.expiresAt);
+      }
+    };
+
+    if (immediate) {
+      executePush();
+    } else {
+      this.pushTimer = setTimeout(executePush, 400); // 400ms debounce
+    }
+  },
+
+  checkSession() {
+    const lockScreen = document.getElementById('authLockScreen');
+    const isValid = this.isSessionValid();
+    const data = this.getTokenData();
+
+    if (isValid && data) {
+      if (lockScreen) {
+        lockScreen.classList.add('unlocked');
+      }
+      this.updateSessionBadge(data.expiresAt);
+      return true;
+    } else {
+      if (lockScreen) {
+        lockScreen.classList.remove('unlocked');
+        const passInput = document.getElementById('input-auth-password');
+        if (passInput) passInput.value = '';
+        const errMsg = document.getElementById('auth-error-msg');
+        if (errMsg) errMsg.style.display = 'none';
+      }
+      this.updateSessionBadge(null);
+      this.updateCloudBadge('🔒 Заблокировано', 'warning');
+      return false;
+    }
+  }
+};
 
 // =============================================================================
 // 4. PROGRESSION ENGINE (Exact ProgressionEngine.swift port)
@@ -2834,6 +3228,98 @@ class UIController {
         this.showToast('Прогресс сброшен!');
       }
     });
+
+    // Master Password Auth Lock Screen handlers
+    const authForm = document.getElementById('form-auth-lock');
+    const authPassInput = document.getElementById('input-auth-password');
+    const authErrMsg = document.getElementById('auth-error-msg');
+    const btnSubmitAuth = document.getElementById('btn-submit-auth');
+    const btnTogglePass = document.getElementById('btn-toggle-password');
+
+    const handleAuthLogin = async (e) => {
+      if (e) e.preventDefault();
+      if (!authPassInput) return;
+      const pass = authPassInput.value.trim();
+      if (!pass) {
+        if (authErrMsg) {
+          authErrMsg.textContent = 'Пожалуйста, введите пароль';
+          authErrMsg.style.display = 'block';
+        }
+        return;
+      }
+
+      if (btnSubmitAuth) {
+        btnSubmitAuth.disabled = true;
+        btnSubmitAuth.classList.add('loading');
+      }
+      if (authErrMsg) authErrMsg.style.display = 'none';
+
+      const result = await CloudSyncManager.login(pass);
+
+      if (btnSubmitAuth) {
+        btnSubmitAuth.disabled = false;
+        btnSubmitAuth.classList.remove('loading');
+      }
+
+      if (result.ok) {
+        Sound.playSuccess();
+        this.showToast('✦ Доступ открыт на 24 часа');
+        this.render();
+      } else {
+        Sound.playHaptic();
+        if (authErrMsg) {
+          authErrMsg.textContent = result.error || 'Неверный пароль доступа';
+          authErrMsg.style.display = 'block';
+        }
+        authPassInput.focus();
+      }
+    };
+
+    if (authForm) {
+      authForm.addEventListener('submit', handleAuthLogin);
+    }
+    if (btnSubmitAuth) {
+      btnSubmitAuth.addEventListener('click', handleAuthLogin);
+    }
+
+    if (btnTogglePass && authPassInput) {
+      btnTogglePass.addEventListener('click', () => {
+        const isPass = authPassInput.type === 'password';
+        authPassInput.type = isPass ? 'text' : 'password';
+        const eyeOpen = btnTogglePass.querySelector('.icon-eye-open');
+        const eyeClosed = btnTogglePass.querySelector('.icon-eye-closed');
+        if (eyeOpen && eyeClosed) {
+          eyeOpen.style.display = isPass ? 'none' : 'block';
+          eyeClosed.style.display = isPass ? 'block' : 'none';
+        }
+      });
+    }
+
+    // Upstash Redis Cloud Sync buttons
+    const btnCloudSyncNow = document.getElementById('btn-cloud-sync-now');
+    if (btnCloudSyncNow) {
+      btnCloudSyncNow.addEventListener('click', async () => {
+        Sound.playHaptic();
+        this.showToast('Синхронизация с облаком Upstash...');
+        const state = await CloudSyncManager.pullFromCloud();
+        if (state) {
+          Sound.playChime();
+          this.showToast('✦ Данные пары синхронизированы!');
+        } else {
+          this.showToast('Облачное состояние актуально');
+        }
+      });
+    }
+
+    const btnCloudLockNow = document.getElementById('btn-cloud-lock-now');
+    if (btnCloudLockNow) {
+      btnCloudLockNow.addEventListener('click', () => {
+        Sound.playHaptic();
+        CloudSyncManager.clearToken();
+        CloudSyncManager.checkSession();
+        this.showToast('Приложение заблокировано');
+      });
+    }
   }
 
   showScreen(screenId) {
@@ -3797,6 +4283,11 @@ class UIController {
 
       settingsComfortContainer.appendChild(row);
     });
+
+    if (typeof CloudSyncManager !== 'undefined') {
+      const data = CloudSyncManager.getTokenData();
+      CloudSyncManager.updateSessionBadge(data ? data.expiresAt : null);
+    }
   }
 
   runMatcher() {
@@ -4107,5 +4598,14 @@ if ('serviceWorker' in navigator && (window.location.protocol === 'https:' || wi
 document.addEventListener('DOMContentLoaded', () => {
   detectStandaloneMode();
   window.ChooseAVibeApp = window.app = new UIController();
+
+  // Master Password Session Validation & 30s background check
+  const hasValidSession = CloudSyncManager.checkSession();
+  setInterval(() => CloudSyncManager.checkSession(), 30000);
+
+  // If session is already active, fetch latest state from Upstash Redis
+  if (hasValidSession) {
+    CloudSyncManager.pullFromCloud();
+  }
 });
 
