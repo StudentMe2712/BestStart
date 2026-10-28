@@ -10,6 +10,9 @@
   <title>Выбери Вайб — Свидания для пар</title>
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="icon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,600;0,700;1,600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -71,6 +74,57 @@
 
       <!-- ЗОНА 1: TOP-CHROME (Никогда не скроллится) -->
       <div class="top-chrome" id="top-chrome">
+        <!-- Hero-фон заката над шапкой: тёплый закатный силуэт пары над вечерним городом -->
+        <div class="top-chrome-sunset-hero" aria-hidden="true">
+          <svg class="sunset-hero-svg" viewBox="0 0 400 170" preserveAspectRatio="xMidYMid slice">
+            <defs>
+              <linearGradient id="sunset-sky-grad" x1="0" y1="0" x2="0" y2="100%">
+                <stop offset="0%" stop-color="#14091A"/>
+                <stop offset="35%" stop-color="#3B1124"/>
+                <stop offset="65%" stop-color="#7B233D"/>
+                <stop offset="85%" stop-color="#B83B5E"/>
+                <stop offset="100%" stop-color="#F28E6B"/>
+              </linearGradient>
+              <radialGradient id="sunset-sun-glow" cx="50%" cy="88%" r="65%">
+                <stop offset="0%" stop-color="#FFEAA7" stop-opacity="0.9"/>
+                <stop offset="25%" stop-color="#FF9E79" stop-opacity="0.6"/>
+                <stop offset="60%" stop-color="#B83B5E" stop-opacity="0.25"/>
+                <stop offset="100%" stop-color="#14091A" stop-opacity="0"/>
+              </radialGradient>
+              <linearGradient id="sunset-city-grad" x1="0" y1="0" x2="0" y2="100%">
+                <stop offset="0%" stop-color="#240D1F" stop-opacity="0.85"/>
+                <stop offset="100%" stop-color="#0E050F" stop-opacity="0.98"/>
+              </linearGradient>
+            </defs>
+            <!-- Background sky -->
+            <rect width="100%" height="100%" fill="url(#sunset-sky-grad)"/>
+            <!-- Warm glowing sun orb -->
+            <circle cx="200" cy="150" r="105" fill="url(#sunset-sun-glow)"/>
+            <!-- Distant mountain ridges -->
+            <path d="M0,140 Q80,118 160,132 T320,126 T400,138 L400,170 L0,170 Z" fill="#200B1A" opacity="0.65"/>
+            <!-- City skyline silhouette -->
+            <path d="M0,154 L16,154 L16,146 L28,146 L28,154 L44,154 L44,140 L54,140 L54,134 L60,134 L60,154 L78,154 L78,148 L92,148 L92,154 L114,154 L114,144 L122,138 L130,144 L130,154 L154,154 L154,150 L168,150 L168,154 L224,154 L224,149 L236,149 L236,154 L264,154 L264,142 L272,142 L272,133 L278,133 L278,154 L298,154 L298,147 L312,147 L312,154 L334,154 L334,139 L346,139 L346,154 L368,154 L368,150 L382,150 L382,154 L400,154 L400,170 L0,170 Z" fill="url(#sunset-city-grad)"/>
+            <!-- City warm lights bokeh dots -->
+            <circle cx="22" cy="150" r="1.2" fill="#FFEAA7" opacity="0.85"/>
+            <circle cx="49" cy="143" r="1.2" fill="#FFD166" opacity="0.8"/>
+            <circle cx="57" cy="137" r="1" fill="#FFD166" opacity="0.95"/>
+            <circle cx="122" cy="142" r="1" fill="#FFA07A" opacity="0.85"/>
+            <circle cx="268" cy="145" r="1.2" fill="#FFEAA7" opacity="0.75"/>
+            <circle cx="275" cy="136" r="1" fill="#FFD166" opacity="0.9"/>
+            <circle cx="340" cy="143" r="1.2" fill="#FFA07A" opacity="0.85"/>
+            <!-- Romantic couple silhouette overlooking sunset city -->
+            <g transform="translate(182, 114) scale(0.9)" fill="#0B030D">
+              <!-- Partner 1 -->
+              <circle cx="12" cy="12" r="6"/>
+              <path d="M5,18 C5,16 9,15 12,15 C15,15 19,16 19,18 L21,42 L3,42 Z"/>
+              <!-- Partner 2 leaning in -->
+              <circle cx="27" cy="14" r="5.5"/>
+              <path d="M21,20 C21,18 24,17 27,17 C30,17 33,18 33,20 L35,42 L19,42 Z"/>
+              <path d="M11,25 C14,29 24,29 27,25" stroke="#0B030D" stroke-width="3" stroke-linecap="round"/>
+            </g>
+          </svg>
+        </div>
+
         <!-- iOS Status Bar & Dynamic Island (Desktop & iPad) -->
         <header class="ios-status-bar">
           <div class="ios-time" id="status-bar-time">20:19</div>
@@ -110,13 +164,16 @@
 
         <!-- iOS Large Title Navigation Bar -->
         <header class="ios-large-header" id="couple-header">
-          <div class="ios-header-eyebrow" id="profile-eyebrow"><span style="color: #8E8E93;">Добрый вечер,</span> <strong id="profile-greeting-names" style="color: #FFFFFF;">Алишер &amp; Дана!</strong></div>
+          <div class="ios-header-eyebrow" id="profile-eyebrow">Добрый вечер, <strong id="profile-greeting-names">Алишер &amp; Дана!</strong> <span style="color:#E05A7A; font-size:16px;">♡</span></div>
           <div class="ios-header-main-row">
-            <h1 class="ios-header-title" id="ios-header-title">Сегодня</h1>
+            <h1 class="ios-header-title serif-title" id="ios-header-title">Сегодня</h1>
             <div class="ios-header-actions">
-              <!-- Profile Avatar/Gear Button -->
+              <!-- Profile Avatar/Gear Button: 40x40px glass with thin human icon -->
               <button class="ios-profile-avatar-btn" id="btn-header-profile" type="button" aria-label="Профиль">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path>
+                  <circle cx="12" cy="7" r="4"></circle>
+                </svg>
               </button>
 
               <!-- Native Apple XP Capsule (kept for compatibility) -->
@@ -176,15 +233,45 @@
                   <div class="status-level-badge" id="widget-level-badge">Уровень 1 · Любопытный дуэт</div>
                   <div class="status-xp-row">
                     <span class="status-xp-value" id="widget-xp-text">0 / 60 XP</span>
-                    <span class="status-xp-label">до следующего уровня</span>
                   </div>
                   <div class="status-progress-track">
-                    <div class="status-progress-fill" id="widget-xp-fill" style="width: 0%;"></div>
+                    <div class="status-progress-fill" id="widget-xp-fill" style="width: 0%;">
+                      <span class="status-progress-glow-dot"></span>
+                    </div>
                   </div>
                 </div>
                 <div class="status-trophy-wrap">
                   <div class="status-trophy-glow"></div>
-                  <div class="status-trophy-icon">🏆</div>
+                  <div class="status-trophy-icon">
+                    <svg width="56" height="56" viewBox="0 0 64 64" fill="none">
+                      <defs>
+                        <linearGradient id="gold-cup-grad" x1="0" y1="0" x2="100%" y2="100%">
+                          <stop offset="0%" stop-color="#FFF0BE"/>
+                          <stop offset="35%" stop-color="#FFD166"/>
+                          <stop offset="75%" stop-color="#E5A435"/>
+                          <stop offset="100%" stop-color="#9C6415"/>
+                        </linearGradient>
+                        <linearGradient id="pedestal-grad" x1="0" y1="0" x2="0" y2="100%">
+                          <stop offset="0%" stop-color="#3D1424"/>
+                          <stop offset="100%" stop-color="#1B0711"/>
+                        </linearGradient>
+                      </defs>
+                      <!-- Handles -->
+                      <path d="M14 16 C7 16 5 27 12 33 C15 36 19 36 21 34" stroke="url(#gold-cup-grad)" stroke-width="3.5" stroke-linecap="round" fill="none"/>
+                      <path d="M50 16 C57 16 59 27 52 33 C49 36 45 36 43 34" stroke="url(#gold-cup-grad)" stroke-width="3.5" stroke-linecap="round" fill="none"/>
+                      <!-- Pedestal Base -->
+                      <rect x="22" y="47" width="20" height="5" rx="2" fill="url(#gold-cup-grad)"/>
+                      <path d="M16 52 L48 52 L50 59 L14 59 Z" fill="url(#pedestal-grad)" stroke="url(#gold-cup-grad)" stroke-width="1.5"/>
+                      <!-- Cup Stem -->
+                      <path d="M28 37 L36 37 L34 47 L30 47 Z" fill="url(#gold-cup-grad)"/>
+                      <!-- Main Cup Body -->
+                      <path d="M17 14 L47 14 C47 28 41 37 32 37 C23 37 17 28 17 14 Z" fill="url(#gold-cup-grad)"/>
+                      <!-- Rim Top -->
+                      <ellipse cx="32" cy="14" rx="15" ry="3.2" fill="#FFF8D6"/>
+                      <!-- Embossed Ruby Heart on Cup -->
+                      <path d="M32 29 C30 26 23 23 23 18.5 C23 15.8 25.8 14.5 28.5 16 L32 18.8 L35.5 16 C38.2 14.5 41 15.8 41 18.5 C41 23 34 26 32 29 Z" fill="#E05A7A"/>
+                    </svg>
+                  </div>
                 </div>
               </div>
               <div class="status-metrics-strip">
@@ -193,8 +280,8 @@
                   <span class="status-metric-lbl">приключений</span>
                 </div>
                 <div class="status-metric-divider"></div>
-                <div class="status-metric-col">
-                  <span class="status-metric-val" id="metric-budget-text">0 ₸</span>
+                <div class="status-metric-col" onclick="document.getElementById('btn-open-vibe-sheet')?.click()" style="cursor:pointer;" title="Выбрать бюджет">
+                  <span class="status-metric-val" id="metric-budget-text" style="cursor:pointer;">до 2000 ₸</span>
                   <span class="status-metric-lbl">бюджет</span>
                 </div>
                 <div class="status-metric-divider"></div>
@@ -209,74 +296,91 @@
             <div class="vibes-grid-2x2" id="today-vibes-grid">
               <!-- 1. Романтика -->
               <div class="vibe-tile is-selected" data-vibe="Романтика" role="button" tabindex="0">
+                <div class="vibe-tile-bg vibe-bg-romance" aria-hidden="true"></div>
                 <div class="tile-top-row">
                   <div class="tile-icon-box">
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+                    </svg>
                   </div>
                   <div class="tile-indicator"></div>
                 </div>
                 <div class="tile-title">Романтика</div>
                 <div class="tile-bottom-row">
                   <span class="tile-duration">~45 мин</span>
-                  <div class="ios-switch"><div class="switch-knob"></div></div>
+                  <span class="tile-chevron">›</span>
                 </div>
               </div>
 
               <!-- 2. Игривое -->
               <div class="vibe-tile" data-vibe="Игривое" role="button" tabindex="0">
+                <div class="vibe-tile-bg vibe-bg-playful" aria-hidden="true"></div>
                 <div class="tile-top-row">
                   <div class="tile-icon-box">
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C12.3 6.4 15.6 9.7 20 10C15.6 10.3 12.3 13.6 12 18C11.7 13.6 8.4 10.3 4 10C8.4 9.7 11.7 6.4 12 2Z"/><path d="M19 15C19.2 17.2 20.8 18.8 23 19C20.8 19.2 19.2 20.8 19 23C18.8 20.8 17.2 19.2 15 19C17.2 18.8 18.8 17.2 19 15Z"/></svg>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M21 6H3c-1.1 0-2 .9-2 2v8c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm-10 7H8v3H6v-3H3v-2h3V8h2v3h3v2zm4.5 2c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm4-3c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/>
+                    </svg>
                   </div>
                   <div class="tile-indicator"></div>
                 </div>
                 <div class="tile-title">Игривое</div>
                 <div class="tile-bottom-row">
                   <span class="tile-duration">~30 мин</span>
-                  <div class="ios-switch"><div class="switch-knob"></div></div>
+                  <span class="tile-chevron">›</span>
                 </div>
               </div>
 
               <!-- 3. Уютное -->
               <div class="vibe-tile" data-vibe="Уютное" role="button" tabindex="0">
+                <div class="vibe-tile-bg vibe-bg-cozy" aria-hidden="true"></div>
                 <div class="tile-top-row">
                   <div class="tile-icon-box">
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M18.5 3H6c-1.1 0-2 .9-2 2v5.71c0 3.83 2.95 7.18 6.78 7.29 3.96.12 7.22-3.06 7.22-7v-1h.5c1.93 0 3.5-1.57 3.5-3.5S20.43 3 18.5 3zM16 5v3H6V5h10zm2.5 3H18V5h.5c.83 0 1.5.67 1.5 1.5S19.33 8 18.5 8zM4 19h16v2H4v-2z"/></svg>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M12 3L2 12h3v8h6v-6h2v6h6v-8h3L12 3zm0 2.84L18 11.24V18h-2v-6H8v6H6v-6.76l6-5.4z"/>
+                    </svg>
                   </div>
                   <div class="tile-indicator"></div>
                 </div>
                 <div class="tile-title">Уютное</div>
                 <div class="tile-bottom-row">
                   <span class="tile-duration">~60 мин</span>
-                  <div class="ios-switch"><div class="switch-knob"></div></div>
+                  <span class="tile-chevron">›</span>
                 </div>
               </div>
 
               <!-- 4. Спонтанное -->
               <div class="vibe-tile" data-vibe="Спонтанное" role="button" tabindex="0">
+                <div class="vibe-tile-bg vibe-bg-spontaneous" aria-hidden="true"></div>
                 <div class="tile-top-row">
                   <div class="tile-icon-box">
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M7 2v11h3v9l7-12h-4l4-8H7z"/>
+                    </svg>
                   </div>
                   <div class="tile-indicator"></div>
                 </div>
                 <div class="tile-title">Спонтанное</div>
                 <div class="tile-bottom-row">
                   <span class="tile-duration">~20 мин</span>
-                  <div class="ios-switch"><div class="switch-knob"></div></div>
+                  <span class="tile-chevron">›</span>
                 </div>
               </div>
             </div>
 
             <!-- Block 3: Primary Button & Native Guide Cell -->
             <button class="btn-start-evening" id="btn-start-evening" type="button">
-              <span>✨ Начать вечер</span>
+              <span class="btn-start-sparkle">✦</span>
+              <span class="btn-start-text">Начать вечер</span>
+              <span class="btn-start-chevron">›</span>
             </button>
             <button id="btn-today-pick-vibe" style="display:none;" type="button"></button>
 
             <div class="ios-guide-cell" id="openGuideBtn" role="button" tabindex="0">
               <div class="guide-cell-icon">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path>
+                  <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path>
+                </svg>
               </div>
               <div class="guide-cell-content">
                 <span class="guide-cell-title">Как устроена игра?</span>
@@ -295,29 +399,59 @@
         <div class="tab-content" id="tab-path">
           <div class="path-container">
 
-            <!-- Segmented Control for Chapters -->
+            <!-- Segmented Control for Chapters: Pill Capsule -->
             <div class="segmented-control" id="path-chapters-segment">
               <button class="segment-btn active" data-chapter="ch_01">Глава 1</button>
               <button class="segment-btn" data-chapter="ch_02">Глава 2 🔒</button>
               <button class="segment-btn" data-chapter="ch_03">Глава 3 🔒</button>
             </div>
 
-            <!-- Chapter Header -->
+            <!-- Chapter Header: Mountain Dawn Artwork with Couple Silhouette -->
             <div class="path-chapter-header" id="path-chapter-header">
-              <div class="chapter-header-top-row">
-                <div class="chapter-badge">
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
-                  <span id="path-chapter-badge-text">ГЛАВА 1</span>
-                </div>
-                <div class="chapter-progress-pill" id="path-chapter-progress">0 / 4 пройдено</div>
+              <div class="chapter-header-art" aria-hidden="true">
+                <svg class="mountain-sunrise-svg" viewBox="0 0 350 140" preserveAspectRatio="xMidYMid slice">
+                  <defs>
+                    <linearGradient id="dawn-sky" x1="0" y1="0" x2="0" y2="100%">
+                      <stop offset="0%" stop-color="#190B22"/>
+                      <stop offset="45%" stop-color="#541734"/>
+                      <stop offset="80%" stop-color="#A83254"/>
+                      <stop offset="100%" stop-color="#FF9B71"/>
+                    </linearGradient>
+                    <radialGradient id="dawn-sun" cx="82%" cy="82%" r="55%">
+                      <stop offset="0%" stop-color="#FFEAA7" stop-opacity="0.85"/>
+                      <stop offset="50%" stop-color="#E05A7A" stop-opacity="0.4"/>
+                      <stop offset="100%" stop-color="#190B22" stop-opacity="0"/>
+                    </radialGradient>
+                  </defs>
+                  <rect width="100%" height="100%" fill="url(#dawn-sky)"/>
+                  <circle cx="285" cy="95" r="75" fill="url(#dawn-sun)"/>
+                  <polygon points="0,140 55,90 135,120 210,75 290,115 350,92 350,140" fill="#3B1025" opacity="0.65"/>
+                  <polygon points="0,140 40,110 110,80 185,125 265,85 350,110 350,140" fill="#240A18" opacity="0.85"/>
+                  <path d="M0,140 L0,126 Q110,112 230,120 Q285,98 350,102 L350,140 Z" fill="#12050E"/>
+                  <g transform="translate(295, 82) scale(0.68)" fill="#090308">
+                    <circle cx="8" cy="8" r="4.5"/>
+                    <path d="M3,12 C3,11 6,10 8,10 C10,10 13,11 13,12 L15,26 L1,26 Z"/>
+                    <circle cx="20" cy="9" r="4.2"/>
+                    <path d="M15,13 C15,12 18,11 20,11 C22,11 25,12 25,13 L26,26 L14,26 Z"/>
+                  </g>
+                </svg>
               </div>
-              <h3 class="chapter-title" id="path-chapter-title">Первые искры</h3>
-              <p class="chapter-subtitle" id="path-chapter-subtitle">
-                Лёгкие, весёлые и тёплые сценарии для быстрого погружения без сложной подготовки
-              </p>
+              <div class="chapter-header-content">
+                <div class="chapter-header-top-row">
+                  <div class="chapter-badge">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                    <span id="path-chapter-badge-text">ГЛАВА 1</span>
+                  </div>
+                  <div class="chapter-progress-pill" id="path-chapter-progress">○ 0 из 4 открыто</div>
+                </div>
+                <h3 class="chapter-title serif-title" id="path-chapter-title">Первые искры</h3>
+                <p class="chapter-subtitle" id="path-chapter-subtitle">
+                  Лёгкие, весёлые и тёплые сценарии для быстрого погружения без сложной подготовки
+                </p>
+              </div>
             </div>
 
-            <!-- Trail Container: S-curve winding trail & 68px glass spherical nodes -->
+            <!-- Trail Container: Vertical Timeline with Glowing Nodes -->
             <div class="path-trail-container" id="path-trail-container">
               <!-- Dynamically populated or initialized via controller -->
             </div>
@@ -333,16 +467,30 @@
              ТАБ 3: КОЛЛЕКЦИЯ (tab-collection — музей, значки, рубашки)
              =============================================================== -->
         <div class="tab-content" id="tab-collection">
-          <!-- Segmented Control -->
-          <div class="segmented-control">
+          <!-- Top Hero Banner: Музей ваших моментов -->
+          <div class="museum-hero-banner" id="museum-hero-banner">
+            <div class="museum-banner-bg" aria-hidden="true"></div>
+            <div class="museum-banner-left">
+              <div class="museum-trophy-icon">🏆</div>
+              <div class="museum-banner-text">
+                <h3 class="museum-hero-title serif-title">Музей ваших моментов</h3>
+                <p class="museum-hero-subtitle">
+                  Открыто 0 из 8 значков · Бонус +20 XP за каждый
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Segmented Control: Значки | История | Рубашки -->
+          <div class="segmented-control" id="collection-segmented-control">
             <button class="segment-btn active" data-subview="subview-badges">Значки</button>
-            <button class="segment-btn" data-subview="subview-completed">Пройденные</button>
+            <button class="segment-btn" data-subview="subview-completed">История</button>
             <button class="segment-btn" data-subview="subview-shirts">Рубашки</button>
           </div>
 
           <!-- Subview 1: Badges -->
           <div class="museum-subview active" id="subview-badges">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
               <span style="font-size:14px; font-weight:700; color:white;" id="badges-count-label">Достижения (0 из 8)</span>
               <span style="font-size:12px; font-weight:700; color:#FFD166;" id="badges-xp-label">+0 XP</span>
             </div>
@@ -371,6 +519,33 @@
              =============================================================== -->
         <div class="tab-content" id="tab-pair">
           <div class="pair-settings-container">
+
+            <!-- Top Duo Atmosphere Hero Card -->
+            <div class="pair-duo-card" id="pair-duo-card">
+              <div class="pair-duo-art" aria-hidden="true"></div>
+              <div class="pair-duo-content">
+                <div class="pair-duo-avatars">
+                  <div class="pair-avatar p1">А</div>
+                  <div class="pair-avatar-heart">♥</div>
+                  <div class="pair-avatar p2">Д</div>
+                </div>
+                <div class="pair-duo-info">
+                  <h2 class="pair-duo-names serif-title" id="pair-duo-names-display">
+                    <span id="profile-display-names">Алишер &amp; Дана</span>
+                  </h2>
+                  <div class="pair-duo-badge" id="pair-duo-level-badge">
+                    <span id="profile-level-title">Уровень 1 · Любопытный дуэт</span>
+                  </div>
+                </div>
+                <button class="pair-duo-edit-btn" id="btn-pair-quick-edit" type="button" onclick="document.getElementById('settings-name-p1')?.focus();">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                  </svg>
+                  <span>Изменить</span>
+                </button>
+              </div>
+            </div>
 
             <!-- Section 1: Partners Names -->
             <div class="ios-inset-section">
@@ -513,35 +688,36 @@
 
         <!-- Bottom iOS TabBar: 4 Apple SF Symbol Tabs -->
         <nav class="ios-tab-bar ios-tabbar" id="ios-tab-bar">
-          <!-- 1. Сегодня -->
+          <!-- 1. Сегодня — ✦ -->
           <button class="tab-item active" data-tab="tab-today">
             <svg viewBox="0 0 24 24" fill="currentColor">
-              <path d="M12 2C12.3 6.4 15.6 9.7 20 10C15.6 10.3 12.3 13.6 12 18C11.7 13.6 8.4 10.3 4 10C8.4 9.7 11.7 6.4 12 2Z"/>
-              <path d="M19 15C19.2 17.2 20.8 18.8 23 19C20.8 19.2 19.2 20.8 19 23C18.8 20.8 17.2 19.2 15 19C17.2 18.8 18.8 17.2 19 15Z"/>
+              <path d="M12 2L14.39 8.26L21 9.27L16 14.14L17.18 20.77L12 17.77L6.82 20.77L8 14.14L3 9.27L9.61 8.26L12 2Z"/>
             </svg>
             <span>Сегодня</span>
           </button>
 
-          <!-- 2. Путь -->
+          <!-- 2. Путь — карта с маршрутом -->
           <button class="tab-item" data-tab="tab-path">
-            <svg viewBox="0 0 24 24" fill="currentColor">
-              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1.2 5.1l4.8 10.2c.2.4-.2.8-.6.6L12 15.6l-5.4 2.3c-.4.2-.8-.2-.6-.6l4.8-10.2c.3-.6 1.1-.6 1.4 0z"/>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"></polygon>
+              <line x1="8" y1="2" x2="8" y2="18"></line>
+              <line x1="16" y1="6" x2="16" y2="22"></line>
             </svg>
             <span>Путь</span>
           </button>
 
-          <!-- 3. Коллекция -->
+          <!-- 3. Коллекция — 🏆 -->
           <button class="tab-item" data-tab="tab-collection">
             <svg viewBox="0 0 24 24" fill="currentColor">
-              <path d="M19 5h-2V3H7v2H5c-1.1 0-2 .9-2 2v1c0 2.55 1.92 4.63 4.39 4.94.63 1.5 1.71 2.73 3.11 3.43V19H8v2h8v-2h-2.5v-2.63c1.4-.7 2.48-1.93 3.11-3.43C19.08 12.63 21 10.55 21 8V7c0-1.1-.9-2-2-2zM5 8V7h2v3.82C5.84 10.4 5 9.3 5 8zm14 0c0 1.3-.84 2.4-2 2.82V7h2v1z"/>
+              <path d="M19 5h-2V3H7v2H5c-1.1 0-2 .9-2 2v1c0 2.55 1.92 4.63 4.39 4.94A5.01 5.01 0 0 0 11 15.9V19H7v2h10v-2h-4v-3.1a5.01 5.01 0 0 0 3.61-2.96C19.08 12.63 21 10.55 21 8V7c0-1.1-.9-2-2-2zM5 8V7h2v3.82C5.84 10.4 5 9.3 5 8zm14 0c0 1.3-.84 2.4-2 2.82V7h2v1z"/>
             </svg>
             <span>Коллекция</span>
           </button>
 
-          <!-- 4. Пара -->
+          <!-- 4. Пара — ♥ -->
           <button class="tab-item" data-tab="tab-pair">
             <svg viewBox="0 0 24 24" fill="currentColor">
-              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm3.8 6.5c1.2 0 2.2 1 2.2 2.2 0 1.8-2.3 3.8-6 6.3-3.7-2.5-6-4.5-6-6.3 0-1.2 1-2.2 2.2-2.2 1 0 1.9.6 2.3 1.4.3.7 1.3.7 1.6 0 .4-.8 1.4-1.4 2.4-1.4z"/>
+              <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
             </svg>
             <span>Пара</span>
           </button>
@@ -835,7 +1011,7 @@
         </div>
 
         <div>
-          <h2 class="envelope-title" id="briefing-title">Похищение вечера</h2>
+          <h2 class="envelope-title serif-title" id="briefing-title">Похищение вечера</h2>
           <p class="envelope-subtitle" id="briefing-subtitle">Секретный стилист, артефакты со смыслом и слепая дегустация</p>
         </div>
 
@@ -908,7 +1084,7 @@
               <div class="task-header">
                 <div>
                   <div class="task-badge-variant">ОСНОВНОЙ ВАРИАНТ</div>
-                  <h3 class="task-title" id="front-task-title">Секретный стилист</h3>
+                  <h3 class="task-title serif-title" id="front-task-title">Секретный стилист</h3>
                 </div>
                 <div class="task-time-badge">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
@@ -946,7 +1122,7 @@
               <div class="task-header">
                 <div>
                   <div class="task-badge-variant" style="color:var(--rose-primary);">ДРУГОЙ ВАРИАНТ</div>
-                  <h3 class="task-title" id="back-task-title">Домашние титулы</h3>
+                  <h3 class="task-title serif-title" id="back-task-title">Домашние титулы</h3>
                 </div>
                 <div class="task-time-badge" style="background:rgba(255,59,112,0.15); color:var(--rose-primary);">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
@@ -988,8 +1164,7 @@
         </button>
         
         <button class="btn-complete-step" id="btn-complete-step" disabled>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
-          <span id="btn-complete-step-label">Мы сделали это! (+10 XP)</span>
+          <span id="btn-complete-step-label">✦ Мы сделали это! (+10 XP) ›</span>
         </button>
 
         <div class="scratch-secondary-actions">
@@ -1017,8 +1192,8 @@
           <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 5h-2V3H7v2H5c-1.1 0-2 .9-2 2v1c0 2.55 1.92 4.63 4.39 4.94A5.01 5.01 0 0 0 11 15.9V19H7v2h10v-2h-4v-3.1a5.01 5.01 0 0 0 3.61-2.96C19.08 12.63 21 10.55 21 8V7c0-1.1-.9-2-2-2zM5 8V7h2v3.82C5.84 10.4 5 9.3 5 8zm14 0c0 1.3-.84 2.4-2 2.82V7h2v1z"/></svg>
         </div>
 
-        <h2 class="celebration-title">Приключение завершено!</h2>
-        <div class="celebration-quest-name" id="celebration-quest-name">«Похищение вечера»</div>
+        <h2 class="celebration-title serif-title">Приключение завершено!</h2>
+        <div class="celebration-quest-name serif-title" id="celebration-quest-name">«Похищение вечера»</div>
         <p class="celebration-desc">
           Вы провели этот вечер вместе, выполнили задания и создали тёплое общее воспоминание!
         </p>
@@ -1067,7 +1242,7 @@
         <div class="walkthrough-header">
           <div>
             <span class="walkthrough-tag">Интерактивный гид</span>
-            <h2 class="walkthrough-title">Как устроен вечер</h2>
+            <h2 class="walkthrough-title serif-title">Как устроен вечер</h2>
           </div>
           <button class="sheet-close-btn" id="btn-close-walkthrough" aria-label="Закрыть">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
@@ -1082,7 +1257,7 @@
             <div class="wt-slide-icon">
               <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.4 5.6L20 10l-4.4 4.3 1.1 6.1L12 17.3 7.3 20.4l1.1-6.1L4 10l5.6-2.4L12 2z"/></svg>
             </div>
-            <h3 class="wt-slide-title">1. Выберите настроение вечера</h3>
+            <h3 class="wt-slide-title serif-title">1. Выберите настроение вечера</h3>
             <p class="wt-slide-text">
               Романтика, флирт, уют или спонтанность. Алгоритм подберёт 4 секретных задания с учётом ваших личных границ и времени.
             </p>
@@ -1109,7 +1284,7 @@
             <div class="wt-slide-icon">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11.24V7.5a2.5 2.5 0 0 1 5 0v3.74c1.21-.81 2-2.18 2-3.74C16 5.01 13.99 3 11.5 3S7 5.01 7 7.5c0 1.56.79 2.93 2 3.74zm9.84 4.63l-4.54-2.26c-.17-.07-.35-.11-.54-.11H13v-6c0-.83-.67-1.5-1.5-1.5S10 6.67 10 7.5v10.74l-3.44-.72c-.15-.03-.31-.05-.47-.05-.62 0-1.18.25-1.59.66l-.77.77 5.74 5.74c.48.48 1.13.76 1.82.76h7.52c1.08 0 1.99-.79 2.14-1.86l.78-5.46c.16-1.13-.53-2.18-1.5-2.26z"/></svg>
             </div>
-            <h3 class="wt-slide-title">2. Сотрите защитный слой пальцем</h3>
+            <h3 class="wt-slide-title serif-title">2. Сотрите защитный слой пальцем</h3>
             <p class="wt-slide-text">
               Каждое задание скрыто под напылением. Стирайте пальцем или курсором, как настоящий лотерейный билет!
             </p>
@@ -1135,7 +1310,7 @@
             <div class="wt-slide-icon">
               <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 5h-2V3H7v2H5c-1.1 0-2 .9-2 2v1c0 2.55 1.92 4.63 4.39 4.94A5.01 5.01 0 0 0 11 15.9V19H7v2h10v-2h-4v-3.1a5.01 5.01 0 0 0 3.61-2.96C19.08 12.63 21 10.55 21 8V7c0-1.1-.9-2-2-2zM5 8V7h2v3.82C5.84 10.4 5 9.3 5 8zm14 0c0 1.3-.84 2.4-2 2.82V7h2v1z"/></svg>
             </div>
-            <h3 class="wt-slide-title">3. Выполняйте шаги вдвоём</h3>
+            <h3 class="wt-slide-title serif-title">3. Выполняйте шаги вдвоём</h3>
             <p class="wt-slide-text">
               Телефон переходит по кругу от одного к другому. За каждый пройденный этап вы получаете XP, открываете редкие значки и новые рубашки карт.
             </p>

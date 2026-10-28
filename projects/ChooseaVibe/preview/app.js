@@ -1892,37 +1892,19 @@ class ScratchCanvasController {
     const ctx = this.ctx;
     ctx.globalCompositeOperation = 'source-over';
 
+    // 1. Dark-graphite wine background with soft metallic gradient
     let grad = ctx.createLinearGradient(0, 0, w, h);
-    if (themeId === 'cozy_kraft') {
-      grad.addColorStop(0, '#D2B48C');
-      grad.addColorStop(0.5, '#C19A6B');
-      grad.addColorStop(1, '#8B5A2B');
-    } else if (themeId === 'rose_gold') {
-      grad.addColorStop(0, '#F7D2D2');
-      grad.addColorStop(0.5, '#E8A598');
-      grad.addColorStop(1, '#B76E79');
-    } else if (themeId === 'starry_midnight') {
-      grad.addColorStop(0, '#1B2735');
-      grad.addColorStop(0.5, '#0E131E');
-      grad.addColorStop(1, '#283E5C');
-    } else if (themeId === 'shining_holo') {
-      grad.addColorStop(0, '#FF9A9E');
-      grad.addColorStop(0.35, '#FECFEF');
-      grad.addColorStop(0.7, '#A1C4FD');
-      grad.addColorStop(1, '#C2E9FB');
-    } else {
-      // Classic Silver
-      grad.addColorStop(0, '#E8E8EC');
-      grad.addColorStop(0.35, '#B0B0B8');
-      grad.addColorStop(0.7, '#DCDCE2');
-      grad.addColorStop(1, '#8E8E93');
-    }
+    grad.addColorStop(0.0, '#221524');
+    grad.addColorStop(0.25, '#352134');
+    grad.addColorStop(0.5, '#251726');
+    grad.addColorStop(0.75, '#382236');
+    grad.addColorStop(1.0, '#1A0E1C');
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, w, h);
 
-    // Sparkle texture
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.08)';
-    for (let i = 0; i < 350; i++) {
+    // Subtle metallic sparkle dust
+    ctx.fillStyle = 'rgba(255, 214, 190, 0.06)';
+    for (let i = 0; i < 300; i++) {
       const rx = Math.random() * w;
       const ry = Math.random() * h;
       const r = Math.random() * 1.5;
@@ -1931,66 +1913,116 @@ class ScratchCanvasController {
       ctx.fill();
     }
 
-    // Decorative Border
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
-    ctx.lineWidth = 1.5;
-    ctx.strokeRect(12, 12, w - 24, h - 24);
+    // 2. Elegant double contour golden-pink border
+    ctx.strokeStyle = 'rgba(226, 194, 179, 0.45)'; // warm gold
+    ctx.lineWidth = 1.2;
+    ctx.strokeRect(10, 10, w - 20, h - 20);
 
-    // Central Wax Seal Aesthetic Badge
-    const cx = w / 2;
-    const cy = h / 2 - 15;
+    ctx.strokeStyle = 'rgba(224, 90, 122, 0.35)'; // rose pink
+    ctx.lineWidth = 0.8;
+    ctx.strokeRect(14, 14, w - 28, h - 28);
+
+    // Corner decorative accents
+    const corners = [
+      [14, 14],
+      [w - 14, 14],
+      [14, h - 14],
+      [w - 14, h - 14]
+    ];
+    ctx.fillStyle = '#E2C2B3';
+    corners.forEach(([cx, cy]) => {
+      ctx.beginPath();
+      ctx.arc(cx, cy, 2, 0, Math.PI * 2);
+      ctx.fill();
+    });
+
+    const centerX = w / 2;
+
+    // 3. Elegant 'CHOOSE A VIBE' in serif font with wide letter-spacing
+    ctx.save();
+    ctx.font = '600 12px "Playfair Display", Georgia, "Times New Roman", serif';
+    ctx.fillStyle = '#E2C2B3';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('C H O O S E   A   V I B E', centerX, 36);
+    ctx.restore();
+
+    // 4. Central Circle with dashed border & golden sparkle ✦
+    const centerY = h / 2 - 10;
+    const radius = 64;
 
     ctx.save();
-    ctx.shadowColor = 'rgba(0, 0, 0, 0.35)';
-    ctx.shadowBlur = 16;
-    ctx.shadowOffsetY = 4;
+    // Soft shadow behind seal
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.45)';
+    ctx.shadowBlur = 18;
+    ctx.shadowOffsetY = 6;
 
-    ctx.fillStyle = 'rgba(20, 21, 28, 0.85)';
+    // Dark-wine circle background
+    ctx.fillStyle = 'rgba(22, 14, 25, 0.92)';
     ctx.beginPath();
-    ctx.arc(cx, cy, 64, 0, Math.PI * 2);
+    ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
     ctx.fill();
+    ctx.restore();
 
-    ctx.strokeStyle = '#FFD166';
-    ctx.lineWidth = 2.5;
+    // Dashed golden-pink border around central circle
+    ctx.save();
+    ctx.setLineDash([5, 4]);
+    ctx.strokeStyle = 'rgba(226, 194, 179, 0.75)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, radius - 4, 0, Math.PI * 2);
     ctx.stroke();
     ctx.restore();
 
-    ctx.strokeStyle = 'rgba(255, 209, 102, 0.4)';
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.arc(cx, cy, 56, 0, Math.PI * 2);
-    ctx.stroke();
-
-    // Draw 4-point golden sparkle star (no text emojis)
+    // 4-point golden sparkle ✦
     ctx.fillStyle = '#FFD166';
     ctx.beginPath();
+    const starR = 15;
+    const innerR = 4;
+    const starCenterY = centerY - 18;
     for (let i = 0; i < 8; i++) {
-      const radius = i % 2 === 0 ? 14 : 4;
+      const rad = i % 2 === 0 ? starR : innerR;
       const angle = (i * Math.PI) / 4 - Math.PI / 2;
-      const sx = cx + Math.cos(angle) * radius;
-      const sy = (cy - 14) + Math.sin(angle) * radius;
+      const sx = centerX + Math.cos(angle) * rad;
+      const sy = starCenterY + Math.sin(angle) * rad;
       if (i === 0) ctx.moveTo(sx, sy);
       else ctx.lineTo(sx, sy);
     }
     ctx.closePath();
     ctx.fill();
 
-    ctx.font = 'bold 13px -apple-system, BlinkMacSystemFont, sans-serif';
+    // 5. Inscriptions: "ЭТАП ${stepIndex}" and "Стирай защитный слой"
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+
+    ctx.font = 'bold 13px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
     ctx.fillStyle = '#FFFFFF';
-    ctx.fillText('ЭТАП ' + stepIndex, cx, cy + 12);
+    ctx.fillText('ЭТАП ' + stepIndex, centerX, centerY + 12);
 
-    ctx.font = '600 11px -apple-system, BlinkMacSystemFont, sans-serif';
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
-    ctx.fillText('Стирай защитный слой', cx, cy + 28);
+    ctx.font = '500 11px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+    ctx.fillStyle = 'rgba(235, 235, 245, 0.75)';
+    ctx.fillText('Стирай защитный слой', centerX, centerY + 28);
 
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.65)';
+    // 6. Capsule badge with partner's name
+    const badgeW = 180;
+    const badgeH = 32;
+    const badgeY = centerY + radius + 22;
+
+    ctx.fillStyle = 'rgba(26, 18, 30, 0.88)';
+    ctx.strokeStyle = 'rgba(226, 194, 179, 0.25)';
+    ctx.lineWidth = 1;
     ctx.beginPath();
-    ctx.roundRect(cx - 90, cy + 95, 180, 32, 16);
+    if (typeof ctx.roundRect === 'function') {
+      ctx.roundRect(centerX - badgeW / 2, badgeY, badgeW, badgeH, 16);
+    } else {
+      ctx.rect(centerX - badgeW / 2, badgeY, badgeW, badgeH);
+    }
     ctx.fill();
+    ctx.stroke();
 
-    ctx.fillStyle = '#FFD166';
-    ctx.font = 'bold 12px -apple-system, BlinkMacSystemFont, sans-serif';
-    ctx.fillText('Ход: ' + (partnerName || 'Партнёр'), cx, cy + 111);
+    ctx.fillStyle = '#E2C2B3';
+    ctx.font = '600 12px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+    ctx.fillText('Ход: ' + (partnerName || 'Партнёр'), centerX, badgeY + badgeH / 2);
   }
 
   getCoordinates(e) {
@@ -2411,10 +2443,55 @@ class UIController {
     // Header Profile Avatar/Gear Button
     const btnHeaderProfile = document.getElementById('btn-header-profile');
     if (btnHeaderProfile) {
-      btnHeaderProfile.addEventListener('click', () => {
+      btnHeaderProfile.addEventListener('click', (e) => {
+        if (e) e.preventDefault();
         Sound.playHaptic();
         this.switchTab('tab-pair');
       });
+    }
+
+    // Today Tab: Budget Cycler in Couple Status Card
+    const metricBudgetText = document.getElementById('metric-budget-text');
+    if (metricBudgetText) {
+      const handleBudgetCycle = (e) => {
+        if (e) {
+          e.stopPropagation();
+          e.preventDefault();
+        }
+        const budgets = [0, 2000, 5000, 15000];
+        const cur = (this.pickerCriteria && typeof this.pickerCriteria.budget === 'number') ? this.pickerCriteria.budget : 2000;
+        let nextIdx = budgets.indexOf(cur) + 1;
+        if (nextIdx >= budgets.length || nextIdx < 0) nextIdx = 0;
+        const nextBudget = budgets[nextIdx];
+        this.pickerCriteria.budget = nextBudget;
+
+        // Sync active state on bottom sheet chips if present
+        document.querySelectorAll('.filter-chip[data-budget]').forEach(c => {
+          c.classList.toggle('active', parseInt(c.dataset.budget, 10) === nextBudget);
+        });
+
+        Sound.playHaptic();
+        this.render();
+
+        let toastText = '';
+        if (nextBudget === 0) {
+          toastText = '0 ₸ (Бесплатно)';
+        } else if (nextBudget === 2000) {
+          toastText = 'Бюджет: до 2 000 ₸';
+        } else if (nextBudget === 5000) {
+          toastText = 'Бюджет: до 5 000 ₸';
+        } else {
+          toastText = 'Без лимита (до 15 000 ₸)';
+        }
+        this.showToast(toastText);
+      };
+
+      metricBudgetText.addEventListener('click', handleBudgetCycle);
+      const parentCol = metricBudgetText.closest('.status-metric-col');
+      if (parentCol) {
+        parentCol.removeAttribute('onclick');
+        parentCol.addEventListener('click', handleBudgetCycle);
+      }
     }
 
     // Today Tab: 2x2 Vibe Tiles Grid
@@ -2434,14 +2511,16 @@ class UIController {
     // Today Tab: Start Evening CTA Button
     const startBtn = document.getElementById('btn-start-evening') || document.getElementById('btn-today-pick-vibe');
     if (startBtn) {
-      startBtn.addEventListener('click', () => {
+      startBtn.addEventListener('click', (e) => {
+        if (e) e.preventDefault();
         Sound.playHaptic();
         this.runMatcher();
       });
     }
     const legacyStartBtn = document.getElementById('btn-today-pick-vibe');
     if (legacyStartBtn && legacyStartBtn !== startBtn) {
-      legacyStartBtn.addEventListener('click', () => {
+      legacyStartBtn.addEventListener('click', (e) => {
+        if (e) e.preventDefault();
         Sound.playHaptic();
         this.runMatcher();
       });
@@ -2782,11 +2861,11 @@ class UIController {
     if (headerTitle) {
       const titles = {
         'tab-today': 'Сегодня',
-        'tab-path': 'Путь',
-        'tab-collection': 'Коллекция',
-        'tab-pair': 'Пара'
+        'tab-path': 'Путь <span style="color:#E05A7A; font-size:24px;">✦</span>',
+        'tab-collection': 'Коллекция <span style="color:#E05A7A; font-size:24px;">✦</span>',
+        'tab-pair': 'Пара <span style="color:#E05A7A; font-size:24px;">♡</span>'
       };
-      headerTitle.textContent = titles[this.currentTabId] || 'Сегодня';
+      headerTitle.innerHTML = titles[this.currentTabId] || 'Сегодня';
     }
 
     const fab = document.getElementById('btn-open-vibe-sheet');
@@ -2869,8 +2948,16 @@ class UIController {
 
     const metricBudgetText = document.getElementById('metric-budget-text');
     if (metricBudgetText) {
-      const budget = (this.pickerCriteria && typeof this.pickerCriteria.budget !== 'undefined') ? this.pickerCriteria.budget : 0;
-      metricBudgetText.textContent = `${budget === 0 ? '0 ₸' : 'до ' + budget + ' ₸'}`;
+      const budget = (this.pickerCriteria && typeof this.pickerCriteria.budget !== 'undefined') ? this.pickerCriteria.budget : 2000;
+      if (budget === 0) {
+        metricBudgetText.textContent = '0 ₸';
+      } else if (budget === 2000) {
+        metricBudgetText.textContent = 'до 2000 ₸';
+      } else if (budget === 5000) {
+        metricBudgetText.textContent = 'до 5000 ₸';
+      } else {
+        metricBudgetText.textContent = 'до 15000 ₸';
+      }
     }
 
     this.renderToday();
@@ -2976,16 +3063,27 @@ class UIController {
     const completedCount = chapterAdventures.filter(a => completedIds.has(a.id)).length;
 
     if (progressEl) {
-      progressEl.textContent = isChapterUnlocked ? `${completedCount} из 4 открыто` : 'Заблокировано';
+      progressEl.textContent = `○ ${completedCount} из 4 открыто`;
       progressEl.classList.toggle('completed', completedCount === 4);
     }
 
     if (!trailContainer) return;
     trailContainer.innerHTML = '';
 
-    // Render clean native iOS vertical steps
+    // Thematic step icons:
+    // Step 1: Heart ♥ (Pink)
+    // Step 2: Coffee cup ☕
+    // Step 3: Mountain/trail ⛰
+    // Step 4: Smartphone 📱
+    const STEP_ICONS = [
+      '<svg width="22" height="22" viewBox="0 0 24 24" fill="#E05A7A"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>',
+      '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#E2C2B3" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8h1a4 4 0 0 1 0 8h-1"></path><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"></path><line x1="6" y1="1" x2="6" y2="4"></line><line x1="10" y1="1" x2="10" y2="4"></line><line x1="14" y1="1" x2="14" y2="4"></line></svg>',
+      '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#E2C2B3" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m8 3 4 8 5-5 5 15H2L8 3z"></path><path d="M4.14 15h15.72"></path></svg>',
+      '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#E2C2B3" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect><line x1="12" y1="18" x2="12.01" y2="18"></line></svg>'
+    ];
+
     chapterAdventures.forEach((adv, idx) => {
-      const questNum = (chapter.chapterNumber - 1) * 4 + (idx + 1);
+      const stepNum = idx + 1;
       const isCompleted = completedIds.has(adv.id);
       const isActive = State.activeSession && State.activeSession.adventureId === adv.id;
       const isCurrent = isActive || (isChapterUnlocked && !isCompleted && (idx === 0 || completedIds.has(chapterAdventures[idx - 1].id)));
@@ -2999,27 +3097,52 @@ class UIController {
         stateClass = 'available';
       }
 
+      // Vertical timeline row: left axis col with dot + card
+      const row = document.createElement('div');
+      row.className = 'path-timeline-row';
+
+      // Left axis column
+      const axisCol = document.createElement('div');
+      axisCol.className = 'timeline-axis-col';
+
+      const dot = document.createElement('div');
+      if (isCurrent) {
+        dot.className = 'timeline-axis-dot active';
+      } else if (isCompleted) {
+        dot.className = 'timeline-axis-dot completed';
+      } else {
+        dot.className = 'timeline-axis-dot hollow';
+      }
+      axisCol.appendChild(dot);
+
+      // Step card
       const card = document.createElement('div');
       card.className = `path-step-card ${stateClass}`;
       card.setAttribute('role', 'button');
       card.setAttribute('tabindex', '0');
       card.dataset.advId = adv.id;
 
-      // Sphere (52x52px)
-      const sphere = document.createElement('div');
-      sphere.className = `path-step-sphere ${stateClass}`;
+      // Icon wrap: circle + step number badge
+      const iconWrap = document.createElement('div');
+      iconWrap.className = 'path-step-icon-wrap';
+
+      const iconCircle = document.createElement('div');
+      iconCircle.className = `path-step-icon-circle ${isCurrent ? 'current' : ''}`;
 
       if (isCompleted) {
-        sphere.innerHTML = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#30D158" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
-      } else if (isCurrent) {
-        sphere.innerHTML = '<svg width="22" height="22" viewBox="0 0 24 24" fill="#FFFFFF"><path d="M12 2l2.4 5.6L20 10l-4.4 4.3 1.1 6.1L12 17.3 7.3 20.4l1.1-6.1L4 10l5.6-2.4L12 2z"/></svg>';
-      } else if (!isChapterUnlocked) {
-        sphere.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>';
+        iconCircle.innerHTML = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#30D158" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
       } else {
-        sphere.innerHTML = `<span class="step-num">${questNum}</span>`;
+        iconCircle.innerHTML = STEP_ICONS[idx % STEP_ICONS.length];
       }
 
-      // Step Info
+      const numBadge = document.createElement('div');
+      numBadge.className = `path-step-num-badge ${isCurrent ? 'active' : ''}`;
+      numBadge.textContent = String(stepNum);
+
+      iconWrap.appendChild(iconCircle);
+      iconWrap.appendChild(numBadge);
+
+      // Step info
       const info = document.createElement('div');
       info.className = 'path-step-info';
       const singleVibe = (adv.vibes && adv.vibes[0]) ? adv.vibes[0] : 'Приключение';
@@ -3034,13 +3157,9 @@ class UIController {
       // Chevron
       const chevron = document.createElement('div');
       chevron.className = 'path-step-chevron';
-      chevron.innerHTML = `
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-          <polyline points="9 18 15 12 9 6"></polyline>
-        </svg>
-      `;
+      chevron.textContent = '›';
 
-      card.appendChild(sphere);
+      card.appendChild(iconWrap);
       card.appendChild(info);
       card.appendChild(chevron);
 
@@ -3055,14 +3174,9 @@ class UIController {
         });
       }
 
-      trailContainer.appendChild(card);
-
-      // Clean vertical connector between nodes (never crosses text)
-      if (idx < chapterAdventures.length - 1) {
-        const connector = document.createElement('div');
-        connector.className = 'path-step-connector';
-        trailContainer.appendChild(connector);
-      }
+      row.appendChild(axisCol);
+      row.appendChild(card);
+      trailContainer.appendChild(row);
     });
 
     // Keep fallback chapters map updated
@@ -3714,7 +3828,7 @@ class UIController {
       btnSkip.disabled = !scratched;
       btnQuickReveal.style.display = scratched ? 'none' : 'block';
       const xpAmount = session.isReplay ? 5 : 10;
-      document.getElementById('btn-complete-step-label').textContent = `Мы сделали это! (+${xpAmount} XP)`;
+      document.getElementById('btn-complete-step-label').textContent = `✦ Мы сделали это! (+${xpAmount} XP) ›`;
     };
 
     updateButtons(session.isCurrentCardScratched);

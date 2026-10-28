@@ -141,12 +141,12 @@ public enum AppTheme {
 
     // MARK: 1. Системные цвета и фоны
 
-    public static let midnightBg = Color(red: 0.0, green: 0.0, blue: 0.0) // #000000 iOS 18 Dark Mode
-    public static let primaryRose = Color(red: 1.00, green: 0.22, blue: 0.37) // #FF375F iOS Pink
-    public static let warmGold = Color(red: 1.00, green: 0.84, blue: 0.04) // #FFD60A iOS Amber
+    public static let midnightBg = Color(red: 10/255.0, green: 8/255.0, blue: 12/255.0) // #0A080C Cinematic Editorial
+    public static let primaryRose = Color(red: 212/255.0, green: 68/255.0, blue: 106/255.0) // #D4446A Deep Wine Rose
+    public static let warmGold = Color(red: 226/255.0, green: 194/255.0, blue: 179/255.0) // #E2C2B3 Warm Gold Accents
     public static let softText = Color(red: 0.92, green: 0.92, blue: 0.96, opacity: 0.60) // rgba(235, 235, 245, 0.60)
-    public static let cardSurface = Color(red: 22/255.0, green: 22/255.0, blue: 24/255.0) // #161618 (Level 1)
-    public static let cardSurfaceLight = Color(red: 33/255.0, green: 33/255.0, blue: 36/255.0) // #212124 (Level 2)
+    public static let cardSurface = Color(red: 26/255.0, green: 21/255.0, blue: 28/255.0, opacity: 0.78) // Editorial Glass Surface
+    public static let cardSurfaceLight = Color(red: 38/255.0, green: 28/255.0, blue: 40/255.0, opacity: 0.88)
     public static let heroGradient = Gradients.brandPrimary
 
     // MARK: 2. Палитры 5 вайбов
@@ -409,9 +409,13 @@ public enum AppTheme {
 
     public enum Gradients {
         public static let brandPrimary = LinearGradient(
-            colors: [Color(red: 1.00, green: 0.23, blue: 0.44), Color(red: 0.51, green: 0.22, blue: 0.93)],
-            startPoint: .topLeading,
-            endPoint: .bottomTrailing
+            colors: [
+                Color(red: 184/255.0, green: 59/255.0, blue: 94/255.0),
+                Color(red: 224/255.0, green: 90/255.0, blue: 122/255.0),
+                Color(red: 158/255.0, green: 42/255.0, blue: 75/255.0)
+            ],
+            startPoint: .leading,
+            endPoint: .trailing
         )
 
         public static let goldReward = LinearGradient(
@@ -455,19 +459,58 @@ public enum AppTheme {
     }
 }
 
+// MARK: - Журнальная типографика Serif (Editorial Serif Design)
+
+public extension Font {
+    /// Крупный журнальный заголовок антиквой (34pt Serif Bold)
+    static var editorialLargeTitle: Font {
+        .system(size: 34, weight: .bold, design: .serif)
+    }
+
+    /// Заголовок антиквой первого уровня (28pt Serif Bold)
+    static var editorialTitle1: Font {
+        .system(size: 28, weight: .bold, design: .serif)
+    }
+
+    /// Заголовок антиквой второго уровня (22pt Serif Bold)
+    static var editorialTitle2: Font {
+        .system(size: 22, weight: .bold, design: .serif)
+    }
+
+    /// Заголовок антиквой третьего уровня (20pt Serif Semibold)
+    static var editorialTitle3: Font {
+        .system(size: 20, weight: .semibold, design: .serif)
+    }
+
+    /// Акцентный подзаголовок или цитата антиквой (17pt Serif Medium)
+    static var editorialHeadline: Font {
+        .system(size: 17, weight: .medium, design: .serif)
+    }
+
+    /// Настраиваемый журнальный шрифт с засечками (.serif)
+    static func editorialSerif(size: CGFloat, weight: Font.Weight = .bold) -> Font {
+        .system(size: size, weight: weight, design: .serif)
+    }
+}
+
 // MARK: - Модификаторы представлений SwiftUI
 
-/// Стиль основной карточки задания
+/// Стиль основной карточки задания в кинематографичном винном стиле
 public struct VibeCardModifier: ViewModifier {
-    var backgroundColor: Color = Color.white
+    var backgroundColor: Color = AppTheme.cardSurface
     var cornerRadius: CGFloat = AppTheme.CornerRadius.card
+    var borderColor: Color = AppTheme.warmGold.opacity(0.12)
 
     public func body(content: Content) -> some View {
         content
             .background(backgroundColor)
             .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                    .stroke(borderColor, lineWidth: 1)
+            )
             .shadow(
-                color: AppTheme.Shadows.cardShadowColor,
+                color: Color.black.opacity(0.40),
                 radius: AppTheme.Shadows.cardShadowRadius,
                 x: AppTheme.Shadows.cardShadowX,
                 y: AppTheme.Shadows.cardShadowY
@@ -489,12 +532,13 @@ public struct VibeGlowModifier: ViewModifier {
 // MARK: - Расширения View для лаконичного синтаксиса
 
 public extension View {
-    /// Оформление карточки с закруглёнными углами и мягкой тенью
+    /// Оформление карточки с закруглёнными углами, золотисто-розовым контуром и глубокой тенью
     func vibeCardStyle(
-        backgroundColor: Color = Color.white,
-        cornerRadius: CGFloat = AppTheme.CornerRadius.card
+        backgroundColor: Color = AppTheme.cardSurface,
+        cornerRadius: CGFloat = AppTheme.CornerRadius.card,
+        borderColor: Color = AppTheme.warmGold.opacity(0.12)
     ) -> some View {
-        modifier(VibeCardModifier(backgroundColor: backgroundColor, cornerRadius: cornerRadius))
+        modifier(VibeCardModifier(backgroundColor: backgroundColor, cornerRadius: cornerRadius, borderColor: borderColor))
     }
 
     /// Добавление атмосферного свечения вайба
@@ -505,7 +549,7 @@ public extension View {
 
 // MARK: - Стили интерактивных кнопок
 
-/// Главная акцентная кнопка действия
+/// Главная акцентная кнопка действия в Cinematic Editorial стиле
 public struct VibePrimaryButtonStyle: ButtonStyle {
     var gradient: LinearGradient = AppTheme.Gradients.brandPrimary
     var isEnabled: Bool = true
@@ -523,16 +567,20 @@ public struct VibePrimaryButtonStyle: ButtonStyle {
             .frame(height: 54)
             .background(
                 gradient
-                    .opacity(isEnabled ? (configuration.isPressed ? 0.85 : 1.0) : 0.4)
+                    .opacity(isEnabled ? (configuration.isPressed ? 0.88 : 1.0) : 0.4)
             )
             .clipShape(RoundedRectangle(cornerRadius: AppTheme.CornerRadius.medium, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: AppTheme.CornerRadius.medium, style: .continuous)
+                    .stroke(Color.white.opacity(0.18), lineWidth: 1)
+            )
             .scaleEffect(configuration.isPressed ? 0.98 : 1.0)
             .animation(.easeInOut(duration: 0.15), value: configuration.isPressed)
             .shadow(
-                color: Color.black.opacity(configuration.isPressed ? 0.05 : 0.15),
-                radius: 10,
+                color: AppTheme.primaryRose.opacity(configuration.isPressed ? 0.15 : 0.35),
+                radius: 14,
                 x: 0,
-                y: 5
+                y: 6
             )
     }
 }
@@ -547,8 +595,12 @@ public struct VibeSecondaryButtonStyle: ButtonStyle {
             .foregroundColor(Color.primary)
             .frame(maxWidth: .infinity)
             .frame(height: 54)
-            .background(Color.secondary.opacity(configuration.isPressed ? 0.20 : 0.12))
+            .background(Color.white.opacity(configuration.isPressed ? 0.14 : 0.08))
             .clipShape(RoundedRectangle(cornerRadius: AppTheme.CornerRadius.medium, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: AppTheme.CornerRadius.medium, style: .continuous)
+                    .stroke(Color.white.opacity(0.10), lineWidth: 1)
+            )
             .scaleEffect(configuration.isPressed ? 0.98 : 1.0)
             .animation(.easeInOut(duration: 0.15), value: configuration.isPressed)
     }
