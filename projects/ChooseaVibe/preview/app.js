@@ -4083,8 +4083,29 @@ class UIController {
 }
 
 // =============================================================================
-// 9. APP INITIALIZATION ON DOM READY
+// 9. APP INITIALIZATION ON DOM READY & PWA ARCHITECTURE
 // =============================================================================
+
+// Standalone mode detection for iOS Safari & PWA
+function detectStandaloneMode() {
+  const isStandalone = window.navigator.standalone === true ||
+    window.matchMedia('(display-mode: standalone)').matches ||
+    window.matchMedia('(display-mode: fullscreen)').matches;
+
+  if (isStandalone && document.body) {
+    document.body.classList.add('is-standalone');
+  }
+}
+
+// Service Worker Registration
+if ('serviceWorker' in navigator && (window.location.protocol === 'https:' || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.hostname.startsWith('192.168.'))) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js').catch(err => console.log('SW registration error:', err));
+  });
+}
+
 document.addEventListener('DOMContentLoaded', () => {
+  detectStandaloneMode();
   window.ChooseAVibeApp = window.app = new UIController();
 });
+

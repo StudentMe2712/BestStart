@@ -4832,3 +4832,140 @@ body {
     padding-bottom: calc(env(safe-area-inset-bottom, 20px) + 20px);
   }
 }
+
+/* ==========================================================================
+   iOS Safari Standalone PWA Architecture Mode
+   Triggered natively via (display-mode: standalone) / (display-mode: fullscreen)
+   or dynamically via .is-standalone body class
+   ========================================================================== */
+@media all and (display-mode: standalone), (display-mode: fullscreen) {
+  html,
+  body {
+    height: 100dvh;
+    overflow: hidden;
+    background: #0A080C;
+    overscroll-behavior: none;
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .dev-tools-bar {
+    display: none !important;
+  }
+
+  .device-button,
+  .device-container::before {
+    display: none !important;
+  }
+
+  .ios-status-bar,
+  .ios-home-indicator {
+    display: none !important;
+  }
+
+  .device-container,
+  .device-container.iphone-screen {
+    width: 100vw;
+    height: 100dvh;
+    max-width: none !important;
+    max-height: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    border: none !important;
+  }
+
+  .ios-large-header,
+  .couple-header {
+    padding-top: max(env(safe-area-inset-top), 20px);
+  }
+
+  .ios-tab-bar,
+  .ios-tabbar {
+    padding-bottom: max(env(safe-area-inset-bottom), 16px);
+    height: calc(64px + env(safe-area-inset-bottom));
+  }
+
+  .screen-scroll-area {
+    padding-bottom: calc(120px + max(env(safe-area-inset-bottom), 16px));
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-y: contain;
+  }
+
+  .bottom-dock {
+    padding-bottom: max(env(safe-area-inset-bottom), 16px);
+  }
+
+  .modal-fullscreen-view {
+    padding-top: max(env(safe-area-inset-top), 20px);
+    padding-bottom: max(env(safe-area-inset-bottom), 20px);
+  }
+}
+
+body.is-standalone {
+  height: 100dvh;
+  overflow: hidden;
+  background: #0A080C;
+  overscroll-behavior: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html:has(body.is-standalone) {
+  height: 100dvh;
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+body.is-standalone .dev-tools-bar {
+  display: none !important;
+}
+
+body.is-standalone .device-button,
+body.is-standalone .device-container::before {
+  display: none !important;
+}
+
+body.is-standalone .ios-status-bar,
+body.is-standalone .ios-home-indicator {
+  display: none !important;
+}
+
+body.is-standalone .device-container,
+body.is-standalone .device-container.iphone-screen {
+  width: 100vw;
+  height: 100dvh;
+  max-width: none !important;
+  max-height: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  border: none !important;
+}
+
+body.is-standalone .ios-large-header,
+body.is-standalone .couple-header {
+  padding-top: max(env(safe-area-inset-top), 20px);
+}
+
+body.is-standalone .ios-tab-bar,
+body.is-standalone .ios-tabbar {
+  padding-bottom: max(env(safe-area-inset-bottom), 16px);
+  height: calc(64px + env(safe-area-inset-bottom));
+}
+
+body.is-standalone .screen-scroll-area {
+  padding-bottom: calc(120px + max(env(safe-area-inset-bottom), 16px));
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+}
+
+body.is-standalone .bottom-dock {
+  padding-bottom: max(env(safe-area-inset-bottom), 16px);
+}
+
+body.is-standalone .modal-fullscreen-view {
+  padding-top: max(env(safe-area-inset-top), 20px);
+  padding-bottom: max(env(safe-area-inset-bottom), 20px);
+}
+

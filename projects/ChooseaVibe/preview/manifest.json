@@ -1,17 +1,23 @@
 {
-  "name": "Выбери Вайб: Свидания для пар",
+  "name": "Выбери Вайб — Игры для пар",
   "short_name": "Выбери Вайб",
-  "description": "Веб-симулятор свиданий-приключений для двоих со скретч-картами и сюжетными главами",
+  "description": "Приключения и сюрпризы для двоих на каждый вечер",
   "start_url": "./index.html",
   "display": "standalone",
+  "background_color": "#0A080C",
+  "theme_color": "#0A080C",
   "orientation": "portrait",
-  "background_color": "#09070D",
-  "theme_color": "#2A1228",
   "icons": [
     {
-      "src": "./icon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
       "purpose": "any maskable"
     }
   ]
