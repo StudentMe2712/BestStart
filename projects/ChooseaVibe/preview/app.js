@@ -2508,13 +2508,13 @@ class UIController {
       });
     });
 
-    // Today Tab: Start Evening CTA Button
+    // Today Tab: Start Evening CTA Button -> Opens Vibe Picker Modal Sheet
     const startBtn = document.getElementById('btn-start-evening') || document.getElementById('btn-today-pick-vibe');
     if (startBtn) {
       startBtn.addEventListener('click', (e) => {
         if (e) e.preventDefault();
         Sound.playHaptic();
-        this.runMatcher();
+        this.openVibeSheet();
       });
     }
     const legacyStartBtn = document.getElementById('btn-today-pick-vibe');
@@ -2522,7 +2522,7 @@ class UIController {
       legacyStartBtn.addEventListener('click', (e) => {
         if (e) e.preventDefault();
         Sound.playHaptic();
-        this.runMatcher();
+        this.openVibeSheet();
       });
     }
 
@@ -2641,11 +2641,13 @@ class UIController {
     });
 
     // Criteria: Vibe toggle (max 2)
-    const vibeChips = document.querySelectorAll('#picker-vibes-list .vibe-chip');
+    const vibeChips = document.querySelectorAll('#picker-vibes-list .sheet-vibe-card, #picker-vibes-list .vibe-chip');
     vibeChips.forEach(chip => {
       chip.addEventListener('click', () => {
         Sound.playHaptic();
         const v = chip.dataset.vibe;
+        if (!v) return;
+        if (!this.pickerCriteria.vibes) this.pickerCriteria.vibes = [];
         const current = this.pickerCriteria.vibes;
         if (current.includes(v)) {
           if (current.length > 1) {
@@ -2655,11 +2657,17 @@ class UIController {
         } else {
           if (current.length >= 2) {
             const first = current.shift();
-            const prevSelected = document.querySelector(`#picker-vibes-list .vibe-chip[data-vibe="${first}"]`);
+            const prevSelected = document.querySelector(`#picker-vibes-list [data-vibe="${first}"]`);
             if (prevSelected) prevSelected.classList.remove('selected');
           }
           current.push(v);
           chip.classList.add('selected');
+        }
+      });
+      chip.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          chip.click();
         }
       });
     });
@@ -2697,12 +2705,25 @@ class UIController {
       });
     });
 
-    // Submit Matcher CTA "Удиви нас"
-    document.getElementById('btn-submit-matcher').addEventListener('click', () => {
-      Sound.playHaptic();
-      this.closeVibeSheet();
-      this.runMatcher();
-    });
+    // Submit Matcher CTA "✦ Начать приключение ›"
+    const submitMatcherBtn = document.getElementById('btn-submit-matcher');
+    if (submitMatcherBtn) {
+      submitMatcherBtn.addEventListener('click', () => {
+        Sound.playHaptic();
+        this.closeVibeSheet();
+        this.runMatcher();
+      });
+    }
+
+    // Pure Surprise CTA "🎲 Сделайте всё за нас (Чистый сюрприз)"
+    const surprisePureBtn = document.getElementById('btn-surprise-pure');
+    if (surprisePureBtn) {
+      surprisePureBtn.addEventListener('click', () => {
+        Sound.playHaptic();
+        this.closeVibeSheet();
+        this.runPureSurprise();
+      });
+    }
 
     // Briefing Actions
     document.getElementById('btn-start-briefing-adventure').addEventListener('click', () => {
@@ -2836,6 +2857,7 @@ class UIController {
   }
 
   openVibeSheet() {
+    this.syncPickerUI();
     this.bottomSheetVibe.classList.add('active');
     this.sheetBackdrop.classList.add('active');
   }
@@ -2843,6 +2865,29 @@ class UIController {
   closeVibeSheet() {
     this.bottomSheetVibe.classList.remove('active');
     this.sheetBackdrop.classList.remove('active');
+  }
+
+  syncPickerUI() {
+    if (!this.pickerCriteria) return;
+    const vibes = this.pickerCriteria.vibes || [];
+    document.querySelectorAll('#picker-vibes-list .sheet-vibe-card, #picker-vibes-list .vibe-chip').forEach(c => {
+      c.classList.toggle('selected', vibes.includes(c.dataset.vibe));
+    });
+    if (this.pickerCriteria.duration) {
+      document.querySelectorAll('#picker-duration-grid .option-chip').forEach(c => {
+        c.classList.toggle('selected', c.dataset.duration === this.pickerCriteria.duration);
+      });
+    }
+    if (typeof this.pickerCriteria.budget !== 'undefined') {
+      document.querySelectorAll('#picker-budget-grid .option-chip').forEach(c => {
+        c.classList.toggle('selected', parseInt(c.dataset.budget, 10) === this.pickerCriteria.budget);
+      });
+    }
+    if (this.pickerCriteria.location) {
+      document.querySelectorAll('#picker-location-grid .option-chip').forEach(c => {
+        c.classList.toggle('selected', c.dataset.location === this.pickerCriteria.location);
+      });
+    }
   }
 
   switchTab(tabId) {
@@ -2972,36 +3017,43 @@ class UIController {
     const todayVibesGrid = document.getElementById('today-vibes-grid');
     const btnStartEvening = document.getElementById('btn-start-evening');
     const openGuideBtn = document.getElementById('openGuideBtn');
+    const secretHero = document.getElementById('today-secret-hero') || document.querySelector('.today-secret-hero-card');
     const legacyHero = document.getElementById('today-hero-card');
     const legacyBanner = document.getElementById('active-session-banner');
     const legacyGuideLink = document.getElementById('banner-open-walkthrough');
 
-    if (State.activeSession && !State.activeSession.isFinished) {
+    const hasActiveSession = Boolean(State.activeSession && !State.activeSession.isFinished);
+
+    if (hasActiveSession) {
+      if (secretHero) secretHero.style.display = 'none';
+      if (todayStatusCard) todayStatusCard.style.display = 'none';
+      if (todayVibesGrid) todayVibesGrid.style.display = 'none';
+      if (btnStartEvening) btnStartEvening.style.display = 'none';
+      if (openGuideBtn) openGuideBtn.style.display = 'none';
+      if (legacyHero) legacyHero.style.display = 'none';
+      if (legacyGuideLink) legacyGuideLink.style.display = 'none';
+      if (legacyBanner) legacyBanner.style.display = 'flex';
+
       const adv = EMBEDDED_CATALOG.adventures.find(a => a.id === State.activeSession.adventureId);
-      if (adv) {
-        if (todayBanner) {
-          todayBanner.style.display = 'flex';
-          const bannerDesc = document.getElementById('banner-quest-title');
-          if (bannerDesc) {
-            bannerDesc.textContent = `${adv.title} (Этап ${State.activeSession.currentStepIndex} из 4)`;
-          }
+      const advTitle = adv ? adv.title : 'Приключение';
+      const stepIdx = (State.activeSession && State.activeSession.currentStepIndex) || 1;
+
+      if (todayBanner) {
+        todayBanner.style.display = 'flex';
+        const bannerDesc = document.getElementById('banner-quest-title');
+        if (bannerDesc) {
+          bannerDesc.textContent = `${advTitle} (Этап ${stepIdx} из 4)`;
         }
-        if (todayStatusCard) todayStatusCard.style.display = 'none';
-        if (todayVibesGrid) todayVibesGrid.style.display = 'none';
-        if (btnStartEvening) btnStartEvening.style.display = 'none';
-        if (openGuideBtn) openGuideBtn.style.display = 'none';
-        if (legacyHero) legacyHero.style.display = 'none';
-        if (legacyGuideLink) legacyGuideLink.style.display = 'none';
-        if (legacyBanner) legacyBanner.style.display = 'flex';
-        const islandTitle = document.getElementById('island-title');
-        const islandSub = document.getElementById('island-sub');
-        if (islandTitle) islandTitle.textContent = adv.title;
-        if (islandSub) islandSub.textContent = `Этап ${State.activeSession.currentStepIndex} из 4`;
       }
+      const islandTitle = document.getElementById('island-title');
+      const islandSub = document.getElementById('island-sub');
+      if (islandTitle) islandTitle.textContent = advTitle;
+      if (islandSub) islandSub.textContent = `Этап ${stepIdx} из 4`;
     } else {
       if (todayBanner) todayBanner.style.display = 'none';
-      if (todayStatusCard) todayStatusCard.style.display = 'block';
-      if (todayVibesGrid) todayVibesGrid.style.display = 'grid';
+      if (secretHero) secretHero.style.display = 'block';
+      if (todayStatusCard) todayStatusCard.style.display = 'none';
+      if (todayVibesGrid) todayVibesGrid.style.display = 'none';
       if (btnStartEvening) btnStartEvening.style.display = 'flex';
       if (openGuideBtn) openGuideBtn.style.display = 'flex';
       if (legacyHero) legacyHero.style.display = 'none';
@@ -3506,6 +3558,51 @@ class UIController {
   }
 
   renderMuseum() {
+    // 0. Update couple status card in Collection tab
+    const statusCard = document.getElementById('collection-status-card');
+    if (statusCard) {
+      statusCard.style.display = 'block';
+    }
+
+    const level = ProgressionEngine.getLevel(State.profile.totalXP);
+    const nextXP = ProgressionEngine.getNextLevelXP(State.profile.totalXP);
+    const progress = ProgressionEngine.getProgress(State.profile.totalXP);
+
+    const widgetLevelBadge = document.getElementById('widget-level-badge');
+    if (widgetLevelBadge) {
+      widgetLevelBadge.textContent = `Уровень ${level.levelNumber} · ${level.title}`;
+    }
+
+    const widgetXpText = document.getElementById('widget-xp-text');
+    if (widgetXpText) {
+      widgetXpText.textContent = `${State.profile.totalXP} / ${nextXP || State.profile.totalXP} XP`;
+    }
+
+    const widgetXpFill = document.getElementById('widget-xp-fill');
+    if (widgetXpFill) {
+      widgetXpFill.style.width = `${Math.round(progress * 100)}%`;
+    }
+
+    const metricCompletedCount = document.getElementById('metric-completed-count');
+    if (metricCompletedCount) {
+      const completedCount = State.finishedSessions.filter(s => s.isFinished).length;
+      metricCompletedCount.textContent = `${completedCount} из ${EMBEDDED_CATALOG.adventures.length}`;
+    }
+
+    const metricBudgetText = document.getElementById('metric-budget-text');
+    if (metricBudgetText) {
+      const budget = (this.pickerCriteria && typeof this.pickerCriteria.budget !== 'undefined') ? this.pickerCriteria.budget : 2000;
+      if (budget === 0) {
+        metricBudgetText.textContent = '0 ₸';
+      } else if (budget === 2000) {
+        metricBudgetText.textContent = 'до 2000 ₸';
+      } else if (budget === 5000) {
+        metricBudgetText.textContent = 'до 5000 ₸';
+      } else {
+        metricBudgetText.textContent = 'до 15000 ₸';
+      }
+    }
+
     const unlockedBadges = new Set(State.profile.unlockedAchievementIds);
     const badgesContainer = document.getElementById('badges-grid-container');
     badgesContainer.innerHTML = '';
@@ -3712,6 +3809,24 @@ class UIController {
       'ch_01'
     );
     this.openBriefing(result.adventure);
+  }
+
+  runPureSurprise() {
+    const completedIds = new Set(State.finishedSessions.filter(s => s.isFinished).map(s => s.adventureId));
+    let candidates = EMBEDDED_CATALOG.adventures.filter(a => {
+      if (State.profile.excludedBoundaries && State.profile.excludedBoundaries.length > 0) {
+        for (const card of a.cards) {
+          const tags = card.boundaryTags || [];
+          if (tags.some(t => State.profile.excludedBoundaries.includes(t))) return false;
+        }
+      }
+      return !completedIds.has(a.id);
+    });
+    if (candidates.length === 0) {
+      candidates = EMBEDDED_CATALOG.adventures;
+    }
+    const picked = candidates[Math.floor(Math.random() * candidates.length)];
+    this.openBriefing(picked);
   }
 
   openBriefing(adventure) {

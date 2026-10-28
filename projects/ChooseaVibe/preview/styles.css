@@ -2422,12 +2422,12 @@ body {
   padding: 8px 20px 40px;
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 18px;
 }
 
 .sheet-header {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
 }
 
@@ -2437,6 +2437,14 @@ body {
   font-weight: 700;
   color: white;
   letter-spacing: -0.01em;
+}
+
+.sheet-subtitle {
+  font-size: 13px;
+  color: #C8B8C2;
+  margin-top: 3px;
+  font-weight: 400;
+  line-height: 1.35;
 }
 
 .sheet-close-btn {
@@ -2474,90 +2482,206 @@ body {
   font-weight: 500;
 }
 
-/* Vibe Pills Selectors */
-.vibe-chips-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+/* 4 Vibe Tiles in Modal Sheet */
+.sheet-vibes-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
-.vibe-chip {
+.sheet-vibe-card {
+  background: rgba(26, 21, 28, 0.78);
+  border-radius: 18px;
+  padding: 14px;
+  border: 1px solid rgba(255, 214, 190, 0.10);
+  min-height: 105px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  cursor: pointer;
+  transition: all 0.25s var(--ease-spring);
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35);
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+
+.sheet-vibe-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(255, 214, 190, 0.25);
+}
+
+.sheet-vibe-card:active {
+  transform: scale(0.97);
+}
+
+.sheet-vibe-bg {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  transition: opacity 0.3s ease;
+}
+
+.sheet-vibe-card[data-vibe="Романтика"] {
+  background: linear-gradient(135deg, rgba(212, 62, 104, 0.88), rgba(120, 28, 58, 0.92));
+}
+
+.sheet-vibe-card[data-vibe="Игривое"] {
+  background: linear-gradient(135deg, rgba(46, 22, 34, 0.94), rgba(26, 12, 20, 0.96));
+}
+
+.sheet-vibe-card[data-vibe="Уютное"] {
+  background: linear-gradient(135deg, rgba(38, 20, 28, 0.94), rgba(22, 11, 17, 0.96));
+}
+
+.sheet-vibe-card[data-vibe="Спонтанное"] {
+  background: linear-gradient(135deg, rgba(32, 16, 38, 0.94), rgba(16, 9, 24, 0.96));
+}
+
+.sheet-vibe-card.selected {
+  border-color: rgba(255, 179, 198, 0.8);
+  box-shadow: 0 8px 24px rgba(212, 68, 106, 0.45);
+  transform: translateY(-2px);
+}
+
+.sheet-vibe-card.selected .sheet-vibe-check {
+  display: flex;
+}
+
+.sheet-vibe-top-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 16px;
-  background: var(--surface-card);
-  border: 1px solid var(--border-glass);
-  border-radius: 14px;
-  cursor: pointer;
-  transition: all 0.2s var(--ease-spring);
+  width: 100%;
+  position: relative;
+  z-index: 2;
 }
 
-.vibe-chip.selected {
-  background: rgba(255, 59, 112, 0.15);
-  border-color: var(--rose-primary);
-  box-shadow: 0 0 12px var(--rose-glow);
-}
-
-.vibe-chip-left {
+.sheet-vibe-icon-wrap {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.12);
   display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.vibe-chip-icon {
-  width: 22px;
-  height: 22px;
-  color: var(--text-secondary);
-}
-
-.vibe-chip.selected .vibe-chip-icon {
-  color: var(--rose-primary);
-}
-
-.vibe-chip-name {
-  font-size: 15px;
-  font-weight: 600;
-  color: white;
-}
-
-/* Chips grids (Duration, Budget, Location) */
-.options-grid {
-  display: grid;
-  gap: 8px;
-}
-
-.options-grid.cols-3 { grid-template-columns: repeat(3, 1fr); }
-.options-grid.cols-2 { grid-template-columns: repeat(2, 1fr); }
-
-.option-chip {
-  display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  padding: 12px 8px;
-  background: var(--surface-card);
-  border: 1px solid var(--border-glass);
-  border-radius: 14px;
-  color: var(--text-secondary);
+  color: #FFFFFF;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.sheet-vibe-check {
+  display: none;
+  font-size: 11px;
+  font-weight: 800;
+  color: #FFD166;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.45);
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(255, 209, 102, 0.5);
+}
+
+.sheet-vibe-name {
+  font-size: 15px;
+  font-weight: 700;
+  color: #FFFFFF;
+  position: relative;
+  z-index: 2;
+  margin-top: 8px;
+  letter-spacing: -0.01em;
+}
+
+.sheet-vibe-desc {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.7);
+  position: relative;
+  z-index: 2;
+  font-weight: 400;
+}
+
+/* Compact Pills Row (Budget & Duration) */
+.options-pills-row {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.pill-chip {
+  flex: 1;
+  min-width: 0;
+  padding: 10px 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 214, 190, 0.12);
+  color: #C8B8C2;
   font-size: 12px;
   font-weight: 600;
+  text-align: center;
   cursor: pointer;
   transition: all 0.2s var(--ease-spring);
-  text-align: center;
+  white-space: nowrap;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.option-chip svg {
-  width: 18px;
-  height: 18px;
+.pill-chip:hover {
+  background: rgba(255, 255, 255, 0.10);
+  color: #FFFFFF;
+  border-color: rgba(255, 214, 190, 0.25);
 }
 
-.option-chip.selected {
-  background: var(--surface-card-light);
-  border-color: var(--gold-warm);
-  color: white;
-  box-shadow: 0 0 10px var(--gold-glow);
+.pill-chip.selected {
+  background: linear-gradient(90deg, rgba(184, 59, 94, 0.55) 0%, rgba(224, 90, 122, 0.55) 100%);
+  border-color: rgba(255, 179, 198, 0.8);
+  color: #FFFFFF;
+  box-shadow: 0 4px 14px rgba(212, 68, 106, 0.35);
+}
+
+/* Actions Group */
+.sheet-actions-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.btn-pure-surprise {
+  height: 48px;
+  border-radius: 999px;
+  background: rgba(255, 214, 190, 0.08);
+  border: 1px solid rgba(255, 214, 190, 0.2);
+  color: #FFF0BE;
+  font-size: 14px;
+  font-weight: 600;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s var(--ease-spring);
+  box-sizing: border-box;
+}
+
+.btn-pure-surprise:hover {
+  background: rgba(255, 214, 190, 0.14);
+  border-color: rgba(255, 209, 102, 0.5);
+  transform: translateY(-1px);
+}
+
+.btn-pure-surprise:active {
+  transform: scale(0.98);
 }
 
 /* ==========================================================================
@@ -3350,8 +3474,9 @@ body {
   padding: 4px 0 24px;
 }
 
-/* Block 1: Hero Status Widget */
-.couple-status-card {
+/* Couple Status Card (Collection Tab & Gamification Hero) */
+.couple-status-card,
+#collection-status-card {
   width: 100%;
   background: rgba(26, 21, 28, 0.78);
   border-radius: 24px;
@@ -3361,6 +3486,7 @@ body {
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   box-sizing: border-box;
+  margin-bottom: 16px;
 }
 
 .status-card-top {
@@ -3687,25 +3813,140 @@ body {
   transform: translateX(3px);
 }
 
-/* Block 3: Primary Button & Native Guide Cell */
-.btn-start-evening {
-  height: 54px;
-  border-radius: 999px;
+/* ==========================================================================
+   TAB 1: TODAY — ZEN LUXURY HERO & PROGRESSIVE DISCLOSURE
+   ========================================================================== */
+.today-secret-hero-card {
   width: 100%;
+  border-radius: 26px;
+  padding: 32px 24px;
+  text-align: center;
+  margin: 20px 0;
+  border: 1px solid rgba(255, 214, 190, 0.12);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  background: rgba(26, 21, 28, 0.78);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  position: relative;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.today-secret-hero-card::before {
+  content: "";
+  position: absolute;
+  top: -40px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 240px;
+  height: 140px;
+  background: radial-gradient(ellipse, rgba(224, 90, 122, 0.22) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Floating Scratch Badge with Golden Spark & Embossing */
+.floating-scratch-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  margin: 0 auto 16px;
+  border-radius: 14px;
+  padding: 8px 18px;
+  background: linear-gradient(135deg, rgba(62, 24, 42, 0.92) 0%, rgba(34, 12, 24, 0.96) 100%);
+  border: 1px solid rgba(255, 209, 102, 0.35);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 209, 102, 0.35);
+  animation: floatBadge 3.6s ease-in-out infinite;
+  z-index: 1;
+}
+
+@keyframes floatBadge {
+  0%, 100% {
+    transform: translateY(0);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 209, 102, 0.35);
+  }
+  50% {
+    transform: translateY(-4px);
+    box-shadow: 0 14px 28px rgba(224, 90, 122, 0.3), inset 0 1px 0 rgba(255, 209, 102, 0.55);
+  }
+}
+
+.scratch-badge-inner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  position: relative;
+  z-index: 2;
+}
+
+.scratch-badge-spark {
+  color: #FFD166;
+  font-size: 13px;
+  text-shadow: 0 0 8px rgba(255, 209, 102, 0.85);
+}
+
+.scratch-badge-text {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: #FFF0BE;
+  font-family: var(--font-sans);
+}
+
+.scratch-badge-shimmer {
+  position: absolute;
+  inset: 0;
+  border-radius: 14px;
+  background: linear-gradient(105deg, transparent 20%, rgba(255, 255, 255, 0.12) 50%, transparent 80%);
+  pointer-events: none;
+}
+
+.secret-hero-title {
+  font-size: 26px;
+  font-weight: 700;
+  color: #FDF8F5;
+  margin: 16px 0 8px;
+  font-family: var(--font-serif);
+  letter-spacing: -0.01em;
+  position: relative;
+  z-index: 1;
+}
+
+.secret-hero-sub {
+  font-size: 14px;
+  color: #C8B8C2;
+  line-height: 1.45;
+  max-width: 280px;
+  margin: 0 auto 24px;
+  font-family: var(--font-sans);
+  position: relative;
+  z-index: 1;
+}
+
+/* Primary Capsule Button */
+.btn-start-evening.pill-cta,
+.btn-start-evening {
+  height: 56px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #B83B5E, #E05A7A, #9E2A4B);
   font-size: 17px;
   font-weight: 600;
-  background: linear-gradient(90deg, #B83B5E 0%, #E05A7A 50%, #9E2A4B 100%);
-  color: #FFFFFF;
-  border: none;
+  width: 100%;
   box-shadow: 0 8px 24px rgba(212, 68, 106, 0.35);
-  cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 0 24px;
-  transition: all 0.2s var(--ease-spring);
+  color: #FFFFFF;
+  border: none;
+  cursor: pointer;
+  transition: all 0.25s var(--ease-spring);
   -webkit-tap-highlight-color: transparent;
   box-sizing: border-box;
+  position: relative;
+  z-index: 1;
 }
 
 .btn-start-evening:hover {
@@ -3718,36 +3959,38 @@ body {
   box-shadow: 0 4px 12px rgba(184, 59, 94, 0.4);
 }
 
+.btn-start-evening .btn-icon-spark,
 .btn-start-evening .btn-start-sparkle {
-  font-size: 16px;
+  font-size: 18px;
   color: #FFD166;
-  filter: drop-shadow(0 0 6px rgba(255, 209, 102, 0.8));
+  filter: drop-shadow(0 0 6px rgba(255, 209, 102, 0.85));
 }
 
-.btn-start-evening .btn-start-text {
+.btn-start-evening span:nth-child(2) {
   flex: 1;
   text-align: center;
   letter-spacing: -0.01em;
 }
 
+.btn-start-evening .btn-chevron,
 .btn-start-evening .btn-start-chevron {
   font-size: 20px;
   font-weight: 600;
-  color: rgba(255, 255, 255, 0.8);
+  color: rgba(255, 255, 255, 0.85);
 }
 
-/* Native iOS Guide Cell */
+/* Native Apple HIG Guide Cell */
 .ios-guide-cell {
   background: rgba(26, 21, 28, 0.78);
   border-radius: 18px;
-  border: 1px solid rgba(255, 214, 190, 0.10);
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.08);
-  height: 58px;
+  height: 60px;
   padding: 0 16px;
   display: flex;
   align-items: center;
   gap: 14px;
-  margin-top: 14px;
+  margin-top: 18px;
+  border: 1px solid rgba(255, 214, 190, 0.10);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.08);
   width: 100%;
   cursor: pointer;
   transition: all 0.2s var(--ease-spring);
@@ -3757,7 +4000,7 @@ body {
 
 .ios-guide-cell:hover {
   background: rgba(38, 28, 40, 0.88);
-  border-color: rgba(255, 214, 190, 0.2);
+  border-color: rgba(255, 214, 190, 0.22);
   transform: translateY(-1px);
 }
 
@@ -3779,6 +4022,11 @@ body {
   box-shadow: 0 4px 12px rgba(122, 28, 56, 0.4);
 }
 
+.guide-icon-symbol {
+  font-size: 18px;
+  line-height: 1;
+}
+
 .guide-cell-content {
   display: flex;
   flex-direction: column;
@@ -3794,8 +4042,8 @@ body {
 }
 
 .guide-cell-sub {
-  font-size: 12px;
-  color: rgba(235, 235, 245, 0.6);
+  font-size: 13px;
+  color: #8E8E93;
 }
 
 .guide-cell-chevron {

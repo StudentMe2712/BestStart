@@ -225,162 +225,40 @@
             <!-- Compatibility proxy for app.js if it references active-session-banner -->
             <div id="active-session-banner" style="display:none;"></div>
             <div id="today-hero-card" style="display:none;"></div>
+            <div id="today-status-card" style="display:none !important;" aria-hidden="true"></div>
+            <div id="today-vibes-grid" style="display:none !important;" aria-hidden="true"></div>
 
-            <!-- Block 1: Hero Status Widget -->
-            <div class="couple-status-card" id="today-status-card">
-              <div class="status-card-top">
-                <div class="status-card-left">
-                  <div class="status-level-badge" id="widget-level-badge">Уровень 1 · Любопытный дуэт</div>
-                  <div class="status-xp-row">
-                    <span class="status-xp-value" id="widget-xp-text">0 / 60 XP</span>
-                  </div>
-                  <div class="status-progress-track">
-                    <div class="status-progress-fill" id="widget-xp-fill" style="width: 0%;">
-                      <span class="status-progress-glow-dot"></span>
-                    </div>
-                  </div>
-                </div>
-                <div class="status-trophy-wrap">
-                  <div class="status-trophy-glow"></div>
-                  <div class="status-trophy-icon">
-                    <svg width="56" height="56" viewBox="0 0 64 64" fill="none">
-                      <defs>
-                        <linearGradient id="gold-cup-grad" x1="0" y1="0" x2="100%" y2="100%">
-                          <stop offset="0%" stop-color="#FFF0BE"/>
-                          <stop offset="35%" stop-color="#FFD166"/>
-                          <stop offset="75%" stop-color="#E5A435"/>
-                          <stop offset="100%" stop-color="#9C6415"/>
-                        </linearGradient>
-                        <linearGradient id="pedestal-grad" x1="0" y1="0" x2="0" y2="100%">
-                          <stop offset="0%" stop-color="#3D1424"/>
-                          <stop offset="100%" stop-color="#1B0711"/>
-                        </linearGradient>
-                      </defs>
-                      <!-- Handles -->
-                      <path d="M14 16 C7 16 5 27 12 33 C15 36 19 36 21 34" stroke="url(#gold-cup-grad)" stroke-width="3.5" stroke-linecap="round" fill="none"/>
-                      <path d="M50 16 C57 16 59 27 52 33 C49 36 45 36 43 34" stroke="url(#gold-cup-grad)" stroke-width="3.5" stroke-linecap="round" fill="none"/>
-                      <!-- Pedestal Base -->
-                      <rect x="22" y="47" width="20" height="5" rx="2" fill="url(#gold-cup-grad)"/>
-                      <path d="M16 52 L48 52 L50 59 L14 59 Z" fill="url(#pedestal-grad)" stroke="url(#gold-cup-grad)" stroke-width="1.5"/>
-                      <!-- Cup Stem -->
-                      <path d="M28 37 L36 37 L34 47 L30 47 Z" fill="url(#gold-cup-grad)"/>
-                      <!-- Main Cup Body -->
-                      <path d="M17 14 L47 14 C47 28 41 37 32 37 C23 37 17 28 17 14 Z" fill="url(#gold-cup-grad)"/>
-                      <!-- Rim Top -->
-                      <ellipse cx="32" cy="14" rx="15" ry="3.2" fill="#FFF8D6"/>
-                      <!-- Embossed Ruby Heart on Cup -->
-                      <path d="M32 29 C30 26 23 23 23 18.5 C23 15.8 25.8 14.5 28.5 16 L32 18.8 L35.5 16 C38.2 14.5 41 15.8 41 18.5 C41 23 34 26 32 29 Z" fill="#E05A7A"/>
-                    </svg>
-                  </div>
+            <!-- Central Hero Card: Секретный вечер (Zen Luxury Hero) -->
+            <div class="today-secret-hero-card" id="today-secret-hero">
+              <!-- Floating Scratch Badge with Golden Spark & Embossing -->
+              <div class="floating-scratch-badge" aria-hidden="true">
+                <div class="scratch-badge-shimmer"></div>
+                <div class="scratch-badge-inner">
+                  <span class="scratch-badge-spark">✦</span>
+                  <span class="scratch-badge-text">CHOOSE A VIBE</span>
+                  <span class="scratch-badge-spark">✦</span>
                 </div>
               </div>
-              <div class="status-metrics-strip">
-                <div class="status-metric-col">
-                  <span class="status-metric-val" id="metric-completed-count">0 из 12</span>
-                  <span class="status-metric-lbl">приключений</span>
-                </div>
-                <div class="status-metric-divider"></div>
-                <div class="status-metric-col" onclick="document.getElementById('btn-open-vibe-sheet')?.click()" style="cursor:pointer;" title="Выбрать бюджет">
-                  <span class="status-metric-val" id="metric-budget-text" style="cursor:pointer;">до 2000 ₸</span>
-                  <span class="status-metric-lbl">бюджет</span>
-                </div>
-                <div class="status-metric-divider"></div>
-                <div class="status-metric-col">
-                  <span class="status-metric-val">Pass &amp; Play</span>
-                  <span class="status-metric-lbl">режим</span>
-                </div>
-              </div>
+
+              <!-- Serif Title -->
+              <h2 class="secret-hero-title serif-title">Что приготовил вечер?</h2>
+
+              <!-- Subtitle -->
+              <p class="secret-hero-sub">Маленькое совместное приключение из 4 скрытых шагов для вас двоих</p>
+
+              <!-- Main Wide Capsule Button -->
+              <button class="btn-start-evening pill-cta" id="btn-start-evening" type="button">
+                <span class="btn-icon-spark">✦</span>
+                <span>Подобрать вечер</span>
+                <span class="btn-chevron">›</span>
+              </button>
+              <button id="btn-today-pick-vibe" style="display:none;" type="button"></button>
             </div>
 
-            <!-- Block 2: 2×2 Vibe Grid -->
-            <div class="vibes-grid-2x2" id="today-vibes-grid">
-              <!-- 1. Романтика -->
-              <div class="vibe-tile is-selected" data-vibe="Романтика" role="button" tabindex="0">
-                <div class="vibe-tile-bg vibe-bg-romance" aria-hidden="true"></div>
-                <div class="tile-top-row">
-                  <div class="tile-icon-box">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                      <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
-                    </svg>
-                  </div>
-                  <div class="tile-indicator"></div>
-                </div>
-                <div class="tile-title">Романтика</div>
-                <div class="tile-bottom-row">
-                  <span class="tile-duration">~45 мин</span>
-                  <span class="tile-chevron">›</span>
-                </div>
-              </div>
-
-              <!-- 2. Игривое -->
-              <div class="vibe-tile" data-vibe="Игривое" role="button" tabindex="0">
-                <div class="vibe-tile-bg vibe-bg-playful" aria-hidden="true"></div>
-                <div class="tile-top-row">
-                  <div class="tile-icon-box">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                      <path d="M21 6H3c-1.1 0-2 .9-2 2v8c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm-10 7H8v3H6v-3H3v-2h3V8h2v3h3v2zm4.5 2c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm4-3c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/>
-                    </svg>
-                  </div>
-                  <div class="tile-indicator"></div>
-                </div>
-                <div class="tile-title">Игривое</div>
-                <div class="tile-bottom-row">
-                  <span class="tile-duration">~30 мин</span>
-                  <span class="tile-chevron">›</span>
-                </div>
-              </div>
-
-              <!-- 3. Уютное -->
-              <div class="vibe-tile" data-vibe="Уютное" role="button" tabindex="0">
-                <div class="vibe-tile-bg vibe-bg-cozy" aria-hidden="true"></div>
-                <div class="tile-top-row">
-                  <div class="tile-icon-box">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                      <path d="M12 3L2 12h3v8h6v-6h2v6h6v-8h3L12 3zm0 2.84L18 11.24V18h-2v-6H8v6H6v-6.76l6-5.4z"/>
-                    </svg>
-                  </div>
-                  <div class="tile-indicator"></div>
-                </div>
-                <div class="tile-title">Уютное</div>
-                <div class="tile-bottom-row">
-                  <span class="tile-duration">~60 мин</span>
-                  <span class="tile-chevron">›</span>
-                </div>
-              </div>
-
-              <!-- 4. Спонтанное -->
-              <div class="vibe-tile" data-vibe="Спонтанное" role="button" tabindex="0">
-                <div class="vibe-tile-bg vibe-bg-spontaneous" aria-hidden="true"></div>
-                <div class="tile-top-row">
-                  <div class="tile-icon-box">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                      <path d="M7 2v11h3v9l7-12h-4l4-8H7z"/>
-                    </svg>
-                  </div>
-                  <div class="tile-indicator"></div>
-                </div>
-                <div class="tile-title">Спонтанное</div>
-                <div class="tile-bottom-row">
-                  <span class="tile-duration">~20 мин</span>
-                  <span class="tile-chevron">›</span>
-                </div>
-              </div>
-            </div>
-
-            <!-- Block 3: Primary Button & Native Guide Cell -->
-            <button class="btn-start-evening" id="btn-start-evening" type="button">
-              <span class="btn-start-sparkle">✦</span>
-              <span class="btn-start-text">Начать вечер</span>
-              <span class="btn-start-chevron">›</span>
-            </button>
-            <button id="btn-today-pick-vibe" style="display:none;" type="button"></button>
-
+            <!-- Native iOS Apple HIG Guide Cell -->
             <div class="ios-guide-cell" id="openGuideBtn" role="button" tabindex="0">
               <div class="guide-cell-icon">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path>
-                  <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path>
-                </svg>
+                <span class="guide-icon-symbol">📖</span>
               </div>
               <div class="guide-cell-content">
                 <span class="guide-cell-title">Как устроена игра?</span>
@@ -467,19 +345,72 @@
              ТАБ 3: КОЛЛЕКЦИЯ (tab-collection — музей, значки, рубашки)
              =============================================================== -->
         <div class="tab-content" id="tab-collection">
-          <!-- Top Hero Banner: Музей ваших моментов -->
-          <div class="museum-hero-banner" id="museum-hero-banner">
-            <div class="museum-banner-bg" aria-hidden="true"></div>
-            <div class="museum-banner-left">
-              <div class="museum-trophy-icon">🏆</div>
-              <div class="museum-banner-text">
-                <h3 class="museum-hero-title serif-title">Музей ваших моментов</h3>
-                <p class="museum-hero-subtitle">
-                  Открыто 0 из 8 значков · Бонус +20 XP за каждый
-                </p>
+          <!-- Couple Status Card: Gamification, Level & Trophy moved to Collection -->
+          <div class="couple-status-card" id="collection-status-card">
+            <div class="status-card-top">
+              <div class="status-card-left">
+                <div class="status-level-badge" id="widget-level-badge">Уровень 1 · Любопытный дуэт</div>
+                <div class="status-xp-row">
+                  <span class="status-xp-value" id="widget-xp-text">0 / 60 XP</span>
+                </div>
+                <div class="status-progress-track">
+                  <div class="status-progress-fill" id="widget-xp-fill" style="width: 0%;">
+                    <span class="status-progress-glow-dot"></span>
+                  </div>
+                </div>
+              </div>
+              <div class="status-trophy-wrap">
+                <div class="status-trophy-glow"></div>
+                <div class="status-trophy-icon">
+                  <svg width="56" height="56" viewBox="0 0 64 64" fill="none">
+                    <defs>
+                      <linearGradient id="gold-cup-grad" x1="0" y1="0" x2="100%" y2="100%">
+                        <stop offset="0%" stop-color="#FFF0BE"/>
+                        <stop offset="35%" stop-color="#FFD166"/>
+                        <stop offset="75%" stop-color="#E5A435"/>
+                        <stop offset="100%" stop-color="#9C6415"/>
+                      </linearGradient>
+                      <linearGradient id="pedestal-grad" x1="0" y1="0" x2="0" y2="100%">
+                        <stop offset="0%" stop-color="#3D1424"/>
+                        <stop offset="100%" stop-color="#1B0711"/>
+                      </linearGradient>
+                    </defs>
+                    <!-- Handles -->
+                    <path d="M14 16 C7 16 5 27 12 33 C15 36 19 36 21 34" stroke="url(#gold-cup-grad)" stroke-width="3.5" stroke-linecap="round" fill="none"/>
+                    <path d="M50 16 C57 16 59 27 52 33 C49 36 45 36 43 34" stroke="url(#gold-cup-grad)" stroke-width="3.5" stroke-linecap="round" fill="none"/>
+                    <!-- Pedestal Base -->
+                    <rect x="22" y="47" width="20" height="5" rx="2" fill="url(#gold-cup-grad)"/>
+                    <path d="M16 52 L48 52 L50 59 L14 59 Z" fill="url(#pedestal-grad)" stroke="url(#gold-cup-grad)" stroke-width="1.5"/>
+                    <!-- Cup Stem -->
+                    <path d="M28 37 L36 37 L34 47 L30 47 Z" fill="url(#gold-cup-grad)"/>
+                    <!-- Main Cup Body -->
+                    <path d="M17 14 L47 14 C47 28 41 37 32 37 C23 37 17 28 17 14 Z" fill="url(#gold-cup-grad)"/>
+                    <!-- Rim Top -->
+                    <ellipse cx="32" cy="14" rx="15" ry="3.2" fill="#FFF8D6"/>
+                    <!-- Embossed Ruby Heart on Cup -->
+                    <path d="M32 29 C30 26 23 23 23 18.5 C23 15.8 25.8 14.5 28.5 16 L32 18.8 L35.5 16 C38.2 14.5 41 15.8 41 18.5 C41 23 34 26 32 29 Z" fill="#E05A7A"/>
+                  </svg>
+                </div>
+              </div>
+            </div>
+            <div class="status-metrics-strip">
+              <div class="status-metric-col">
+                <span class="status-metric-val" id="metric-completed-count">0 из 12</span>
+                <span class="status-metric-lbl">приключений</span>
+              </div>
+              <div class="status-metric-divider"></div>
+              <div class="status-metric-col" onclick="document.getElementById('btn-open-vibe-sheet')?.click()" style="cursor:pointer;" title="Выбрать бюджет">
+                <span class="status-metric-val" id="metric-budget-text" style="cursor:pointer;">до 2000 ₸</span>
+                <span class="status-metric-lbl">бюджет</span>
+              </div>
+              <div class="status-metric-divider"></div>
+              <div class="status-metric-col">
+                <span class="status-metric-val">Pass &amp; Play</span>
+                <span class="status-metric-lbl">режим</span>
               </div>
             </div>
           </div>
+          <div id="museum-hero-banner" style="display:none;" aria-hidden="true"></div>
 
           <!-- Segmented Control: Значки | История | Рубашки -->
           <div class="segmented-control" id="collection-segmented-control">
@@ -869,7 +800,7 @@
 
 
     <!-- ===================================================================
-         MODAL 2: BOTTOM SHEET VIBE PICKER
+         MODAL 2: BOTTOM SHEET VIBE PICKER (ZEN LUXURY PROGRESSIVE DISCLOSURE)
          =================================================================== -->
     <div class="sheet-backdrop" id="sheet-backdrop"></div>
     <div class="bottom-sheet" id="bottom-sheet-vibe">
@@ -878,121 +809,148 @@
       </div>
       <div class="sheet-scroll-body">
         <div class="sheet-header">
-          <div class="sheet-title">Настройка вечера</div>
-          <button class="sheet-close-btn" id="btn-close-sheet">✕</button>
+          <div>
+            <h3 class="sheet-title serif-title">Настройте ваш вечер</h3>
+            <p class="sheet-subtitle">Или доверьтесь полной случайности</p>
+          </div>
+          <button class="sheet-close-btn" id="btn-close-sheet" aria-label="Закрыть">✕</button>
         </div>
 
-        <!-- Section 1: Vibes (up to 2) -->
-        <div>
+        <!-- Section 1: Вайб вечера (4 плитки с роскошными градиентами) -->
+        <div class="sheet-section">
           <div class="sheet-section-title">
-            <span>Настроение</span>
+            <span>Вайб вечера</span>
             <small>(выберите 1 или 2)</small>
           </div>
-          <div class="vibe-chips-list" id="picker-vibes-list">
-            <div class="vibe-chip selected" data-vibe="Романтика">
-              <div class="vibe-chip-left">
-                <svg class="vibe-chip-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
-                <span class="vibe-chip-name">Романтика</span>
+          <div class="sheet-vibes-grid" id="picker-vibes-list">
+            <!-- 1. Романтика -->
+            <div class="sheet-vibe-card vibe-chip selected" data-vibe="Романтика" role="button" tabindex="0">
+              <div class="sheet-vibe-bg vibe-bg-romance" aria-hidden="true"></div>
+              <div class="sheet-vibe-content">
+                <div class="sheet-vibe-top-row">
+                  <div class="sheet-vibe-icon-wrap">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+                    </svg>
+                  </div>
+                  <span class="sheet-vibe-check">✓</span>
+                </div>
+                <div class="sheet-vibe-name">Романтика</div>
+                <div class="sheet-vibe-desc">Свечи, близость, тепло</div>
               </div>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
             </div>
-            <div class="vibe-chip" data-vibe="Игривое">
-              <div class="vibe-chip-left">
-                <svg class="vibe-chip-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
-                <span class="vibe-chip-name">Игривое</span>
+
+            <!-- 2. Игривое -->
+            <div class="sheet-vibe-card vibe-chip" data-vibe="Игривое" role="button" tabindex="0">
+              <div class="sheet-vibe-bg vibe-bg-playful" aria-hidden="true"></div>
+              <div class="sheet-vibe-content">
+                <div class="sheet-vibe-top-row">
+                  <div class="sheet-vibe-icon-wrap">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M21 6H3c-1.1 0-2 .9-2 2v8c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm-10 7H8v3H6v-3H3v-2h3V8h2v3h3v2zm4.5 2c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm4-3c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/>
+                    </svg>
+                  </div>
+                  <span class="sheet-vibe-check">✓</span>
+                </div>
+                <div class="sheet-vibe-name">Игривое</div>
+                <div class="sheet-vibe-desc">Смех, вызовы, драйв</div>
               </div>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
             </div>
-            <div class="vibe-chip" data-vibe="Спонтанное">
-              <div class="vibe-chip-left">
-                <svg class="vibe-chip-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
-                <span class="vibe-chip-name">Спонтанное</span>
+
+            <!-- 3. Уютное -->
+            <div class="sheet-vibe-card vibe-chip" data-vibe="Уютное" role="button" tabindex="0">
+              <div class="sheet-vibe-bg vibe-bg-cozy" aria-hidden="true"></div>
+              <div class="sheet-vibe-content">
+                <div class="sheet-vibe-top-row">
+                  <div class="sheet-vibe-icon-wrap">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M12 3L2 12h3v8h6v-6h2v6h6v-8h3L12 3zm0 2.84L18 11.24V18h-2v-6H8v6H6v-6.76l6-5.4z"/>
+                    </svg>
+                  </div>
+                  <span class="sheet-vibe-check">✓</span>
+                </div>
+                <div class="sheet-vibe-name">Уютное</div>
+                <div class="sheet-vibe-desc">Плед, беседы, чай</div>
               </div>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
             </div>
-            <div class="vibe-chip" data-vibe="Уютное">
-              <div class="vibe-chip-left">
-                <svg class="vibe-chip-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M18.5 3H6c-1.1 0-2 .9-2 2v5.71c0 3.83 2.95 7.18 6.78 7.29 3.96.12 7.22-3.06 7.22-7v-1h.5c1.93 0 3.5-1.57 3.5-3.5S20.43 3 18.5 3zM16 5v3H6V5h10zm2.5 3H18V5h.5c.83 0 1.5.67 1.5 1.5S19.33 8 18.5 8zM4 19h16v2H4v-2z"/></svg>
-                <span class="vibe-chip-name">Уютное</span>
+
+            <!-- 4. Спонтанное -->
+            <div class="sheet-vibe-card vibe-chip" data-vibe="Спонтанное" role="button" tabindex="0">
+              <div class="sheet-vibe-bg vibe-bg-spontaneous" aria-hidden="true"></div>
+              <div class="sheet-vibe-content">
+                <div class="sheet-vibe-top-row">
+                  <div class="sheet-vibe-icon-wrap">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M7 2v11h3v9l7-12h-4l4-8H7z"/>
+                    </svg>
+                  </div>
+                  <span class="sheet-vibe-check">✓</span>
+                </div>
+                <div class="sheet-vibe-name">Спонтанное</div>
+                <div class="sheet-vibe-desc">Ночной город, драйв</div>
               </div>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
-            </div>
-            <div class="vibe-chip" data-vibe="Глубокое">
-              <div class="vibe-chip-left">
-                <svg class="vibe-chip-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3a9 9 0 1 0 9 9c0-.46-.04-.92-.1-1.36a5.389 5.389 0 0 1-4.4 2.26 5.403 5.403 0 0 1-3.14-9.8c-.44-.06-.9-.1-1.36-.1z"/></svg>
-                <span class="vibe-chip-name">Глубокое</span>
-              </div>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
             </div>
           </div>
         </div>
 
-        <!-- Section 2: Duration -->
-        <div>
-          <div class="sheet-section-title">Сколько у вас времени?</div>
-          <div class="options-grid cols-3" id="picker-duration-grid">
-            <div class="option-chip" data-duration="15–30 мин">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
-              <span>15–30 мин</span>
+        <!-- Section 2: Бюджет и время (Компактные пилюли) -->
+        <div class="sheet-section-params">
+          <!-- Бюджет -->
+          <div class="sheet-param-group">
+            <div class="sheet-section-title">
+              <span>Бюджет вечера</span>
             </div>
-            <div class="option-chip selected" data-duration="30–60 мин">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 10"></polyline></svg>
-              <span>30–60 мин</span>
+            <div class="options-pills-row" id="picker-budget-grid">
+              <div class="option-chip pill-chip" data-budget="0">
+                <span>0 ₸</span>
+              </div>
+              <div class="option-chip pill-chip selected" data-budget="2000">
+                <span>до 2 000 ₸</span>
+              </div>
+              <div class="option-chip pill-chip" data-budget="5000">
+                <span>до 5 000 ₸</span>
+              </div>
+              <div class="option-chip pill-chip" data-budget="15000">
+                <span>Без лимита</span>
+              </div>
             </div>
-            <div class="option-chip" data-duration="60–120 мин">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 22h14M5 2h14m-2 20v-5.5a4.5 4.5 0 0 0-4.5-4.5h-1a4.5 4.5 0 0 0-4.5 4.5V22M7 2v5.5a4.5 4.5 0 0 0 4.5 4.5h1A4.5 4.5 0 0 0 17 7.5V2"/></svg>
-              <span>60–120 мин</span>
+          </div>
+
+          <!-- Время -->
+          <div class="sheet-param-group" style="margin-top: 14px;">
+            <div class="sheet-section-title">
+              <span>Время на вечер</span>
             </div>
+            <div class="options-pills-row" id="picker-duration-grid">
+              <div class="option-chip pill-chip" data-duration="15–30 мин">
+                <span>15-30 мин</span>
+              </div>
+              <div class="option-chip pill-chip selected" data-duration="30–60 мин">
+                <span>30-60 мин</span>
+              </div>
+              <div class="option-chip pill-chip" data-duration="60–120 мин">
+                <span>60-120 мин</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Location (Proxy container for app.js) -->
+          <div id="picker-location-grid" style="display:none;" aria-hidden="true">
+            <div class="option-chip selected" data-location="Дома"></div>
+            <div class="option-chip" data-location="Вне дома"></div>
+            <div class="option-chip" data-location="Неважно"></div>
           </div>
         </div>
 
-        <!-- Section 3: Budget (₸) -->
-        <div>
-          <div class="sheet-section-title">Бюджет вечера (₸)</div>
-          <div class="options-grid cols-2" id="picker-budget-grid">
-            <div class="option-chip" data-budget="0">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 12V8H4v4m16 0v8H4v-8m16 0H4m8-8V2m0 6v14"/></svg>
-              <span>0 ₸ (Бесплатно)</span>
-            </div>
-            <div class="option-chip selected" data-budget="2000">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="6" width="20" height="12" rx="2"></rect><circle cx="12" cy="12" r="2"></circle><path d="M6 12h.01M18 12h.01"/></svg>
-              <span>До 2 000 ₸</span>
-            </div>
-            <div class="option-chip" data-budget="5000">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>
-              <span>До 5 000 ₸</span>
-            </div>
-            <div class="option-chip" data-budget="15000">
-              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
-              <span>Без лимита</span>
-            </div>
-          </div>
+        <!-- Нижние действия (Двойной CTA) -->
+        <div class="sheet-actions-group">
+          <button class="btn-ios-primary pill-cta" id="btn-submit-matcher" style="height:54px;">
+            <span>✦ Начать приключение ›</span>
+          </button>
+          <button class="btn-ios-secondary btn-pure-surprise" id="btn-surprise-pure" style="height:48px; margin-top:8px;">
+            <span>🎲 Сделайте всё за нас (Чистый сюрприз)</span>
+          </button>
         </div>
-
-        <!-- Section 4: Location -->
-        <div>
-          <div class="sheet-section-title">Где провести вечер?</div>
-          <div class="options-grid cols-3" id="picker-location-grid">
-            <div class="option-chip selected" data-location="Дома">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
-              <span>Дома</span>
-            </div>
-            <div class="option-chip" data-location="Вне дома">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="5" r="3"></circle><path d="M10 22v-7l-2-2 3-5 3 2v5l2 7"></path></svg>
-              <span>Вне дома</span>
-            </div>
-            <div class="option-chip" data-location="Неважно">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
-              <span>Неважно</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- "Surprise Us" Matching CTA -->
-        <button class="btn-ios-primary" id="btn-submit-matcher" style="margin-top:8px; height:56px;">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
-          <span>Удиви нас</span>
-        </button>
       </div>
     </div>
 

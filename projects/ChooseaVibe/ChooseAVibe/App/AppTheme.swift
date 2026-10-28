@@ -605,3 +605,93 @@ public struct VibeSecondaryButtonStyle: ButtonStyle {
             .animation(.easeInOut(duration: 0.15), value: configuration.isPressed)
     }
 }
+
+// MARK: - Sprint 10: Calm Luxury Architecture & Progressive Disclosure
+
+/// Архитектурные токены и концепция Calm Luxury & Progressive Disclosure (Спринт 10).
+///
+/// Концепция Progressive Disclosure (прогрессивного раскрытия информации):
+/// 1. **Разгрузка главного экрана («Сегодня»)**:
+///    - Главный экран освобождён от перегруженных информационных блоков, сетки 4 плиток вайбов и виджета статуса.
+///    - Визуальным якорем экрана выступает медитативная карточка тайны `today-secret-hero` («Что приготовил вечер?»)
+///      с тактильным тиснением, золотистой искрой и единственным главным капсульным действием (`btn-start-evening`).
+///    - Прогресс пары, уровень, XP-бар и метрики перенесены в естественное место хранения — экран «Коллекция» (`collection-status-card`).
+///    - Старые блоки `today-status-card` и `today-vibes-grid` скрыты, сохраняя максимальную чистоту интерфейса.
+///
+/// 2. **Модальный подбор (Zen Luxury Bottom Sheet)**:
+///    - Вся когнитивная нагрузка выбора критериев (4 вайба, бюджет, время) перенесена в шторку `bottom-sheet-vibe`.
+///    - Двойной CTA: точный подбор («✦ Начать приключение ›») или быстрый сюрприз в один тап («🎲 Сделайте всё за нас»).
+///    - Контекстное открытие полноэкранного секретного конверта брифинга (`modal-briefing`).
+public enum CalmLuxuryDesign {
+    /// Радиус скругления модальной шторки подбора (Apple HIG Bottom Sheet)
+    public static let sheetCornerRadius: CGFloat = 28.0
+
+    /// Размеры ручки-индикатора свайпа шторки
+    public static let sheetHandleWidth: CGFloat = 36.0
+    public static let sheetHandleHeight: CGFloat = 5.0
+
+    /// Затемнение фона под модальной шторкой
+    public static let backdropDimColor = Color.black.opacity(0.65)
+
+    /// Высота главной капсульной кнопки CTA
+    public static let pillCtaHeight: CGFloat = 54.0
+
+    /// Высота вторичной кнопки чистого сюрприза
+    public static let pureSurpriseCtaHeight: CGFloat = 48.0
+
+    /// Радиус скругления капсульных пилюль и кнопок
+    public static let pillCornerRadius: CGFloat = 999.0
+
+    /// Тонкие ювелирные рамки карточек и чипов
+    public static let subtleBorderColor = Color.white.opacity(0.12)
+    public static let goldAccentBorderColor = Color(red: 255/255, green: 209/255, blue: 102/255, opacity: 0.35)
+}
+
+/// Стиль премиальной капсульной кнопки Calm Luxury (Pill CTA)
+public struct CalmLuxuryPillButtonStyle: ButtonStyle {
+    public var isAccent: Bool = true
+
+    public init(isAccent: Bool = true) {
+        self.isAccent = isAccent
+    }
+
+    public func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.system(size: 16, weight: .semibold, design: .rounded))
+            .foregroundColor(.white)
+            .frame(maxWidth: .infinity)
+            .frame(height: isAccent ? CalmLuxuryDesign.pillCtaHeight : CalmLuxuryDesign.pureSurpriseCtaHeight)
+            .background(
+                isAccent
+                    ? AppTheme.Gradients.brandPrimary
+                    : LinearGradient(
+                        colors: [Color.white.opacity(0.12), Color.white.opacity(0.06)],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+            )
+            .clipShape(Capsule())
+            .overlay(
+                Capsule()
+                    .stroke(
+                        isAccent ? Color.white.opacity(0.24) : CalmLuxuryDesign.subtleBorderColor,
+                        lineWidth: 1
+                    )
+            )
+            .scaleEffect(configuration.isPressed ? 0.98 : 1.0)
+            .animation(.easeInOut(duration: 0.15), value: configuration.isPressed)
+            .shadow(
+                color: isAccent ? AppTheme.primaryRose.opacity(0.3) : Color.clear,
+                radius: 12,
+                x: 0,
+                y: 4
+            )
+    }
+}
+
+public extension View {
+    /// Применение стиля капсулы Calm Luxury
+    func calmLuxuryPill(isAccent: Bool = true) -> some View {
+        buttonStyle(CalmLuxuryPillButtonStyle(isAccent: isAccent))
+    }
+}
