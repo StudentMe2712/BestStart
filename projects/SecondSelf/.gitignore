@@ -1,0 +1,13 @@
+# Unignore C# Data directory
+!src/SecondSelf/Data/
+!src/SecondSelf/Data/**
+
+# Runtime data files
+*.db
+*.db-wal
+*.db-shm
+*.db.bak
+Videos/
+Backups/
+Thumbnails/
+Settings/

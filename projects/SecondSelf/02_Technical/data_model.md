@@ -187,6 +187,17 @@ CREATE TABLE IF NOT EXISTS DailyRitualLogs (
 
 CREATE INDEX IF NOT EXISTS IX_DailyRitualLogs_VideoId ON DailyRitualLogs (VideoId);
 
+-- Персистентная очередь Shuffle Фишера — Йейтса (CycleQueue)
+CREATE TABLE IF NOT EXISTS VideoPlaybackQueue (
+    QueueOrder INTEGER PRIMARY KEY AUTOINCREMENT,
+    VideoId TEXT NOT NULL,
+    IsPlayed INTEGER NOT NULL DEFAULT 0,
+    PlayedAt TEXT,
+    FOREIGN KEY (VideoId) REFERENCES VideoLibrary(Id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS IX_VideoPlaybackQueue_Played ON VideoPlaybackQueue (IsPlayed, QueueOrder ASC);
+
 ```
 
 ### 3.5. Итоги и рефлексии месяцев: MonthlyRecaps

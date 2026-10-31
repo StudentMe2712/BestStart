@@ -63,6 +63,12 @@ public class DailyRitualRepositoryTests : IDisposable
         var updated = await _repository.GetDailyRitualLogAsync("2026-10-31");
         Assert.NotNull(updated);
         Assert.Equal(50000, updated.LastPositionMs);
+
+        // Update position via dedicated UpdateLastPositionAsync method
+        await _repository.UpdateLastPositionAsync("2026-10-31", 65000);
+        var positionUpdated = await _repository.GetDailyRitualLogAsync("2026-10-31");
+        Assert.NotNull(positionUpdated);
+        Assert.Equal(65000, positionUpdated.LastPositionMs);
     }
 
     [Fact]

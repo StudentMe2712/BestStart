@@ -5,6 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using SecondSelf.Core.Messages;
 using SecondSelf.Core.Models;
 using SecondSelf.Core.Services;
 using SecondSelf.Data.Entities;
@@ -24,17 +25,26 @@ public partial class WidgetViewModel : ObservableObject
     private readonly IProgressCalculationEngine _progressEngine;
     private readonly IWindowStateService? _windowStateService;
     private readonly IDailyRitualRepository? _dailyRitualRepository;
+    private readonly IVideoPlaybackService? _videoPlaybackService;
+    private readonly IDayTransitionService? _dayTransitionService;
+    private readonly INotificationBus? _notificationBus;
 
     private CancellationTokenSource? _undoCts;
     private readonly object _undoLock = new();
 
     public event Action<bool>? ExpandedStateChanged;
+    public event Action<bool>? PlayerStateChanged;
 
     public ObservableCollection<TaskItemViewModel> Tasks { get; } = new();
     public ObservableCollection<TaskItemViewModel> CompactTasks { get; } = new();
 
+    public VideoPlayerViewModel Player { get; }
+
     [ObservableProperty]
     private bool _isExpanded;
+
+    [ObservableProperty]
+    private bool _isPlayerOpen;
 
     [ObservableProperty]
     private int _displayScore = 78;
@@ -105,12 +115,63 @@ public partial class WidgetViewModel : ObservableObject
         ITaskRepository taskRepository,
         IProgressCalculationEngine progressEngine,
         IWindowStateService? windowStateService = null,
-        IDailyRitualRepository? dailyRitualRepository = null)
+        IDailyRitualRepository? dailyRitualRepository = null,
+        IVideoPlaybackService? videoPlaybackService = null,
+        IDayTransitionService? dayTransitionService = null,
+        INotificationBus? notificationBus = null)
     {
         _taskRepository = taskRepository ?? throw new ArgumentNullException(nameof(taskRepository));
         _progressEngine = progressEngine ?? throw new ArgumentNullException(nameof(progressEngine));
         _windowStateService = windowStateService;
         _dailyRitualRepository = dailyRitualRepository;
+        _videoPlaybackService = videoPlaybackService;
+        _dayTransitionService = dayTransitionService;
+        _notificationBus = notificationBus;
+
+        if (_videoPlaybackService != null)
+        {
+            Player = new VideoPlayerViewModel(_videoPlaybackService);
+            Player.RequestClosePlayer += () =>
+            {
+                ClosePlayer();
+            };
+        }
+        else
+        {
+            Player = new VideoPlayerViewModel(new NullVideoPlaybackService());
+        }
+
+        if (_notificationBus != null)
+        {
+            _notificationBus.Subscribe<DailyRitualCountedMessage>(this, async msg =>
+            {
+                DateTime? msgTime = null;
+                if (DateOnly.TryParse(msg.LogicalDate, out var date))
+                {
+                    msgTime = date.ToDateTime(new TimeOnly(12, 0));
+                }
+
+                await RefreshMonthlyProgressAsync(msgTime).ConfigureAwait(false);
+                ResetStatus = "Done for Today";
+            });
+
+            _notificationBus.Subscribe<DayChangedMessage>(this, async msg =>
+            {
+                DateTime? msgTime = null;
+                if (DateOnly.TryParse(msg.NewLogicalDate, out var date))
+                {
+                    msgTime = date.ToDateTime(new TimeOnly(12, 0));
+                }
+
+                await RefreshMonthlyProgressAsync(msgTime).ConfigureAwait(false);
+                ResetStatus = "Ready";
+            });
+        }
+    }
+
+    partial void OnIsPlayerOpenChanged(bool value)
+    {
+        PlayerStateChanged?.Invoke(value);
     }
 
     partial void OnIsExpandedChanged(bool value)
@@ -157,7 +218,43 @@ public partial class WidgetViewModel : ObservableObject
         SyncCompactTasks();
 
         // 2. Расчет актуального прогресса месяца
-        var now = DateTime.UtcNow;
+        await RefreshMonthlyProgressAsync(cancellationToken).ConfigureAwait(false);
+
+        // 3. Загрузка статуса ежедневного ритуала текущих суток
+        if (_dayTransitionService != null && _dailyRitualRepository != null)
+        {
+            var log = await _dayTransitionService.GetOrAssignDailyRitualAsync(DateTime.Now, cancellationToken).ConfigureAwait(false);
+            if (log != null)
+            {
+                if (log.IsCompleted)
+                {
+                    ResetStatus = "Done for Today";
+                }
+                else if (log.LastPositionMs > 0)
+                {
+                    ResetStatus = "Paused";
+                }
+                else
+                {
+                    ResetStatus = "Ready";
+                }
+            }
+        }
+
+        // 4. Загрузка состояния окна
+        if (_windowStateService != null)
+        {
+            var state = await _windowStateService.LoadStateAsync(cancellationToken).ConfigureAwait(false);
+            IsExpanded = state.IsExpanded;
+        }
+    }
+
+    public Task RefreshMonthlyProgressAsync(CancellationToken cancellationToken = default) =>
+        RefreshMonthlyProgressAsync(null, cancellationToken);
+
+    public async Task RefreshMonthlyProgressAsync(DateTime? currentTime, CancellationToken cancellationToken = default)
+    {
+        var now = currentTime ?? DateTime.UtcNow;
         int completedDays = 0;
         int completedWeeks = 0;
 
@@ -166,10 +263,15 @@ public partial class WidgetViewModel : ObservableObject
             var yearMonth = now.ToString("yyyy-MM");
             var logs = await _dailyRitualRepository.GetLogsForMonthAsync(yearMonth, cancellationToken).ConfigureAwait(false);
             completedDays = logs.Count(l => l.IsCompleted);
-        }
 
-        // Если в базе еще нет истории (первый запуск), отображаем эталонные показатели спецификации (26 дней, 3 недели -> 78%)
-        if (completedDays == 0 && completedWeeks == 0)
+            // Если в базе еще нет истории (первый запуск), отображаем эталонные показатели спецификации (26 дней, 3 недели -> 78%)
+            if (completedDays == 0 && completedWeeks == 0 && logs.Count == 0)
+            {
+                completedDays = 26;
+                completedWeeks = 3;
+            }
+        }
+        else
         {
             completedDays = 26;
             completedWeeks = 3;
@@ -177,14 +279,44 @@ public partial class WidgetViewModel : ObservableObject
 
         var progressResult = _progressEngine.CalculateMonthlyProgress(now.Year, now.Month, completedDays, completedWeeks);
         DisplayScore = progressResult.DisplayScore;
-        DailyRatio = progressResult.DailyRatio;
-        WeeklyRatio = progressResult.WeeklyRatio;
+        DailyRatio = progressResult.DailyRatio.StartsWith("Daily ")
+            ? progressResult.DailyRatio
+            : $"Daily {progressResult.DailyRatio}";
+        WeeklyRatio = progressResult.WeeklyRatio.StartsWith("Weekly ")
+            ? progressResult.WeeklyRatio
+            : $"Weekly {progressResult.WeeklyRatio}";
+    }
 
-        // 3. Загрузка состояния окна
-        if (_windowStateService != null)
+    [RelayCommand]
+    public async Task OpenPlayerAsync(CancellationToken cancellationToken = default)
+    {
+        if (!IsExpanded)
         {
-            var state = await _windowStateService.LoadStateAsync(cancellationToken).ConfigureAwait(false);
-            IsExpanded = state.IsExpanded;
+            Expand();
+        }
+
+        bool initialized = await Player.InitializeAsync(null, cancellationToken).ConfigureAwait(false);
+        IsPlayerOpen = true;
+
+        if (initialized)
+        {
+            await Player.PlayPauseAsync().ConfigureAwait(false);
+        }
+    }
+
+    [RelayCommand]
+    public void ClosePlayer()
+    {
+        _ = Player.ClosePlayerAsync();
+        IsPlayerOpen = false;
+
+        if (Player.IsCompleted)
+        {
+            ResetStatus = "Done for Today";
+        }
+        else
+        {
+            ResetStatus = "Paused";
         }
     }
 

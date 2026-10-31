@@ -55,8 +55,15 @@ public partial class App : Application
         services.AddSingleton<ITaskRepository, TaskRepository>();
         services.AddSingleton<IDailyRitualRepository, DailyRitualRepository>();
 
+        // Video & Day Transition
+        services.AddSingleton<IVideoLibraryService, VideoLibraryService>();
+        services.AddSingleton<IFisherYatesShuffleService, FisherYatesShuffleService>();
+        services.AddSingleton<IDayTransitionService, DayTransitionService>();
+        services.AddSingleton<IVideoPlaybackService, VideoPlaybackService>();
+
         // ViewModels
         services.AddSingleton<WidgetViewModel>();
+        services.AddTransient<VideoPlayerViewModel>();
 
         // Windows & Views
         services.AddSingleton<MainWindow>();
@@ -72,6 +79,13 @@ public partial class App : Application
         // Автоматический накат миграций при старте приложения
         var migrationService = _host.Services.GetRequiredService<IDatabaseMigrationService>();
         await migrationService.MigrateAsync();
+
+        // Сканирование локальной видеотеки и назначение ритуала текущих суток
+        var videoLibraryService = _host.Services.GetRequiredService<IVideoLibraryService>();
+        await videoLibraryService.ScanLibraryAsync();
+
+        var dayTransitionService = _host.Services.GetRequiredService<IDayTransitionService>();
+        await dayTransitionService.GetOrAssignDailyRitualAsync();
 
         // Инициализация системного трея
         var trayService = _host.Services.GetRequiredService<ISystemTrayService>();

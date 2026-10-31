@@ -63,6 +63,29 @@
                     <SplineDoubleKeyFrame KeyTime="0:0:0.300" Value="1.0" KeySpline="0.16, 1.0, 0.3, 1.0" />
                 </DoubleAnimationUsingKeyFrames>
             </Storyboard>
+
+            <!-- Анимация перехода: Открытие плеера (220 мс) -->
+            <Storyboard x:Key="OpenPlayerStoryboard" x:Name="OpenPlayerStoryboard" Completed="OnOpenPlayerStoryboardCompleted">
+                <DoubleAnimationUsingKeyFrames Storyboard.TargetName="ExpandedView" Storyboard.TargetProperty="Opacity">
+                    <SplineDoubleKeyFrame KeyTime="0:0:0.180" Value="0.0" KeySpline="0.16, 1.0, 0.3, 1.0" />
+                </DoubleAnimationUsingKeyFrames>
+                <DoubleAnimationUsingKeyFrames Storyboard.TargetName="CompactView" Storyboard.TargetProperty="Opacity">
+                    <SplineDoubleKeyFrame KeyTime="0:0:0.180" Value="0.0" KeySpline="0.16, 1.0, 0.3, 1.0" />
+                </DoubleAnimationUsingKeyFrames>
+                <DoubleAnimationUsingKeyFrames Storyboard.TargetName="PlayerView" Storyboard.TargetProperty="Opacity">
+                    <SplineDoubleKeyFrame KeyTime="0:0:0.220" Value="1.0" KeySpline="0.16, 1.0, 0.3, 1.0" />
+                </DoubleAnimationUsingKeyFrames>
+            </Storyboard>
+
+            <!-- Анимация перехода: Закрытие плеера (220 мс) -->
+            <Storyboard x:Key="ClosePlayerStoryboard" x:Name="ClosePlayerStoryboard" Completed="OnClosePlayerStoryboardCompleted">
+                <DoubleAnimationUsingKeyFrames Storyboard.TargetName="PlayerView" Storyboard.TargetProperty="Opacity">
+                    <SplineDoubleKeyFrame KeyTime="0:0:0.180" Value="0.0" KeySpline="0.16, 1.0, 0.3, 1.0" />
+                </DoubleAnimationUsingKeyFrames>
+                <DoubleAnimationUsingKeyFrames Storyboard.TargetName="ExpandedView" Storyboard.TargetProperty="Opacity">
+                    <SplineDoubleKeyFrame KeyTime="0:0:0.220" Value="1.0" KeySpline="0.16, 1.0, 0.3, 1.0" />
+                </DoubleAnimationUsingKeyFrames>
+            </Storyboard>
         </Grid.Resources>
         
         <!-- Контейнер виджета с привязкой к правому верхнему углу (Top-Right Anchor) -->
@@ -190,7 +213,7 @@
                             BorderBrush="{StaticResource SpecularRimBrush}"
                             BorderThickness="1"
                             Padding="14"
-                            PointerPressed="OnCardPointerPressed">
+                            PointerPressed="OnDailyResetCardPointerPressed">
                         <Grid>
                             <!-- Круглая кнопка Play / Open в правом верхнем углу (26x26px) -->
                             <Button HorizontalAlignment="Right"
@@ -201,7 +224,8 @@
                                     Padding="0"
                                     Background="#26FFFFFF"
                                     BorderThickness="0"
-                                    Click="OnCardClicked">
+                                    Click="OnOpenPlayerClicked"
+                                    ToolTipService.ToolTip="Запустить ритуал дня">
                                 <FontIcon Glyph="&#xE768;" FontSize="11" Foreground="#FFFFFF" Margin="1,0,0,0" />
                             </Button>
 
@@ -552,7 +576,7 @@
                                 BorderBrush="#1EFFFFFF"
                                 BorderThickness="1"
                                 Padding="12"
-                                PointerPressed="OnCardPointerPressed">
+                                PointerPressed="OnDailyResetCardPointerPressed">
                             <Grid>
                                 <!-- Плашка источника в левом нижнем углу -->
                                 <Border HorizontalAlignment="Left"
@@ -589,7 +613,7 @@
                                     Padding="0"
                                     Background="#26FFFFFF"
                                     BorderThickness="0"
-                                    Click="OnPlayButtonClick"
+                                    Click="OnOpenPlayerClicked"
                                     ToolTipService.ToolTip="Воспроизвести видео дня">
                                 <FontIcon Glyph="&#xE768;" FontSize="12" Foreground="#FFFFFF" Margin="1,0,0,0" />
                             </Button>
@@ -665,6 +689,207 @@
                                 Click="OnCollapseChevronClick"
                                 ToolTipService.ToolTip="Свернуть виджет">
                             <FontIcon Glyph="&#xE70E;" FontSize="14" Foreground="#66FFFFFF" />
+                        </Button>
+                    </Grid>
+                </Grid>
+            </Border>
+
+            <!-- ============================================================== -->
+            <!-- ЭТАП 2/3/4: ЭКРАН ВИДЕОПЛЕЕРА (380×680px, Глубокий обсидиановый графит) -->
+            <!-- ============================================================== -->
+            <Border x:Name="PlayerView"
+                    Width="380"
+                    Height="680"
+                    Opacity="0.0"
+                    Visibility="Collapsed"
+                    CornerRadius="20"
+                    Background="#F20B0B0D"
+                    BorderBrush="#1EFFFFFF"
+                    BorderThickness="1"
+                    Padding="20">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <!-- Строка 0: Верхняя строка состояния (Заголовок, статус-бейдж, кнопка X) -->
+                        <RowDefinition Height="Auto" />
+                        <!-- Строка 1: Видеоконтейнер (MediaPlayerElement, скругление 14px) -->
+                        <RowDefinition Height="*" />
+                        <!-- Строка 2: Строка таймкода и громкости (Time & Audio Bar) -->
+                        <RowDefinition Height="Auto" />
+                        <!-- Строка 3: Неперематываемая полоса прогресса (IsHitTestVisible = false) -->
+                        <RowDefinition Height="Auto" />
+                        <!-- Строка 4: Кнопка «Засчитать выполнение» (всплывает при завершении видео) -->
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
+                    <!-- СТРОКА 0: ВЕРХНЯЯ СТРОКА СОСТОЯНИЯ -->
+                    <Grid Grid.Row="0" Margin="0,0,0,12">
+                        <TextBlock Text="Daily Reset"
+                                   FontSize="16"
+                                   FontWeight="SemiBold"
+                                   Foreground="#FFFFFF"
+                                   VerticalAlignment="Center" />
+
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center" Spacing="8">
+                            <!-- Статусная капсула Ready / Playing / Paused / Completed playback -->
+                            <Border Height="22"
+                                    CornerRadius="11"
+                                    Background="{x:Bind GetStatusBackground(ViewModel.Player.StatusText), Mode=OneWay}"
+                                    Padding="10,0,10,0">
+                                <TextBlock Text="{x:Bind ViewModel.Player.StatusText, Mode=OneWay}"
+                                           FontSize="11"
+                                           FontWeight="Medium"
+                                           Foreground="{x:Bind GetStatusForeground(ViewModel.Player.StatusText), Mode=OneWay}"
+                                           VerticalAlignment="Center" />
+                            </Border>
+
+                            <!-- Кнопка возврата / закрытия X -->
+                            <Button Width="24"
+                                    Height="24"
+                                    CornerRadius="12"
+                                    Padding="0"
+                                    Background="#14FFFFFF"
+                                    BorderThickness="0"
+                                    Click="OnPlayerCloseClick"
+                                    ToolTipService.ToolTip="Закрыть плеер">
+                                <FontIcon Glyph="&#xE711;" FontSize="10" Foreground="#FFFFFF" />
+                            </Button>
+                        </StackPanel>
+                    </Grid>
+
+                    <!-- СТРОКА 1: ВИДЕОКОНТЕЙНЕР (Скругление 14px, D3D11VA, клик ставит на паузу) -->
+                    <Border Grid.Row="1"
+                            CornerRadius="14"
+                            Background="#000000"
+                            BorderBrush="#1EFFFFFF"
+                            BorderThickness="1"
+                            Margin="0,0,0,12">
+                        <Grid CornerRadius="14">
+                            <!-- MediaPlayerElement с аппаратным Direct3D декодированием -->
+                            <MediaPlayerElement x:Name="DailyResetMediaPlayerElement"
+                                                AreTransportControlsEnabled="False"
+                                                AutoPlay="True"
+                                                HorizontalAlignment="Stretch"
+                                                VerticalAlignment="Stretch"
+                                                PointerPressed="OnVideoViewportPointerPressed" />
+
+                            <!-- Заглушка, если видеотека пуста или файлы недоступны -->
+                            <Grid Background="#E60B0B0D"
+                                  Visibility="{x:Bind BoolToVisibility(ViewModel.Player.IsPlaceholderVisible), Mode=OneWay}">
+                                <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="10" Padding="20">
+                                    <FontIcon Glyph="&#xE714;" FontSize="32" Foreground="#80FFFFFF" HorizontalAlignment="Center" />
+                                    <TextBlock Text="{x:Bind ViewModel.Player.PlaceholderText, Mode=OneWay}"
+                                               FontSize="13"
+                                               Foreground="#B3FFFFFF"
+                                               TextWrapping="Wrap"
+                                               TextAlignment="Center"
+                                               MaxWidth="280" />
+                                </StackPanel>
+                            </Grid>
+
+                            <!-- Оверлей паузы (индикатор по центру кадра) -->
+                            <Border Width="52"
+                                    Height="52"
+                                    CornerRadius="26"
+                                    Background="#66000000"
+                                    HorizontalAlignment="Center"
+                                    VerticalAlignment="Center"
+                                    Visibility="{x:Bind InvertBoolToVisibility(ViewModel.Player.IsPlaying), Mode=OneWay}"
+                                    IsHitTestVisible="False">
+                                <FontIcon Glyph="&#xE768;" FontSize="22" Foreground="#FFFFFF" Margin="3,0,0,0" />
+                            </Border>
+
+                            <!-- Водяной знак источника в левом нижнем углу (unsplash.com / local) -->
+                            <Border HorizontalAlignment="Left"
+                                    VerticalAlignment="Bottom"
+                                    Margin="12"
+                                    Height="20"
+                                    CornerRadius="4"
+                                    Background="#80000000"
+                                    Padding="6,0,6,0"
+                                    IsHitTestVisible="False">
+                                <TextBlock Text="{x:Bind ViewModel.Player.VideoSourceTag, Mode=OneWay}"
+                                           FontSize="10"
+                                           Foreground="#CCFFFFFF"
+                                           VerticalAlignment="Center" />
+                            </Border>
+                        </Grid>
+                    </Border>
+
+                    <!-- СТРОКА 2: СТРОКА ТАЙМКОДА И ГРОМКОСТИ (Time & Audio Bar) -->
+                    <Grid Grid.Row="2" Margin="0,0,0,10">
+                        <!-- Табличный таймкод со шрифтом Tabular: 01:42 / 01:42 -->
+                        <TextBlock HorizontalAlignment="Left"
+                                   VerticalAlignment="Center"
+                                   Text="{x:Bind ViewModel.Player.FormattedTimecode, Mode=OneWay}"
+                                   FontSize="12"
+                                   Typography.NumeralAlignment="Tabular"
+                                   Foreground="#B3FFFFFF" />
+
+                        <!-- Блок звука: кнопка Mute + компактный слайдер громкости -->
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center" Spacing="6">
+                            <Button Width="26"
+                                    Height="26"
+                                    CornerRadius="13"
+                                    Padding="0"
+                                    Background="#14FFFFFF"
+                                    BorderThickness="0"
+                                    Click="OnPlayerMuteClick"
+                                    ToolTipService.ToolTip="Вкл/выкл звук">
+                                <FontIcon Glyph="{x:Bind GetMuteGlyph(ViewModel.Player.IsMuted), Mode=OneWay}"
+                                          FontSize="12"
+                                          Foreground="#FFFFFF" />
+                            </Button>
+
+                            <Slider Width="70"
+                                    Minimum="0.0"
+                                    Maximum="1.0"
+                                    StepFrequency="0.05"
+                                    Value="{x:Bind ViewModel.Player.Volume, Mode=OneWay}"
+                                    ValueChanged="OnPlayerVolumeChanged"
+                                    VerticalAlignment="Center"
+                                    ToolTipService.ToolTip="Громкость" />
+                        </StackPanel>
+                    </Grid>
+
+                    <!-- СТРОКА 3: БЛОКИРОВКА ПЕРЕМОТКИ (Non-seekable Progress Bar, IsHitTestVisible = false) -->
+                    <Grid Grid.Row="3" Width="340" Height="4" HorizontalAlignment="Left" Margin="0,0,0,14" IsHitTestVisible="False">
+                        <!-- Фоновый трек: rgba(255,255,255,0.15) -->
+                        <Border Width="340"
+                                Height="4"
+                                CornerRadius="2"
+                                Background="#26FFFFFF"
+                                IsHitTestVisible="False" />
+
+                        <!-- Янтарная полоса воспроизведения: #CE824C -->
+                        <Border Height="4"
+                                CornerRadius="2"
+                                Background="#CE824C"
+                                HorizontalAlignment="Left"
+                                Width="{x:Bind ViewModel.Player.ProgressBarWidth, Mode=OneWay}"
+                                IsHitTestVisible="False" />
+                    </Grid>
+
+                    <!-- СТРОКА 4: ФИНАЛЬНАЯ КНОПКА «ЗАСЧИТАТЬ ВЫПОЛНЕНИЕ» -->
+                    <Grid Grid.Row="4" Height="48">
+                        <Button x:Name="CountRitualButton"
+                                Height="44"
+                                CornerRadius="10"
+                                Background="#C8824B"
+                                BorderThickness="0"
+                                HorizontalAlignment="Stretch"
+                                Visibility="{x:Bind BoolToVisibility(ViewModel.Player.IsCountButtonVisible), Mode=OneWay}"
+                                Click="OnCountRitualButtonClick"
+                                ToolTipService.ToolTip="Засчитать выполнение ежедневного ритуала">
+                            <Button.RenderTransform>
+                                <TranslateTransform x:Name="CountButtonTransform" Y="0" />
+                            </Button.RenderTransform>
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="8">
+                                <FontIcon Glyph="&#xE73E;" FontSize="15" Foreground="#FFFFFF" />
+                                <TextBlock Text="Засчитать выполнение"
+                                           FontSize="14"
+                                           FontWeight="SemiBold"
+                                           Foreground="#FFFFFF" />
+                            </StackPanel>
                         </Button>
                     </Grid>
                 </Grid>

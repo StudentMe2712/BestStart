@@ -26,3 +26,14 @@
 - **Context:** Task completion workflow in `Today's Focus` with a 5000 ms cancellation window.
 - **Finding:** If an item is immediately moved to `ArchivedTasks` in SQLite upon completion, clicking "Undo" requires an inverse transaction, risking WAL checkpoint races and timestamp pollution. Keeping the task in a pending cancellation state in memory with a deferred timer guarantees instant, zero-latency restoration and commits to SQLite only upon timer expiration or when the next completion is queued.
 - **Rule:** For undoable operational items, decouple UI two-phase animation completion from permanent database archiving using deferred cancellation tokens (`CancellationTokenSource`).
+
+### 2026-10-31 — Fisher-Yates Cycle Queue with Non-Repeating Consecutive Elements and Missing File Tolerant Loop
+- **Context:** Implementing `VideoPlaybackQueue` and `FisherYatesShuffleService` for Daily Reset.
+- **Finding:** In small libraries (2 videos), standard random shuffling can yield `[A, B]` in cycle 1 and `[B, A]` in cycle 2, leading to `B` being played twice in consecutive days (`A -> B -> B -> A`). Checking `shuffled[0] == lastPlayedId` and swapping with another index ensures strictly alternating playback without duplicate runs. Furthermore, when files on disk disappear, marking `IsMissing = 1` and continuing the queue search within the same transaction ensures zero playback stall and zero crash for the user.
+- **Rule:** In cyclic playlist queues, explicitly disallow consecutive duplicate transitions across cycle boundaries by swapping the first element of a new cycle if it matches the tail of the previous cycle.
+
+
+### 2026-10-31 — WinUI 3 Typography Numeral Alignment and Non-Seekable Progress Bar
+- **Context:** Implementing `Daily Reset Player` tabular timecode and locked progress bar in `WidgetWindow.xaml`.
+- **Finding:** In WinUI 3 `TextBlock`, there is no `FontNumeralAlignment` property; OpenType tabular digits are specified using `Typography.NumeralAlignment="Tabular"`. Additionally, to guarantee non-seekable playback (spec AC-07), setting `IsHitTestVisible="False"` on `ProgressBar` / track container prevents all mouse clicks and drag events from dispatching, while allowing visual progress updates via binding.
+- **Rule:** For fixed-width timecodes and numerical displays in WinUI 3, always use attached property `Typography.NumeralAlignment="Tabular"`. For read-only progress indicators, use `IsHitTestVisible="False"`.

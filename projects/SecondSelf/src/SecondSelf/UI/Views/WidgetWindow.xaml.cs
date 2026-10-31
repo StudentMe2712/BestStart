@@ -116,6 +116,7 @@ public sealed partial class WidgetWindow : Window
     private readonly AppWindow _appWindow;
     private readonly IWindowStateService _windowStateService;
     private readonly ISystemMonitorService? _systemMonitorService;
+    private Windows.Media.Playback.MediaPlayer? _mediaPlayer;
     private bool _isTransitioning;
 
     public WidgetViewModel ViewModel { get; }
@@ -148,10 +149,20 @@ public sealed partial class WidgetWindow : Window
         // 5. Подписка на изменение режима раскрытия
         ViewModel.ExpandedStateChanged += OnExpandedStateChanged;
 
-        // 6. Подписка на деактивацию окна (автосворачивание при потере фокуса)
+        // 6. Подписка на события фокус-плеера Daily Reset
+        ViewModel.PlayerStateChanged += OnPlayerStateChanged;
+        ViewModel.Player.RequestStartMedia += OnRequestStartMedia;
+        ViewModel.Player.RequestPauseMedia += OnRequestPauseMedia;
+        ViewModel.Player.RequestResumeMedia += OnRequestResumeMedia;
+        ViewModel.Player.PropertyChanged += OnPlayerPropertyChanged;
+
+        // 7. Подписка на деактивацию окна (автосворачивание при потере фокуса)
         this.Activated += OnWindowActivated;
 
-        // 7. Подписка на фокус поля ввода новой задачи
+        // 8. Подписка на горячие клавиши (Space = Play/Pause, Esc = Close)
+        RootGrid.KeyDown += OnRootGridKeyDown;
+
+        // 9. Подписка на фокус поля ввода новой задачи
         ViewModel.PropertyChanged += (s, e) =>
         {
             if (e.PropertyName == nameof(WidgetViewModel.IsAddingTask) && ViewModel.IsAddingTask)
@@ -160,13 +171,13 @@ public sealed partial class WidgetWindow : Window
             }
         };
 
-        // 8. Подписка на полноэкранные приложения (игры, видео на весь экран)
+        // 10. Подписка на полноэкранные приложения (игры, видео на весь экран)
         if (_systemMonitorService != null)
         {
             _systemMonitorService.IsFullscreenRunningChanged += OnFullscreenRunningChanged;
         }
 
-        // 9. Начальное позиционирование и загрузка данных
+        // 11. Начальное позиционирование и загрузка данных
         this.DispatcherQueue.TryEnqueue(async () =>
         {
             await InitializeWindowStateAsync();
@@ -597,10 +608,253 @@ public sealed partial class WidgetWindow : Window
         ViewModel.Collapse();
     }
 
+    private void InitMediaPlayer()
+    {
+        if (_mediaPlayer != null) return;
+        try
+        {
+            _mediaPlayer = new Windows.Media.Playback.MediaPlayer
+            {
+                AudioCategory = Windows.Media.Playback.MediaPlayerAudioCategory.Media,
+                Volume = ViewModel.Player.Volume,
+                IsMuted = ViewModel.Player.IsMuted
+            };
+
+            _mediaPlayer.MediaEnded += (s, e) =>
+            {
+                DispatcherQueue.TryEnqueue(async () =>
+                {
+                    await ViewModel.Player.OnMediaEndedAsync();
+                });
+            };
+
+            _mediaPlayer.MediaFailed += (s, e) =>
+            {
+                DispatcherQueue.TryEnqueue(async () =>
+                {
+                    await ViewModel.Player.OnMediaFailedAsync();
+                });
+            };
+
+            _mediaPlayer.PlaybackSession.PositionChanged += (session, e) =>
+            {
+                DispatcherQueue.TryEnqueue(() =>
+                {
+                    int pos = (int)session.Position.TotalMilliseconds;
+                    int dur = (int)session.NaturalDuration.TotalMilliseconds;
+                    ViewModel.Player.UpdatePosition(pos, dur);
+                });
+            };
+
+            DailyResetMediaPlayerElement.SetMediaPlayer(_mediaPlayer);
+        }
+        catch
+        {
+            // Подавляем исключения в тестовых окружениях без аудиоустройств
+        }
+    }
+
+    private void OnRequestStartMedia(string filePath, int startPositionMs)
+    {
+        DispatcherQueue.TryEnqueue(() =>
+        {
+            InitMediaPlayer();
+            if (_mediaPlayer == null) return;
+
+            try
+            {
+                var mediaSource = Windows.Media.Core.MediaSource.CreateFromUri(new Uri(filePath));
+                _mediaPlayer.Source = mediaSource;
+
+                if (startPositionMs > 0)
+                {
+                    _mediaPlayer.PlaybackSession.Position = TimeSpan.FromMilliseconds(startPositionMs);
+                }
+
+                _mediaPlayer.Play();
+            }
+            catch
+            {
+                _ = ViewModel.Player.OnMediaFailedAsync();
+            }
+        });
+    }
+
+    private void OnRequestPauseMedia()
+    {
+        DispatcherQueue.TryEnqueue(() =>
+        {
+            _mediaPlayer?.Pause();
+        });
+    }
+
+    private void OnRequestResumeMedia()
+    {
+        DispatcherQueue.TryEnqueue(() =>
+        {
+            _mediaPlayer?.Play();
+        });
+    }
+
+    private void OnRootGridKeyDown(object sender, KeyRoutedEventArgs e)
+    {
+        if (ViewModel.IsPlayerOpen)
+        {
+            if (e.Key == Windows.System.VirtualKey.Space)
+            {
+                _ = ViewModel.Player.PlayPauseAsync();
+                e.Handled = true;
+            }
+            else if (e.Key == Windows.System.VirtualKey.Escape)
+            {
+                ViewModel.ClosePlayer();
+                e.Handled = true;
+            }
+        }
+    }
+
+    private void OnPlayerStateChanged(bool isOpen)
+    {
+        if (isOpen)
+        {
+            var dpiScale = GetDpiScale();
+            var currentPos = _appWindow.Position;
+
+            // Если виджет был в компактном режиме, расширяем окно до 380x680 с привязкой Top-Right
+            if (WidgetCanvas.Width < 380 || WidgetCanvas.Height < 680)
+            {
+                int deltaWidthPhysical = (int)Math.Round(20.0 * dpiScale);
+                int newPhysicalWidth = (int)Math.Round(380.0 * dpiScale);
+                int newPhysicalHeight = (int)Math.Round(680.0 * dpiScale);
+                int newX = currentPos.X - deltaWidthPhysical;
+
+                _appWindow.MoveAndResize(new RectInt32(newX, currentPos.Y, newPhysicalWidth, newPhysicalHeight));
+                WidgetCanvas.Width = 380;
+                WidgetCanvas.Height = 680;
+            }
+
+            PlayerView.Visibility = Visibility.Visible;
+            OpenPlayerStoryboard.Begin();
+        }
+        else
+        {
+            ExpandedView.Visibility = Visibility.Visible;
+            ClosePlayerStoryboard.Begin();
+        }
+    }
+
+    private void OnPlayerPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(VideoPlayerViewModel.IsCountButtonVisible) && ViewModel.Player.IsCountButtonVisible)
+        {
+            AnimateCountButtonReveal();
+        }
+    }
+
+    private void AnimateCountButtonReveal()
+    {
+        DispatcherQueue.TryEnqueue(() =>
+        {
+            CountButtonTransform.Y = 12;
+            CountRitualButton.Opacity = 0.0;
+
+            var sb = new Microsoft.UI.Xaml.Media.Animation.Storyboard();
+
+            var translateYAnim = new Microsoft.UI.Xaml.Media.Animation.DoubleAnimationUsingKeyFrames();
+            Microsoft.UI.Xaml.Media.Animation.Storyboard.SetTarget(translateYAnim, CountButtonTransform);
+            Microsoft.UI.Xaml.Media.Animation.Storyboard.SetTargetProperty(translateYAnim, "Y");
+            translateYAnim.KeyFrames.Add(new Microsoft.UI.Xaml.Media.Animation.SplineDoubleKeyFrame
+            {
+                KeyTime = Microsoft.UI.Xaml.Media.Animation.KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(320)),
+                Value = 0,
+                KeySpline = new Microsoft.UI.Xaml.Media.Animation.KeySpline { ControlPoint1 = new Windows.Foundation.Point(0.16, 1.0), ControlPoint2 = new Windows.Foundation.Point(0.3, 1.0) }
+            });
+
+            var opacityAnim = new Microsoft.UI.Xaml.Media.Animation.DoubleAnimationUsingKeyFrames();
+            Microsoft.UI.Xaml.Media.Animation.Storyboard.SetTarget(opacityAnim, CountRitualButton);
+            Microsoft.UI.Xaml.Media.Animation.Storyboard.SetTargetProperty(opacityAnim, "Opacity");
+            opacityAnim.KeyFrames.Add(new Microsoft.UI.Xaml.Media.Animation.SplineDoubleKeyFrame
+            {
+                KeyTime = Microsoft.UI.Xaml.Media.Animation.KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(320)),
+                Value = 1.0,
+                KeySpline = new Microsoft.UI.Xaml.Media.Animation.KeySpline { ControlPoint1 = new Windows.Foundation.Point(0.16, 1.0), ControlPoint2 = new Windows.Foundation.Point(0.3, 1.0) }
+            });
+
+            sb.Children.Add(translateYAnim);
+            sb.Children.Add(opacityAnim);
+            sb.Begin();
+        });
+    }
+
+    private async void OnDailyResetCardPointerPressed(object sender, PointerRoutedEventArgs e)
+    {
+        var point = e.GetCurrentPoint(sender as UIElement);
+        if (point.Properties.IsLeftButtonPressed)
+        {
+            await ViewModel.OpenPlayerAsync();
+            e.Handled = true;
+        }
+    }
+
+    private async void OnOpenPlayerClicked(object sender, RoutedEventArgs e)
+    {
+        await ViewModel.OpenPlayerAsync();
+    }
+
+    private void OnPlayerCloseClick(object sender, RoutedEventArgs e)
+    {
+        ViewModel.ClosePlayer();
+    }
+
+    private async void OnVideoViewportPointerPressed(object sender, PointerRoutedEventArgs e)
+    {
+        var point = e.GetCurrentPoint(sender as UIElement);
+        if (point.Properties.IsLeftButtonPressed)
+        {
+            await ViewModel.Player.PlayPauseAsync();
+            e.Handled = true;
+        }
+    }
+
+    private void OnPlayerMuteClick(object sender, RoutedEventArgs e)
+    {
+        ViewModel.Player.ToggleMute();
+        if (_mediaPlayer != null)
+        {
+            _mediaPlayer.IsMuted = ViewModel.Player.IsMuted;
+        }
+    }
+
+    private void OnPlayerVolumeChanged(object sender, Microsoft.UI.Xaml.Controls.Primitives.RangeBaseValueChangedEventArgs e)
+    {
+        ViewModel.Player.SetVolume(e.NewValue);
+        if (_mediaPlayer != null)
+        {
+            _mediaPlayer.Volume = e.NewValue;
+        }
+    }
+
+    private async void OnCountRitualButtonClick(object sender, RoutedEventArgs e)
+    {
+        await ViewModel.Player.CountRitualAsync();
+    }
+
+    private void OnOpenPlayerStoryboardCompleted(object? sender, object e)
+    {
+        ExpandedView.Visibility = Visibility.Collapsed;
+        CompactView.Visibility = Visibility.Collapsed;
+        _isTransitioning = false;
+    }
+
+    private void OnClosePlayerStoryboardCompleted(object? sender, object e)
+    {
+        PlayerView.Visibility = Visibility.Collapsed;
+        _isTransitioning = false;
+    }
+
     private void OnPlayButtonClick(object sender, RoutedEventArgs e)
     {
-        // В Спринте 2 кнопка открывает/фокусирует ритуал дня
-        ViewModel.Expand();
+        _ = ViewModel.OpenPlayerAsync();
     }
 
     private void OnCapsulePointerEntered(object sender, PointerRoutedEventArgs e)
@@ -645,6 +899,19 @@ public sealed partial class WidgetWindow : Window
         isStrikethrough ? Windows.UI.Text.TextDecorations.Strikethrough : Windows.UI.Text.TextDecorations.None;
 
     public Visibility CheckboxCheckedToVisibility(bool isChecked) => isChecked ? Visibility.Visible : Visibility.Collapsed;
+
+    public SolidColorBrush GetStatusBackground(string status) =>
+        status == "Paused"
+            ? new SolidColorBrush(Windows.UI.Color.FromArgb(0x2E, 0xF5, 0x9E, 0x0B))
+            : new SolidColorBrush(Windows.UI.Color.FromArgb(0x2E, 0x26, 0xA6, 0x5B));
+
+    public SolidColorBrush GetStatusForeground(string status) =>
+        status == "Paused"
+            ? new SolidColorBrush(Windows.UI.Color.FromArgb(0xFF, 0xF5, 0x9E, 0x0B))
+            : new SolidColorBrush(Windows.UI.Color.FromArgb(0xFF, 0x36, 0xD3, 0x99));
+
+    public string GetMuteGlyph(bool isMuted) =>
+        isMuted ? "\uE74F" : "\uE767";
 
     #endregion
 }

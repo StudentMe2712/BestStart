@@ -131,6 +131,9 @@ vdm.PinWindow(hWnd);
 SecondSelf.Core/
 ├── Services/
 │   ├── ITaskService.cs                # CRUD задач, логика выполнения, таймер Undo
+│   ├── IVideoLibraryService.cs        # Сканирование Videos/, учет IsMissing
+│   ├── IFisherYatesShuffleService.cs  # Shuffle без повторений CycleQueue
+│   ├── IDayTransitionService.cs       # Смена суток в 04:00, привязка видео на дату
 │   ├── IVideoPlaybackService.cs       # Очередь Shuffle, плеер, таймкоды, валидация файлов
 │   ├── IProgressCalculationEngine.cs   # Расчет формулы месяца (30/70%), ISO-8601 четверги
 │   ├── IGoalMilestoneService.cs       # Большие цели (до 4), этапы, связка с Weekly Goal
