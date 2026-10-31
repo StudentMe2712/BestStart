@@ -1,0 +1,17 @@
+<Window
+    x:Class="SecondSelf.MainWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:SecondSelf"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d"
+    Title="Second Self">
+
+    <Grid Background="#09090B">
+        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="16">
+            <TextBlock Text="Second Self" FontSize="28" FontWeight="SemiBold" Foreground="#F4F4F5" HorizontalAlignment="Center" />
+            <TextBlock Text="Local-First Behavioral &amp; Focus OS" FontSize="14" Foreground="#A1A1AA" HorizontalAlignment="Center" />
+        </StackPanel>
+    </Grid>
+</Window>

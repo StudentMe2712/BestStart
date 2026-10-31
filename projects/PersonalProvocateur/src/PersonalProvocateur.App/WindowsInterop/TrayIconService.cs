@@ -1,4 +1,6 @@
+using System.Collections.Generic;
 using System.Drawing;
+using System.Drawing.Imaging;
 using System.Drawing.Drawing2D;
 using System.Drawing.Text;
 using System.IO;
@@ -118,6 +120,20 @@ public sealed class TrayIconService : IDisposable
     /// </summary>
     public static Icon CreateApplicationIcon()
     {
+        var icoPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "app.ico");
+        if (File.Exists(icoPath))
+        {
+            try
+            {
+                using var fullIcon = new Icon(icoPath, 32, 32);
+                return (Icon)fullIcon.Clone();
+            }
+            catch
+            {
+                // Fall back to procedural generation
+            }
+        }
+
         using var bitmap = CreateCrystalBitmap(32);
         IntPtr hIcon = bitmap.GetHicon();
         try
@@ -136,6 +152,25 @@ public sealed class TrayIconService : IDisposable
     /// </summary>
     public static System.Windows.Media.ImageSource CreateTaskbarIconSource()
     {
+        var icoPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "app.ico");
+        if (File.Exists(icoPath))
+        {
+            try
+            {
+                var uri = new Uri(icoPath, UriKind.Absolute);
+                var frame = System.Windows.Media.Imaging.BitmapFrame.Create(
+                    uri,
+                    System.Windows.Media.Imaging.BitmapCreateOptions.None,
+                    System.Windows.Media.Imaging.BitmapCacheOption.OnLoad);
+                frame.Freeze();
+                return frame;
+            }
+            catch
+            {
+                // Fall back to procedural generation
+            }
+        }
+
         using var bitmap = CreateCrystalBitmap(48);
         IntPtr hIcon = bitmap.GetHicon();
         try
@@ -158,9 +193,12 @@ public sealed class TrayIconService : IDisposable
     /// </summary>
     public static Icon CreateProgrammaticIcon() => CreateApplicationIcon();
 
-    private static Bitmap CreateCrystalBitmap(int size)
+    /// <summary>
+    /// Creates the crystal icon bitmap in 32-bit ARGB format with transparent background (ADR-017).
+    /// </summary>
+    public static Bitmap CreateCrystalBitmap(int size)
     {
-        var bitmap = new Bitmap(size, size);
+        var bitmap = new Bitmap(size, size, PixelFormat.Format32bppArgb);
         using (var g = Graphics.FromImage(bitmap))
         {
             g.SmoothingMode = SmoothingMode.AntiAlias;
@@ -232,6 +270,163 @@ public sealed class TrayIconService : IDisposable
         }
 
         return bitmap;
+    }
+
+    /// <summary>
+    /// Generates multi-resolution .ico binary data for the crystal icon in standard Windows resolutions.
+    /// </summary>
+    /// <param name="sizes">Optional resolution list. Defaults to 16, 24, 32, 48, 64, 128, 256.</param>
+    /// <returns>Valid .ico byte array.</returns>
+    public static byte[] CreateIcoData(int[]? sizes = null)
+    {
+        sizes ??= [16, 24, 32, 48, 64, 128, 256];
+        var entries = new List<(int width, int height, byte[] data)>();
+
+        foreach (var size in sizes)
+        {
+            using var bmp = CreateCrystalBitmap(size);
+            byte[] data;
+            if (size >= 256)
+            {
+                using var pngMs = new MemoryStream();
+                bmp.Save(pngMs, ImageFormat.Png);
+                data = pngMs.ToArray();
+            }
+            else
+            {
+                data = BitmapToDibData(bmp);
+            }
+            entries.Add((size, size, data));
+        }
+
+        using var outMs = new MemoryStream();
+        using var bw = new BinaryWriter(outMs);
+
+        // ICONDIR
+        bw.Write((ushort)0); // idReserved
+        bw.Write((ushort)1); // idType (1 = Icon)
+        bw.Write((ushort)entries.Count); // idCount
+
+        int currentOffset = 6 + (16 * entries.Count);
+
+        foreach (var entry in entries)
+        {
+            byte w = entry.width >= 256 ? (byte)0 : (byte)entry.width;
+            byte h = entry.height >= 256 ? (byte)0 : (byte)entry.height;
+
+            bw.Write(w);
+            bw.Write(h);
+            bw.Write((byte)0); // bColorCount
+            bw.Write((byte)0); // bReserved
+            bw.Write((ushort)1); // wPlanes
+            bw.Write((ushort)32); // wBitCount
+            bw.Write((uint)entry.data.Length);
+            bw.Write((uint)currentOffset);
+
+            currentOffset += entry.data.Length;
+        }
+
+        foreach (var entry in entries)
+        {
+            bw.Write(entry.data);
+        }
+
+        bw.Flush();
+        return outMs.ToArray();
+    }
+
+    /// <summary>
+    /// Ensures that the specified or default app.ico file exists on disk.
+    /// If missing, generates it from the crystal vector icon definition.
+    /// </summary>
+    public static void EnsureAppIconFile(string? icoPath = null)
+    {
+        icoPath ??= Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "app.ico");
+        if (File.Exists(icoPath))
+        {
+            return;
+        }
+
+        var dir = Path.GetDirectoryName(icoPath);
+        if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
+        {
+            Directory.CreateDirectory(dir);
+        }
+
+        var data = CreateIcoData();
+        File.WriteAllBytes(icoPath, data);
+    }
+
+    private static byte[] BitmapToDibData(Bitmap bmp)
+    {
+        int width = bmp.Width;
+        int height = bmp.Height;
+        int andMaskRowSize = ((width + 31) / 32) * 4;
+        int andMaskSize = andMaskRowSize * height;
+        int xorSize = width * height * 4;
+
+        using var ms = new MemoryStream();
+        using var bw = new BinaryWriter(ms);
+
+        // BITMAPINFOHEADER (40 bytes)
+        bw.Write((uint)40); // biSize
+        bw.Write(width);    // biWidth
+        bw.Write(height * 2); // biHeight (doubled for XOR + AND mask)
+        bw.Write((ushort)1);  // biPlanes
+        bw.Write((ushort)32); // biBitCount
+        bw.Write((uint)0);    // biCompression (BI_RGB)
+        bw.Write((uint)(xorSize + andMaskSize)); // biSizeImage
+        bw.Write(0);        // biXPelsPerMeter
+        bw.Write(0);        // biYPelsPerMeter
+        bw.Write((uint)0);    // biClrUsed
+        bw.Write((uint)0);    // biClrImportant
+
+        var bmpData = bmp.LockBits(
+            new Rectangle(0, 0, width, height),
+            ImageLockMode.ReadOnly,
+            PixelFormat.Format32bppArgb);
+
+        byte[] rawBytes = new byte[bmpData.Stride * height];
+        Marshal.Copy(bmpData.Scan0, rawBytes, 0, rawBytes.Length);
+        bmp.UnlockBits(bmpData);
+
+        byte[] xorData = new byte[xorSize];
+        byte[] andData = new byte[andMaskSize];
+
+        for (int y = 0; y < height; y++)
+        {
+            int dibY = height - 1 - y;
+            int srcRowStart = y * bmpData.Stride;
+            int dstRowStart = dibY * width * 4;
+
+            for (int x = 0; x < width; x++)
+            {
+                int srcIdx = srcRowStart + (x * 4);
+                int dstIdx = dstRowStart + (x * 4);
+
+                byte b = rawBytes[srcIdx + 0];
+                byte g = rawBytes[srcIdx + 1];
+                byte r = rawBytes[srcIdx + 2];
+                byte a = rawBytes[srcIdx + 3];
+
+                xorData[dstIdx + 0] = b;
+                xorData[dstIdx + 1] = g;
+                xorData[dstIdx + 2] = r;
+                xorData[dstIdx + 3] = a;
+
+                if (a == 0)
+                {
+                    int andByteIdx = dibY * andMaskRowSize + (x / 8);
+                    int andBitIdx = 7 - (x % 8);
+                    andData[andByteIdx] |= (byte)(1 << andBitIdx);
+                }
+            }
+        }
+
+        bw.Write(xorData);
+        bw.Write(andData);
+        bw.Flush();
+        return ms.ToArray();
     }
 
     /// <summary>

@@ -7,6 +7,13 @@ Add entries with the `/lesson` command, or by hand. Newest on top.
 
 ## Log
 
+### 2026-10-29 — Windows PE ApplicationIcon embedding & multi-resolution ICO generation
+- **Problem:** Compiled `.exe` binary showed the generic Windows blank executable icon in File Explorer and Windows Shell because `<ApplicationIcon>` was not declared in `.csproj`, and tray icon was only dynamically created in memory.
+- **Root cause:** Windows PE executable file icons must be embedded at compile-time as Win32 resources (`RT_GROUP_ICON`) via MSBuild `<ApplicationIcon>Assets\app.ico</ApplicationIcon>`. Windows requires standard ICO packaging (DIB headers for 16..128, PNG for 256) with alpha channel preservation.
+- **Fix:** 1) Implemented `TrayIconService.CreateIcoData()` exporting multi-resolution `.ico` binaries (16, 24, 32, 48, 64, 128, 256) matching the procedural crystal icon. 2) Committed `Assets/app.ico` and configured `<ApplicationIcon>Assets\app.ico</ApplicationIcon>` in `PersonalProvocateur.App.csproj`. 3) Added fallback loading from `Assets/app.ico` in `CreateApplicationIcon()` and `CreateTaskbarIconSource()`. 4) Verified via `AppIconTests` extracting the icon directly from the compiled `.exe`.
+- **Rule:** For desktop .NET executables, always configure `<ApplicationIcon>` in `.csproj` with a multi-resolution `.ico` (16..256px) so Windows Explorer and Task Manager display the brand icon out-of-the-box.
+- **Scope:** this-project
+
 ### 2026-10-25 — WPF RenderTargetBitmap cross-thread procedural rendering & WindowsForms namespace collisions
 - **Problem:** 1) `CS0104: 'FontFamily'/'FlowDirection' is an ambiguous reference` when using WPF typography inside projects with `<UseWindowsForms>true</UseWindowsForms>`. 2) `RenderTargetBitmap` rendering fails if invoked from non-STA background or unit test worker threads.
 - **Root cause:** 1) `System.Drawing.FontFamily` and `System.Windows.Forms.FlowDirection` clash with `System.Windows.Media.FontFamily` and `System.Windows.FlowDirection`. 2) WPF visuals and `RenderTargetBitmap` require an STA apartment thread.

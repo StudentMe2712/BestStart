@@ -11,6 +11,7 @@
     <Nullable>enable</Nullable>
     <RootNamespace>PersonalProvocateur.App</RootNamespace>
     <AssemblyName>PersonalProvocateur.App</AssemblyName>
+    <ApplicationIcon>Assets\app.ico</ApplicationIcon>
   </PropertyGroup>
 
   <ItemGroup>
@@ -19,7 +20,8 @@
 
   <ItemGroup>
     <Resource Include="Assets\**\*.png" />
-    <None Update="Assets\**\*.png">
+    <Resource Include="Assets\**\*.ico" />
+    <None Update="Assets\**\*.png;Assets\**\*.ico">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
   </ItemGroup>
