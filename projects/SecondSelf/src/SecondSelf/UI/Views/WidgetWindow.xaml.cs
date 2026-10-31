@@ -11,6 +11,7 @@ using SecondSelf.Core.Services;
 using SecondSelf.Core.ViewModels;
 using Windows.Graphics;
 using WinRT.Interop;
+using DisplayArea = Microsoft.UI.Windowing.DisplayArea;
 
 namespace SecondSelf.UI.Views;
 
@@ -97,6 +98,16 @@ public sealed partial class WidgetWindow : Window
     [DllImport("user32.dll")]
     private static extern uint GetDpiForWindow(IntPtr hWnd);
 
+    private const uint WM_DISPLAYCHANGE = 0x007E;
+
+    private delegate IntPtr SubclassProc(IntPtr hWnd, uint uMsg, IntPtr wParam, IntPtr lParam, UIntPtr uIdSubclass, IntPtr dwRefData);
+
+    [DllImport("comctl32.dll", SetLastError = true)]
+    private static extern bool SetWindowSubclass(IntPtr hWnd, SubclassProc pfnSubclass, UIntPtr uIdSubclass, IntPtr dwRefData);
+
+    [DllImport("comctl32.dll", SetLastError = true)]
+    private static extern IntPtr DefSubclassProc(IntPtr hWnd, uint uMsg, IntPtr wParam, IntPtr lParam);
+
     [ComImport]
     [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
     [Guid("4ce8158b-a8f1-4c5e-a427-ea7a04f39ebb")]
@@ -116,6 +127,7 @@ public sealed partial class WidgetWindow : Window
     private readonly AppWindow _appWindow;
     private readonly IWindowStateService _windowStateService;
     private readonly ISystemMonitorService? _systemMonitorService;
+    private readonly SubclassProc _subclassProcDelegate;
     private Windows.Media.Playback.MediaPlayer? _mediaPlayer;
     private bool _isTransitioning;
 
@@ -145,6 +157,10 @@ public sealed partial class WidgetWindow : Window
 
         // 4. Попытка закрепления на всех виртуальных рабочих столах (PinWindow)
         TryPinToAllVirtualDesktops();
+
+        // 4.1. Подписка на системные оконные сообщения (WM_DISPLAYCHANGE)
+        _subclassProcDelegate = SubclassWindowProc;
+        SetWindowSubclass(_hwnd, _subclassProcDelegate, UIntPtr.Zero, IntPtr.Zero);
 
         // 5. Подписка на изменение режима раскрытия
         ViewModel.ExpandedStateChanged += OnExpandedStateChanged;
@@ -265,6 +281,23 @@ public sealed partial class WidgetWindow : Window
             workArea.Width,
             workArea.Height);
 
+        try
+        {
+            var monitors = DisplayArea.FindAll();
+            if (monitors != null && monitors.Count > 0)
+            {
+                var safePos = _windowStateService.EnsureSafePosition(
+                    new WindowPosition(targetX, targetY, physicalWidth, physicalHeight),
+                    monitors);
+                targetX = safePos.X;
+                targetY = safePos.Y;
+            }
+        }
+        catch
+        {
+            // Безопасный фоллбэк при недоступности API мониторов
+        }
+
         _appWindow.MoveAndResize(new RectInt32(targetX, targetY, physicalWidth, physicalHeight));
 
         if (state.IsExpanded)
@@ -291,6 +324,43 @@ public sealed partial class WidgetWindow : Window
     {
         uint dpi = GetDpiForWindow(_hwnd);
         return dpi == 0 ? 1.0 : dpi / 96.0;
+    }
+
+    private IntPtr SubclassWindowProc(IntPtr hWnd, uint uMsg, IntPtr wParam, IntPtr lParam, UIntPtr uIdSubclass, IntPtr dwRefData)
+    {
+        if (uMsg == WM_DISPLAYCHANGE)
+        {
+            HandleDisplayChange();
+        }
+        return DefSubclassProc(hWnd, uMsg, wParam, lParam);
+    }
+
+    /// <summary>
+    /// Обрабатывает изменение конфигурации дисплеев (WM_DISPLAYCHANGE или отключение монитора).
+    /// Гарантирует, что виджет не останется за пределами экрана на отключенном дисплее.
+    /// </summary>
+    public void HandleDisplayChange()
+    {
+        try
+        {
+            var monitors = DisplayArea.FindAll();
+            if (monitors != null && monitors.Count > 0)
+            {
+                var curPos = _appWindow.Position;
+                var curSize = _appWindow.Size;
+                var currentPos = new WindowPosition(curPos.X, curPos.Y, curSize.Width, curSize.Height);
+                var safePos = _windowStateService.EnsureSafePosition(currentPos, monitors);
+                if (safePos.X != curPos.X || safePos.Y != curPos.Y)
+                {
+                    _appWindow.Move(new PointInt32(safePos.X, safePos.Y));
+                    SaveCurrentWindowPosition();
+                }
+            }
+        }
+        catch
+        {
+            // Безопасная обработка в тестовых и безголовых средах
+        }
     }
 
     #endregion
@@ -417,6 +487,7 @@ public sealed partial class WidgetWindow : Window
         CompactView.Visibility = Visibility.Collapsed;
         _isTransitioning = false;
         SaveCurrentWindowPosition();
+        App.TrimWorkingSet();
     }
 
     private void OnCollapseStoryboardCompleted(object? sender, object e)
@@ -435,6 +506,7 @@ public sealed partial class WidgetWindow : Window
 
         _isTransitioning = false;
         SaveCurrentWindowPosition();
+        App.TrimWorkingSet();
     }
 
     #endregion
@@ -855,6 +927,7 @@ public sealed partial class WidgetWindow : Window
     {
         PlayerView.Visibility = Visibility.Collapsed;
         _isTransitioning = false;
+        App.TrimWorkingSet();
     }
 
     private void OnPlayButtonClick(object sender, RoutedEventArgs e)

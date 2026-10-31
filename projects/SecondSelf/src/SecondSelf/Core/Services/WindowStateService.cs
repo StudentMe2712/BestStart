@@ -166,4 +166,81 @@ public sealed class WindowStateService : IWindowStateService
 
         return (normX, normY);
     }
+
+    public WindowPosition EnsureSafePosition(WindowPosition pos, System.Collections.Generic.IReadOnlyList<Microsoft.UI.Windowing.DisplayArea> activeMonitors)
+    {
+        ArgumentNullException.ThrowIfNull(pos);
+        if (activeMonitors == null || activeMonitors.Count == 0)
+        {
+            return pos;
+        }
+
+        var converted = new DisplayArea[activeMonitors.Count];
+        for (int i = 0; i < activeMonitors.Count; i++)
+        {
+            converted[i] = DisplayArea.FromDisplayArea(activeMonitors[i]);
+        }
+        return EnsureSafePosition(pos, converted);
+    }
+
+    public WindowPosition EnsureSafePosition(WindowPosition pos, System.Collections.Generic.IReadOnlyList<DisplayArea> activeMonitors)
+    {
+        ArgumentNullException.ThrowIfNull(pos);
+        if (activeMonitors == null || activeMonitors.Count == 0)
+        {
+            return pos;
+        }
+
+        int wLeft = pos.X;
+        int wTop = pos.Y;
+        int wRight = pos.X + pos.Width;
+        int wBottom = pos.Y + pos.Height;
+
+        bool intersectsAny = false;
+        foreach (var monitor in activeMonitors)
+        {
+            int mLeft = monitor.WorkArea.X;
+            int mTop = monitor.WorkArea.Y;
+            int mRight = monitor.WorkArea.X + monitor.WorkArea.Width;
+            int mBottom = monitor.WorkArea.Y + monitor.WorkArea.Height;
+
+            if (wLeft < mRight && wRight > mLeft && wTop < mBottom && wBottom > mTop)
+            {
+                intersectsAny = true;
+                break;
+            }
+        }
+
+        if (intersectsAny)
+        {
+            return pos;
+        }
+
+        // Монитор отключен или виджет вне видимых экранов:
+        // Перемещаем / зажимаем в границы основного монитора с безопасным отступом 24px
+        DisplayArea? primary = null;
+        for (int i = 0; i < activeMonitors.Count; i++)
+        {
+            if (activeMonitors[i].IsPrimary)
+            {
+                primary = activeMonitors[i];
+                break;
+            }
+        }
+        primary ??= activeMonitors[0];
+
+        const int safeMargin = 24;
+        int minX = primary.WorkArea.X + safeMargin;
+        int maxX = primary.WorkArea.X + primary.WorkArea.Width - pos.Width - safeMargin;
+        int minY = primary.WorkArea.Y + safeMargin;
+        int maxY = primary.WorkArea.Y + primary.WorkArea.Height - pos.Height - safeMargin;
+
+        if (maxX < minX) maxX = minX;
+        if (maxY < minY) maxY = minY;
+
+        int safeX = Math.Clamp(pos.X, minX, maxX);
+        int safeY = Math.Clamp(pos.Y, minY, maxY);
+
+        return new WindowPosition(safeX, safeY, pos.Width, pos.Height);
+    }
 }

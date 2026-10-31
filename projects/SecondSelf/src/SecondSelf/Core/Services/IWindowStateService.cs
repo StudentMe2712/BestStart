@@ -1,7 +1,41 @@
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 
 namespace SecondSelf.Core.Services;
+
+/// <summary>
+/// Прямоугольная позиция и размеры окна.
+/// </summary>
+public sealed record WindowPosition(int X, int Y, int Width, int Height);
+
+/// <summary>
+/// Информация о рабочей области монитора для многомониторных конфигураций.
+/// </summary>
+public sealed record DisplayArea
+{
+    public Windows.Graphics.RectInt32 WorkArea { get; init; }
+    public bool IsPrimary { get; init; }
+
+    public DisplayArea() { }
+
+    public DisplayArea(Windows.Graphics.RectInt32 workArea, bool isPrimary = false)
+    {
+        WorkArea = workArea;
+        IsPrimary = isPrimary;
+    }
+
+    public DisplayArea(int x, int y, int width, int height, bool isPrimary = false)
+        : this(new Windows.Graphics.RectInt32(x, y, width, height), isPrimary)
+    {
+    }
+
+    public static DisplayArea FromDisplayArea(Microsoft.UI.Windowing.DisplayArea area) =>
+        new(area.WorkArea, area.IsPrimary);
+
+    public static implicit operator DisplayArea(Microsoft.UI.Windowing.DisplayArea area) =>
+        FromDisplayArea(area);
+}
 
 /// <summary>
 /// Модель сохранённого состояния и положения окна виджета.
@@ -61,4 +95,16 @@ public interface IWindowStateService
         int workAreaY,
         int workAreaWidth,
         int workAreaHeight);
+
+    /// <summary>
+    /// Проверяет, пересекается ли прямоугольник виджета с рабочей областью хотя бы одного активного монитора.
+    /// Если монитор был отключен и виджет оказался вне экрана, перемещает или ограничивает виджет
+    /// с безопасным отступом (24px) внутри рабочей области основного (Primary) монитора.
+    /// </summary>
+    WindowPosition EnsureSafePosition(WindowPosition pos, IReadOnlyList<DisplayArea> activeMonitors);
+
+    /// <summary>
+    /// Перегрузка EnsureSafePosition для нативных мониторов WinUI Microsoft.UI.Windowing.DisplayArea.
+    /// </summary>
+    WindowPosition EnsureSafePosition(WindowPosition pos, IReadOnlyList<Microsoft.UI.Windowing.DisplayArea> activeMonitors);
 }

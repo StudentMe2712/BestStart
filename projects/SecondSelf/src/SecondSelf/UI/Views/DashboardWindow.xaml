@@ -190,6 +190,7 @@
                             </StackPanel>
                             <TextBlock Text="{x:Bind ViewModel.SettingsViewModel.LastBackupDisplayText, Mode=OneWay}"
                                        FontSize="10" Foreground="#71717A" TextTrimming="CharacterEllipsis"
+                                       Typography.NumeralAlignment="Tabular"
                                        ToolTipService.ToolTip="Время последней резервной копии" />
                         </StackPanel>
                     </Border>
@@ -311,7 +312,7 @@
                                                 <Border Grid.Column="2" Background="#261E16" CornerRadius="4" Padding="6, 2" Margin="8, 0"
                                                         Visibility="{x:Bind conv:XamlConverters.ToVisibility(HasPostponedDays), Mode=OneWay}">
                                                     <TextBlock Text="{x:Bind PostponedBadgeText, Mode=OneWay}"
-                                                               FontSize="10" Foreground="#CE824C" FontWeight="SemiBold" />
+                                                               FontSize="10" Foreground="#CE824C" FontWeight="SemiBold" Typography.NumeralAlignment="Tabular" />
                                                 </Border>
 
                                                 <Button Grid.Column="3" Click="OnTaskDeleteClick" Tag="{x:Bind}"
@@ -512,7 +513,7 @@
                                             <StackPanel Grid.Row="2" Spacing="6">
                                                 <Grid>
                                                     <TextBlock Text="{x:Bind MilestonesProgressText, Mode=OneWay}"
-                                                               FontSize="12" Foreground="#D4D4D8" FontWeight="SemiBold" />
+                                                               FontSize="12" Foreground="#D4D4D8" FontWeight="SemiBold" Typography.NumeralAlignment="Tabular" />
                                                     <TextBlock HorizontalAlignment="Right"
                                                                Text="{x:Bind conv:XamlConverters.ToPercentStringFromDouble(ProgressPercentage), Mode=OneWay}"
                                                                FontSize="12" Foreground="#CE824C" FontWeight="SemiBold" Typography.NumeralAlignment="Tabular" />
@@ -678,7 +679,7 @@
                                                 <ColumnDefinition Width="Auto" />
                                             </Grid.ColumnDefinitions>
                                             <TextBlock Grid.Column="0" Text="{x:Bind WeekDisplayNumber, Mode=OneWay}"
-                                                       FontSize="13" FontWeight="Bold" Foreground="#CE824C" VerticalAlignment="Center" />
+                                                       FontSize="13" FontWeight="Bold" Foreground="#CE824C" VerticalAlignment="Center" Typography.NumeralAlignment="Tabular" />
                                             <TextBlock Grid.Column="1" Text="{x:Bind DateRange, Mode=OneWay}"
                                                        FontSize="11" Foreground="#A1A1AA" VerticalAlignment="Center" />
                                             <StackPanel Grid.Column="2" VerticalAlignment="Center" Spacing="2">
@@ -711,7 +712,7 @@
                                             <TextBlock Text="{x:Bind YearMonth, Mode=OneWay}" FontSize="12" FontWeight="SemiBold" Foreground="#A1A1AA" />
                                             <TextBlock Text="{x:Bind conv:XamlConverters.ToPercentStringFromDouble(FinalScore), Mode=OneWay}"
                                                        FontSize="22" FontWeight="Bold" Foreground="#CE824C" Typography.NumeralAlignment="Tabular" />
-                                            <TextBlock Text="{x:Bind DailyRatio, Mode=OneWay}" FontSize="11" Foreground="#71717A" />
+                                            <TextBlock Text="{x:Bind DailyRatio, Mode=OneWay}" FontSize="11" Foreground="#71717A" Typography.NumeralAlignment="Tabular" />
                                         </StackPanel>
                                     </Border>
                                 </DataTemplate>
@@ -855,7 +856,7 @@
                                                 <TextBlock Grid.Column="1" Text="{x:Bind FormattedDuration, Mode=OneWay}"
                                                            FontSize="12" Foreground="#A1A1AA" VerticalAlignment="Center" Typography.NumeralAlignment="Tabular" />
                                                 <TextBlock Grid.Column="2" Text="{x:Bind PlaybackCountText, Mode=OneWay}"
-                                                           FontSize="11" Foreground="#71717A" VerticalAlignment="Center" />
+                                                           FontSize="11" Foreground="#71717A" VerticalAlignment="Center" Typography.NumeralAlignment="Tabular" />
                                                 <TextBlock Grid.Column="3" Text="{x:Bind StatusText, Mode=OneWay}"
                                                            FontSize="11" Foreground="{x:Bind conv:XamlConverters.ToStatusForegroundBrush(StatusText), Mode=OneWay}"
                                                            VerticalAlignment="Center" HorizontalAlignment="Right" />
@@ -872,8 +873,8 @@
                         <StackPanel Spacing="12">
                             <TextBlock Text="БАЛАНС ВЕСОВ ФОРМУЛЫ ПРОГРЕССА" FontSize="11" FontWeight="SemiBold" Foreground="#A1A1AA" CharacterSpacing="120" />
                             <Grid>
-                                <TextBlock Text="{x:Bind ViewModel.SettingsViewModel.DailyWeightText, Mode=OneWay}" FontSize="13" FontWeight="SemiBold" Foreground="#36D399" />
-                                <TextBlock Text="{x:Bind ViewModel.SettingsViewModel.WeeklyWeightText, Mode=OneWay}" FontSize="13" FontWeight="SemiBold" Foreground="#CE824C" HorizontalAlignment="Right" />
+                                <TextBlock Text="{x:Bind ViewModel.SettingsViewModel.DailyWeightText, Mode=OneWay}" FontSize="13" FontWeight="SemiBold" Foreground="#36D399" Typography.NumeralAlignment="Tabular" />
+                                <TextBlock Text="{x:Bind ViewModel.SettingsViewModel.WeeklyWeightText, Mode=OneWay}" FontSize="13" FontWeight="SemiBold" Foreground="#CE824C" HorizontalAlignment="Right" Typography.NumeralAlignment="Tabular" />
                             </Grid>
                             <Slider Minimum="10" Maximum="50" StepFrequency="5"
                                     Value="{x:Bind ViewModel.SettingsViewModel.DailyWeight, Mode=TwoWay}"
@@ -895,7 +896,7 @@
                                       IsChecked="{x:Bind ViewModel.SettingsViewModel.AutoCollapse, Mode=TwoWay}" />
 
                             <StackPanel Spacing="4">
-                                <TextBlock Text="{x:Bind ViewModel.SettingsViewModel.GlassOpacityText, Mode=OneWay}" FontSize="12" Foreground="#A1A1AA" />
+                                <TextBlock Text="{x:Bind ViewModel.SettingsViewModel.GlassOpacityText, Mode=OneWay}" FontSize="12" Foreground="#A1A1AA" Typography.NumeralAlignment="Tabular" />
                                 <Slider Minimum="30" Maximum="80" StepFrequency="5"
                                         Value="{x:Bind ViewModel.SettingsViewModel.GlassOpacity, Mode=TwoWay}"
                                         Foreground="#CE824C" />
@@ -919,7 +920,7 @@
                             <Grid>
                                 <StackPanel Spacing="2">
                                     <TextBlock Text="РЕЗЕРВНОЕ КОПИРОВАНИЕ БАЗЫ ДАННЫХ (SQLITE WAL)" FontSize="11" FontWeight="SemiBold" Foreground="#A1A1AA" CharacterSpacing="120" />
-                                    <TextBlock Text="{x:Bind ViewModel.SettingsViewModel.LastBackupDisplayText, Mode=OneWay}" FontSize="12" Foreground="#71717A" />
+                                    <TextBlock Text="{x:Bind ViewModel.SettingsViewModel.LastBackupDisplayText, Mode=OneWay}" FontSize="12" Foreground="#71717A" Typography.NumeralAlignment="Tabular" />
                                 </StackPanel>
                                 <Button Click="OnCreateBackupClick" HorizontalAlignment="Right" Background="#CE824C" Foreground="#FFFFFF" FontWeight="SemiBold" CornerRadius="6" Padding="14, 6">
                                     <StackPanel Orientation="Horizontal" Spacing="6">

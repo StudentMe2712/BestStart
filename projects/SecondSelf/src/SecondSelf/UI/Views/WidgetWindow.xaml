@@ -237,6 +237,7 @@
                                            Foreground="#FFFFFF" />
                                 <TextBlock Text="{x:Bind ViewModel.ResetSubtitle, Mode=OneWay}"
                                            FontSize="11"
+                                           Typography.NumeralAlignment="Tabular"
                                            Foreground="#B3FFFFFF" />
                             </StackPanel>
                         </Grid>
@@ -257,6 +258,7 @@
                                 <TextBlock Text="{x:Bind ViewModel.CompactProgressText, Mode=OneWay}"
                                            FontSize="15"
                                            FontWeight="SemiBold"
+                                           Typography.NumeralAlignment="Tabular"
                                            Foreground="#36D399" />
                                 <TextBlock Text="Focus score"
                                            FontSize="11"
@@ -656,6 +658,7 @@
                                        Text="{x:Bind FormatPercent(ViewModel.DisplayScore), Mode=OneWay}"
                                        FontSize="20"
                                        FontWeight="Bold"
+                                       Typography.NumeralAlignment="Tabular"
                                        Foreground="#36D399" />
                         </Grid>
 
@@ -681,11 +684,13 @@
                             <TextBlock HorizontalAlignment="Left"
                                        Text="{x:Bind ViewModel.DailyRatio, Mode=OneWay}"
                                        FontSize="12"
+                                       Typography.NumeralAlignment="Tabular"
                                        Foreground="#ADFFFFFF" />
 
                             <TextBlock HorizontalAlignment="Right"
                                        Text="{x:Bind ViewModel.WeeklyRatio, Mode=OneWay}"
                                        FontSize="12"
+                                       Typography.NumeralAlignment="Tabular"
                                        Foreground="#ADFFFFFF" />
                         </Grid>
                     </Grid>

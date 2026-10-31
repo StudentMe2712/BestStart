@@ -177,4 +177,67 @@ public sealed class WindowStateServiceTests : IDisposable
         Assert.Equal(originalState.NormalizedX, normX, 2);
         Assert.Equal(originalState.NormalizedY, normY, 2);
     }
+
+    [Fact]
+    public void EnsureSafePosition_WhenMonitorDisconnected_MovesToPrimaryWorkArea()
+    {
+        // Given: Активен только один Primary монитор 1920x1080
+        var activeMonitors = new[]
+        {
+            new DisplayArea(new Windows.Graphics.RectInt32(0, 0, 1920, 1080), isPrimary: true)
+        };
+
+        // When: Виджет находился на втором (ныне отключенном) мониторе справа: X=2500, Y=100
+        var disconnectedPosition = new WindowPosition(2500, 100, 380, 680);
+        var safePosition = _service.EnsureSafePosition(disconnectedPosition, activeMonitors);
+
+        // Then: Виджет перемещен в границы Primary монитора с безопасным отступом 24px от правого края:
+        // MaxX = 1920 - 380 - 24 = 1516
+        // Y = 100 находится в безопасных пределах [24 .. 1080 - 680 - 24 = 376]
+        Assert.Equal(1516, safePosition.X);
+        Assert.Equal(100, safePosition.Y);
+        Assert.Equal(380, safePosition.Width);
+        Assert.Equal(680, safePosition.Height);
+    }
+
+    [Fact]
+    public void EnsureSafePosition_WhenDisconnectedMonitorOnLeft_MovesToPrimaryLeftWorkArea()
+    {
+        // Given: Primary монитор 1920x1080
+        var activeMonitors = new[]
+        {
+            new DisplayArea(new Windows.Graphics.RectInt32(0, 0, 1920, 1080), isPrimary: true)
+        };
+
+        // When: Виджет был на отключенном левом мониторе X=-1200, Y=-50
+        var disconnectedPosition = new WindowPosition(-1200, -50, 360, 240);
+        var safePosition = _service.EnsureSafePosition(disconnectedPosition, activeMonitors);
+
+        // Then: Виджет прижат к безопасному отступу 24px слева и сверху
+        Assert.Equal(24, safePosition.X);
+        Assert.Equal(24, safePosition.Y);
+        Assert.Equal(360, safePosition.Width);
+        Assert.Equal(240, safePosition.Height);
+    }
+
+    [Fact]
+    public void EnsureSafePosition_WhenIntersectingActiveMonitor_PreservesPosition()
+    {
+        // Given: Два активных монитора (Primary 1920x1080 и Secondary справа 1920x1080)
+        var activeMonitors = new[]
+        {
+            new DisplayArea(new Windows.Graphics.RectInt32(0, 0, 1920, 1080), isPrimary: true),
+            new DisplayArea(new Windows.Graphics.RectInt32(1920, 0, 1920, 1080), isPrimary: false)
+        };
+
+        // When: Виджет находится на втором активном мониторе (X=2000, Y=100)
+        var currentPosition = new WindowPosition(2000, 100, 380, 680);
+        var safePosition = _service.EnsureSafePosition(currentPosition, activeMonitors);
+
+        // Then: Позиция не изменяется, так как виджет пересекается с активным дисплеем
+        Assert.Equal(2000, safePosition.X);
+        Assert.Equal(100, safePosition.Y);
+        Assert.Equal(380, safePosition.Width);
+        Assert.Equal(680, safePosition.Height);
+    }
 }

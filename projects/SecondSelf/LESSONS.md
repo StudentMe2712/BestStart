@@ -47,3 +47,9 @@
 - **Context:** Implementing `DashboardWindow.xaml` with complex grid layouts, cards, and collections.
 - **Finding:** In WinUI 3 (Windows App SDK), placing an `ItemsControl` (such as `GridView` or `ListView`) inside an `<ItemsControl.ItemsPanelTemplate>` causes `XamlCompiler.exe` to crash internally with exit code 1 without a descriptive error message because `ItemsPanelTemplate` can only host a `Panel` subclass (e.g. `ItemsWrapGrid`, `VariableSizedWrapGrid`, `StackPanel`, `Grid`). If a grid is needed, use `<GridView ItemsSource="..." SelectionMode="None">` directly. Additionally, using `{x:Bind}` with `x:DataType="x:String"` in data templates can fail resolution; standard `{Binding}` should be used for simple primitive collections (e.g. `ObservableCollection<string>`).
 - **Rule:** Never nest an `ItemsControl` inside `ItemsPanelTemplate`; use the appropriate control (`GridView` / `ListView`) directly or specify a true `Panel`. For primitive string collections, use standard `{Binding}` in `DataTemplate`.
+
+### 2026-10-31 — SQLite Connection Pool Eviction Scope in Multi-Threaded / Test Environments
+- **Context:** Implementing `DatabaseRecoveryService.CheckAndRecoverAsync` and running concurrent BDD tests.
+- **Finding:** Invoking `SqliteConnection.ClearPool(connection)` unconditionally after healthy read checks invalidates the underlying native handle (`SQLitePCL.sqlite3`) for all active connections sharing the same connection string. In concurrent environments or parallel xUnit test runs, this causes `System.ObjectDisposedException: Cannot access a disposed object. Object name: 'SQLitePCL.sqlite3'`.
+- **Rule:** Only clear the connection pool when corruption is positively detected and file-system replacement is required. Routine health checks must simply dispose the connection/command without purging the global connection pool.
+

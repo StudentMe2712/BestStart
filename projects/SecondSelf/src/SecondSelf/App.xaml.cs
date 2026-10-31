@@ -69,6 +69,7 @@ public partial class App : Application
 
         // Storage & Database
         services.AddSingleton<ISqliteConnectionFactory, SqliteConnectionFactory>();
+        services.AddSingleton<IDatabaseRecoveryService, DatabaseRecoveryService>();
         services.AddSingleton<IDatabaseMigrationService, DatabaseMigrationService>();
 
         // Repositories
@@ -108,6 +109,14 @@ public partial class App : Application
 
         await _host.StartAsync();
 
+        // Проверка целостности SQLite и самовосстановление из бэкапа при повреждении
+        var recoveryService = _host.Services.GetRequiredService<IDatabaseRecoveryService>();
+        var recoveryResult = await recoveryService.CheckAndRecoverAsync();
+        if (recoveryResult.WasCorrupted && recoveryResult.RestoredSuccessfully)
+        {
+            System.Diagnostics.Debug.WriteLine($"[DatabaseRecovery] {recoveryResult.Message}");
+        }
+
         // Автоматический накат миграций при старте приложения
         var migrationService = _host.Services.GetRequiredService<IDatabaseMigrationService>();
         await migrationService.MigrateAsync();
@@ -122,6 +131,10 @@ public partial class App : Application
         // Инициализация системного трея
         var trayService = _host.Services.GetRequiredService<ISystemTrayService>();
         trayService.Initialize();
+        if (recoveryResult.WasCorrupted && recoveryResult.RestoredSuccessfully)
+        {
+            trayService.ShowNotification("SecondSelf", recoveryResult.Message);
+        }
         trayService.ShowDashboardRequested += () =>
         {
             OpenDashboard();
@@ -155,6 +168,32 @@ public partial class App : Application
         {
             WidgetWindow = _host.Services.GetRequiredService<WidgetWindow>();
             WidgetWindow.Activate();
+        }
+
+        // Автоматическая оптимизация памяти после инициализации (NFR-02: Working Set <= 65 MB)
+        TrimWorkingSet();
+    }
+
+    [System.Runtime.InteropServices.DllImport("kernel32.dll", EntryPoint = "SetProcessWorkingSetSize")]
+    private static extern bool SetProcessWorkingSetSize(IntPtr hProcess, IntPtr dwMinimumWorkingSetSize, IntPtr dwMaximumWorkingSetSize);
+
+    /// <summary>
+    /// Очистка неиспользуемых страниц памяти и принудительный тримминг Working Set (NFR-02 / NFR-03).
+    /// </summary>
+    public static void TrimWorkingSet()
+    {
+        try
+        {
+            GC.Collect(2, GCCollectionMode.Forced, true, true);
+            GC.WaitForPendingFinalizers();
+            if (Environment.OSVersion.Platform == PlatformID.Win32NT)
+            {
+                SetProcessWorkingSetSize(System.Diagnostics.Process.GetCurrentProcess().Handle, (IntPtr)(-1), (IntPtr)(-1));
+            }
+        }
+        catch
+        {
+            // Подавляем исключения при тримминге страниц
         }
     }
 }
