@@ -47,4 +47,9 @@ public interface ISystemTrayService : IDisposable
     /// Программное выполнение команды контекстного меню трея (для тестов и шорткатов).
     /// </summary>
     void TriggerCommand(uint commandId);
+
+    /// <summary>
+    /// Программное срабатывание глобального шортката (для тестов).
+    /// </summary>
+    void TriggerHotkey(int hotkeyId);
 }

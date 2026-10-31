@@ -3,9 +3,11 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.UI.Xaml;
 using SecondSelf.Core.Services;
+using SecondSelf.Core.ViewModels;
 using SecondSelf.Data;
 using SecondSelf.Data.Migrations;
 using SecondSelf.Data.Repositories;
+using SecondSelf.UI.Views;
 
 namespace SecondSelf;
 
@@ -19,6 +21,7 @@ public partial class App : Application
 
     public static IServiceProvider Services => ((App)Current)._host.Services;
     public static MainWindow? MainWindow { get; private set; }
+    public static WidgetWindow? WidgetWindow { get; private set; }
 
     public App(bool isStartupBackground = false)
     {
@@ -41,6 +44,8 @@ public partial class App : Application
         services.AddSingleton<IBackupService, BackupService>();
         services.AddSingleton<ISystemTrayService, SystemTrayService>();
         services.AddSingleton<IAutostartService, AutostartService>();
+        services.AddSingleton<IWindowStateService, WindowStateService>();
+        services.AddSingleton<ISystemMonitorService, SystemMonitorService>();
 
         // Storage & Database
         services.AddSingleton<ISqliteConnectionFactory, SqliteConnectionFactory>();
@@ -50,8 +55,12 @@ public partial class App : Application
         services.AddSingleton<ITaskRepository, TaskRepository>();
         services.AddSingleton<IDailyRitualRepository, DailyRitualRepository>();
 
-        // Windows
+        // ViewModels
+        services.AddSingleton<WidgetViewModel>();
+
+        // Windows & Views
         services.AddSingleton<MainWindow>();
+        services.AddSingleton<WidgetWindow>();
     }
 
     protected override async void OnLaunched(LaunchActivatedEventArgs args)
@@ -72,6 +81,25 @@ public partial class App : Application
             MainWindow ??= _host.Services.GetRequiredService<MainWindow>();
             MainWindow.Activate();
         };
+        trayService.ToggleWidgetRequested += () =>
+        {
+            if (WidgetWindow != null)
+            {
+                var vm = _host.Services.GetRequiredService<WidgetViewModel>();
+                vm.ToggleExpanded();
+                WidgetWindow.Activate();
+            }
+        };
+        trayService.QuickAddTaskRequested += () =>
+        {
+            if (WidgetWindow != null)
+            {
+                var vm = _host.Services.GetRequiredService<WidgetViewModel>();
+                vm.Expand();
+                vm.StartAddingTask();
+                WidgetWindow.Activate();
+            }
+        };
         trayService.ExitRequested += () =>
         {
             trayService.Dispose();
@@ -80,8 +108,8 @@ public partial class App : Application
 
         if (!_isStartupBackground)
         {
-            MainWindow = _host.Services.GetRequiredService<MainWindow>();
-            MainWindow.Activate();
+            WidgetWindow = _host.Services.GetRequiredService<WidgetWindow>();
+            WidgetWindow.Activate();
         }
     }
 }

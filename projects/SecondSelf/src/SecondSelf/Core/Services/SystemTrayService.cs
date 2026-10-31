@@ -14,6 +14,13 @@ public sealed class SystemTrayService : ISystemTrayService
     public const uint CMD_QUICK_ADD_TASK = 1003;
     public const uint CMD_EXIT = 1004;
 
+    public const int HOTKEY_ADD_TASK_ID = 2001;
+    private const uint MOD_ALT = 0x0001;
+    private const uint MOD_SHIFT = 0x0004;
+    private const uint MOD_NOREPEAT = 0x4000;
+    private const uint VK_N = 0x4E;
+    private const uint WM_HOTKEY = 0x0312;
+
     private const uint TRAY_ICON_ID = 1;
     private const uint WM_NULL = 0x0000;
     private const uint WM_USER = 0x0400;
@@ -93,6 +100,9 @@ public sealed class SystemTrayService : ISystemTrayService
                 };
 
                 _isTrayIconAdded = Shell_NotifyIconW(NIM_ADD, ref nid);
+
+                // Регистрация глобального шортката Alt+Shift+N
+                RegisterHotKey(_hwnd, HOTKEY_ADD_TASK_ID, MOD_ALT | MOD_SHIFT | MOD_NOREPEAT, VK_N);
             }
 
             IsInitialized = true;
@@ -151,6 +161,17 @@ public sealed class SystemTrayService : ISystemTrayService
         }
     }
 
+    /// <summary>
+    /// Имитирует срабатывание глобального шортката (для безголового тестирования).
+    /// </summary>
+    public void TriggerHotkey(int hotkeyId)
+    {
+        if (hotkeyId == HOTKEY_ADD_TASK_ID)
+        {
+            TriggerCommand(CMD_QUICK_ADD_TASK);
+        }
+    }
+
     private IntPtr CreateHiddenHelperWindow()
     {
         try
@@ -202,6 +223,12 @@ public sealed class SystemTrayService : ISystemTrayService
         {
             uint cmdId = (uint)(wParam.ToInt64() & 0xFFFF);
             TriggerCommand(cmdId);
+            return IntPtr.Zero;
+        }
+        else if (msg == WM_HOTKEY)
+        {
+            int hotkeyId = (int)(wParam.ToInt64() & 0xFFFF);
+            TriggerHotkey(hotkeyId);
             return IntPtr.Zero;
         }
 
@@ -322,6 +349,18 @@ public sealed class SystemTrayService : ISystemTrayService
             _isTrayIconAdded = false;
         }
 
+        if (_hwnd != IntPtr.Zero)
+        {
+            try
+            {
+                UnregisterHotKey(_hwnd, HOTKEY_ADD_TASK_ID);
+            }
+            catch
+            {
+                // Игнорируем
+            }
+        }
+
         if (_createdOwnWindow && _hwnd != IntPtr.Zero)
         {
             try
@@ -388,6 +427,12 @@ public sealed class SystemTrayService : ISystemTrayService
         public Guid guidItem;
         public IntPtr hBalloonIcon;
     }
+
+    [DllImport("user32.dll", SetLastError = true)]
+    private static extern bool RegisterHotKey(IntPtr hWnd, int id, uint fsModifiers, uint vk);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    private static extern bool UnregisterHotKey(IntPtr hWnd, int id);
 
     [DllImport("shell32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
     private static extern bool Shell_NotifyIconW(uint dwMessage, ref NOTIFYICONDATAW lpData);

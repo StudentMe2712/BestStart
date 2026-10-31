@@ -137,6 +137,7 @@ SecondSelf.Core/
 │   ├── IBackupService.cs              # Ежедневные снапшоты SQLite, ротация 14 дней
 │   ├── ISystemTrayService.cs          # Системный трей Shell_NotifyIconW, контекстное меню
 │   ├── IAutostartService.cs           # Автозапуск через HKCU\...\Run (--startup-background)
+│   ├── IWindowStateService.cs         # Координаты виджета, DpiScale, сохранение в window_state.json
 │   ├── ISystemMonitorService.cs       # Отслеживание мониторов, DPI, Fullscreen приложений
 │   └── INotificationBus.cs            # Внутрипроцессная шина событий (Messenger)
 ├── ViewModels/

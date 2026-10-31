@@ -93,3 +93,24 @@ SecondSelf_AppData/
 - [x] **SP1-10:** Системный трей Win32 `Shell_NotifyIconW` с контекстным меню и регистрация автозапуска `HKCU\...\Run` (`--startup-background`).
 - [x] **SP1-11:** Юнит-тесты на расчет прогресса, граничные условия и верификация сборки `dotnet build -c Release --warnaserror`.
 
+---
+
+## 6. СПРИНТ 2: Desktop Widget (Compact & Expanded), WinUI Composition, Анимации задач и Fullscreen Detector
+
+* **Фокус спринта:** Создание плавающего безрамочного окна виджета на рабочем столе, аппаратных анимаций Composition и полного цикла управления задачами дня.
+* **Связанные документы:** `01_UX_UI/Design_System.md`, `01_UX_UI/Widget_Specification.md`, `02_Technical/Architecture.md`, `02_Technical/Technical_Constraints.md`, AC-01..05.
+
+### Рабочий чек-лист задач Спринта 2:
+- [x] **SP2-01:** Создание окна виджета WinUI 3 с P/Invoke стилями `WS_POPUP`, `WS_EX_TOOLWINDOW` и прозрачным фоном.
+- [x] **SP2-02:** Интеграция с `IVirtualDesktopManager.PinWindow` для отображения на всех виртуальных столах Windows (`Win+Tab`).
+- [x] **SP2-03:** Верстка компактного режима `360×240px` (3 стеклянные карточки с шейдерами `BackdropBlur`).
+- [x] **SP2-04:** Реализация анимации раскрытия и сворачивания вниз `380×680px` на WinUI Composition (`280 мс`, кривая *Spring Out*).
+- [x] **SP2-05:** Логика автосворачивания виджета при событии `Deactivated` (клик вне виджета).
+- [x] **SP2-06:** Инлайн-ввод задачи дня в *Today's Focus* по кнопке `+` и глобальному шорткату `Alt+Shift+N`.
+- [x] **SP2-07:** Панель действий строки задачи: выезд 3 SVG-иконок (`Check`, `Edit`, `Trash`) с тултипами.
+- [x] **SP2-08:** Двухфазная анимация закрытия задачи: зачёркивание (350 мс) + схлопывание высоты строки (350 мс).
+- [x] **SP2-09:** Реализация компонента `UndoToast` (5-секундное окно отмены закрытия задачи).
+- [x] **SP2-10:** Реализация детектора полноэкранных игр и медиа `SystemMonitorService` (`SHQueryUserNotificationState`).
+- [x] **SP2-11:** Автоматизированные тесты AC-01..05, верификация `dotnet build -c Release --warnaserror` и синхронизация `./sync.sh`.
+
+
