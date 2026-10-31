@@ -22,6 +22,25 @@ public partial class App : Application
     public static IServiceProvider Services => ((App)Current)._host.Services;
     public static MainWindow? MainWindow { get; private set; }
     public static WidgetWindow? WidgetWindow { get; private set; }
+    public static DashboardWindow? DashboardWindow { get; private set; }
+
+    public static void OpenDashboard()
+    {
+        DashboardWindow ??= Services.GetRequiredService<DashboardWindow>();
+        DashboardWindow.Activate();
+        DashboardWindow.AppWindow.Show();
+    }
+
+    public static void ToggleWidget()
+    {
+        if (WidgetWindow != null)
+        {
+            var vm = Services.GetRequiredService<WidgetViewModel>();
+            vm.ToggleExpanded();
+            WidgetWindow.Activate();
+            WidgetWindow.AppWindow.Show();
+        }
+    }
 
     public App(bool isStartupBackground = false)
     {
@@ -45,6 +64,7 @@ public partial class App : Application
         services.AddSingleton<ISystemTrayService, SystemTrayService>();
         services.AddSingleton<IAutostartService, AutostartService>();
         services.AddSingleton<IWindowStateService, WindowStateService>();
+        services.AddSingleton<IAppSettingsService, AppSettingsService>();
         services.AddSingleton<ISystemMonitorService, SystemMonitorService>();
 
         // Storage & Database
@@ -54,6 +74,9 @@ public partial class App : Application
         // Repositories
         services.AddSingleton<ITaskRepository, TaskRepository>();
         services.AddSingleton<IDailyRitualRepository, DailyRitualRepository>();
+        services.AddSingleton<IBigGoalRepository, BigGoalRepository>();
+        services.AddSingleton<IWeeklyGoalRepository, WeeklyGoalRepository>();
+        services.AddSingleton<IMonthlyRecapRepository, MonthlyRecapRepository>();
 
         // Video & Day Transition
         services.AddSingleton<IVideoLibraryService, VideoLibraryService>();
@@ -64,10 +87,19 @@ public partial class App : Application
         // ViewModels
         services.AddSingleton<WidgetViewModel>();
         services.AddTransient<VideoPlayerViewModel>();
+        services.AddSingleton<TodayTabViewModel>();
+        services.AddSingleton<GoalsTabViewModel>();
+        services.AddSingleton<ProgressTabViewModel>();
+        services.AddSingleton<ArchiveTabViewModel>();
+        services.AddSingleton<SettingsTabViewModel>();
+        services.AddSingleton<MonthlyRecapViewModel>();
+        services.AddSingleton<WeeklyGoalModalViewModel>();
+        services.AddSingleton<DashboardViewModel>();
 
         // Windows & Views
         services.AddSingleton<MainWindow>();
         services.AddSingleton<WidgetWindow>();
+        services.AddSingleton<DashboardWindow>();
     }
 
     protected override async void OnLaunched(LaunchActivatedEventArgs args)
@@ -92,8 +124,7 @@ public partial class App : Application
         trayService.Initialize();
         trayService.ShowDashboardRequested += () =>
         {
-            MainWindow ??= _host.Services.GetRequiredService<MainWindow>();
-            MainWindow.Activate();
+            OpenDashboard();
         };
         trayService.ToggleWidgetRequested += () =>
         {

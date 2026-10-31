@@ -132,6 +132,27 @@ public sealed class BackupService : IBackupService
         }, cancellationToken).ConfigureAwait(false);
     }
 
+    /// <inheritdoc />
+    public async Task RestoreBackupAsync(string backupFilePath, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(backupFilePath);
+        if (!File.Exists(backupFilePath))
+        {
+            throw new FileNotFoundException("Файл резервной копии не найден.", backupFilePath);
+        }
+
+        await Task.Run(() =>
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            using var source = new SqliteConnection($"Data Source={backupFilePath}");
+            source.Open();
+
+            using var destination = _connectionFactory.OpenConnection();
+            source.BackupDatabase(destination);
+        }, cancellationToken).ConfigureAwait(false);
+    }
+
     private List<BackupFileInfo> GetBackupsInternal()
     {
         if (!Directory.Exists(_backupDirectory))

@@ -15,4 +15,5 @@ public sealed class WeeklyGoal
     public string? LockedAt { get; set; }
     public string? CompletedAt { get; set; }
     public string? CancellationReason { get; set; }
+    public string? CreatedAt { get; set; } = DateTime.UtcNow.ToString("O");
 }

@@ -29,4 +29,9 @@ public interface IBackupService
     /// Возвращает список всех существующих резервных копий, отсортированных от новых к старым.
     /// </summary>
     Task<IReadOnlyList<BackupFileInfo>> GetBackupsAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Восстанавливает базу данных SQLite из указанного файла резервной копии через нативный Online Backup API.
+    /// </summary>
+    Task RestoreBackupAsync(string backupFilePath, CancellationToken cancellationToken = default);
 }

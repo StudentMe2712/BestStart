@@ -24,6 +24,10 @@ public partial class TaskItemViewModel : ObservableObject
     [ObservableProperty]
     private int _postponedDays;
 
+    public bool HasPostponedDays => PostponedDays > 0;
+
+    public string PostponedBadgeText => $"+{PostponedDays}d";
+
     [ObservableProperty]
     private bool _isActionPanelOpen;
 

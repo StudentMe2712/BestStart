@@ -453,6 +453,11 @@ public sealed partial class WidgetWindow : Window
         FocusInlineInput();
     }
 
+    private void OnOpenDashboardClick(object sender, RoutedEventArgs e)
+    {
+        App.OpenDashboard();
+    }
+
     private void OnExpandedAddButtonClick(object sender, RoutedEventArgs e)
     {
         ViewModel.StartAddingTask();

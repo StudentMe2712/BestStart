@@ -62,6 +62,7 @@ CREATE TABLE IF NOT EXISTS WeeklyGoals (
     LockedAt TEXT,
     CompletedAt TEXT,
     CancellationReason TEXT,
+    CreatedAt TEXT,
     FOREIGN KEY (MilestoneId) REFERENCES Milestones(Id) ON DELETE SET NULL,
     CONSTRAINT UQ_WeeklyGoal_Year_Week UNIQUE (IsoYear, IsoWeek)
 );

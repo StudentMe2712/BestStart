@@ -125,4 +125,40 @@ public class BackupServiceTests : IDisposable
         Assert.Equal("secondself_20261010_110000.db.bak", backups[1].FileName);
         Assert.Equal("secondself_20261005_100000.db.bak", backups[2].FileName);
     }
+
+    [Fact]
+    public async Task RestoreBackupAsync_RestoresDatabaseFromBackupFileSuccessfully()
+    {
+        // 1. Создаем таблицу и запись в исходной БД
+        using (var conn = _connectionFactory.OpenConnection())
+        {
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = "CREATE TABLE TestRestore (Id TEXT PRIMARY KEY, Val TEXT); INSERT INTO TestRestore VALUES ('1', 'BackupVal');";
+            cmd.ExecuteNonQuery();
+        }
+
+        // 2. Создаем бэкап
+        var backupPath = await _backupService.CreateBackupAsync();
+        Assert.True(File.Exists(backupPath));
+
+        // 3. Изменяем данные в исходной БД
+        using (var conn = _connectionFactory.OpenConnection())
+        {
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = "UPDATE TestRestore SET Val = 'MutatedVal' WHERE Id = '1';";
+            cmd.ExecuteNonQuery();
+        }
+
+        // 4. Восстанавливаем из бэкапа
+        await _backupService.RestoreBackupAsync(backupPath);
+
+        // 5. Проверяем, что значение восстановилось
+        using (var conn = _connectionFactory.OpenConnection())
+        {
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = "SELECT Val FROM TestRestore WHERE Id = '1';";
+            var val = (string?)cmd.ExecuteScalar();
+            Assert.Equal("BackupVal", val);
+        }
+    }
 }

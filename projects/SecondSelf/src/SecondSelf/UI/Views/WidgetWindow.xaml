@@ -315,19 +315,31 @@
                                            Foreground="#ADFFFFFF" />
                             </StackPanel>
 
-                            <Button HorizontalAlignment="Right"
-                                    VerticalAlignment="Center"
-                                    Width="24"
-                                    Height="24"
-                                    CornerRadius="12"
-                                    Padding="0"
-                                    Background="#14FFFFFF"
-                                    BorderBrush="#33FFFFFF"
-                                    BorderThickness="1"
-                                    Click="OnExpandedAddButtonClick"
-                                    ToolTipService.ToolTip="Добавить задачу">
-                                <FontIcon Glyph="&#xE710;" FontSize="11" Foreground="#FFFFFF" />
-                            </Button>
+                            <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Right" VerticalAlignment="Center">
+                                <Button Width="24"
+                                        Height="24"
+                                        CornerRadius="12"
+                                        Padding="0"
+                                        Background="#14FFFFFF"
+                                        BorderBrush="#33FFFFFF"
+                                        BorderThickness="1"
+                                        Click="OnOpenDashboardClick"
+                                        ToolTipService.ToolTip="Открыть Personal Dashboard">
+                                    <FontIcon Glyph="&#xE8A7;" FontSize="11" Foreground="#FFFFFF" />
+                                </Button>
+
+                                <Button Width="24"
+                                        Height="24"
+                                        CornerRadius="12"
+                                        Padding="0"
+                                        Background="#14FFFFFF"
+                                        BorderBrush="#33FFFFFF"
+                                        BorderThickness="1"
+                                        Click="OnExpandedAddButtonClick"
+                                        ToolTipService.ToolTip="Добавить задачу">
+                                    <FontIcon Glyph="&#xE710;" FontSize="11" Foreground="#FFFFFF" />
+                                </Button>
+                            </StackPanel>
                         </Grid>
 
                         <!-- Инлайн-поле ввода новой задачи (активируется по кнопке +) -->
