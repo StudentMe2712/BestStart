@@ -53,3 +53,18 @@
 - **Finding:** Invoking `SqliteConnection.ClearPool(connection)` unconditionally after healthy read checks invalidates the underlying native handle (`SQLitePCL.sqlite3`) for all active connections sharing the same connection string. In concurrent environments or parallel xUnit test runs, this causes `System.ObjectDisposedException: Cannot access a disposed object. Object name: 'SQLitePCL.sqlite3'`.
 - **Rule:** Only clear the connection pool when corruption is positively detected and file-system replacement is required. Routine health checks must simply dispose the connection/command without purging the global connection pool.
 
+### 2026-11-01 — Glassmorphism Shadow Hosts Behind Cards in WinUI 3 Composition
+- **Context:** Implementing hardware DropShadow (Offset 0, 16; BlurRadius 40; Color rgba(0,0,0,0.5)) on translucent glass cards.
+- **Finding:** Placing a `SpriteVisual` with `DropShadow` directly onto a translucent XAML element via `ElementCompositionPreview.SetElementChildVisual` causes the child visual to render on top of the element's background in the visual tree. Placing a dedicated `<Border x:Name="*ShadowHost" CornerRadius="24" />` directly behind the glass card in the same Grid cell allows the shadow to render strictly behind the card, keeping the warm specular rim and card interior pristine.
+- **Rule:** In WinUI 3 Composition, always host drop shadows on a dedicated transparent peer element positioned behind translucent cards.
+
+### 2026-11-01 — First-Touch Instant Window Drag and Clickable Control Isolation
+- **Context:** Eliminating first-click drag lag and double-touch requirements in desktop widgets.
+- **Finding:** Intercepting `PointerPressed` on cards to trigger state transitions (such as expanding on click) suppresses WM_NCLBUTTONDOWN and forces a second click for dragging. Calling Win32 `ReleaseCapture()` and `SendMessage(hWnd, WM_NCLBUTTONDOWN, HTCAPTION, 0)` immediately on the card's `PointerPressed`, while setting `e.Handled = true` on all interactive child controls (+ buttons, Play, checkboxes, text), ensures instant dragging on the first touch while preventing accidental drags during clicks.
+- **Rule:** Always isolate interactive controls with `e.Handled = true` and dispatch Win32 `WM_NCLBUTTONDOWN` on the parent container's first left-button pointer press.
+
+### 2026-11-01 — Zero-Crash Media Player Lifecycle and Automatic Broken File Replacement
+- **Context:** Stabilizing Daily Reset focus video player and preventing app crashes on missing or corrupted media.
+- **Finding:** WinUI 3 `MediaPlayer` instances can lock Direct3D decoding buffers if not explicitly detached (`MediaPlayer.Source = null`) and paused before window collapsing or tab switching. Furthermore, when decoding fails (`MediaFailed`) or files are missing on disk, catching the error and calling `DayTransitionService.ReplaceCorruptedVideoAsync` to draw the next video from `CycleQueue` with status "Файл заменен" recovers the player cleanly with zero application crashes.
+- **Rule:** Always set `MediaPlayer.Source = null` on view dismissal, wrap `MediaSource` creation in try-catch, and route decoding failures to cyclic auto-replacement.
+

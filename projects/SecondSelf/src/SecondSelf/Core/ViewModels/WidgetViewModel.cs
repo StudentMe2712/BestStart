@@ -47,6 +47,9 @@ public partial class WidgetViewModel : ObservableObject
     private bool _isPlayerOpen;
 
     [ObservableProperty]
+    private bool _isShowingTasks;
+
+    [ObservableProperty]
     private int _displayScore = 78;
 
     [ObservableProperty]
@@ -241,7 +244,9 @@ public partial class WidgetViewModel : ObservableObject
             }
         }
 
-        // 4. Загрузка состояния окна
+        // 4. Загрузка состояния окна (DEFECT 4.1: всегда сброс в Home при запуске)
+        IsShowingTasks = false;
+        IsPlayerOpen = false;
         if (_windowStateService != null)
         {
             var state = await _windowStateService.LoadStateAsync(cancellationToken).ConfigureAwait(false);
@@ -288,12 +293,37 @@ public partial class WidgetViewModel : ObservableObject
     }
 
     [RelayCommand]
+    public void OpenTasks()
+    {
+        if (!IsExpanded)
+        {
+            Expand();
+        }
+        if (IsPlayerOpen)
+        {
+            ClosePlayer();
+        }
+        IsShowingTasks = true;
+    }
+
+    [RelayCommand]
+    public void BackToHome()
+    {
+        if (IsPlayerOpen)
+        {
+            ClosePlayer();
+        }
+        IsShowingTasks = false;
+    }
+
+    [RelayCommand]
     public async Task OpenPlayerAsync(CancellationToken cancellationToken = default)
     {
         if (!IsExpanded)
         {
             Expand();
         }
+        IsShowingTasks = false;
 
         bool initialized = await Player.InitializeAsync(null, cancellationToken).ConfigureAwait(false);
         IsPlayerOpen = true;
@@ -360,6 +390,11 @@ public partial class WidgetViewModel : ObservableObject
     [RelayCommand]
     public void StartAddingTask()
     {
+        if (!IsExpanded)
+        {
+            Expand();
+        }
+        IsShowingTasks = true;
         IsAddingTask = true;
     }
 
@@ -561,6 +596,12 @@ public partial class WidgetViewModel : ObservableObject
     {
         if (!IsExpanded)
         {
+            // DEFECT 4.1: При любом вызове/разворачивании виджета активным ВСЕГДА открывается Главный экран Home
+            IsShowingTasks = false;
+            if (IsPlayerOpen)
+            {
+                ClosePlayer();
+            }
             IsExpanded = true;
         }
     }
@@ -568,10 +609,15 @@ public partial class WidgetViewModel : ObservableObject
     [RelayCommand]
     public void Collapse()
     {
+        if (IsPlayerOpen)
+        {
+            ClosePlayer();
+        }
+        IsShowingTasks = false;
+        IsAddingTask = false;
         if (IsExpanded)
         {
             IsExpanded = false;
-            IsAddingTask = false;
         }
     }
 

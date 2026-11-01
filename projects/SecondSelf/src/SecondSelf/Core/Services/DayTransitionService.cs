@@ -51,6 +51,7 @@ public sealed class DayTransitionService : IDayTransitionService
     {
         var time = currentTime ?? DateTime.Now;
         var logicalDate = GetLogicalDate(time);
+        CurrentLogicalDate = logicalDate;
 
         var existingLog = await _dailyRitualRepository.GetDailyRitualLogAsync(logicalDate, cancellationToken).ConfigureAwait(false);
 
@@ -139,6 +140,7 @@ public sealed class DayTransitionService : IDayTransitionService
 
         var time = currentTime ?? DateTime.Now;
         var logicalDate = GetLogicalDate(time);
+        CurrentLogicalDate = logicalDate;
 
         var nextVideo = await _shuffleService.GetNextVideoInCycleAsync(cancellationToken).ConfigureAwait(false);
         if (nextVideo == null)

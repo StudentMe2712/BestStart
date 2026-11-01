@@ -1,12 +1,16 @@
 using System;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
+using CommunityToolkit.Mvvm.Messaging;
 using Microsoft.UI;
+using Microsoft.UI.Composition;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Hosting;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
+using SecondSelf.Core.Messages;
 using SecondSelf.Core.Services;
 using SecondSelf.Core.ViewModels;
 using Windows.Graphics;
@@ -178,14 +182,36 @@ public sealed partial class WidgetWindow : Window
         // 8. Подписка на горячие клавиши (Space = Play/Pause, Esc = Close)
         RootGrid.KeyDown += OnRootGridKeyDown;
 
-        // 9. Подписка на фокус поля ввода новой задачи
+        // 8.1. Подписка на автоматическое сворачивание при открытии Personal Space (DEFECT 4)
+        WeakReferenceMessenger.Default.Register<CollapseWidgetMessage>(this, (r, m) =>
+        {
+            DispatcherQueue.TryEnqueue(() =>
+            {
+                if (ViewModel.IsExpanded)
+                {
+                    ViewModel.Collapse();
+                }
+            });
+        });
+
+        // 9. Подписка на изменение свойств ViewModel
         ViewModel.PropertyChanged += (s, e) =>
         {
             if (e.PropertyName == nameof(WidgetViewModel.IsAddingTask) && ViewModel.IsAddingTask)
             {
                 FocusInlineInput();
             }
+            else if (e.PropertyName == nameof(WidgetViewModel.IsShowingTasks))
+            {
+                OnShowingTasksChanged(ViewModel.IsShowingTasks);
+            }
         };
+
+        // 9.1. Инициализация аппаратных теней WinUI Composition DropShadow (DEFECT 1)
+        if (this.Content is FrameworkElement fe)
+        {
+            fe.Loaded += (s, e) => ApplyAllShadows();
+        }
 
         // 10. Подписка на полноэкранные приложения (игры, видео на весь экран)
         if (_systemMonitorService != null)
@@ -262,8 +288,8 @@ public sealed partial class WidgetWindow : Window
         var state = await _windowStateService.LoadStateAsync();
         var dpiScale = GetDpiScale();
 
-        int targetWidthDip = state.IsExpanded ? 380 : 360;
-        int targetHeightDip = state.IsExpanded ? 680 : 240;
+        int targetWidthDip = state.IsExpanded ? 360 : 160;
+        int targetHeightDip = state.IsExpanded ? 240 : 32;
 
         int physicalWidth = (int)Math.Round(targetWidthDip * dpiScale);
         int physicalHeight = (int)Math.Round(targetHeightDip * dpiScale);
@@ -281,6 +307,9 @@ public sealed partial class WidgetWindow : Window
             workArea.Width,
             workArea.Height);
 
+        // DEFECT 2: Виджет крепится к верхней кромке активного монитора (Y = 0)
+        targetY = workArea.Y;
+
         try
         {
             var monitors = DisplayArea.FindAll();
@@ -290,7 +319,7 @@ public sealed partial class WidgetWindow : Window
                     new WindowPosition(targetX, targetY, physicalWidth, physicalHeight),
                     monitors);
                 targetX = safePos.X;
-                targetY = safePos.Y;
+                targetY = workArea.Y;
             }
         }
         catch
@@ -302,21 +331,25 @@ public sealed partial class WidgetWindow : Window
 
         if (state.IsExpanded)
         {
-            WidgetCanvas.Width = 380;
-            WidgetCanvas.Height = 680;
-            CompactView.Opacity = 0.0;
-            CompactView.Visibility = Visibility.Collapsed;
-            ExpandedView.Opacity = 1.0;
-            ExpandedView.Visibility = Visibility.Visible;
+            WidgetCanvas.Width = 360;
+            WidgetCanvas.Height = 240;
+            CompactTrigger.Visibility = Visibility.Collapsed;
+            CompactTriggerShadowHost.Visibility = Visibility.Collapsed;
+            WidgetCanvas.Visibility = Visibility.Visible;
+            CompactView.Opacity = 1.0;
+            CompactView.Visibility = Visibility.Visible;
+            ExpandedRoot.Visibility = Visibility.Collapsed;
+            PlayerRoot.Visibility = Visibility.Collapsed;
         }
         else
         {
-            WidgetCanvas.Width = 360;
-            WidgetCanvas.Height = 240;
+            CompactTrigger.Visibility = Visibility.Visible;
+            CompactTriggerShadowHost.Visibility = Visibility.Visible;
+            WidgetCanvas.Visibility = Visibility.Collapsed;
             CompactView.Opacity = 1.0;
             CompactView.Visibility = Visibility.Visible;
-            ExpandedView.Opacity = 0.0;
-            ExpandedView.Visibility = Visibility.Collapsed;
+            ExpandedRoot.Visibility = Visibility.Collapsed;
+            PlayerRoot.Visibility = Visibility.Collapsed;
         }
     }
 
@@ -389,12 +422,94 @@ public sealed partial class WidgetWindow : Window
         var point = e.GetCurrentPoint(sender as UIElement);
         if (point.Properties.IsLeftButtonPressed)
         {
-            if (!ViewModel.IsExpanded)
-            {
-                ViewModel.Expand();
-                e.Handled = true;
-            }
+            DragWindow();
+            e.Handled = true;
         }
+    }
+
+    private void OnInteractivePointerPressed(object sender, PointerRoutedEventArgs e)
+    {
+        e.Handled = true;
+    }
+
+    private void OnCompactCapsulePointerPressed(object sender, PointerRoutedEventArgs e)
+    {
+        ViewModel.OpenTasks();
+        e.Handled = true;
+    }
+
+    private void OnCompactExpandButtonClick(object sender, RoutedEventArgs e)
+    {
+        ViewModel.OpenTasks();
+    }
+
+    private void OnBackToHomeClick(object sender, RoutedEventArgs e)
+    {
+        ViewModel.BackToHome();
+    }
+
+    private void OnTriggerPointerPressed(object sender, PointerRoutedEventArgs e)
+    {
+        var point = e.GetCurrentPoint(sender as UIElement);
+        if (point.Properties.IsLeftButtonPressed)
+        {
+            ViewModel.Expand();
+            e.Handled = true;
+        }
+    }
+
+    private void OnTriggerPointerEntered(object sender, PointerRoutedEventArgs e)
+    {
+        if (CompactTrigger != null)
+        {
+            CompactTrigger.Background = new SolidColorBrush(Windows.UI.Color.FromArgb(0xCC, 0x48, 0x30, 0x24));
+        }
+    }
+
+    private void OnTriggerPointerExited(object sender, PointerRoutedEventArgs e)
+    {
+        if (CompactTrigger != null)
+        {
+            CompactTrigger.Background = new SolidColorBrush(Windows.UI.Color.FromArgb(0x9E, 0x30, 0x22, 0x1C));
+        }
+    }
+
+    private void ApplyCardShadow(FrameworkElement? hostElement)
+    {
+        if (hostElement == null) return;
+        try
+        {
+            var visual = ElementCompositionPreview.GetElementVisual(hostElement);
+            var compositor = visual.Compositor;
+
+            var dropShadow = compositor.CreateDropShadow();
+            dropShadow.BlurRadius = 40.0f;
+            dropShadow.Offset = new System.Numerics.Vector3(0f, 16f, 0f);
+            dropShadow.Color = Windows.UI.Color.FromArgb(128, 0, 0, 0); // rgba(0,0,0,0.5)
+
+            var spriteVisual = compositor.CreateSpriteVisual();
+            spriteVisual.Shadow = dropShadow;
+
+            var bindSize = compositor.CreateExpressionAnimation("visual.Size");
+            bindSize.SetReferenceParameter("visual", visual);
+            spriteVisual.StartAnimation("Size", bindSize);
+
+            ElementCompositionPreview.SetElementChildVisual(hostElement, spriteVisual);
+        }
+        catch
+        {
+            // Подавляем в headless/тестовой среде
+        }
+    }
+
+    private void ApplyAllShadows()
+    {
+        ApplyCardShadow(TodaysFocusShadowHost);
+        ApplyCardShadow(DailyResetShadowHost);
+        ApplyCardShadow(QuickHubShadowHost);
+        ApplyCardShadow(ExpandedShadowHost);
+        ApplyCardShadow(PlayerShadowHost);
+        ApplyCardShadow(CompactTriggerShadowHost);
     }
 
     private void OnWindowActivated(object sender, WindowActivatedEventArgs args)
@@ -460,31 +575,42 @@ public sealed partial class WidgetWindow : Window
 
         if (isExpanded)
         {
-            // Точка привязки Top-Right Anchor: при расширении с 360 до 380px сдвигаем окно влево на 20px
-            int deltaWidthPhysical = (int)Math.Round(20.0 * dpiScale);
-            int newPhysicalWidth = (int)Math.Round(380.0 * dpiScale);
-            int newPhysicalHeight = (int)Math.Round(680.0 * dpiScale);
-            int newX = currentPos.X - deltaWidthPhysical;
+            // DEFECT 4.1: При любом открытии виджета ВСЕГДА открывается Главный экран Home (3 карточки)
+            int newPhysicalWidth = (int)Math.Round(360.0 * dpiScale);
+            int newPhysicalHeight = (int)Math.Round(240.0 * dpiScale);
 
-            _appWindow.MoveAndResize(new RectInt32(newX, currentPos.Y, newPhysicalWidth, newPhysicalHeight));
+            var displayArea = DisplayArea.GetFromWindowId(Win32Interop.GetWindowIdFromWindow(_hwnd), DisplayAreaFallback.Primary);
+            int topY = displayArea?.WorkArea.Y ?? 0;
+            int newX = currentPos.X;
+            if (displayArea != null && newX + newPhysicalWidth > displayArea.WorkArea.X + displayArea.WorkArea.Width)
+            {
+                newX = displayArea.WorkArea.X + displayArea.WorkArea.Width - newPhysicalWidth - (int)Math.Round(16 * dpiScale);
+            }
 
-            ExpandedView.Visibility = Visibility.Visible;
+            _appWindow.MoveAndResize(new RectInt32(newX, topY, newPhysicalWidth, newPhysicalHeight));
+
+            CompactTrigger.Visibility = Visibility.Collapsed;
+            CompactTriggerShadowHost.Visibility = Visibility.Collapsed;
+
+            WidgetCanvas.Width = 360;
+            WidgetCanvas.Height = 240;
+            CompactView.Opacity = 1.0;
             CompactView.Visibility = Visibility.Visible;
+            ExpandedRoot.Visibility = Visibility.Collapsed;
+            PlayerRoot.Visibility = Visibility.Collapsed;
+            WidgetCanvas.Visibility = Visibility.Visible;
 
             ExpandStoryboard.Begin();
         }
         else
         {
-            ExpandedView.Visibility = Visibility.Visible;
-            CompactView.Visibility = Visibility.Visible;
-
+            StopAndCleanupMediaPlayer();
             CollapseStoryboard.Begin();
         }
     }
 
     private void OnExpandStoryboardCompleted(object? sender, object e)
     {
-        CompactView.Visibility = Visibility.Collapsed;
         _isTransitioning = false;
         SaveCurrentWindowPosition();
         App.TrimWorkingSet();
@@ -492,17 +618,92 @@ public sealed partial class WidgetWindow : Window
 
     private void OnCollapseStoryboardCompleted(object? sender, object e)
     {
-        ExpandedView.Visibility = Visibility.Collapsed;
+        WidgetCanvas.Visibility = Visibility.Collapsed;
+        CompactTrigger.Visibility = Visibility.Visible;
+        CompactTriggerShadowHost.Visibility = Visibility.Visible;
+
+        CompactView.Visibility = Visibility.Visible;
+        CompactView.Opacity = 1.0;
+        ExpandedRoot.Visibility = Visibility.Collapsed;
+        ExpandedRoot.Opacity = 0.0;
+        PlayerRoot.Visibility = Visibility.Collapsed;
+        PlayerRoot.Opacity = 0.0;
+
+        var dpiScale = GetDpiScale();
+        var currentPos = _appWindow.Position;
+        int triggerWidth = (int)Math.Round(160.0 * dpiScale);
+        int triggerHeight = (int)Math.Round(32.0 * dpiScale);
+
+        var displayArea = DisplayArea.GetFromWindowId(Win32Interop.GetWindowIdFromWindow(_hwnd), DisplayAreaFallback.Primary);
+        int topY = displayArea?.WorkArea.Y ?? 0;
+
+        _appWindow.MoveAndResize(new RectInt32(currentPos.X, topY, triggerWidth, triggerHeight));
+
+        _isTransitioning = false;
+        SaveCurrentWindowPosition();
+        App.TrimWorkingSet();
+    }
+
+    private void OnShowingTasksChanged(bool isShowing)
+    {
+        if (_isTransitioning) return;
+        _isTransitioning = true;
+
         var dpiScale = GetDpiScale();
         var currentPos = _appWindow.Position;
 
-        // Возвращаем Top-Right Anchor: сдвигаем окно обратно вправо на 20px
+        if (isShowing)
+        {
+            int deltaWidthPhysical = (int)Math.Round(20.0 * dpiScale);
+            int newPhysicalWidth = (int)Math.Round(380.0 * dpiScale);
+            int newPhysicalHeight = (int)Math.Round(680.0 * dpiScale);
+            int newX = currentPos.X - deltaWidthPhysical;
+
+            var displayArea = DisplayArea.GetFromWindowId(Win32Interop.GetWindowIdFromWindow(_hwnd), DisplayAreaFallback.Primary);
+            int topY = displayArea?.WorkArea.Y ?? 0;
+
+            _appWindow.MoveAndResize(new RectInt32(newX, topY, newPhysicalWidth, newPhysicalHeight));
+
+            WidgetCanvas.Width = 380;
+            WidgetCanvas.Height = 680;
+            ExpandedRoot.Visibility = Visibility.Visible;
+            CompactView.Visibility = Visibility.Visible;
+
+            OpenTasksStoryboard.Begin();
+        }
+        else
+        {
+            CompactView.Visibility = Visibility.Visible;
+            CloseTasksStoryboard.Begin();
+        }
+    }
+
+    private void OnOpenTasksStoryboardCompleted(object? sender, object e)
+    {
+        CompactView.Visibility = Visibility.Collapsed;
+        _isTransitioning = false;
+        SaveCurrentWindowPosition();
+        App.TrimWorkingSet();
+    }
+
+    private void OnCloseTasksStoryboardCompleted(object? sender, object e)
+    {
+        ExpandedRoot.Visibility = Visibility.Collapsed;
+        var dpiScale = GetDpiScale();
+        var currentPos = _appWindow.Position;
+
         int deltaWidthPhysical = (int)Math.Round(20.0 * dpiScale);
         int newPhysicalWidth = (int)Math.Round(360.0 * dpiScale);
         int newPhysicalHeight = (int)Math.Round(240.0 * dpiScale);
         int newX = currentPos.X + deltaWidthPhysical;
 
-        _appWindow.MoveAndResize(new RectInt32(newX, currentPos.Y, newPhysicalWidth, newPhysicalHeight));
+        var displayArea = DisplayArea.GetFromWindowId(Win32Interop.GetWindowIdFromWindow(_hwnd), DisplayAreaFallback.Primary);
+        int topY = displayArea?.WorkArea.Y ?? 0;
+
+        _appWindow.MoveAndResize(new RectInt32(newX, topY, newPhysicalWidth, newPhysicalHeight));
+
+        WidgetCanvas.Width = 360;
+        WidgetCanvas.Height = 240;
 
         _isTransitioning = false;
         SaveCurrentWindowPosition();
@@ -740,7 +941,14 @@ public sealed partial class WidgetWindow : Window
 
             try
             {
-                var mediaSource = Windows.Media.Core.MediaSource.CreateFromUri(new Uri(filePath));
+                if (string.IsNullOrWhiteSpace(filePath) || !System.IO.File.Exists(filePath))
+                {
+                    _ = ViewModel.Player.OnMediaFailedAsync();
+                    return;
+                }
+
+                var uri = new Uri(System.IO.Path.GetFullPath(filePath));
+                var mediaSource = Windows.Media.Core.MediaSource.CreateFromUri(uri);
                 _mediaPlayer.Source = mediaSource;
 
                 if (startPositionMs > 0)
@@ -752,9 +960,34 @@ public sealed partial class WidgetWindow : Window
             }
             catch
             {
+                try
+                {
+                    if (_mediaPlayer != null)
+                    {
+                        _mediaPlayer.Source = null;
+                    }
+                }
+                catch { }
+
                 _ = ViewModel.Player.OnMediaFailedAsync();
             }
         });
+    }
+
+    private void StopAndCleanupMediaPlayer()
+    {
+        if (_mediaPlayer != null)
+        {
+            try
+            {
+                _mediaPlayer.Pause();
+                _mediaPlayer.Source = null;
+            }
+            catch
+            {
+                // Подавляем исключения при очистке источника
+            }
+        }
     }
 
     private void OnRequestPauseMedia()
@@ -775,18 +1008,28 @@ public sealed partial class WidgetWindow : Window
 
     private void OnRootGridKeyDown(object sender, KeyRoutedEventArgs e)
     {
-        if (ViewModel.IsPlayerOpen)
+        if (e.Key == Windows.System.VirtualKey.Escape)
         {
-            if (e.Key == Windows.System.VirtualKey.Space)
-            {
-                _ = ViewModel.Player.PlayPauseAsync();
-                e.Handled = true;
-            }
-            else if (e.Key == Windows.System.VirtualKey.Escape)
+            if (ViewModel.IsPlayerOpen)
             {
                 ViewModel.ClosePlayer();
                 e.Handled = true;
             }
+            else if (ViewModel.IsShowingTasks)
+            {
+                ViewModel.BackToHome();
+                e.Handled = true;
+            }
+            else if (ViewModel.IsExpanded)
+            {
+                ViewModel.Collapse();
+                e.Handled = true;
+            }
+        }
+        else if (e.Key == Windows.System.VirtualKey.Space && ViewModel.IsPlayerOpen)
+        {
+            _ = ViewModel.Player.PlayPauseAsync();
+            e.Handled = true;
         }
     }
 
@@ -805,17 +1048,21 @@ public sealed partial class WidgetWindow : Window
                 int newPhysicalHeight = (int)Math.Round(680.0 * dpiScale);
                 int newX = currentPos.X - deltaWidthPhysical;
 
-                _appWindow.MoveAndResize(new RectInt32(newX, currentPos.Y, newPhysicalWidth, newPhysicalHeight));
+                var displayArea = DisplayArea.GetFromWindowId(Win32Interop.GetWindowIdFromWindow(_hwnd), DisplayAreaFallback.Primary);
+                int topY = displayArea?.WorkArea.Y ?? 0;
+
+                _appWindow.MoveAndResize(new RectInt32(newX, topY, newPhysicalWidth, newPhysicalHeight));
                 WidgetCanvas.Width = 380;
                 WidgetCanvas.Height = 680;
             }
 
-            PlayerView.Visibility = Visibility.Visible;
+            PlayerRoot.Visibility = Visibility.Visible;
             OpenPlayerStoryboard.Begin();
         }
         else
         {
-            ExpandedView.Visibility = Visibility.Visible;
+            StopAndCleanupMediaPlayer();
+            CompactView.Visibility = Visibility.Visible;
             ClosePlayerStoryboard.Begin();
         }
     }
@@ -918,14 +1165,36 @@ public sealed partial class WidgetWindow : Window
 
     private void OnOpenPlayerStoryboardCompleted(object? sender, object e)
     {
-        ExpandedView.Visibility = Visibility.Collapsed;
+        ExpandedRoot.Visibility = Visibility.Collapsed;
         CompactView.Visibility = Visibility.Collapsed;
         _isTransitioning = false;
     }
 
     private void OnClosePlayerStoryboardCompleted(object? sender, object e)
     {
-        PlayerView.Visibility = Visibility.Collapsed;
+        PlayerRoot.Visibility = Visibility.Collapsed;
+        StopAndCleanupMediaPlayer();
+
+        var dpiScale = GetDpiScale();
+        var currentPos = _appWindow.Position;
+
+        if (!ViewModel.IsShowingTasks)
+        {
+            int deltaWidthPhysical = (int)Math.Round(20.0 * dpiScale);
+            int newPhysicalWidth = (int)Math.Round(360.0 * dpiScale);
+            int newPhysicalHeight = (int)Math.Round(240.0 * dpiScale);
+            int newX = currentPos.X + deltaWidthPhysical;
+
+            var displayArea = DisplayArea.GetFromWindowId(Win32Interop.GetWindowIdFromWindow(_hwnd), DisplayAreaFallback.Primary);
+            int topY = displayArea?.WorkArea.Y ?? 0;
+
+            _appWindow.MoveAndResize(new RectInt32(newX, topY, newPhysicalWidth, newPhysicalHeight));
+            WidgetCanvas.Width = 360;
+            WidgetCanvas.Height = 240;
+            CompactView.Visibility = Visibility.Visible;
+            CompactView.Opacity = 1.0;
+        }
+
         _isTransitioning = false;
         App.TrimWorkingSet();
     }

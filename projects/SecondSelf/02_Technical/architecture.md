@@ -70,8 +70,8 @@ Second Self проектируется как высокопроизводите
                               └───────────────────────────────────┘
 ```
 
-### 2.1. Низкоуровневая спецификация окна Desktop Widget (Win32 Interop)
-Чтобы плавающий виджет вел себя как органичный нативный элемент рабочего стола Windows (а не обычное диалоговое окно), применяются специальные оконные стили:
+### 2.1. Низкоуровневая спецификация окна Desktop Widget (Win32 Interop & Канон 2.0)
+Чтобы выдвижная панель вела себя как органичный нативный системный инструмент рабочего стола Windows (в духе Dynamic Island и Raycast), применяются специальные оконные стили и Win32 P/Invoke:
 
 ```csharp
 // Инициализация окна виджета в WinUI 3
@@ -89,10 +89,24 @@ int exStyle = PInvoke.GetWindowLong(hWnd, WINDOW_LONG_PTR_INDEX.GWL_EXSTYLE);
 exStyle |= (int)WINDOW_EX_STYLE.WS_EX_TOOLWINDOW;
 PInvoke.SetWindowLong(hWnd, WINDOW_LONG_PTR_INDEX.GWL_EXSTYLE, exStyle);
 
-// 3. Закрепляем на всех виртуальных рабочих столах Windows (Win+Tab)
-var vdm = (IVirtualDesktopManager)new VirtualDesktopManager();
-vdm.PinWindow(hWnd);
+// 3. 100% честная прозрачность окна через DwmExtendFrameIntoClientArea
+var margins = new MARGINS(-1);
+DwmExtendFrameIntoClientArea(hWnd, ref margins);
+
+// 4. Мгновенный Drag & Drop (Zero Lag) с первого касания мыши:
+PInvoke.ReleaseCapture();
+PInvoke.SendMessage(hWnd, PInvoke.WM_NCLBUTTONDOWN, (nuint)PInvoke.HTCAPTION, 0);
+
+// 5. Глобальные хоткеи (Alt+Shift+S / Alt+Shift+N):
+RegisterHotKey(hWnd, HOTKEY_TOGGLE_WIDGET_ID, MOD_ALT | MOD_SHIFT | MOD_NOREPEAT, VK_S);
 ```
+
+### 2.2. Механика Top Drop-Down панели и взаимная изоляция окон
+* **Привязка к верхней кромке:** по умолчанию `NormalizedY = 0.0`. Виджет прикреплён к верхней границе активного дисплея.
+* **Свернутое состояние (Compact Trigger):** у верхней кромки отображается стеклянный язычок-триггер (капсула 160×32px, `CornerRadius="0,0,16,16"`, текстура `#9E30221C`, Specular Rim, иконка Second Self). При сворачивании окно физически сжимается до габаритов язычка.
+* **Раскрытое состояние (Expanded Sheet):** по клику на язычок или по глобальному хоткею **Alt+Shift+S** / **Win+Ctrl+S** панель плавно опускается сверху вниз (TranslateY: -240 -> 0, 280 мс, кривая Spring Out `0.16, 1.0, 0.3, 1.0`). По потере фокуса (`Deactivated`) или `Esc` — плавно уезжает наверх.
+* **Взаимная изоляция (Exclusive Focus):** при открытии окна `Personal Space (DashboardWindow)` через шину `WeakReferenceMessenger` отправляется `CollapseWidgetMessage`. Виджет мгновенно и плавно сворачивается наверх.
+* **Стабильность MediaPlayer (Zero Crashes):** жизненный цикл `MediaPlayerElement` строго изолирован. При закрытии плеера или сворачивании виджета всегда вызывается `MediaPlayer.Source = null`. Ошибки декодирования перехватываются через `try/catch` на уровне `MediaSource` с автоматической заменой битого файла следующим из `CycleQueue` со статусом `Файл заменен`.
 
 ### 2.2. Позиционирование и мультимониторность
 * Координаты виджета сохраняются в файле `Settings/window_state.json` в нормализованном виде относительно конкретного монитора: `DisplayId`, `DpiScale`, `NormalizedX = (ScreenX - MonitorLeft) / MonitorWidth`, `NormalizedY = (ScreenY - MonitorTop) / MonitorHeight`.

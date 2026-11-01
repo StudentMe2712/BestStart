@@ -23,9 +23,9 @@
 
 | Токен | Значение (HEX / RGBA) | Параметры размытия (WinUI Composition) | Где применяется |
 | :--- | :--- | :--- | :--- |
-| `Surface.Widget.Compact.WarmGlass` | `rgba(156, 82, 43, 0.44)` | `BackdropBlur(32px)` + `Saturation(1.15)` | Левая карточка *Today's Focus* в компактном режиме |
-| `Surface.Widget.Compact.DarkGlass` | `rgba(48, 34, 28, 0.62)` | `BackdropBlur(28px)` | Правая нижняя карточка *Progress / Hub* в компактном режиме |
-| `Surface.Widget.Expanded.Bg` | `#0B0B0D` (`rgba(11, 11, 13, 0.95)`) | `BackdropBlur(40px)` + тёмный тинт 95% | Основное полотно раскрытого виджета и окна видеоплеера |
+| `Surface.Widget.Compact.WarmGlass` | `rgba(156, 82, 43, 0.44)` (`#709C522B`) | `BackdropBlur(32px)` + `SpecularRim(1px)` | Левая карточка *Today's Focus* в главном экране |
+| `Surface.Widget.Compact.DarkGlass` | `rgba(48, 34, 28, 0.62)` (`#9E30221C`) | `BackdropBlur(28px)` + `SpecularRim(1px)` | Правая нижняя карточка *Progress / Hub* и язычок-триггер |
+| `Surface.Widget.Expanded.Bg` | `rgba(24, 18, 16, 0.90)` (`#E6181210`) | `BackdropBlur(36px)` + тёплый тинт | Полотно раскрытого списка задач и окна видеоплеера |
 | `Surface.Dashboard.Canvas` | `#09090B` | Сплошной фон + верхнее свечение `RadialGradient` | Основной фон окна *Personal Dashboard* |
 | `Surface.Dashboard.Card` | `rgba(24, 22, 20, 0.78)` | `BackdropBlur(20px)` | Карточки Больших целей, Этапов и архивных сводок в Dashboard |
 | `Surface.Control.Pill` | `rgba(255, 255, 255, 0.08)` | Без дополнительного blur | Капсулы задач в компактном виде, круглые кнопки `+` и `...` |
@@ -53,7 +53,8 @@
 | `Text.Muted` | `rgba(255, 255, 255, 0.42)` | Зачёркнутый текст выполненных задач (`Read for 20 minutes`), плейсхолдеры ввода |
 | `Border.Outer.Container` | `rgba(255, 255, 255, 0.12)` | Внешняя рамка `1px` вокруг раскрытого виджета, плеера и карточек Dashboard |
 | `Border.Inner.Divider` | `rgba(255, 255, 255, 0.07)` | Горизонтальная разделительная линия `1px` между блоками *Today's Focus* и *Daily reset* |
-| `Border.Glass.Specular` | `LinearGradient(135deg, rgba(255,205,160,0.38) 0%, rgba(255,255,255,0.06) 100%)` | Световая кромка карточек в компактном режиме |
+| `Border.Glass.Specular` | `LinearGradient(135deg, rgba(255,210,170,0.45) 0%, rgba(255,255,255,0.08) 100%)` | Световая кромка `Specular Rim (1px)` карточек |
+| `Window.Background.Transparent` | `Transparent` (`100%`) | Прозрачный фон окна без чёрной подложки, обои просвечивают сквозь зазоры |
 
 ## 3. Типографика и шрифтовая шкала (Typography Scale)
 

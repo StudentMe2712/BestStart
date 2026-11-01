@@ -47,4 +47,22 @@ public class SystemTrayServiceTests
         trayService.TriggerCommand(SystemTrayService.CMD_EXIT);
         Assert.True(exitFired);
     }
+
+    [Fact]
+    public void TriggerHotkey_FiresCorrespondingEvents()
+    {
+        using var trayService = new SystemTrayService();
+
+        bool quickAddFired = false;
+        bool toggleWidgetFired = false;
+
+        trayService.QuickAddTaskRequested += () => quickAddFired = true;
+        trayService.ToggleWidgetRequested += () => toggleWidgetFired = true;
+
+        trayService.TriggerHotkey(SystemTrayService.HOTKEY_ADD_TASK_ID);
+        Assert.True(quickAddFired);
+
+        trayService.TriggerHotkey(SystemTrayService.HOTKEY_TOGGLE_WIDGET_ID);
+        Assert.True(toggleWidgetFired);
+    }
 }

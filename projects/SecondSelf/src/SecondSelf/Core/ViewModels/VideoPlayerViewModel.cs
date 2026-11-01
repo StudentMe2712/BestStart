@@ -186,6 +186,7 @@ public partial class VideoPlayerViewModel : ObservableObject
             VideoTitle = _playbackService.CurrentVideo.FileName;
             ResumePositionMs = 0;
             UpdatePropertiesFromService();
+            StatusText = "Файл заменен";
             RequestStartMedia?.Invoke(VideoFilePath, 0);
             return true;
         }

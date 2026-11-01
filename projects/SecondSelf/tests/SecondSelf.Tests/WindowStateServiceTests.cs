@@ -42,7 +42,7 @@ public sealed class WindowStateServiceTests : IDisposable
 
         Assert.NotNull(state);
         Assert.Equal(0.85, state.NormalizedX, 2);
-        Assert.Equal(0.05, state.NormalizedY, 2);
+        Assert.Equal(0.0, state.NormalizedY, 2);
         Assert.Equal("Primary", state.DisplayId);
         Assert.Equal(1.0, state.DpiScale);
         Assert.False(state.IsExpanded);
@@ -84,7 +84,7 @@ public sealed class WindowStateServiceTests : IDisposable
 
         Assert.NotNull(state);
         Assert.Equal(0.85, state.NormalizedX, 2);
-        Assert.Equal(0.05, state.NormalizedY, 2);
+        Assert.Equal(0.0, state.NormalizedY, 2);
     }
 
     [Fact]

@@ -90,6 +90,8 @@ public sealed class VideoPlaybackService : IVideoPlaybackService
 
         var video = await _videoLibraryService.GetVideoByIdAsync(log.VideoId, cancellationToken).ConfigureAwait(false);
 
+        bool wasReplaced = false;
+
         // Проверка физической доступности файла на диске перед запуском
         if (video == null || string.IsNullOrWhiteSpace(video.FilePath) || !File.Exists(video.FilePath))
         {
@@ -107,6 +109,8 @@ public sealed class VideoPlaybackService : IVideoPlaybackService
                 SetState(PlaybackState.Idle, "No video available");
                 return false;
             }
+
+            wasReplaced = true;
         }
 
         lock (_stateLock)
@@ -127,6 +131,12 @@ public sealed class VideoPlaybackService : IVideoPlaybackService
                 IsCompletedPlayback = true;
                 IsCountButtonVisible = false;
                 SetState(PlaybackState.Completed, "Done for Today");
+            }
+            else if (wasReplaced)
+            {
+                IsCompletedPlayback = false;
+                IsCountButtonVisible = false;
+                SetState(PlaybackState.Ready, "Файл заменен");
             }
             else if (CurrentPositionMs > 0)
             {
@@ -328,7 +338,7 @@ public sealed class VideoPlaybackService : IVideoPlaybackService
             IsCountButtonVisible = false;
             IsRitualCounted = false;
 
-            SetState(PlaybackState.Ready, "Ready");
+            SetState(PlaybackState.Ready, "Файл заменен");
         }
 
         PositionChanged?.Invoke(this, CurrentPositionMs);

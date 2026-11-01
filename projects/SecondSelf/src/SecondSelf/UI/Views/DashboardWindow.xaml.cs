@@ -8,6 +8,8 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
+using CommunityToolkit.Mvvm.Messaging;
+using SecondSelf.Core.Messages;
 using SecondSelf.Core.ViewModels;
 using SecondSelf.Data.Entities;
 using Windows.Graphics;
@@ -98,6 +100,10 @@ public sealed partial class DashboardWindow : Window
             _appWindow.Hide();
         };
 
+        // 5.1. Автосворачивание виджета при открытии или активации Personal Space (DEFECT 4)
+        this.Activated += OnWindowActivated;
+        WeakReferenceMessenger.Default.Send(new CollapseWidgetMessage());
+
         // 6. Инициализация данных при первом открытии
         this.DispatcherQueue.TryEnqueue(async () =>
         {
@@ -147,6 +153,14 @@ public sealed partial class DashboardWindow : Window
             titleBar.ButtonHoverForegroundColor = Windows.UI.Color.FromArgb(255, 255, 255, 255);
             titleBar.ButtonPressedBackgroundColor = pressedBg;
             titleBar.ButtonPressedForegroundColor = Windows.UI.Color.FromArgb(255, 255, 255, 255);
+        }
+    }
+
+    private void OnWindowActivated(object sender, WindowActivatedEventArgs args)
+    {
+        if (args.WindowActivationState != WindowActivationState.Deactivated)
+        {
+            WeakReferenceMessenger.Default.Send(new CollapseWidgetMessage());
         }
     }
 
