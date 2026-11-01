@@ -16,6 +16,7 @@ public sealed class SystemTrayService : ISystemTrayService
 
     public const int HOTKEY_ADD_TASK_ID = 2001;
     public const int HOTKEY_TOGGLE_WIDGET_ID = 2002;
+    public const int HOTKEY_TOGGLE_WIDGET_LEGACY_ID = 2003;
     private const uint MOD_ALT = 0x0001;
     private const uint MOD_SHIFT = 0x0004;
     private const uint MOD_CONTROL = 0x0002;
@@ -108,8 +109,11 @@ public sealed class SystemTrayService : ISystemTrayService
                 // Регистрация глобального шортката Alt+Shift+N
                 RegisterHotKey(_hwnd, HOTKEY_ADD_TASK_ID, MOD_ALT | MOD_SHIFT | MOD_NOREPEAT, VK_N);
 
-                // Регистрация глобального шортката Alt+Shift+S для переключения виджета (DEFECT 2)
-                RegisterHotKey(_hwnd, HOTKEY_TOGGLE_WIDGET_ID, MOD_ALT | MOD_SHIFT | MOD_NOREPEAT, VK_S);
+                // Регистрация глобального хоткея Win+Ctrl+S для переключения виджета
+                RegisterHotKey(_hwnd, HOTKEY_TOGGLE_WIDGET_ID, MOD_CONTROL | MOD_WIN | MOD_NOREPEAT, VK_S);
+
+                // Регистрация хоткея Alt+Shift+S для совместимости
+                RegisterHotKey(_hwnd, HOTKEY_TOGGLE_WIDGET_LEGACY_ID, MOD_ALT | MOD_SHIFT | MOD_NOREPEAT, VK_S);
             }
 
             IsInitialized = true;
@@ -177,7 +181,7 @@ public sealed class SystemTrayService : ISystemTrayService
         {
             TriggerCommand(CMD_QUICK_ADD_TASK);
         }
-        else if (hotkeyId == HOTKEY_TOGGLE_WIDGET_ID)
+        else if (hotkeyId == HOTKEY_TOGGLE_WIDGET_ID || hotkeyId == HOTKEY_TOGGLE_WIDGET_LEGACY_ID)
         {
             TriggerCommand(CMD_TOGGLE_WIDGET);
         }
@@ -366,6 +370,7 @@ public sealed class SystemTrayService : ISystemTrayService
             {
                 UnregisterHotKey(_hwnd, HOTKEY_ADD_TASK_ID);
                 UnregisterHotKey(_hwnd, HOTKEY_TOGGLE_WIDGET_ID);
+                UnregisterHotKey(_hwnd, HOTKEY_TOGGLE_WIDGET_LEGACY_ID);
             }
             catch
             {

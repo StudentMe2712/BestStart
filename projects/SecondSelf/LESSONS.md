@@ -68,3 +68,9 @@
 - **Finding:** WinUI 3 `MediaPlayer` instances can lock Direct3D decoding buffers if not explicitly detached (`MediaPlayer.Source = null`) and paused before window collapsing or tab switching. Furthermore, when decoding fails (`MediaFailed`) or files are missing on disk, catching the error and calling `DayTransitionService.ReplaceCorruptedVideoAsync` to draw the next video from `CycleQueue` with status "Файл заменен" recovers the player cleanly with zero application crashes.
 - **Rule:** Always set `MediaPlayer.Source = null` on view dismissal, wrap `MediaSource` creation in try-catch, and route decoding failures to cyclic auto-replacement.
 
+### 2026-11-01 — True Window Transparency in WinUI 3 with DWM and ICompositionSupportsSystemBackdrop
+- **Context:** Eliminating opaque black rectangular backdrops in frameless desktop widgets with Glassmorphism.
+- **Finding:** In WinUI 3 (Windows App SDK), setting `Window.SystemBackdrop = null` and `Grid.Background = "Transparent"` alone leaves an opaque black backing canvas rendered by `DesktopWindowXamlSource`. To achieve 100% true alpha transparency where the Windows desktop wallpaper is visible through card margins, one must combine Win32 `DwmExtendFrameIntoClientArea(margins = -1)` and `DwmEnableBlurBehindWindow` with WinRT `window.As<ICompositionSupportsSystemBackdrop>()`, assigning an alpha-zero `CompositionColorBrush` (`Color.FromArgb(0, 0, 0, 0)`).
+- **Rule:** Always assign an explicit alpha-zero `CompositionColorBrush` to `ICompositionSupportsSystemBackdrop.SystemBackdrop` and invoke `DwmEnableBlurBehindWindow` for true glassmorphic transparent windows in WinUI 3.
+
+

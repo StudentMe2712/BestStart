@@ -87,7 +87,7 @@ public sealed class Sprint2DefectVerificationTests : IDisposable
         var defaultState = new WindowState();
 
         Assert.Equal(0.0, defaultState.NormalizedY);
-        Assert.Equal(0.85, defaultState.NormalizedX);
+        Assert.Equal(0.5, defaultState.NormalizedX);
         Assert.False(defaultState.IsExpanded);
     }
 

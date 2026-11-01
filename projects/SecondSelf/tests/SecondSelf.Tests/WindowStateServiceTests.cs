@@ -41,7 +41,7 @@ public sealed class WindowStateServiceTests : IDisposable
         var state = await _service.LoadStateAsync();
 
         Assert.NotNull(state);
-        Assert.Equal(0.85, state.NormalizedX, 2);
+        Assert.Equal(0.5, state.NormalizedX, 2);
         Assert.Equal(0.0, state.NormalizedY, 2);
         Assert.Equal("Primary", state.DisplayId);
         Assert.Equal(1.0, state.DpiScale);
@@ -83,7 +83,7 @@ public sealed class WindowStateServiceTests : IDisposable
         var state = await _service.LoadStateAsync();
 
         Assert.NotNull(state);
-        Assert.Equal(0.85, state.NormalizedX, 2);
+        Assert.Equal(0.5, state.NormalizedX, 2);
         Assert.Equal(0.0, state.NormalizedY, 2);
     }
 

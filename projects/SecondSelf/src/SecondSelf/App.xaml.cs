@@ -1,7 +1,9 @@
 using System;
+using CommunityToolkit.Mvvm.Messaging;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.UI.Xaml;
+using SecondSelf.Core.Messages;
 using SecondSelf.Core.Services;
 using SecondSelf.Core.ViewModels;
 using SecondSelf.Data;
@@ -24,8 +26,21 @@ public partial class App : Application
     public static WidgetWindow? WidgetWindow { get; private set; }
     public static DashboardWindow? DashboardWindow { get; private set; }
 
+    public static void CollapseWidget()
+    {
+        if (WidgetWindow != null && WidgetWindow.ViewModel.IsExpanded)
+        {
+            WidgetWindow.ViewModel.Collapse();
+        }
+        else
+        {
+            WeakReferenceMessenger.Default.Send(new CollapseWidgetMessage());
+        }
+    }
+
     public static void OpenDashboard()
     {
+        CollapseWidget();
         DashboardWindow ??= Services.GetRequiredService<DashboardWindow>();
         DashboardWindow.Activate();
         DashboardWindow.AppWindow.Show();

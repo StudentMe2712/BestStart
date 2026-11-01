@@ -42,7 +42,7 @@ public sealed record DisplayArea
 /// </summary>
 public sealed record WindowState
 {
-    public double NormalizedX { get; init; } = 0.85;
+    public double NormalizedX { get; init; } = 0.5;
     public double NormalizedY { get; init; } = 0.0;
     public string DisplayId { get; init; } = "Primary";
     public double DpiScale { get; init; } = 1.0;

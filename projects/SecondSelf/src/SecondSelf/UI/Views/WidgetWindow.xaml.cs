@@ -14,6 +14,7 @@ using SecondSelf.Core.Messages;
 using SecondSelf.Core.Services;
 using SecondSelf.Core.ViewModels;
 using Windows.Graphics;
+using WinRT;
 using WinRT.Interop;
 using DisplayArea = Microsoft.UI.Windowing.DisplayArea;
 
@@ -64,6 +65,24 @@ public sealed partial class WidgetWindow : Window
             cyBottomHeight = margin;
         }
     }
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct DWM_BLURBEHIND
+    {
+        public const uint DWM_BB_ENABLE = 0x00000001;
+        public const uint DWM_BB_BLURREGION = 0x00000002;
+        public const uint DWM_BB_TRANSITIONONMAXIMIZED = 0x00000004;
+
+        public uint dwFlags;
+        [MarshalAs(UnmanagedType.Bool)]
+        public bool fEnable;
+        public IntPtr hRgnBlur;
+        [MarshalAs(UnmanagedType.Bool)]
+        public bool fTransitionOnMaximized;
+    }
+
+    [DllImport("dwmapi.dll")]
+    private static extern int DwmEnableBlurBehindWindow(IntPtr hWnd, ref DWM_BLURBEHIND pBlurBehind);
 
     [DllImport("dwmapi.dll")]
     private static extern int DwmExtendFrameIntoClientArea(IntPtr hWnd, ref MARGINS pMarInset);
@@ -259,8 +278,31 @@ public sealed partial class WidgetWindow : Window
         SetWindowPos(_hwnd, IntPtr.Zero, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED);
 
         // Включение прозрачности DWM для всего окна
+        var blurBehind = new DWM_BLURBEHIND
+        {
+            dwFlags = 0x1,
+            fEnable = true,
+            hRgnBlur = IntPtr.Zero,
+            fTransitionOnMaximized = false
+        };
+        DwmEnableBlurBehindWindow(_hwnd, ref blurBehind);
+
         var margins = new MARGINS(-1);
         DwmExtendFrameIntoClientArea(_hwnd, ref margins);
+
+        try
+        {
+            var backdropHolder = this.As<Microsoft.UI.Composition.ICompositionSupportsSystemBackdrop>();
+            if (backdropHolder != null)
+            {
+                var compositor = new Windows.UI.Composition.Compositor();
+                backdropHolder.SystemBackdrop = compositor.CreateColorBrush(Windows.UI.Color.FromArgb(0, 0, 0, 0));
+            }
+        }
+        catch
+        {
+            // Подавляем в headless/mock средах
+        }
     }
 
     private void TryPinToAllVirtualDesktops()
@@ -288,27 +330,18 @@ public sealed partial class WidgetWindow : Window
         var state = await _windowStateService.LoadStateAsync();
         var dpiScale = GetDpiScale();
 
-        int targetWidthDip = state.IsExpanded ? 360 : 160;
-        int targetHeightDip = state.IsExpanded ? 240 : 32;
+        int targetWidthDip = state.IsExpanded ? 400 : 180;
+        int targetHeightDip = state.IsExpanded ? 260 : 36;
 
         int physicalWidth = (int)Math.Round(targetWidthDip * dpiScale);
         int physicalHeight = (int)Math.Round(targetHeightDip * dpiScale);
 
-        // Получаем рабочую область активного монитора
+        // Получаем рабочую область активного монитора (Top-Center Island)
         var displayArea = DisplayArea.GetFromWindowId(Win32Interop.GetWindowIdFromWindow(_hwnd), DisplayAreaFallback.Primary);
         var workArea = displayArea.WorkArea;
 
-        var (targetX, targetY) = _windowStateService.CalculateWindowPosition(
-            state,
-            physicalWidth,
-            physicalHeight,
-            workArea.X,
-            workArea.Y,
-            workArea.Width,
-            workArea.Height);
-
-        // DEFECT 2: Виджет крепится к верхней кромке активного монитора (Y = 0)
-        targetY = workArea.Y;
+        int targetX = workArea.X + (workArea.Width - physicalWidth) / 2;
+        int targetY = workArea.Y;
 
         try
         {
@@ -331,8 +364,8 @@ public sealed partial class WidgetWindow : Window
 
         if (state.IsExpanded)
         {
-            WidgetCanvas.Width = 360;
-            WidgetCanvas.Height = 240;
+            WidgetCanvas.Width = 400;
+            WidgetCanvas.Height = 260;
             CompactTrigger.Visibility = Visibility.Collapsed;
             CompactTriggerShadowHost.Visibility = Visibility.Collapsed;
             WidgetCanvas.Visibility = Visibility.Visible;
@@ -422,7 +455,9 @@ public sealed partial class WidgetWindow : Window
         var point = e.GetCurrentPoint(sender as UIElement);
         if (point.Properties.IsLeftButtonPressed)
         {
-            DragWindow();
+            ReleaseCapture();
+            SendMessage(_hwnd, WM_NCLBUTTONDOWN, (IntPtr)HTCAPTION, IntPtr.Zero);
+            SaveCurrentWindowPosition();
             e.Handled = true;
         }
     }
@@ -462,7 +497,7 @@ public sealed partial class WidgetWindow : Window
     {
         if (CompactTrigger != null)
         {
-            CompactTrigger.Background = new SolidColorBrush(Windows.UI.Color.FromArgb(0xCC, 0x48, 0x30, 0x24));
+            CompactTrigger.Opacity = 0.85;
         }
     }
 
@@ -470,7 +505,7 @@ public sealed partial class WidgetWindow : Window
     {
         if (CompactTrigger != null)
         {
-            CompactTrigger.Background = new SolidColorBrush(Windows.UI.Color.FromArgb(0x9E, 0x30, 0x22, 0x1C));
+            CompactTrigger.Opacity = 1.0;
         }
     }
 
@@ -575,16 +610,31 @@ public sealed partial class WidgetWindow : Window
 
         if (isExpanded)
         {
-            // DEFECT 4.1: При любом открытии виджета ВСЕГДА открывается Главный экран Home (3 карточки)
-            int newPhysicalWidth = (int)Math.Round(360.0 * dpiScale);
-            int newPhysicalHeight = (int)Math.Round(240.0 * dpiScale);
+            // ПРАВИЛО ЧИСТОГО СТАРТА (Home Screen Always):
+            // ВСЕГДА гарантируем, что пользователь видит Главный экран с 3 карточками
+            ViewModel.IsShowingTasks = false;
+            ViewModel.IsPlayerOpen = false;
+            ViewModel.IsAddingTask = false;
+
+            int triggerWidthPhysical = (int)Math.Round(180.0 * dpiScale);
+            int newPhysicalWidth = (int)Math.Round(400.0 * dpiScale);
+            int newPhysicalHeight = (int)Math.Round(260.0 * dpiScale);
+
+            int deltaX = (newPhysicalWidth - triggerWidthPhysical) / 2;
+            int newX = currentPos.X - deltaX;
 
             var displayArea = DisplayArea.GetFromWindowId(Win32Interop.GetWindowIdFromWindow(_hwnd), DisplayAreaFallback.Primary);
             int topY = displayArea?.WorkArea.Y ?? 0;
-            int newX = currentPos.X;
-            if (displayArea != null && newX + newPhysicalWidth > displayArea.WorkArea.X + displayArea.WorkArea.Width)
+            if (displayArea != null)
             {
-                newX = displayArea.WorkArea.X + displayArea.WorkArea.Width - newPhysicalWidth - (int)Math.Round(16 * dpiScale);
+                if (newX < displayArea.WorkArea.X)
+                {
+                    newX = displayArea.WorkArea.X;
+                }
+                else if (newX + newPhysicalWidth > displayArea.WorkArea.X + displayArea.WorkArea.Width)
+                {
+                    newX = displayArea.WorkArea.X + displayArea.WorkArea.Width - newPhysicalWidth;
+                }
             }
 
             _appWindow.MoveAndResize(new RectInt32(newX, topY, newPhysicalWidth, newPhysicalHeight));
@@ -592,8 +642,8 @@ public sealed partial class WidgetWindow : Window
             CompactTrigger.Visibility = Visibility.Collapsed;
             CompactTriggerShadowHost.Visibility = Visibility.Collapsed;
 
-            WidgetCanvas.Width = 360;
-            WidgetCanvas.Height = 240;
+            WidgetCanvas.Width = 400;
+            WidgetCanvas.Height = 260;
             CompactView.Opacity = 1.0;
             CompactView.Visibility = Visibility.Visible;
             ExpandedRoot.Visibility = Visibility.Collapsed;
@@ -631,13 +681,17 @@ public sealed partial class WidgetWindow : Window
 
         var dpiScale = GetDpiScale();
         var currentPos = _appWindow.Position;
-        int triggerWidth = (int)Math.Round(160.0 * dpiScale);
-        int triggerHeight = (int)Math.Round(32.0 * dpiScale);
+        int currentPhysicalWidth = _appWindow.Size.Width;
+        int triggerWidthPhysical = (int)Math.Round(180.0 * dpiScale);
+        int triggerHeight = (int)Math.Round(36.0 * dpiScale);
+
+        int deltaX = (currentPhysicalWidth - triggerWidthPhysical) / 2;
+        int newX = currentPos.X + deltaX;
 
         var displayArea = DisplayArea.GetFromWindowId(Win32Interop.GetWindowIdFromWindow(_hwnd), DisplayAreaFallback.Primary);
         int topY = displayArea?.WorkArea.Y ?? 0;
 
-        _appWindow.MoveAndResize(new RectInt32(currentPos.X, topY, triggerWidth, triggerHeight));
+        _appWindow.MoveAndResize(new RectInt32(newX, topY, triggerWidthPhysical, triggerHeight));
 
         _isTransitioning = false;
         SaveCurrentWindowPosition();
@@ -654,10 +708,10 @@ public sealed partial class WidgetWindow : Window
 
         if (isShowing)
         {
-            int deltaWidthPhysical = (int)Math.Round(20.0 * dpiScale);
+            int deltaWidthPhysical = (int)Math.Round(10.0 * dpiScale);
             int newPhysicalWidth = (int)Math.Round(380.0 * dpiScale);
             int newPhysicalHeight = (int)Math.Round(680.0 * dpiScale);
-            int newX = currentPos.X - deltaWidthPhysical;
+            int newX = currentPos.X + deltaWidthPhysical;
 
             var displayArea = DisplayArea.GetFromWindowId(Win32Interop.GetWindowIdFromWindow(_hwnd), DisplayAreaFallback.Primary);
             int topY = displayArea?.WorkArea.Y ?? 0;
@@ -692,18 +746,18 @@ public sealed partial class WidgetWindow : Window
         var dpiScale = GetDpiScale();
         var currentPos = _appWindow.Position;
 
-        int deltaWidthPhysical = (int)Math.Round(20.0 * dpiScale);
-        int newPhysicalWidth = (int)Math.Round(360.0 * dpiScale);
-        int newPhysicalHeight = (int)Math.Round(240.0 * dpiScale);
-        int newX = currentPos.X + deltaWidthPhysical;
+        int deltaWidthPhysical = (int)Math.Round(10.0 * dpiScale);
+        int newPhysicalWidth = (int)Math.Round(400.0 * dpiScale);
+        int newPhysicalHeight = (int)Math.Round(260.0 * dpiScale);
+        int newX = currentPos.X - deltaWidthPhysical;
 
         var displayArea = DisplayArea.GetFromWindowId(Win32Interop.GetWindowIdFromWindow(_hwnd), DisplayAreaFallback.Primary);
         int topY = displayArea?.WorkArea.Y ?? 0;
 
         _appWindow.MoveAndResize(new RectInt32(newX, topY, newPhysicalWidth, newPhysicalHeight));
 
-        WidgetCanvas.Width = 360;
-        WidgetCanvas.Height = 240;
+        WidgetCanvas.Width = 400;
+        WidgetCanvas.Height = 260;
 
         _isTransitioning = false;
         SaveCurrentWindowPosition();
@@ -741,7 +795,7 @@ public sealed partial class WidgetWindow : Window
     {
         DispatcherQueue.TryEnqueue(() =>
         {
-            InlineTaskTextBox?.Focus(FocusState.Programmatic);
+            InlineTaskInputBox?.Focus(FocusState.Programmatic);
         });
     }
 
@@ -886,68 +940,89 @@ public sealed partial class WidgetWindow : Window
         ViewModel.Collapse();
     }
 
-    private void InitMediaPlayer()
+    private void ShowFallbackAtmosphereView()
     {
-        if (_mediaPlayer != null) return;
-        try
+        if (DailyResetMediaPlayerElement != null)
         {
-            _mediaPlayer = new Windows.Media.Playback.MediaPlayer
-            {
-                AudioCategory = Windows.Media.Playback.MediaPlayerAudioCategory.Media,
-                Volume = ViewModel.Player.Volume,
-                IsMuted = ViewModel.Player.IsMuted
-            };
-
-            _mediaPlayer.MediaEnded += (s, e) =>
-            {
-                DispatcherQueue.TryEnqueue(async () =>
-                {
-                    await ViewModel.Player.OnMediaEndedAsync();
-                });
-            };
-
-            _mediaPlayer.MediaFailed += (s, e) =>
-            {
-                DispatcherQueue.TryEnqueue(async () =>
-                {
-                    await ViewModel.Player.OnMediaFailedAsync();
-                });
-            };
-
-            _mediaPlayer.PlaybackSession.PositionChanged += (session, e) =>
-            {
-                DispatcherQueue.TryEnqueue(() =>
-                {
-                    int pos = (int)session.Position.TotalMilliseconds;
-                    int dur = (int)session.NaturalDuration.TotalMilliseconds;
-                    ViewModel.Player.UpdatePosition(pos, dur);
-                });
-            };
-
-            DailyResetMediaPlayerElement.SetMediaPlayer(_mediaPlayer);
+            DailyResetMediaPlayerElement.Visibility = Visibility.Collapsed;
         }
-        catch
+        if (FallbackAtmosphereBorder != null)
         {
-            // Подавляем исключения в тестовых окружениях без аудиоустройств
+            FallbackAtmosphereBorder.Visibility = Visibility.Visible;
         }
+    }
+
+    private void ShowPlaybackErrorState()
+    {
+        ShowFallbackAtmosphereView();
     }
 
     private void OnRequestStartMedia(string filePath, int startPositionMs)
     {
         DispatcherQueue.TryEnqueue(() =>
         {
-            InitMediaPlayer();
-            if (_mediaPlayer == null) return;
+            string? targetFilePath = null;
+            if (!string.IsNullOrWhiteSpace(filePath) && System.IO.File.Exists(filePath))
+            {
+                targetFilePath = filePath;
+            }
+            else
+            {
+                string defaultPath = System.IO.Path.Combine(AppContext.BaseDirectory, "Assets", "Videos", "default.mp4");
+                if (System.IO.File.Exists(defaultPath))
+                {
+                    targetFilePath = defaultPath;
+                }
+            }
+
+            if (targetFilePath == null)
+            {
+                // Если ни одного файла нет: НИКОГДА не инициализируй плеер с битым URI! Мгновенно вызови ShowFallbackAtmosphereView()
+                ShowFallbackAtmosphereView();
+                _ = ViewModel.Player.OnMediaFailedAsync();
+                return;
+            }
 
             try
             {
-                if (string.IsNullOrWhiteSpace(filePath) || !System.IO.File.Exists(filePath))
+                if (_mediaPlayer == null)
                 {
-                    _ = ViewModel.Player.OnMediaFailedAsync();
-                    return;
+                    _mediaPlayer = new Windows.Media.Playback.MediaPlayer
+                    {
+                        AudioCategory = Windows.Media.Playback.MediaPlayerAudioCategory.Media,
+                        Volume = ViewModel.Player.Volume,
+                        IsMuted = ViewModel.Player.IsMuted
+                    };
+
+                    _mediaPlayer.MediaEnded += (s, e) =>
+                    {
+                        DispatcherQueue.TryEnqueue(async () =>
+                        {
+                            await ViewModel.Player.OnMediaEndedAsync();
+                        });
+                    };
+
+                    _mediaPlayer.MediaFailed += (s, e) =>
+                    {
+                        DispatcherQueue.TryEnqueue(() =>
+                        {
+                            ShowPlaybackErrorState();
+                            _ = ViewModel.Player.OnMediaFailedAsync();
+                        });
+                    };
+
+                    _mediaPlayer.PlaybackSession.PositionChanged += (session, e) =>
+                    {
+                        DispatcherQueue.TryEnqueue(() =>
+                        {
+                            int pos = (int)session.Position.TotalMilliseconds;
+                            int dur = (int)session.NaturalDuration.TotalMilliseconds;
+                            ViewModel.Player.UpdatePosition(pos, dur);
+                        });
+                    };
                 }
 
-                var uri = new Uri(System.IO.Path.GetFullPath(filePath));
+                var uri = new Uri(System.IO.Path.GetFullPath(targetFilePath));
                 var mediaSource = Windows.Media.Core.MediaSource.CreateFromUri(uri);
                 _mediaPlayer.Source = mediaSource;
 
@@ -956,19 +1031,15 @@ public sealed partial class WidgetWindow : Window
                     _mediaPlayer.PlaybackSession.Position = TimeSpan.FromMilliseconds(startPositionMs);
                 }
 
+                DailyResetMediaPlayerElement.SetMediaPlayer(_mediaPlayer);
+                DailyResetMediaPlayerElement.Visibility = Visibility.Visible;
+                FallbackAtmosphereBorder.Visibility = Visibility.Collapsed;
+
                 _mediaPlayer.Play();
             }
             catch
             {
-                try
-                {
-                    if (_mediaPlayer != null)
-                    {
-                        _mediaPlayer.Source = null;
-                    }
-                }
-                catch { }
-
+                ShowPlaybackErrorState();
                 _ = ViewModel.Player.OnMediaFailedAsync();
             }
         });
@@ -982,12 +1053,17 @@ public sealed partial class WidgetWindow : Window
             {
                 _mediaPlayer.Pause();
                 _mediaPlayer.Source = null;
+                DailyResetMediaPlayerElement.SetMediaPlayer(null);
+                _mediaPlayer.Dispose();
             }
-            catch
+            catch { }
+            finally
             {
-                // Подавляем исключения при очистке источника
+                _mediaPlayer = null;
             }
         }
+        DailyResetMediaPlayerElement.Visibility = Visibility.Collapsed;
+        FallbackAtmosphereBorder.Visibility = Visibility.Visible;
     }
 
     private void OnRequestPauseMedia()
@@ -1010,17 +1086,7 @@ public sealed partial class WidgetWindow : Window
     {
         if (e.Key == Windows.System.VirtualKey.Escape)
         {
-            if (ViewModel.IsPlayerOpen)
-            {
-                ViewModel.ClosePlayer();
-                e.Handled = true;
-            }
-            else if (ViewModel.IsShowingTasks)
-            {
-                ViewModel.BackToHome();
-                e.Handled = true;
-            }
-            else if (ViewModel.IsExpanded)
+            if (ViewModel.IsExpanded)
             {
                 ViewModel.Collapse();
                 e.Handled = true;
@@ -1040,13 +1106,13 @@ public sealed partial class WidgetWindow : Window
             var dpiScale = GetDpiScale();
             var currentPos = _appWindow.Position;
 
-            // Если виджет был в компактном режиме, расширяем окно до 380x680 с привязкой Top-Right
-            if (WidgetCanvas.Width < 380 || WidgetCanvas.Height < 680)
+            // Если виджет был в компактном режиме (400x260), центрируем и расширяем окно до 380x680
+            if (WidgetCanvas.Width != 380 || WidgetCanvas.Height != 680)
             {
-                int deltaWidthPhysical = (int)Math.Round(20.0 * dpiScale);
+                int deltaWidthPhysical = (int)Math.Round(10.0 * dpiScale);
                 int newPhysicalWidth = (int)Math.Round(380.0 * dpiScale);
                 int newPhysicalHeight = (int)Math.Round(680.0 * dpiScale);
-                int newX = currentPos.X - deltaWidthPhysical;
+                int newX = currentPos.X + deltaWidthPhysical;
 
                 var displayArea = DisplayArea.GetFromWindowId(Win32Interop.GetWindowIdFromWindow(_hwnd), DisplayAreaFallback.Primary);
                 int topY = displayArea?.WorkArea.Y ?? 0;
@@ -1180,17 +1246,17 @@ public sealed partial class WidgetWindow : Window
 
         if (!ViewModel.IsShowingTasks)
         {
-            int deltaWidthPhysical = (int)Math.Round(20.0 * dpiScale);
-            int newPhysicalWidth = (int)Math.Round(360.0 * dpiScale);
-            int newPhysicalHeight = (int)Math.Round(240.0 * dpiScale);
-            int newX = currentPos.X + deltaWidthPhysical;
+            int deltaWidthPhysical = (int)Math.Round(10.0 * dpiScale);
+            int newPhysicalWidth = (int)Math.Round(400.0 * dpiScale);
+            int newPhysicalHeight = (int)Math.Round(260.0 * dpiScale);
+            int newX = currentPos.X - deltaWidthPhysical;
 
             var displayArea = DisplayArea.GetFromWindowId(Win32Interop.GetWindowIdFromWindow(_hwnd), DisplayAreaFallback.Primary);
             int topY = displayArea?.WorkArea.Y ?? 0;
 
             _appWindow.MoveAndResize(new RectInt32(newX, topY, newPhysicalWidth, newPhysicalHeight));
-            WidgetCanvas.Width = 360;
-            WidgetCanvas.Height = 240;
+            WidgetCanvas.Width = 400;
+            WidgetCanvas.Height = 260;
             CompactView.Visibility = Visibility.Visible;
             CompactView.Opacity = 1.0;
         }
