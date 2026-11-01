@@ -119,13 +119,13 @@ public sealed class WidgetRefactoringTests
         // 1. RootGrid с Background="{x:Null}"
         Assert.Contains("Background=\"{x:Null}\"", content);
 
-        // 2. WarmGlassCardBrush формула: #6BB45F2D и #593C1E0F
-        Assert.Contains("#6BB45F2D", content);
-        Assert.Contains("#593C1E0F", content);
+        // 2. WarmGlassCardBrush формула: #60D27A38 и #354A2411
+        Assert.Contains("#60D27A38", content);
+        Assert.Contains("#354A2411", content);
 
-        // 3. SpecularRimBrush формула: #80FFD7B4 и #14FFFFFF
-        Assert.Contains("#80FFD7B4", content);
-        Assert.Contains("#14FFFFFF", content);
+        // 3. SpecularRimBrush формула: #99FFD7B4 и #20FFFFFF
+        Assert.Contains("#99FFD7B4", content);
+        Assert.Contains("#20FFFFFF", content);
 
         // 4. Постоянный размер 420x280 и TranslateTransform Y="0" / -244
         Assert.Contains("Width=\"420\"", content);

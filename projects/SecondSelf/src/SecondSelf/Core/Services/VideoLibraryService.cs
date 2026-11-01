@@ -191,6 +191,33 @@ WHERE Id = @Id;";
         await cmd.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
     }
 
+    public async Task DeleteVideoAsync(string id, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(id);
+
+        var video = await GetVideoByIdAsync(id, cancellationToken).ConfigureAwait(false);
+        if (video != null)
+        {
+            await using var connection = await _connectionFactory.OpenConnectionAsync(cancellationToken).ConfigureAwait(false);
+            await using var cmd = connection.CreateCommand();
+            cmd.CommandText = "DELETE FROM VideoLibrary WHERE Id = @Id;";
+            cmd.Parameters.AddWithValue("@Id", id);
+            await cmd.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+
+            if (!string.IsNullOrWhiteSpace(video.FilePath) && File.Exists(video.FilePath))
+            {
+                try
+                {
+                    File.Delete(video.FilePath);
+                }
+                catch (Exception ex)
+                {
+                    AppLogger.Warn($"Could not delete video file from disk: {ex.Message}");
+                }
+            }
+        }
+    }
+
     private static VideoLibraryItem ReadVideoLibraryItem(DbDataReader reader)
     {
         return new VideoLibraryItem

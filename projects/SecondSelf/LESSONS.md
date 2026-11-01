@@ -78,5 +78,10 @@
 - **Finding:** Resizing a WinUI 3 `AppWindow` dynamically between compact (e.g. 180×36) and expanded (420×280) via `MoveAndResize` forces Windows DWM to destroy and re-create the backing DirectX swapchain and composition visual surfaces, producing visible black frames. Keeping the window size strictly constant (420×280) anchored at the top-center edge ($Y=0$, $X=(\text{WorkArea.Width} - \text{Width})/2$) and animating the widget canvas via `TranslateTransform.Y` ($0 \leftrightarrow -244$) moves the cards off-screen with zero window reallocation and instantaneous 60fps GPU smoothness, while positioning a tactile bottom tab at $Y=0..36$ when collapsed.
 - **Rule:** Never dynamically resize a transparent frameless window for expand/collapse transitions; use a fixed top-anchored window bounds and slide content vertically via `RenderTransform` KeySpline animations.
 
+### 2026-11-01 — DispatcherQueue Safety for Cross-Thread Storyboards and Video State Transitions
+- **Context:** Opening and closing Daily Reset focus video player and transitioning between compact and player views in `WidgetWindow.xaml.cs`.
+- **Finding:** Awaiting asynchronous operations with `.ConfigureAwait(false)` inside `ViewModel` methods (such as `OpenPlayerAsync`) causes property change events (`PlayerStateChanged`) to fire on background thread pool threads. Directly manipulating WinUI 3 XAML properties (`Visibility`, `Storyboard.Begin()`) without `DispatcherQueue.TryEnqueue` throws silent COM threading exceptions, preventing the player view from appearing and causing fallback close actions.
+- **Rule:** Always marshal view transition callbacks and storyboards to the UI thread using `DispatcherQueue.TryEnqueue` when reacting to ViewModel state events.
+
 
 

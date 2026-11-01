@@ -46,7 +46,7 @@ public sealed record WindowState
     public double NormalizedY { get; init; } = 0.0;
     public string DisplayId { get; init; } = "Primary";
     public double DpiScale { get; init; } = 1.0;
-    public bool IsExpanded { get; init; } = false;
+    public bool IsExpanded { get; init; } = true;
 }
 
 /// <summary>

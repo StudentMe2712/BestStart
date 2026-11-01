@@ -28,6 +28,7 @@ public partial class WidgetViewModel : ObservableObject
     private readonly IVideoPlaybackService? _videoPlaybackService;
     private readonly IDayTransitionService? _dayTransitionService;
     private readonly INotificationBus? _notificationBus;
+    private readonly IVideoLibraryService? _videoLibraryService;
 
     private CancellationTokenSource? _undoCts;
     private readonly object _undoLock = new();
@@ -37,6 +38,7 @@ public partial class WidgetViewModel : ObservableObject
 
     public ObservableCollection<TaskItemViewModel> Tasks { get; } = new();
     public ObservableCollection<TaskItemViewModel> CompactTasks { get; } = new();
+    public ObservableCollection<VideoLibraryItemViewModel> VideoItems { get; } = new();
 
     public VideoPlayerViewModel Player { get; }
 
@@ -48,6 +50,9 @@ public partial class WidgetViewModel : ObservableObject
 
     [ObservableProperty]
     private bool _isShowingTasks;
+
+    [ObservableProperty]
+    private bool _isSettingsOpen;
 
     [ObservableProperty]
     private int _displayScore = 78;
@@ -121,7 +126,8 @@ public partial class WidgetViewModel : ObservableObject
         IDailyRitualRepository? dailyRitualRepository = null,
         IVideoPlaybackService? videoPlaybackService = null,
         IDayTransitionService? dayTransitionService = null,
-        INotificationBus? notificationBus = null)
+        INotificationBus? notificationBus = null,
+        IVideoLibraryService? videoLibraryService = null)
     {
         _taskRepository = taskRepository ?? throw new ArgumentNullException(nameof(taskRepository));
         _progressEngine = progressEngine ?? throw new ArgumentNullException(nameof(progressEngine));
@@ -130,6 +136,7 @@ public partial class WidgetViewModel : ObservableObject
         _videoPlaybackService = videoPlaybackService;
         _dayTransitionService = dayTransitionService;
         _notificationBus = notificationBus;
+        _videoLibraryService = videoLibraryService;
 
         if (_videoPlaybackService != null)
         {
@@ -179,6 +186,10 @@ public partial class WidgetViewModel : ObservableObject
 
     partial void OnIsExpandedChanged(bool value)
     {
+        if (!value)
+        {
+            IsSettingsOpen = false;
+        }
         ExpandedStateChanged?.Invoke(value);
 
         if (_windowStateService != null)
@@ -247,11 +258,15 @@ public partial class WidgetViewModel : ObservableObject
         // 4. Загрузка состояния окна (DEFECT 4.1: всегда сброс в Home при запуске)
         IsShowingTasks = false;
         IsPlayerOpen = false;
+        IsSettingsOpen = false;
         if (_windowStateService != null)
         {
             var state = await _windowStateService.LoadStateAsync(cancellationToken).ConfigureAwait(false);
             IsExpanded = state.IsExpanded;
         }
+
+        // 5. Загрузка видеотеки
+        await LoadVideoLibraryAsync(cancellationToken).ConfigureAwait(false);
     }
 
     public Task RefreshMonthlyProgressAsync(CancellationToken cancellationToken = default) =>
@@ -303,6 +318,7 @@ public partial class WidgetViewModel : ObservableObject
         {
             ClosePlayer();
         }
+        IsSettingsOpen = false;
         IsShowingTasks = true;
     }
 
@@ -314,6 +330,7 @@ public partial class WidgetViewModel : ObservableObject
             ClosePlayer();
         }
         IsShowingTasks = false;
+        IsSettingsOpen = false;
     }
 
     [RelayCommand]
@@ -324,6 +341,7 @@ public partial class WidgetViewModel : ObservableObject
             Expand();
         }
         IsShowingTasks = false;
+        IsSettingsOpen = false;
 
         bool initialized = await Player.InitializeAsync(null, cancellationToken).ConfigureAwait(false);
         IsPlayerOpen = true;
@@ -347,6 +365,107 @@ public partial class WidgetViewModel : ObservableObject
         else
         {
             ResetStatus = "Paused";
+        }
+    }
+
+    [RelayCommand]
+    public void OpenSettings()
+    {
+        if (!IsExpanded)
+        {
+            Expand();
+        }
+        if (IsPlayerOpen)
+        {
+            ClosePlayer();
+        }
+        IsShowingTasks = false;
+        IsSettingsOpen = true;
+    }
+
+    [RelayCommand]
+    public void CloseSettings()
+    {
+        IsSettingsOpen = false;
+    }
+
+    public async Task LoadVideoLibraryAsync(CancellationToken cancellationToken = default)
+    {
+        if (_videoLibraryService != null)
+        {
+            try
+            {
+                var list = await _videoLibraryService.GetAllVideosAsync(cancellationToken).ConfigureAwait(false);
+                VideoItems.Clear();
+                foreach (var item in list)
+                {
+                    VideoItems.Add(new VideoLibraryItemViewModel(item));
+                }
+            }
+            catch
+            {
+                // Подавляем в headless/тестовой среде
+            }
+        }
+    }
+
+    public async Task AddVideoFileAsync(string filePath, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(filePath);
+        if (!System.IO.File.Exists(filePath)) return;
+
+        if (_videoLibraryService != null)
+        {
+            var destinationFolder = _videoLibraryService.VideosDirectory;
+            System.IO.Directory.CreateDirectory(destinationFolder);
+
+            var destPath = System.IO.Path.Combine(destinationFolder, System.IO.Path.GetFileName(filePath));
+            if (!string.Equals(System.IO.Path.GetFullPath(filePath), System.IO.Path.GetFullPath(destPath), StringComparison.OrdinalIgnoreCase))
+            {
+                System.IO.File.Copy(filePath, destPath, overwrite: true);
+            }
+
+            await _videoLibraryService.ScanLibraryAsync(cancellationToken).ConfigureAwait(false);
+            await LoadVideoLibraryAsync(cancellationToken).ConfigureAwait(false);
+        }
+    }
+
+    public async Task AddVideosFromFolderAsync(string folderPath, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(folderPath);
+        if (!System.IO.Directory.Exists(folderPath)) return;
+
+        if (_videoLibraryService != null)
+        {
+            var destinationFolder = _videoLibraryService.VideosDirectory;
+            System.IO.Directory.CreateDirectory(destinationFolder);
+
+            var supported = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { ".mp4", ".mkv", ".webm", ".mov" };
+            var files = System.IO.Directory.GetFiles(folderPath, "*.*", System.IO.SearchOption.TopDirectoryOnly)
+                .Where(f => supported.Contains(System.IO.Path.GetExtension(f)));
+
+            foreach (var file in files)
+            {
+                var destPath = System.IO.Path.Combine(destinationFolder, System.IO.Path.GetFileName(file));
+                if (!string.Equals(System.IO.Path.GetFullPath(file), System.IO.Path.GetFullPath(destPath), StringComparison.OrdinalIgnoreCase))
+                {
+                    System.IO.File.Copy(file, destPath, overwrite: true);
+                }
+            }
+
+            await _videoLibraryService.ScanLibraryAsync(cancellationToken).ConfigureAwait(false);
+            await LoadVideoLibraryAsync(cancellationToken).ConfigureAwait(false);
+        }
+    }
+
+    public async Task DeleteVideoAsync(VideoLibraryItemViewModel item, CancellationToken cancellationToken = default)
+    {
+        if (item == null) return;
+
+        if (_videoLibraryService != null)
+        {
+            await _videoLibraryService.DeleteVideoAsync(item.Id, cancellationToken).ConfigureAwait(false);
+            await LoadVideoLibraryAsync(cancellationToken).ConfigureAwait(false);
         }
     }
 
@@ -382,9 +501,9 @@ public partial class WidgetViewModel : ObservableObject
         Tasks.Insert(0, taskVm);
         SyncCompactTasks();
 
-        // Поле ввода очищается и остаётся готовым к следующему вводу
+        // Поле ввода очищается и немедленно закрывается
         NewTaskTitle = string.Empty;
-        IsAddingTask = true;
+        IsAddingTask = false;
     }
 
     [RelayCommand]

@@ -36,4 +36,9 @@ public interface IVideoLibraryService
     /// Обновляет статус доступности видеофайла (IsMissing).
     /// </summary>
     Task UpdateMissingStatusAsync(string id, bool isMissing, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Удаляет видео из видеотеки и с диска.
+    /// </summary>
+    Task DeleteVideoAsync(string id, CancellationToken cancellationToken = default);
 }

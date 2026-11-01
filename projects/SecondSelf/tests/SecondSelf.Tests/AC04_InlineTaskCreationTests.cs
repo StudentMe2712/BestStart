@@ -78,11 +78,12 @@ public sealed class AC04_InlineTaskCreationTests : IDisposable
         Assert.Equal(0, _viewModel.Tasks[0].OrderIndex);
         Assert.Single(_viewModel.CompactTasks);
 
-        // Then 3: Поле ввода очищается и готово к следующему вводу
+        // Then 3: Поле ввода очищается и немедленно закрывается
         Assert.Equal(string.Empty, _viewModel.NewTaskTitle);
-        Assert.True(_viewModel.IsAddingTask);
+        Assert.False(_viewModel.IsAddingTask);
 
         // When: Добавление второй задачи
+        _viewModel.StartAddingTask();
         _viewModel.NewTaskTitle = "Протестировать P/Invoke";
         await _viewModel.AddTaskAsync();
 

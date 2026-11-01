@@ -63,6 +63,24 @@ public sealed partial class WidgetWindow : Window
         }
     }
 
+    [StructLayout(LayoutKind.Sequential)]
+    public struct DWM_BLURBEHIND
+    {
+        public const uint DWM_BB_ENABLE = 0x00000001;
+        public const uint DWM_BB_BLURREGION = 0x00000002;
+        public const uint DWM_BB_TRANSITIONONMAXIMIZED = 0x00000004;
+
+        public uint dwFlags;
+        [MarshalAs(UnmanagedType.Bool)]
+        public bool fEnable;
+        public IntPtr hRgnBlur;
+        [MarshalAs(UnmanagedType.Bool)]
+        public bool fTransitionOnMaximized;
+    }
+
+    [DllImport("dwmapi.dll")]
+    private static extern int DwmEnableBlurBehindWindow(IntPtr hWnd, ref DWM_BLURBEHIND pBlurBehind);
+
     [DllImport("dwmapi.dll")]
     private static extern int DwmExtendFrameIntoClientArea(IntPtr hWnd, ref MARGINS pMarInset);
 
@@ -142,14 +160,17 @@ public sealed partial class WidgetWindow : Window
         this.InitializeComponent();
 
         // 1. Честный Windows BackdropBlur через DesktopAcrylicBackdrop
+        this.SystemBackdrop = null;
         try
         {
-            this.SystemBackdrop = new DesktopAcrylicBackdrop();
+            var backdropHolder = this.As<Microsoft.UI.Composition.ICompositionSupportsSystemBackdrop>();
+            if (backdropHolder != null)
+            {
+                var compositor = new Windows.UI.Composition.Compositor();
+                backdropHolder.SystemBackdrop = compositor.CreateColorBrush(Windows.UI.Color.FromArgb(0, 0, 0, 0));
+            }
         }
-        catch (Exception ex)
-        {
-            AppLogger.Warn($"DesktopAcrylicBackdrop initialization fallback: {ex.Message}");
-        }
+        catch { }
 
         // 2. Получение дескриптора HWND и AppWindow
         _hwnd = WindowNative.GetWindowHandle(this);
@@ -258,7 +279,15 @@ public sealed partial class WidgetWindow : Window
         // Применение изменений стилей к неклиентской области
         SetWindowPos(_hwnd, IntPtr.Zero, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED);
 
-        // Win32 DWM Glassmorphism: расширение рамки на всю клиентскую область
+        // Win32 DWM BlurBehind & Glassmorphism: полная прозрачность клиентской области
+        var bb = new DWM_BLURBEHIND
+        {
+            dwFlags = DWM_BLURBEHIND.DWM_BB_ENABLE,
+            fEnable = true,
+            hRgnBlur = IntPtr.Zero
+        };
+        DwmEnableBlurBehindWindow(_hwnd, ref bb);
+
         var margins = new MARGINS { cxLeftWidth = -1, cxRightWidth = -1, cyTopHeight = -1, cyBottomHeight = -1 };
         DwmExtendFrameIntoClientArea(_hwnd, ref margins);
     }
@@ -312,6 +341,7 @@ public sealed partial class WidgetWindow : Window
         CompactView.Visibility = Visibility.Visible;
         if (ExpandedRoot != null) ExpandedRoot.Visibility = Visibility.Collapsed;
         if (PlayerRoot != null) PlayerRoot.Visibility = Visibility.Collapsed;
+        if (SettingsRoot != null) SettingsRoot.Visibility = Visibility.Collapsed;
 
         if (state.IsExpanded)
         {
@@ -428,9 +458,9 @@ public sealed partial class WidgetWindow : Window
             var compositor = visual.Compositor;
 
             var dropShadow = compositor.CreateDropShadow();
-            dropShadow.BlurRadius = 36.0f;
+            dropShadow.BlurRadius = 32.0f;
             dropShadow.Offset = new System.Numerics.Vector3(0f, 12f, 0f);
-            dropShadow.Color = Windows.UI.Color.FromArgb(100, 0, 0, 0); // rgba(0,0,0,0.4)
+            dropShadow.Color = Windows.UI.Color.FromArgb(115, 0, 0, 0); // Opacity 0.45, Color #000000
 
             var spriteVisual = compositor.CreateSpriteVisual();
             spriteVisual.Shadow = dropShadow;
@@ -454,6 +484,7 @@ public sealed partial class WidgetWindow : Window
         ApplyCardShadow(QuickHubShadowHost);
         ApplyCardShadow(ExpandedShadowHost);
         ApplyCardShadow(PlayerShadowHost);
+        ApplyCardShadow(SettingsShadowHost);
     }
 
     #endregion
@@ -471,11 +502,13 @@ public sealed partial class WidgetWindow : Window
             ViewModel.IsShowingTasks = false;
             ViewModel.IsPlayerOpen = false;
             ViewModel.IsAddingTask = false;
+            ViewModel.IsSettingsOpen = false;
 
             CompactView.Opacity = 1.0;
             CompactView.Visibility = Visibility.Visible;
             if (ExpandedRoot != null) ExpandedRoot.Visibility = Visibility.Collapsed;
             if (PlayerRoot != null) PlayerRoot.Visibility = Visibility.Collapsed;
+            if (SettingsRoot != null) SettingsRoot.Visibility = Visibility.Collapsed;
 
             ExpandStoryboard.Begin();
         }
@@ -730,6 +763,11 @@ public sealed partial class WidgetWindow : Window
                     ExpandedRoot.Visibility = Visibility.Collapsed;
                     ExpandedRoot.Opacity = 0.0;
                 }
+                if (SettingsRoot != null)
+                {
+                    SettingsRoot.Visibility = Visibility.Collapsed;
+                    SettingsRoot.Opacity = 0.0;
+                }
                 if (CompactView != null)
                 {
                     CompactView.Visibility = Visibility.Visible;
@@ -737,6 +775,7 @@ public sealed partial class WidgetWindow : Window
                 }
                 ViewModel.IsPlayerOpen = false;
                 ViewModel.IsShowingTasks = false;
+                ViewModel.IsSettingsOpen = false;
                 AppLogger.Info("Navigated to Home (3 cards view).");
             }
             catch (Exception ex)
@@ -811,20 +850,23 @@ public sealed partial class WidgetWindow : Window
 
     private void OnPlayerStateChanged(bool isOpen)
     {
-        if (isOpen)
+        DispatcherQueue.TryEnqueue(() =>
         {
-            AppLogger.Info("Opening player view...");
-            if (PlayerRoot != null)
+            if (isOpen)
             {
-                PlayerRoot.Visibility = Visibility.Visible;
+                AppLogger.Info("Opening player view...");
+                if (PlayerRoot != null)
+                {
+                    PlayerRoot.Visibility = Visibility.Visible;
+                }
+                OpenPlayerStoryboard.Begin();
             }
-            OpenPlayerStoryboard.Begin();
-        }
-        else
-        {
-            AppLogger.Info("Closing player view...");
-            ExitPlayer();
-        }
+            else
+            {
+                AppLogger.Info("Closing player view...");
+                ExitPlayer();
+            }
+        });
     }
 
     private void OnOpenPlayerStoryboardCompleted(object? sender, object e)
@@ -1027,6 +1069,7 @@ public sealed partial class WidgetWindow : Window
     private async void OnCountRitualButtonClick(object sender, RoutedEventArgs e)
     {
         await ViewModel.Player.CountRitualAsync();
+        ExitPlayer();
     }
 
     private void OnPlayerPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
@@ -1116,6 +1159,11 @@ public sealed partial class WidgetWindow : Window
                 ExitPlayer();
                 e.Handled = true;
             }
+            else if (ViewModel.IsSettingsOpen)
+            {
+                NavigateToHome();
+                e.Handled = true;
+            }
             else if (ViewModel.IsExpanded)
             {
                 ViewModel.Collapse();
@@ -1128,6 +1176,92 @@ public sealed partial class WidgetWindow : Window
             e.Handled = true;
         }
     }
+
+    #region Settings Layer & Video Library
+
+    private void OnOpenSettingsClick(object sender, RoutedEventArgs e)
+    {
+        DispatcherQueue.TryEnqueue(() =>
+        {
+            if (CompactView != null) CompactView.Visibility = Visibility.Collapsed;
+            if (PlayerRoot != null) PlayerRoot.Visibility = Visibility.Collapsed;
+            if (ExpandedRoot != null) ExpandedRoot.Visibility = Visibility.Collapsed;
+            if (SettingsRoot != null)
+            {
+                SettingsRoot.Visibility = Visibility.Visible;
+                SettingsRoot.Opacity = 1.0;
+            }
+            ViewModel.OpenSettings();
+        });
+    }
+
+    private void OnSettingsBackClick(object sender, RoutedEventArgs e)
+    {
+        NavigateToHome();
+    }
+
+    private async void OnAddVideoFilesClick(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            var picker = new Windows.Storage.Pickers.FileOpenPicker();
+            picker.SuggestedStartLocation = Windows.Storage.Pickers.PickerLocationId.VideosLibrary;
+            picker.FileTypeFilter.Add(".mp4");
+            picker.FileTypeFilter.Add(".mkv");
+            picker.FileTypeFilter.Add(".webm");
+            picker.FileTypeFilter.Add(".mov");
+
+            InitializeWithWindow.Initialize(picker, _hwnd);
+
+            var files = await picker.PickMultipleFilesAsync();
+            if (files != null && files.Count > 0)
+            {
+                foreach (var file in files)
+                {
+                    await ViewModel.AddVideoFileAsync(file.Path);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            AppLogger.Error(ex, "Error picking video files");
+        }
+    }
+
+    private async void OnSelectVideoFolderClick(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            var folderPicker = new Windows.Storage.Pickers.FolderPicker();
+            folderPicker.SuggestedStartLocation = Windows.Storage.Pickers.PickerLocationId.VideosLibrary;
+            folderPicker.FileTypeFilter.Add("*");
+
+            InitializeWithWindow.Initialize(folderPicker, _hwnd);
+
+            var folder = await folderPicker.PickSingleFolderAsync();
+            if (folder != null)
+            {
+                await ViewModel.AddVideosFromFolderAsync(folder.Path);
+            }
+        }
+        catch (Exception ex)
+        {
+            AppLogger.Error(ex, "Error picking video folder");
+        }
+    }
+
+    private async void OnDeleteVideoItemClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is FrameworkElement fe && fe.Tag is VideoLibraryItemViewModel item)
+        {
+            await ViewModel.DeleteVideoAsync(item);
+        }
+    }
+
+    public Visibility GetEmptyVideosVisibility(int count) =>
+        count == 0 ? Visibility.Visible : Visibility.Collapsed;
+
+    #endregion
 
     private void OnFullscreenRunningChanged(bool isFullscreen)
     {

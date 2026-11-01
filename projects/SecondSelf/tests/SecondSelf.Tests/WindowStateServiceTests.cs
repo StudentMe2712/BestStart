@@ -45,7 +45,7 @@ public sealed class WindowStateServiceTests : IDisposable
         Assert.Equal(0.0, state.NormalizedY, 2);
         Assert.Equal("Primary", state.DisplayId);
         Assert.Equal(1.0, state.DpiScale);
-        Assert.False(state.IsExpanded);
+        Assert.True(state.IsExpanded);
     }
 
     [Fact]

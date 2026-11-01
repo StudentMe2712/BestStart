@@ -155,7 +155,7 @@ public sealed class WidgetViewModelTests
         Assert.Single(repo.ActiveTasks);
         Assert.Equal("Buy groceries", repo.ActiveTasks[0].Title);
         Assert.Empty(vm.NewTaskTitle);
-        Assert.True(vm.IsAddingTask); // Готово к следующему вводу по спецификации AC-04
+        Assert.False(vm.IsAddingTask);
     }
 
     [Fact]

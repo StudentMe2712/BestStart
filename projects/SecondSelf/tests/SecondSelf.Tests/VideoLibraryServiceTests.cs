@@ -120,4 +120,19 @@ public class VideoLibraryServiceTests : IDisposable
         Assert.Equal(videoId, found.Id);
         Assert.Equal("search.mp4", found.FileName);
     }
+
+    [Fact]
+    public async Task DeleteVideoAsync_RemovesFromDatabaseAndDisk()
+    {
+        string filePath = Path.Combine(_testVideosDir, "to_delete.mp4");
+        await File.WriteAllTextAsync(filePath, "delete-content");
+        var scanned = await _service.ScanLibraryAsync();
+        var videoId = scanned[0].Id;
+
+        await _service.DeleteVideoAsync(videoId);
+
+        var fromDb = await _service.GetVideoByIdAsync(videoId);
+        Assert.Null(fromDb);
+        Assert.False(File.Exists(filePath));
+    }
 }
