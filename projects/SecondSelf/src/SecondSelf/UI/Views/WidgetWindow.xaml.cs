@@ -315,52 +315,111 @@ public sealed partial class WidgetWindow : Window
     private async Task InitializeWindowStateAsync()
     {
         var state = await _windowStateService.LoadStateAsync();
-        var dpiScale = GetDpiScale();
-
-        // Окно имеет ПОСТОЯННЫЙ размер в режиме виджета: Width = 420, Height = 280
-        int targetWidthDip = 420;
-        int targetHeightDip = 280;
-
-        int physicalWidth = (int)Math.Round(targetWidthDip * dpiScale);
-        int physicalHeight = (int)Math.Round(targetHeightDip * dpiScale);
-
-        // Получаем рабочую область активного монитора (Rainmeter Top-Center: Y = 0, X = центр)
-        var displayArea = DisplayArea.GetFromWindowId(Win32Interop.GetWindowIdFromWindow(_hwnd), DisplayAreaFallback.Primary);
-        var workArea = displayArea.WorkArea;
-
-        int targetX = workArea.X + (workArea.Width - physicalWidth) / 2;
-        int targetY = workArea.Y;
-
-        _appWindow.MoveAndResize(new RectInt32(targetX, targetY, physicalWidth, physicalHeight));
-
-        WidgetCanvas.Width = 420;
-        WidgetCanvas.Height = 280;
-        WidgetCanvas.Visibility = Visibility.Visible;
-
-        CompactView.Opacity = 1.0;
-        CompactView.Visibility = Visibility.Visible;
-        if (ExpandedRoot != null) ExpandedRoot.Visibility = Visibility.Collapsed;
-        if (PlayerRoot != null) PlayerRoot.Visibility = Visibility.Collapsed;
-        if (SettingsRoot != null) SettingsRoot.Visibility = Visibility.Collapsed;
 
         if (state.IsExpanded)
         {
-            CanvasTranslate.Y = 0;
             ViewModel.IsExpanded = true;
+            ApplyExpandedHomeState();
         }
         else
         {
-            CanvasTranslate.Y = -244;
             ViewModel.IsExpanded = false;
+            ApplyCollapsedState();
         }
-
-        SaveCurrentWindowState();
     }
 
     private double GetDpiScale()
     {
         uint dpi = GetDpiForWindow(_hwnd);
         return dpi == 0 ? 1.0 : dpi / 96.0;
+    }
+
+    private void ResizeWidgetWindow(int widthDip, int heightDip)
+    {
+        try
+        {
+            var dpiScale = GetDpiScale();
+            int physW = (int)Math.Round(widthDip * dpiScale);
+            int physH = (int)Math.Round(heightDip * dpiScale);
+
+            var displayArea = DisplayArea.GetFromWindowId(Win32Interop.GetWindowIdFromWindow(_hwnd), DisplayAreaFallback.Primary);
+            var workArea = displayArea != null ? displayArea.WorkArea : new RectInt32(0, 0, 1920, 1080);
+
+            int targetX = workArea.X + (workArea.Width - physW) / 2;
+            int targetY = workArea.Y;
+
+            _appWindow.MoveAndResize(new RectInt32(targetX, targetY, physW, physH));
+        }
+        catch (Exception ex)
+        {
+            AppLogger.Error(ex, $"Error resizing widget window to {widthDip}x{heightDip}");
+        }
+    }
+
+    public void ApplyCollapsedState()
+    {
+        if (CardsContainer != null) CardsContainer.Visibility = Visibility.Collapsed;
+        if (BottomTabTrigger != null)
+        {
+            BottomTabTrigger.Visibility = Visibility.Visible;
+            BottomTabTrigger.Width = 260;
+            BottomTabTrigger.Height = 42;
+        }
+        ResizeWidgetWindow(260, 42);
+        CanvasTranslate.Y = 0;
+        SaveCurrentWindowState();
+        App.TrimWorkingSet();
+    }
+
+    public void ApplyExpandedHomeState()
+    {
+        if (CardsContainer != null) CardsContainer.Visibility = Visibility.Visible;
+        if (CompactView != null)
+        {
+            CompactView.Visibility = Visibility.Visible;
+            CompactView.Opacity = 1.0;
+        }
+        if (PlayerRoot != null)
+        {
+            PlayerRoot.Visibility = Visibility.Collapsed;
+            PlayerRoot.Opacity = 0.0;
+        }
+        if (ExpandedRoot != null)
+        {
+            ExpandedRoot.Visibility = Visibility.Collapsed;
+            ExpandedRoot.Opacity = 0.0;
+        }
+        if (SettingsRoot != null)
+        {
+            SettingsRoot.Visibility = Visibility.Collapsed;
+            SettingsRoot.Opacity = 0.0;
+        }
+        if (BottomTabTrigger != null)
+        {
+            BottomTabTrigger.Visibility = Visibility.Visible;
+            BottomTabTrigger.Width = 260;
+            BottomTabTrigger.Height = 42;
+        }
+        ResizeWidgetWindow(440, 300);
+        CanvasTranslate.Y = 0;
+        SaveCurrentWindowState();
+        App.TrimWorkingSet();
+    }
+
+    public void ApplyPlayerState()
+    {
+        if (CardsContainer != null) CardsContainer.Visibility = Visibility.Visible;
+        if (CompactView != null) CompactView.Visibility = Visibility.Collapsed;
+        if (ExpandedRoot != null) ExpandedRoot.Visibility = Visibility.Collapsed;
+        if (SettingsRoot != null) SettingsRoot.Visibility = Visibility.Collapsed;
+        if (BottomTabTrigger != null) BottomTabTrigger.Visibility = Visibility.Collapsed;
+        if (PlayerRoot != null)
+        {
+            PlayerRoot.Visibility = Visibility.Visible;
+            PlayerRoot.Opacity = 1.0;
+        }
+        ResizeWidgetWindow(580, 440);
+        CanvasTranslate.Y = 0;
     }
 
     private IntPtr SubclassWindowProc(IntPtr hWnd, uint uMsg, IntPtr wParam, IntPtr lParam, UIntPtr uIdSubclass, IntPtr dwRefData)
@@ -381,20 +440,19 @@ public sealed partial class WidgetWindow : Window
     {
         try
         {
-            var displayArea = DisplayArea.GetFromWindowId(Win32Interop.GetWindowIdFromWindow(_hwnd), DisplayAreaFallback.Primary);
-            if (displayArea != null)
+            if (ViewModel.IsPlayerOpen)
             {
-                var workArea = displayArea.WorkArea;
-                var dpiScale = GetDpiScale();
-                int physicalWidth = (int)Math.Round(420.0 * dpiScale);
-                int physicalHeight = (int)Math.Round(280.0 * dpiScale);
-
-                int targetX = workArea.X + (workArea.Width - physicalWidth) / 2;
-                int targetY = workArea.Y;
-
-                _appWindow.MoveAndResize(new RectInt32(targetX, targetY, physicalWidth, physicalHeight));
-                SaveCurrentWindowState();
+                ResizeWidgetWindow(580, 440);
             }
+            else if (ViewModel.IsExpanded)
+            {
+                ResizeWidgetWindow(440, 300);
+            }
+            else
+            {
+                ResizeWidgetWindow(260, 42);
+            }
+            SaveCurrentWindowState();
         }
         catch (Exception ex)
         {
@@ -489,33 +547,34 @@ public sealed partial class WidgetWindow : Window
 
     #endregion
 
-    #region Composition Slide Animations (TranslateTransform 0 <-> -244)
+    #region Window State Transitions & Navigation
 
     private void OnExpandedStateChanged(bool isExpanded)
     {
         if (_isTransitioning) return;
         _isTransitioning = true;
 
-        if (isExpanded)
+        try
         {
-            // Чистый старт: гарантируем возврат на экран 3 карточек
-            ViewModel.IsShowingTasks = false;
-            ViewModel.IsPlayerOpen = false;
-            ViewModel.IsAddingTask = false;
-            ViewModel.IsSettingsOpen = false;
+            if (isExpanded)
+            {
+                // Чистый старт: гарантируем возврат на экран 3 карточек
+                ViewModel.IsShowingTasks = false;
+                ViewModel.IsPlayerOpen = false;
+                ViewModel.IsAddingTask = false;
+                ViewModel.IsSettingsOpen = false;
 
-            CompactView.Opacity = 1.0;
-            CompactView.Visibility = Visibility.Visible;
-            if (ExpandedRoot != null) ExpandedRoot.Visibility = Visibility.Collapsed;
-            if (PlayerRoot != null) PlayerRoot.Visibility = Visibility.Collapsed;
-            if (SettingsRoot != null) SettingsRoot.Visibility = Visibility.Collapsed;
-
-            ExpandStoryboard.Begin();
+                ApplyExpandedHomeState();
+            }
+            else
+            {
+                ExitPlayer();
+                ApplyCollapsedState();
+            }
         }
-        else
+        finally
         {
-            ExitPlayer();
-            CollapseStoryboard.Begin();
+            _isTransitioning = false;
         }
     }
 
@@ -530,7 +589,7 @@ public sealed partial class WidgetWindow : Window
     private void OnCollapseStoryboardCompleted(object? sender, object e)
     {
         _isTransitioning = false;
-        CanvasTranslate.Y = -244;
+        CanvasTranslate.Y = 0;
         SaveCurrentWindowState();
         App.TrimWorkingSet();
     }
@@ -540,15 +599,30 @@ public sealed partial class WidgetWindow : Window
         if (_isTransitioning) return;
         _isTransitioning = true;
 
-        if (isShowing)
+        try
         {
-            if (ExpandedRoot != null) ExpandedRoot.Visibility = Visibility.Visible;
-            OpenTasksStoryboard.Begin();
+            if (isShowing)
+            {
+                if (CompactView != null) CompactView.Visibility = Visibility.Collapsed;
+                if (ExpandedRoot != null)
+                {
+                    ExpandedRoot.Visibility = Visibility.Visible;
+                    ExpandedRoot.Opacity = 1.0;
+                }
+            }
+            else
+            {
+                if (ExpandedRoot != null) ExpandedRoot.Visibility = Visibility.Collapsed;
+                if (CompactView != null)
+                {
+                    CompactView.Visibility = Visibility.Visible;
+                    CompactView.Opacity = 1.0;
+                }
+            }
         }
-        else
+        finally
         {
-            if (CompactView != null) CompactView.Visibility = Visibility.Visible;
-            CloseTasksStoryboard.Begin();
+            _isTransitioning = false;
         }
     }
 
@@ -745,7 +819,7 @@ public sealed partial class WidgetWindow : Window
     }
 
     /// <summary>
-    /// Гарантированно возвращает на главный экран 3 карточек.
+    /// Гарантированно возвращает на главный экран 3 карточек (440x300) или свёрнутую плашку (260x42).
     /// </summary>
     public void NavigateToHome()
     {
@@ -753,29 +827,18 @@ public sealed partial class WidgetWindow : Window
         {
             try
             {
-                if (PlayerRoot != null)
-                {
-                    PlayerRoot.Visibility = Visibility.Collapsed;
-                    PlayerRoot.Opacity = 0.0;
-                }
-                if (ExpandedRoot != null)
-                {
-                    ExpandedRoot.Visibility = Visibility.Collapsed;
-                    ExpandedRoot.Opacity = 0.0;
-                }
-                if (SettingsRoot != null)
-                {
-                    SettingsRoot.Visibility = Visibility.Collapsed;
-                    SettingsRoot.Opacity = 0.0;
-                }
-                if (CompactView != null)
-                {
-                    CompactView.Visibility = Visibility.Visible;
-                    CompactView.Opacity = 1.0;
-                }
                 ViewModel.IsPlayerOpen = false;
                 ViewModel.IsShowingTasks = false;
                 ViewModel.IsSettingsOpen = false;
+
+                if (ViewModel.IsExpanded)
+                {
+                    ApplyExpandedHomeState();
+                }
+                else
+                {
+                    ApplyCollapsedState();
+                }
                 AppLogger.Info("Navigated to Home (3 cards view).");
             }
             catch (Exception ex)
@@ -854,12 +917,8 @@ public sealed partial class WidgetWindow : Window
         {
             if (isOpen)
             {
-                AppLogger.Info("Opening player view...");
-                if (PlayerRoot != null)
-                {
-                    PlayerRoot.Visibility = Visibility.Visible;
-                }
-                OpenPlayerStoryboard.Begin();
+                AppLogger.Info("Opening player view (580x440)...");
+                ApplyPlayerState();
             }
             else
             {
@@ -1068,8 +1127,42 @@ public sealed partial class WidgetWindow : Window
 
     private async void OnCountRitualButtonClick(object sender, RoutedEventArgs e)
     {
-        await ViewModel.Player.CountRitualAsync();
-        ExitPlayer();
+        try
+        {
+            // 1. Асинхронно фиксируем ритуал в БД
+            await ViewModel.Player.CountRitualAsync();
+
+            // 2. Глушим плеер безопасно
+            try
+            {
+                _mediaPlayer?.Pause();
+            }
+            catch { }
+
+            // 3. Показываем плавающее Toast-уведомление поверх экрана
+            if (RitualCompletedToast != null)
+            {
+                RitualCompletedToast.Visibility = Visibility.Visible;
+            }
+
+            // 4. Через 1.2 секунды плавно возвращаемся на экран 3 карточек (440x300)
+            await Task.Delay(1200);
+
+            if (RitualCompletedToast != null)
+            {
+                RitualCompletedToast.Visibility = Visibility.Collapsed;
+            }
+
+            ExitPlayer();
+
+            // 5. Обновляем процент месяца
+            await ViewModel.RefreshMonthlyProgressAsync();
+        }
+        catch (Exception ex)
+        {
+            AppLogger.Error(ex, "Error counting daily ritual");
+            ExitPlayer();
+        }
     }
 
     private void OnPlayerPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
@@ -1295,12 +1388,12 @@ public sealed partial class WidgetWindow : Window
     public Visibility InvertBoolToVisibility(bool value) => value ? Visibility.Collapsed : Visibility.Visible;
 
     public SolidColorBrush GetStatusBackground(string status) =>
-        status == "Paused"
+        status == "Пауза" || status == "Paused"
             ? new SolidColorBrush(Windows.UI.Color.FromArgb(0x2E, 0xF5, 0x9E, 0x0B))
             : new SolidColorBrush(Windows.UI.Color.FromArgb(0x2E, 0x26, 0xA6, 0x5B));
 
     public SolidColorBrush GetStatusForeground(string status) =>
-        status == "Paused"
+        status == "Пауза" || status == "Paused"
             ? new SolidColorBrush(Windows.UI.Color.FromArgb(0xFF, 0xF5, 0x9E, 0x0B))
             : new SolidColorBrush(Windows.UI.Color.FromArgb(0xFF, 0x36, 0xD3, 0x99));
 

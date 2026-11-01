@@ -43,6 +43,7 @@ public partial class App : Application
     public static void OpenDashboard()
     {
         CollapseWidget();
+        WidgetWindow?.AppWindow.Hide();
         DashboardWindow ??= Services.GetRequiredService<DashboardWindow>();
         DashboardWindow.Activate();
         DashboardWindow.AppWindow.Show();
@@ -54,8 +55,8 @@ public partial class App : Application
         {
             var vm = Services.GetRequiredService<WidgetViewModel>();
             vm.ToggleExpanded();
-            WidgetWindow.Activate();
             WidgetWindow.AppWindow.Show();
+            WidgetWindow.Activate();
         }
     }
 

@@ -9,7 +9,7 @@
     xmlns:models="using:SecondSelf.Core.Models"
     xmlns:entities="using:SecondSelf.Data.Entities"
     mc:Ignorable="d"
-    Title="Second Self — Personal Space">
+    Title="Second Self — Личное пространство">
 
     <!-- Корневая сетка окна (1120x780px, MinWidth 960, MinHeight 640, background #09090B) -->
     <Grid Background="#09090B">
@@ -46,7 +46,7 @@
                                FontWeight="SemiBold"
                                Foreground="#A1A1AA"
                                CharacterSpacing="120" />
-                    <TextBlock Text="Personal Space"
+                    <TextBlock Text="Личное пространство"
                                FontSize="16"
                                FontWeight="SemiBold"
                                Foreground="#F4F4F5" />
@@ -70,7 +70,7 @@
                                     Visibility="{x:Bind GetTabMarkerVisibility(ViewModel.CurrentTab, 'Today'), Mode=OneWay}" />
                             <FontIcon Grid.Column="1" Glyph="&#xE706;" FontSize="15" Margin="14,0,12,0"
                                       Foreground="{x:Bind GetTabForeground(ViewModel.CurrentTab, 'Today'), Mode=OneWay}" />
-                            <TextBlock Grid.Column="2" Text="Today" VerticalAlignment="Center" FontSize="13"
+                            <TextBlock Grid.Column="2" Text="Сегодня" VerticalAlignment="Center" FontSize="13"
                                        Foreground="{x:Bind GetTabForeground(ViewModel.CurrentTab, 'Today'), Mode=OneWay}"
                                        FontWeight="{x:Bind GetTabFontWeight(ViewModel.CurrentTab, 'Today'), Mode=OneWay}" />
                         </Grid>
@@ -92,7 +92,7 @@
                                     Visibility="{x:Bind GetTabMarkerVisibility(ViewModel.CurrentTab, 'Goals'), Mode=OneWay}" />
                             <FontIcon Grid.Column="1" Glyph="&#xE707;" FontSize="15" Margin="14,0,12,0"
                                       Foreground="{x:Bind GetTabForeground(ViewModel.CurrentTab, 'Goals'), Mode=OneWay}" />
-                            <TextBlock Grid.Column="2" Text="Goals" VerticalAlignment="Center" FontSize="13"
+                            <TextBlock Grid.Column="2" Text="Цели" VerticalAlignment="Center" FontSize="13"
                                        Foreground="{x:Bind GetTabForeground(ViewModel.CurrentTab, 'Goals'), Mode=OneWay}"
                                        FontWeight="{x:Bind GetTabFontWeight(ViewModel.CurrentTab, 'Goals'), Mode=OneWay}" />
                         </Grid>
@@ -114,7 +114,7 @@
                                     Visibility="{x:Bind GetTabMarkerVisibility(ViewModel.CurrentTab, 'Progress'), Mode=OneWay}" />
                             <FontIcon Grid.Column="1" Glyph="&#xE9D9;" FontSize="15" Margin="14,0,12,0"
                                       Foreground="{x:Bind GetTabForeground(ViewModel.CurrentTab, 'Progress'), Mode=OneWay}" />
-                            <TextBlock Grid.Column="2" Text="Progress" VerticalAlignment="Center" FontSize="13"
+                            <TextBlock Grid.Column="2" Text="Прогресс" VerticalAlignment="Center" FontSize="13"
                                        Foreground="{x:Bind GetTabForeground(ViewModel.CurrentTab, 'Progress'), Mode=OneWay}"
                                        FontWeight="{x:Bind GetTabFontWeight(ViewModel.CurrentTab, 'Progress'), Mode=OneWay}" />
                         </Grid>
@@ -136,7 +136,7 @@
                                     Visibility="{x:Bind GetTabMarkerVisibility(ViewModel.CurrentTab, 'Archive'), Mode=OneWay}" />
                             <FontIcon Grid.Column="1" Glyph="&#xE7B8;" FontSize="15" Margin="14,0,12,0"
                                       Foreground="{x:Bind GetTabForeground(ViewModel.CurrentTab, 'Archive'), Mode=OneWay}" />
-                            <TextBlock Grid.Column="2" Text="Archive" VerticalAlignment="Center" FontSize="13"
+                            <TextBlock Grid.Column="2" Text="Архив" VerticalAlignment="Center" FontSize="13"
                                        Foreground="{x:Bind GetTabForeground(ViewModel.CurrentTab, 'Archive'), Mode=OneWay}"
                                        FontWeight="{x:Bind GetTabFontWeight(ViewModel.CurrentTab, 'Archive'), Mode=OneWay}" />
                         </Grid>
@@ -158,7 +158,7 @@
                                     Visibility="{x:Bind GetTabMarkerVisibility(ViewModel.CurrentTab, 'Settings'), Mode=OneWay}" />
                             <FontIcon Grid.Column="1" Glyph="&#xE713;" FontSize="15" Margin="14,0,12,0"
                                       Foreground="{x:Bind GetTabForeground(ViewModel.CurrentTab, 'Settings'), Mode=OneWay}" />
-                            <TextBlock Grid.Column="2" Text="Settings" VerticalAlignment="Center" FontSize="13"
+                            <TextBlock Grid.Column="2" Text="Настройки" VerticalAlignment="Center" FontSize="13"
                                        Foreground="{x:Bind GetTabForeground(ViewModel.CurrentTab, 'Settings'), Mode=OneWay}"
                                        FontWeight="{x:Bind GetTabFontWeight(ViewModel.CurrentTab, 'Settings'), Mode=OneWay}" />
                         </Grid>
@@ -248,7 +248,7 @@
 
                         <!-- Список Today's Focus -->
                         <StackPanel Spacing="10">
-                            <TextBlock Text="TODAY'S FOCUS" FontSize="11" FontWeight="SemiBold" Foreground="#A1A1AA" CharacterSpacing="120" />
+                            <TextBlock Text="ФОКУС ДНЯ" FontSize="11" FontWeight="SemiBold" Foreground="#A1A1AA" CharacterSpacing="120" />
 
                             <!-- Инлайн-поле ввода задачи дня -->
                             <Grid>
@@ -336,7 +336,7 @@
                         <Border Background="#121214" BorderBrush="#1C1C20" BorderThickness="1" CornerRadius="10" Padding="16">
                             <StackPanel Spacing="12">
                                 <Grid>
-                                    <TextBlock Text="DAILY RESET" FontSize="11" FontWeight="SemiBold" Foreground="#A1A1AA" CharacterSpacing="120" VerticalAlignment="Center" />
+                                    <TextBlock Text="ПЕРЕЗАГРУЗКА" FontSize="11" FontWeight="SemiBold" Foreground="#A1A1AA" CharacterSpacing="120" VerticalAlignment="Center" />
                                     <Border HorizontalAlignment="Right" Background="{x:Bind conv:XamlConverters.ToStatusBackgroundBrush(ViewModel.TodayViewModel.RitualStatus), Mode=OneWay}"
                                             CornerRadius="4" Padding="8, 3">
                                         <TextBlock Text="{x:Bind ViewModel.TodayViewModel.RitualStatus, Mode=OneWay}" FontSize="10" FontWeight="SemiBold"
@@ -627,13 +627,13 @@
                                     <ColumnDefinition Width="*" />
                                 </Grid.ColumnDefinitions>
                                 <StackPanel Grid.Column="0" Spacing="4">
-                                    <TextBlock Text="DAILY RITUALS (30%)" FontSize="11" FontWeight="SemiBold" Foreground="#36D399" CharacterSpacing="100" />
+                                    <TextBlock Text="ДНЕВНЫЕ РИТУАЛЫ (30%)" FontSize="11" FontWeight="SemiBold" Foreground="#36D399" CharacterSpacing="100" />
                                     <TextBlock Text="{x:Bind ViewModel.ProgressViewModel.DailyFraction, Mode=OneWay}"
                                                FontSize="24" FontWeight="Bold" Foreground="#F4F4F5" Typography.NumeralAlignment="Tabular" />
                                     <TextBlock Text="дней выполнения ритуала" FontSize="11" Foreground="#71717A" />
                                 </StackPanel>
                                 <StackPanel Grid.Column="1" Spacing="4">
-                                    <TextBlock Text="WEEKLY GOALS (70%)" FontSize="11" FontWeight="SemiBold" Foreground="#CE824C" CharacterSpacing="100" />
+                                    <TextBlock Text="НЕДЕЛЬНЫЕ ЦЕЛИ (70%)" FontSize="11" FontWeight="SemiBold" Foreground="#CE824C" CharacterSpacing="100" />
                                     <TextBlock Text="{x:Bind ViewModel.ProgressViewModel.WeeklyFraction, Mode=OneWay}"
                                                FontSize="24" FontWeight="Bold" Foreground="#F4F4F5" Typography.NumeralAlignment="Tabular" />
                                     <TextBlock Text="недель выполнения цели" FontSize="11" Foreground="#71717A" />

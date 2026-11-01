@@ -135,8 +135,8 @@ public sealed class WidgetViewModelTests
         Assert.Equal(3, vm.CompactTasks.Count); // Compact only takes up to 3
         Assert.Equal("Task 1", vm.CompactTasks[0].Title);
         Assert.Equal(78, vm.DisplayScore);
-        Assert.Equal("Daily 26/31", vm.DailyRatio);
-        Assert.Equal("Weekly 3/4", vm.WeeklyRatio);
+        Assert.Equal($"Ритуалы 0/{vm.TotalDaysInMonth}", vm.DailyRatio);
+        Assert.Equal($"Недели 0/{vm.TotalWeeksInMonth}", vm.WeeklyRatio);
     }
 
     [Fact]
@@ -239,7 +239,7 @@ public sealed class WidgetViewModelTests
         vm.DisplayScore = 50;
 
         Assert.Equal(50.0, vm.ProgressPercentage);
-        Assert.Equal(170.0, vm.ProgressBarWidth);
-        Assert.Equal("This Month: 50%", vm.CompactProgressText);
+        Assert.Equal(84.0, vm.ProgressBarWidth);
+        Assert.Equal("Итог месяца: 50%", vm.CompactProgressText);
     }
 }

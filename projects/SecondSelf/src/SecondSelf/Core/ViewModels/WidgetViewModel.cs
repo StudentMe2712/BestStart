@@ -29,6 +29,7 @@ public partial class WidgetViewModel : ObservableObject
     private readonly IDayTransitionService? _dayTransitionService;
     private readonly INotificationBus? _notificationBus;
     private readonly IVideoLibraryService? _videoLibraryService;
+    private readonly IWeeklyGoalRepository? _weeklyGoalRepository;
 
     private CancellationTokenSource? _undoCts;
     private readonly object _undoLock = new();
@@ -55,34 +56,51 @@ public partial class WidgetViewModel : ObservableObject
     private bool _isSettingsOpen;
 
     [ObservableProperty]
-    private int _displayScore = 78;
+    [NotifyPropertyChangedFor(nameof(DisplayScorePercent))]
+    [NotifyPropertyChangedFor(nameof(CompactProgressText))]
+    private int _displayScore = 0;
 
     [ObservableProperty]
-    private string _dailyRatio = "Daily 26/31";
+    private int _completedDays = 0;
 
     [ObservableProperty]
-    private string _weeklyRatio = "Weekly 3/4";
+    private int _totalDaysInMonth = 0;
 
     [ObservableProperty]
-    private double _progressPercentage = 78.0;
+    private int _completedWeeks = 0;
 
     [ObservableProperty]
-    private double _progressBarWidth = 265.2; // 340px * 0.78
+    private int _totalWeeksInMonth = 0;
 
     [ObservableProperty]
-    private string _resetStatus = "Ready";
+    private string _dailyRatio = "Ритуалы 0/0";
 
     [ObservableProperty]
-    private string _resetSubtitle = "Update 2h ago";
+    private string _weeklyRatio = "Недели 0/0";
 
     [ObservableProperty]
-    private string _videoTitle = "Your daily video";
+    private string _monthlySummarySubtitle = "Ритуалы: 0/0 · Недели: 0/0";
 
     [ObservableProperty]
-    private string _videoSubtitle = "A moment to refocus";
+    private double _progressPercentage = 0.0;
 
     [ObservableProperty]
-    private string _videoSourceTag = "unsplash.com";
+    private double _progressBarWidth = 0.0;
+
+    [ObservableProperty]
+    private string _resetStatus = "Готово к просмотру";
+
+    [ObservableProperty]
+    private string _resetSubtitle = "Готово к просмотру";
+
+    [ObservableProperty]
+    private string _videoTitle = "Ритуал дня";
+
+    [ObservableProperty]
+    private string _videoSubtitle = "Минута для концентрации";
+
+    [ObservableProperty]
+    private string _videoSourceTag = "локально";
 
     [ObservableProperty]
     private bool _isAddingTask;
@@ -117,7 +135,8 @@ public partial class WidgetViewModel : ObservableObject
     /// </summary>
     public int UndoDelayMs { get; set; } = 5000;
 
-    public string CompactProgressText => $"This Month: {DisplayScore}%";
+    public string DisplayScorePercent => $"{DisplayScore}%";
+    public string CompactProgressText => $"Итог месяца: {DisplayScore}%";
 
     public WidgetViewModel(
         ITaskRepository taskRepository,
@@ -127,7 +146,8 @@ public partial class WidgetViewModel : ObservableObject
         IVideoPlaybackService? videoPlaybackService = null,
         IDayTransitionService? dayTransitionService = null,
         INotificationBus? notificationBus = null,
-        IVideoLibraryService? videoLibraryService = null)
+        IVideoLibraryService? videoLibraryService = null,
+        IWeeklyGoalRepository? weeklyGoalRepository = null)
     {
         _taskRepository = taskRepository ?? throw new ArgumentNullException(nameof(taskRepository));
         _progressEngine = progressEngine ?? throw new ArgumentNullException(nameof(progressEngine));
@@ -137,6 +157,7 @@ public partial class WidgetViewModel : ObservableObject
         _dayTransitionService = dayTransitionService;
         _notificationBus = notificationBus;
         _videoLibraryService = videoLibraryService;
+        _weeklyGoalRepository = weeklyGoalRepository;
 
         if (_videoPlaybackService != null)
         {
@@ -162,7 +183,7 @@ public partial class WidgetViewModel : ObservableObject
                 }
 
                 await RefreshMonthlyProgressAsync(msgTime).ConfigureAwait(false);
-                ResetStatus = "Done for Today";
+                ResetStatus = "Выполнено";
             });
 
             _notificationBus.Subscribe<DayChangedMessage>(this, async msg =>
@@ -174,7 +195,7 @@ public partial class WidgetViewModel : ObservableObject
                 }
 
                 await RefreshMonthlyProgressAsync(msgTime).ConfigureAwait(false);
-                ResetStatus = "Ready";
+                ResetStatus = "Готово к просмотру";
             });
         }
     }
@@ -213,7 +234,8 @@ public partial class WidgetViewModel : ObservableObject
     partial void OnDisplayScoreChanged(int value)
     {
         ProgressPercentage = Math.Clamp((double)value, 0.0, 100.0);
-        ProgressBarWidth = Math.Round(340.0 * (ProgressPercentage / 100.0), 1);
+        ProgressBarWidth = Math.Round(168.0 * (ProgressPercentage / 100.0), 1);
+        OnPropertyChanged(nameof(DisplayScorePercent));
         OnPropertyChanged(nameof(CompactProgressText));
     }
 
@@ -231,7 +253,7 @@ public partial class WidgetViewModel : ObservableObject
 
         SyncCompactTasks();
 
-        // 2. Расчет актуального прогресса месяца
+        // 2. Расчет актуального прогресса месяца из реальных логов и целей SQLite
         await RefreshMonthlyProgressAsync(cancellationToken).ConfigureAwait(false);
 
         // 3. Загрузка статуса ежедневного ритуала текущих суток
@@ -242,15 +264,15 @@ public partial class WidgetViewModel : ObservableObject
             {
                 if (log.IsCompleted)
                 {
-                    ResetStatus = "Done for Today";
+                    ResetStatus = "Выполнено";
                 }
                 else if (log.LastPositionMs > 0)
                 {
-                    ResetStatus = "Paused";
+                    ResetStatus = "Пауза";
                 }
                 else
                 {
-                    ResetStatus = "Ready";
+                    ResetStatus = "Готово к просмотру";
                 }
             }
         }
@@ -278,33 +300,30 @@ public partial class WidgetViewModel : ObservableObject
         int completedDays = 0;
         int completedWeeks = 0;
 
+        var yearMonth = now.ToString("yyyy-MM");
+
         if (_dailyRitualRepository != null)
         {
-            var yearMonth = now.ToString("yyyy-MM");
             var logs = await _dailyRitualRepository.GetLogsForMonthAsync(yearMonth, cancellationToken).ConfigureAwait(false);
             completedDays = logs.Count(l => l.IsCompleted);
-
-            // Если в базе еще нет истории (первый запуск), отображаем эталонные показатели спецификации (26 дней, 3 недели -> 78%)
-            if (completedDays == 0 && completedWeeks == 0 && logs.Count == 0)
-            {
-                completedDays = 26;
-                completedWeeks = 3;
-            }
         }
-        else
+
+        if (_weeklyGoalRepository != null)
         {
-            completedDays = 26;
-            completedWeeks = 3;
+            var goals = await _weeklyGoalRepository.GetGoalsForMonthAsync(yearMonth, cancellationToken).ConfigureAwait(false);
+            completedWeeks = goals.Count(g => string.Equals(g.Status, "Completed", StringComparison.OrdinalIgnoreCase));
         }
 
         var progressResult = _progressEngine.CalculateMonthlyProgress(now.Year, now.Month, completedDays, completedWeeks);
         DisplayScore = progressResult.DisplayScore;
-        DailyRatio = progressResult.DailyRatio.StartsWith("Daily ")
-            ? progressResult.DailyRatio
-            : $"Daily {progressResult.DailyRatio}";
-        WeeklyRatio = progressResult.WeeklyRatio.StartsWith("Weekly ")
-            ? progressResult.WeeklyRatio
-            : $"Weekly {progressResult.WeeklyRatio}";
+        CompletedDays = progressResult.CompletedDays;
+        TotalDaysInMonth = progressResult.TotalDaysInMonth;
+        CompletedWeeks = progressResult.CompletedWeeks;
+        TotalWeeksInMonth = progressResult.TotalWeeksInMonth;
+
+        DailyRatio = $"Ритуалы {CompletedDays}/{TotalDaysInMonth}";
+        WeeklyRatio = $"Недели {CompletedWeeks}/{TotalWeeksInMonth}";
+        MonthlySummarySubtitle = $"Ритуалы: {CompletedDays}/{TotalDaysInMonth} · Недели: {CompletedWeeks}/{TotalWeeksInMonth}";
     }
 
     [RelayCommand]
@@ -360,11 +379,11 @@ public partial class WidgetViewModel : ObservableObject
 
         if (Player.IsCompleted)
         {
-            ResetStatus = "Done for Today";
+            ResetStatus = "Выполнено";
         }
         else
         {
-            ResetStatus = "Paused";
+            ResetStatus = "Пауза";
         }
     }
 
@@ -504,6 +523,8 @@ public partial class WidgetViewModel : ObservableObject
         // Поле ввода очищается и немедленно закрывается
         NewTaskTitle = string.Empty;
         IsAddingTask = false;
+
+        await RefreshMonthlyProgressAsync(cancellationToken).ConfigureAwait(false);
     }
 
     [RelayCommand]
@@ -661,6 +682,7 @@ public partial class WidgetViewModel : ObservableObject
             int insertIndex = Math.Clamp(targetIndex, 0, Tasks.Count);
             Tasks.Insert(insertIndex, taskToRestore);
             SyncCompactTasks();
+            _ = RefreshMonthlyProgressAsync();
         }
     }
 
@@ -684,6 +706,7 @@ public partial class WidgetViewModel : ObservableObject
         {
             var logicalDate = DateOnly.FromDateTime(DateTime.UtcNow).ToString("yyyy-MM-dd");
             await _taskRepository.ArchiveTaskAsync(taskToCommit.Id, logicalDate, cancellationToken).ConfigureAwait(false);
+            await RefreshMonthlyProgressAsync(cancellationToken).ConfigureAwait(false);
         }
     }
 
@@ -702,6 +725,7 @@ public partial class WidgetViewModel : ObservableObject
 
         Tasks.Remove(item);
         SyncCompactTasks();
+        await RefreshMonthlyProgressAsync(cancellationToken).ConfigureAwait(false);
     }
 
     [RelayCommand]

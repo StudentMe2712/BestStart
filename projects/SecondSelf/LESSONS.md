@@ -83,5 +83,10 @@
 - **Finding:** Awaiting asynchronous operations with `.ConfigureAwait(false)` inside `ViewModel` methods (such as `OpenPlayerAsync`) causes property change events (`PlayerStateChanged`) to fire on background thread pool threads. Directly manipulating WinUI 3 XAML properties (`Visibility`, `Storyboard.Begin()`) without `DispatcherQueue.TryEnqueue` throws silent COM threading exceptions, preventing the player view from appearing and causing fallback close actions.
 - **Rule:** Always marshal view transition callbacks and storyboards to the UI thread using `DispatcherQueue.TryEnqueue` when reacting to ViewModel state events.
 
+### 2026-11-01 — Adaptive Physical AppWindow Geometry for Frameless Desktop Widgets
+- **Context:** Eliminating black backing rectangular artifacts in transparent desktop widgets on Windows 11 DWM.
+- **Finding:** Even with `DwmExtendFrameIntoClientArea` and null background, keeping an oversized transparent window canvas (e.g. 440×300) while rendering only a 260×42 capsule causes DWM swapchains to render dark rectangular fields on certain graphics configurations. Dynamically synchronizing physical `AppWindow.Resize` with the active mode (260×42 collapsed capsule, 440×300 expanded cards, 580×440 widescreen player) with top-center repositioning guarantees a clean, true-to-content desktop footprint with zero dark backing artifacts.
+- **Rule:** Physically resize the `AppWindow` to match the exact visual boundaries of each display state when designing frameless desktop overlays in WinUI 3.
+
 
 

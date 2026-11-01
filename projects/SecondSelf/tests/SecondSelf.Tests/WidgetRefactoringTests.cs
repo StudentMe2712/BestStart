@@ -127,9 +127,9 @@ public sealed class WidgetRefactoringTests
         Assert.Contains("#99FFD7B4", content);
         Assert.Contains("#20FFFFFF", content);
 
-        // 4. Постоянный размер 420x280 и TranslateTransform Y="0" / -244
-        Assert.Contains("Width=\"420\"", content);
-        Assert.Contains("Height=\"280\"", content);
+        // 4. Размеры капсулы (260x42) и TranslateTransform Y="0" / -244
+        Assert.Contains("Width=\"260\"", content);
+        Assert.Contains("Height=\"42\"", content);
         Assert.Contains("Value=\"-244\"", content);
 
         // 5. Шеврон и BottomTabTrigger

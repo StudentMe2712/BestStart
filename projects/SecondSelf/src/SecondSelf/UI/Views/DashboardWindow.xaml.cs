@@ -93,15 +93,18 @@ public sealed partial class DashboardWindow : Window
         // 4. Настройка тёмной темы заголовка и Snap Layouts
         ConfigureTitleBar();
 
-        // 5. Обработка закрытия: отмена уничтожения и скрытие в трей (Rule 6)
+        // 5. Обработка закрытия: отмена уничтожения и скрытие в трей (Rule 6, возврат свёрнутого виджета 260x42)
         _appWindow.Closing += (sender, args) =>
         {
             args.Cancel = true;
             _appWindow.Hide();
+            App.WidgetWindow?.AppWindow.Show();
+            App.CollapseWidget();
         };
 
-        // 5.1. Автосворачивание виджета при открытии или активации Personal Space (DEFECT 4)
+        // 5.1. Автосворачивание и скрытие виджета при открытии или активации Personal Space
         this.Activated += OnWindowActivated;
+        App.WidgetWindow?.AppWindow.Hide();
         WeakReferenceMessenger.Default.Send(new CollapseWidgetMessage());
 
         // 6. Инициализация данных при первом открытии
@@ -113,20 +116,20 @@ public sealed partial class DashboardWindow : Window
 
     private void ConfigureWindowGeometry(WindowId windowId)
     {
-        _appWindow.Resize(new SizeInt32(1120, 780));
+        _appWindow.Resize(new SizeInt32(1280, 820));
 
         var displayArea = DisplayArea.GetFromWindowId(windowId, DisplayAreaFallback.Primary);
         if (displayArea != null)
         {
-            int posX = Math.Max(0, (displayArea.WorkArea.Width - 1120) / 2);
-            int posY = Math.Max(0, (displayArea.WorkArea.Height - 780) / 2);
+            int posX = Math.Max(0, (displayArea.WorkArea.Width - 1280) / 2);
+            int posY = Math.Max(0, (displayArea.WorkArea.Height - 820) / 2);
             _appWindow.Move(new PointInt32(posX, posY));
         }
     }
 
     private void ConfigureTitleBar()
     {
-        this.Title = "Second Self — Personal Space";
+        this.Title = "Second Self — Личное пространство";
 
         if (AppWindowTitleBar.IsCustomizationSupported())
         {
@@ -160,6 +163,7 @@ public sealed partial class DashboardWindow : Window
     {
         if (args.WindowActivationState != WindowActivationState.Deactivated)
         {
+            App.WidgetWindow?.AppWindow.Hide();
             WeakReferenceMessenger.Default.Send(new CollapseWidgetMessage());
         }
     }

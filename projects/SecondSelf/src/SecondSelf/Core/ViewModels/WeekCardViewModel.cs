@@ -8,6 +8,7 @@ namespace SecondSelf.Core.ViewModels;
 public partial class WeekCardViewModel : ObservableObject
 {
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(WeekDisplayNumber))]
     private int _weekNumber;
 
     public string WeekDisplayNumber => $"W{WeekNumber}";
@@ -25,6 +26,8 @@ public partial class WeekCardViewModel : ObservableObject
     private string? _milestoneTag;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(StatusBadgeText))]
+    [NotifyPropertyChangedFor(nameof(IsCompleted))]
     private string _status = "InProgress"; // Completed, InProgress, Postponed, Cancelled, Missed
 
     public bool IsCompleted => string.Equals(Status, "Completed", System.StringComparison.OrdinalIgnoreCase);

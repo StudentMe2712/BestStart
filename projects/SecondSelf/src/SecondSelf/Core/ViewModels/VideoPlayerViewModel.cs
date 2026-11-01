@@ -16,7 +16,7 @@ public partial class VideoPlayerViewModel : ObservableObject
     private readonly IVideoPlaybackService _playbackService;
 
     [ObservableProperty]
-    private string _statusText = "Ready";
+    private string _statusText = "Готово к просмотру";
 
     [ObservableProperty]
     private string _statusForeground = "#36D399";
@@ -25,13 +25,13 @@ public partial class VideoPlayerViewModel : ObservableObject
     private string _statusBackground = "#2E26A65B";
 
     [ObservableProperty]
-    private string _videoTitle = "Daily Reset";
+    private string _videoTitle = "Ритуал дня";
 
     [ObservableProperty]
-    private string _videoSubtitle = "A moment to refocus";
+    private string _videoSubtitle = "Минута для концентрации";
 
     [ObservableProperty]
-    private string _videoSourceTag = "local";
+    private string _videoSourceTag = "локально";
 
     [ObservableProperty]
     private string _videoFilePath = string.Empty;
@@ -202,10 +202,24 @@ public partial class VideoPlayerViewModel : ObservableObject
 
     private void UpdatePropertiesFromService()
     {
-        StatusText = _playbackService.StatusText;
+        if (_playbackService.IsRitualCounted)
+        {
+            StatusText = "Выполнено";
+        }
+        else
+        {
+            StatusText = _playbackService.State switch
+            {
+                PlaybackState.Paused => "Пауза",
+                PlaybackState.Completed => "Просмотр завершён",
+                PlaybackState.Playing => "Воспроизведение",
+                _ => "Готово к просмотру"
+            };
+        }
+
         FormattedTimecode = _playbackService.FormattedTimecode;
         PlaybackProgressRatio = _playbackService.ProgressRatio;
-        ProgressBarWidth = Math.Round(372.0 * PlaybackProgressRatio, 1);
+        ProgressBarWidth = Math.Round(548.0 * PlaybackProgressRatio, 1);
         IsCountButtonVisible = _playbackService.IsCountButtonVisible;
         IsCompleted = _playbackService.IsRitualCounted;
         IsPlaying = _playbackService.State == PlaybackState.Playing;

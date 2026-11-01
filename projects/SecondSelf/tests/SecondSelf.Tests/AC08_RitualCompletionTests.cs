@@ -186,7 +186,7 @@ public sealed class AC08_RitualCompletionTests : IDisposable
 
         // Then 5: Виджет обновляет статус на Done for Today и пересчитывает прогресс
         await widgetViewModel.RefreshMonthlyProgressAsync(now);
-        Assert.Equal("Daily 1/30", widgetViewModel.DailyRatio);
+        Assert.Equal("Ритуалы 1/30", widgetViewModel.DailyRatio);
 
         // Then 6: Защита от повторного начисления при повторном клике / запуске в тот же день
         bool duplicateCount = await playbackService.CountRitualCompletionAsync(completedAt);
