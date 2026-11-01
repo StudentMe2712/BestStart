@@ -142,7 +142,7 @@ public sealed class AC11_MonthlyRecapActivationAndFinalizationTests : IDisposabl
 
         // Проверяем метрики оверлея: 78%, 26/31, 3/4
         var recapVm = _dashboardViewModel.MonthlyRecapViewModel;
-        Assert.Equal("MARCH 2026", recapVm.HeaderMonthYear);
+        Assert.Equal("МАРТ 2026", recapVm.HeaderMonthYear);
         Assert.Equal("26/31", recapVm.DailyFraction);
         Assert.Equal("3/4", recapVm.WeeklyFraction);
         // Математика: 0.30*(26/31)*100 + 0.70*(3/4)*100 = 25.16 + 52.5 = 77.66% -> округление 78%
@@ -162,10 +162,10 @@ public sealed class AC11_MonthlyRecapActivationAndFinalizationTests : IDisposabl
         bool activated = await _dashboardViewModel.CheckMonthlyRecapActivationAsync(firstDay0900);
 
         // Then:
-        // Активируется оверлей для предыдущего месяца (MARCH 2026)
+        // Активируется оверлей для предыдущего месяца (МАРТ 2026)
         Assert.True(activated);
         Assert.True(_dashboardViewModel.IsMonthlyRecapOpen);
-        Assert.Equal("MARCH 2026", _dashboardViewModel.MonthlyRecapViewModel.HeaderMonthYear);
+        Assert.Equal("МАРТ 2026", _dashboardViewModel.MonthlyRecapViewModel.HeaderMonthYear);
         Assert.Equal("2026-03", _dashboardViewModel.MonthlyRecapViewModel.YearMonth);
     }
 

@@ -93,6 +93,13 @@ public sealed partial class DashboardWindow : Window
         // 4. Настройка тёмной темы заголовка и Snap Layouts
         ConfigureTitleBar();
 
+        // 4.1. Установка брендовой иконки окна
+        string iconPath = System.IO.Path.Combine(AppContext.BaseDirectory, "Assets", "app.ico");
+        if (System.IO.File.Exists(iconPath))
+        {
+            _appWindow.SetIcon(iconPath);
+        }
+
         // 5. Обработка закрытия: отмена уничтожения и скрытие в трей (Rule 6, возврат свёрнутого виджета 260x42)
         _appWindow.Closing += (sender, args) =>
         {
@@ -116,14 +123,21 @@ public sealed partial class DashboardWindow : Window
 
     private void ConfigureWindowGeometry(WindowId windowId)
     {
-        _appWindow.Resize(new SizeInt32(1280, 820));
-
         var displayArea = DisplayArea.GetFromWindowId(windowId, DisplayAreaFallback.Primary);
         if (displayArea != null)
         {
-            int posX = Math.Max(0, (displayArea.WorkArea.Width - 1280) / 2);
-            int posY = Math.Max(0, (displayArea.WorkArea.Height - 820) / 2);
+            var workArea = displayArea.WorkArea;
+            int width = (int)Math.Min(1540, Math.Round(workArea.Width * 0.88));
+            int height = (int)Math.Min(920, Math.Round(workArea.Height * 0.88));
+            _appWindow.Resize(new SizeInt32(width, height));
+
+            int posX = Math.Max(0, workArea.X + (workArea.Width - width) / 2);
+            int posY = Math.Max(0, workArea.Y + (workArea.Height - height) / 2);
             _appWindow.Move(new PointInt32(posX, posY));
+        }
+        else
+        {
+            _appWindow.Resize(new SizeInt32(1280, 820));
         }
     }
 

@@ -10,8 +10,12 @@
     Title="Second Self Widget">
 
     <!-- Корневой контейнер с прозрачным фоном для эффекта Rainmeter Glassmorphism -->
-    <Grid x:Name="RootGrid" Background="{x:Null}">
+    <Grid x:Name="RootGrid" Background="{x:Null}" >
         <Grid.Resources>
+            <FontFamily x:Key="ContentControlThemeFontFamily">Segoe UI Variable Display, Segoe UI Variable Text, Inter, sans-serif</FontFamily>
+            <Style TargetType="TextBlock">
+                <Setter Property="FontFamily" Value="Segoe UI Variable Display, Segoe UI Variable Text, Inter, sans-serif" />
+            </Style>
             <!-- 1. Световая кромка стеклянных карточек (Specular Rim) -->
             <LinearGradientBrush x:Key="SpecularRimBrush" StartPoint="0,0" EndPoint="1,1">
                 <GradientStop Color="#99FFD7B4" Offset="0.0" />
@@ -166,18 +170,13 @@
 
                                 <!-- Верхняя строка: Заголовок + кнопка (+) -->
                                 <Grid Grid.Row="0" Margin="0,0,0,6">
-                                    <StackPanel VerticalAlignment="Center">
-                                        <TextBlock Text="Фокус"
-                                                   FontSize="18"
-                                                   FontWeight="SemiBold"
-                                                   Foreground="#FFFFFF"
-                                                   LineHeight="22" />
-                                        <TextBlock Text="дня"
-                                                   FontSize="18"
-                                                   FontWeight="SemiBold"
-                                                   Foreground="#FFFFFF"
-                                                   LineHeight="22" />
-                                    </StackPanel>
+                                    <TextBlock Text="Фокус дня"
+                                               FontSize="20"
+                                               FontWeight="SemiBold"
+                                               CharacterSpacing="20"
+                                               LineHeight="24"
+                                               Foreground="#FFFFFF"
+                                               VerticalAlignment="Center" />
 
                                     <Button HorizontalAlignment="Right"
                                             VerticalAlignment="Top"
@@ -442,9 +441,11 @@
                                                    FontWeight="SemiBold"
                                                    Foreground="#FFFFFF" />
                                         <TextBlock Text="{x:Bind ViewModel.ResetSubtitle, Mode=OneWay}"
-                                                   FontSize="11"
-                                                   Typography.NumeralAlignment="Tabular"
-                                                   Foreground="#D9FFFFFF" />
+                                                   FontSize="12"
+                                                   FontWeight="Normal"
+                                                   Opacity="0.75"
+                                                   Foreground="#FFFFFF"
+                                                   Typography.NumeralAlignment="Tabular" />
                                     </StackPanel>
                                 </Grid>
                             </Border>
@@ -468,13 +469,15 @@
                                 <Grid VerticalAlignment="Center">
                                     <StackPanel Spacing="3">
                                         <TextBlock Text="{x:Bind ViewModel.DisplayScorePercent, Mode=OneWay}"
-                                                   FontSize="20"
+                                                   FontSize="26"
                                                    FontWeight="Bold"
-                                                   Typography.NumeralAlignment="Tabular"
-                                                   Foreground="#36D399" />
+                                                   Foreground="#36D399"
+                                                   Typography.NumeralAlignment="Tabular" />
                                         <TextBlock Text="{x:Bind ViewModel.MonthlySummarySubtitle, Mode=OneWay}"
-                                                   FontSize="10"
-                                                   Foreground="#ADFFFFFF"
+                                                   FontSize="12"
+                                                   FontWeight="Normal"
+                                                   Opacity="0.75"
+                                                   Foreground="#FFFFFF"
                                                    TextTrimming="CharacterEllipsis" />
                                         <!-- Прогресс-бар строго пропорциональный DisplayScore -->
                                         <Grid Width="168" Height="4" HorizontalAlignment="Left" Margin="0,3,0,0">
@@ -1065,7 +1068,7 @@
 
                         <!-- Центр: Second Self и шеврон -->
                         <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="6">
-                            <TextBlock Text="✦" FontSize="11" Foreground="#FFDE824C" VerticalAlignment="Center" />
+                            <Image Source="ms-appx:///Assets/secondself-tray-16.png" Width="14" Height="14" VerticalAlignment="Center" />
                             <TextBlock Text="Second Self" FontSize="12" FontWeight="SemiBold" Foreground="#FFFFFF" VerticalAlignment="Center" />
                             <FontIcon Glyph="{x:Bind GetChevronGlyph(ViewModel.IsExpanded), Mode=OneWay}" FontSize="10" Foreground="#FFDE824C" VerticalAlignment="Center" />
                         </StackPanel>

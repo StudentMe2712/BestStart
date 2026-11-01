@@ -32,10 +32,10 @@ public partial class MonthlyRecapViewModel : ObservableObject
     private string _yearMonth = string.Empty;
 
     [ObservableProperty]
-    private string _headerMonthYear = "OCTOBER 2026";
+    private string _headerMonthYear = DateTime.Now.ToString("MMMM yyyy", new CultureInfo("ru-RU")).ToUpper();
 
     [ObservableProperty]
-    private string _headerSubtitle = "Your monthly recap";
+    private string _headerSubtitle = "Итоги месяца";
 
     [ObservableProperty]
     private int _monthlyScore = 0;
@@ -47,7 +47,7 @@ public partial class MonthlyRecapViewModel : ObservableObject
     private string _weeklyFraction = "0 / 0";
 
     [ObservableProperty]
-    private string _reflectionPrompt = "What worked? What needs to change? What will you focus on next month?";
+    private string _reflectionPrompt = "Что получилось? Что стоит изменить? На чём сфокусироваться в следующем месяце?";
 
     [ObservableProperty]
     private string _reflectionText = string.Empty;
@@ -84,7 +84,7 @@ public partial class MonthlyRecapViewModel : ObservableObject
 
         if (DateTime.TryParseExact(yearMonth, "yyyy-MM", CultureInfo.InvariantCulture, DateTimeStyles.None, out var dt))
         {
-            HeaderMonthYear = dt.ToString("MMMM yyyy", CultureInfo.InvariantCulture).ToUpperInvariant();
+            HeaderMonthYear = dt.ToString("MMMM yyyy", new CultureInfo("ru-RU")).ToUpper();
         }
         else
         {

@@ -88,5 +88,10 @@
 - **Finding:** Even with `DwmExtendFrameIntoClientArea` and null background, keeping an oversized transparent window canvas (e.g. 440×300) while rendering only a 260×42 capsule causes DWM swapchains to render dark rectangular fields on certain graphics configurations. Dynamically synchronizing physical `AppWindow.Resize` with the active mode (260×42 collapsed capsule, 440×300 expanded cards, 580×440 widescreen player) with top-center repositioning guarantees a clean, true-to-content desktop footprint with zero dark backing artifacts.
 - **Rule:** Physically resize the `AppWindow` to match the exact visual boundaries of each display state when designing frameless desktop overlays in WinUI 3.
 
+### 2026-11-01 — WinUI 3 Window Transparency and DwmEnableBlurBehindWindow Deprecation
+- **Context:** Eliminating black borders and opaque gaps between cards in expanded desktop widget windows.
+- **Finding:** In Windows 11 DWM, invoking the legacy `DwmEnableBlurBehindWindow` API forces DWM to generate a dark blur region behind the window client area. Furthermore, attempting to instantiate `new Windows.UI.Composition.Compositor()` throws in WinUI 3 desktop apps, silently preventing `ICompositionSupportsSystemBackdrop.SystemBackdrop` from being assigned. Using `ElementCompositionPreview.GetElementVisual(this.Content).Compositor` to create an alpha-zero `CompositionColorBrush` and removing `DwmEnableBlurBehindWindow` (relying strictly on `DwmExtendFrameIntoClientArea(margins = -1)`) produces true, flawless wallpaper transparency across card gaps.
+- **Rule:** Never call `DwmEnableBlurBehindWindow` in modern WinUI 3 desktop apps; obtain the `Compositor` from `ElementCompositionPreview` of the root content element and apply `DwmExtendFrameIntoClientArea` with margins -1.
+
 
 

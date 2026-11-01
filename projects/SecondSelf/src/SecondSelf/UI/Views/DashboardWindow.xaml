@@ -39,17 +39,20 @@
                     <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
 
-                <!-- Заголовок приложения -->
-                <StackPanel Grid.Row="0" Margin="22, 24, 20, 24" Spacing="4">
-                    <TextBlock Text="SECOND SELF"
-                               FontSize="11"
-                               FontWeight="SemiBold"
-                               Foreground="#A1A1AA"
-                               CharacterSpacing="120" />
-                    <TextBlock Text="Личное пространство"
-                               FontSize="16"
-                               FontWeight="SemiBold"
-                               Foreground="#F4F4F5" />
+                <!-- Заголовок приложения с брендовым логотипом -->
+                <StackPanel Grid.Row="0" Margin="18, 24, 18, 24" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                    <Image Source="ms-appx:///Assets/secondself-app-32.png" Width="32" Height="32" VerticalAlignment="Center" />
+                    <StackPanel Spacing="2" VerticalAlignment="Center">
+                        <TextBlock Text="SECOND SELF"
+                                   FontSize="11"
+                                   FontWeight="SemiBold"
+                                   Foreground="#A1A1AA"
+                                   CharacterSpacing="120" />
+                        <TextBlock Text="Личное пространство"
+                                   FontSize="15"
+                                   FontWeight="SemiBold"
+                                   Foreground="#F4F4F5" />
+                    </StackPanel>
                 </StackPanel>
 
                 <!-- 5 Табов навигации -->
@@ -1180,7 +1183,7 @@
                             <StackPanel Spacing="4">
                                 <TextBlock Text="{x:Bind ViewModel.MonthlyRecapViewModel.DailyFraction, Mode=OneWay}"
                                            FontSize="26" FontWeight="Bold" Foreground="#36D399" Typography.NumeralAlignment="Tabular" />
-                                <TextBlock Text="Daily Rituals" FontSize="11" Foreground="#A1A1AA" />
+                                <TextBlock Text="Ритуалы дня" FontSize="11" Foreground="#A1A1AA" />
                             </StackPanel>
                         </Border>
 
@@ -1188,7 +1191,7 @@
                             <StackPanel Spacing="4">
                                 <TextBlock Text="{x:Bind ViewModel.MonthlyRecapViewModel.WeeklyFraction, Mode=OneWay}"
                                            FontSize="26" FontWeight="Bold" Foreground="#CE824C" Typography.NumeralAlignment="Tabular" />
-                                <TextBlock Text="Weekly Goals" FontSize="11" Foreground="#A1A1AA" />
+                                <TextBlock Text="Цели недели" FontSize="11" Foreground="#A1A1AA" />
                             </StackPanel>
                         </Border>
                     </Grid>

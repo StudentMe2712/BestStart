@@ -338,6 +338,21 @@ public sealed class SystemTrayService : ISystemTrayService
     {
         try
         {
+            string iconPath = System.IO.Path.Combine(AppContext.BaseDirectory, "Assets", "tray.ico");
+            if (!System.IO.File.Exists(iconPath))
+            {
+                iconPath = System.IO.Path.Combine(AppContext.BaseDirectory, "Assets", "app.ico");
+            }
+
+            if (System.IO.File.Exists(iconPath))
+            {
+                IntPtr hIcon = LoadImageW(IntPtr.Zero, iconPath, 1 /* IMAGE_ICON */, 16, 16, 0x0010 /* LR_LOADFROMFILE */);
+                if (hIcon != IntPtr.Zero)
+                {
+                    return hIcon;
+                }
+            }
+
             // 32512 = IDI_APPLICATION
             return LoadIconW(IntPtr.Zero, (IntPtr)32512);
         }
@@ -512,6 +527,15 @@ public sealed class SystemTrayService : ISystemTrayService
 
     [DllImport("user32.dll", SetLastError = true)]
     private static extern bool DestroyWindow(IntPtr hWnd);
+
+    [DllImport("user32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
+    private static extern IntPtr LoadImageW(
+        IntPtr hInst,
+        string name,
+        uint type,
+        int cx,
+        int cy,
+        uint fuLoad);
 
     [DllImport("user32.dll", CharSet = CharSet.Unicode)]
     private static extern IntPtr LoadIconW(IntPtr hInstance, IntPtr lpIconName);

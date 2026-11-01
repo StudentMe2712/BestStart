@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-labelledby="title desc">
+  <title id="title">Second Self app icon</title>
+  <desc id="desc">A continuous amber path forming an S on a deep warm charcoal field.</desc>
+  <defs>
+    <linearGradient id="background" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#3A1D12"/>
+      <stop offset="0.48" stop-color="#21120E"/>
+      <stop offset="1" stop-color="#100D0C"/>
+    </linearGradient>
+    <radialGradient id="ambience" cx="0.27" cy="0.2" r="0.85">
+      <stop offset="0" stop-color="#B65320" stop-opacity="0.42"/>
+      <stop offset="0.55" stop-color="#8D3517" stop-opacity="0.12"/>
+      <stop offset="1" stop-color="#8D3517" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="mark" x1="0.12" y1="0.08" x2="0.9" y2="0.92">
+      <stop offset="0" stop-color="#FFE0A0"/>
+      <stop offset="0.27" stop-color="#F8B966"/>
+      <stop offset="0.62" stop-color="#E98536"/>
+      <stop offset="1" stop-color="#C85B20"/>
+    </linearGradient>
+    <filter id="markGlow" x="-35%" y="-30%" width="170%" height="160%">
+      <feGaussianBlur stdDeviation="22"/>
+    </filter>
+    <clipPath id="iconShape"><rect x="0" y="0" width="1024" height="1024" rx="222"/></clipPath>
+  </defs>
+  <g clip-path="url(#iconShape)">
+    <rect width="1024" height="1024" fill="url(#background)"/>
+    <rect width="1024" height="1024" fill="url(#ambience)"/>
+    <path d="M 682 270 C 682 210 623 176 540 176 C 392 176 286 267 286 399 C 286 525 390 574 533 574 C 680 574 738 639 738 756 C 738 874 634 942 490 942 C 396 942 323 912 278 864" fill="none" stroke="#E97830" stroke-width="112" stroke-linecap="round" stroke-linejoin="round" opacity="0.45" filter="url(#markGlow)"/>
+    <path d="M 682 270 C 682 210 623 176 540 176 C 392 176 286 267 286 399 C 286 525 390 574 533 574 C 680 574 738 639 738 756 C 738 874 634 942 490 942 C 396 942 323 912 278 864" fill="none" stroke="url(#mark)" stroke-width="82" stroke-linecap="round" stroke-linejoin="round"/>
+    <rect x="18" y="18" width="988" height="988" rx="207" fill="none" stroke="#FFF3E4" stroke-opacity="0.13" stroke-width="3"/>
+    <path d="M 225 110 C 370 35 650 35 799 112" fill="none" stroke="#FFFFFF" stroke-opacity="0.035" stroke-width="3"/>
+  </g>
+</svg>

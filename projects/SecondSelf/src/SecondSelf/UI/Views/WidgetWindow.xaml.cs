@@ -159,15 +159,17 @@ public sealed partial class WidgetWindow : Window
 
         this.InitializeComponent();
 
-        // 1. Честный Windows BackdropBlur через DesktopAcrylicBackdrop
+        // 1. Полная прозрачность окна (отключение системного фона)
         this.SystemBackdrop = null;
         try
         {
+            var visual = Microsoft.UI.Xaml.Hosting.ElementCompositionPreview.GetElementVisual(this.Content);
+            var compositor = visual.Compositor;
+            var transparentBrush = compositor.CreateColorBrush(Windows.UI.Color.FromArgb(0, 0, 0, 0));
             var backdropHolder = this.As<Microsoft.UI.Composition.ICompositionSupportsSystemBackdrop>();
             if (backdropHolder != null)
             {
-                var compositor = new Windows.UI.Composition.Compositor();
-                backdropHolder.SystemBackdrop = compositor.CreateColorBrush(Windows.UI.Color.FromArgb(0, 0, 0, 0));
+                backdropHolder.SystemBackdrop = (Windows.UI.Composition.CompositionBrush)(object)transparentBrush;
             }
         }
         catch { }
@@ -176,6 +178,13 @@ public sealed partial class WidgetWindow : Window
         _hwnd = WindowNative.GetWindowHandle(this);
         var windowId = Win32Interop.GetWindowIdFromWindow(_hwnd);
         _appWindow = AppWindow.GetFromWindowId(windowId);
+
+        // 2.1. Установка брендовой иконки окна
+        string iconPath = System.IO.Path.Combine(AppContext.BaseDirectory, "Assets", "app.ico");
+        if (System.IO.File.Exists(iconPath))
+        {
+            _appWindow.SetIcon(iconPath);
+        }
 
         // 3. Настройка безрамочных P/Invoke стилей и DwmExtendFrameIntoClientArea
         ConfigureWindowStyles();
@@ -279,15 +288,7 @@ public sealed partial class WidgetWindow : Window
         // Применение изменений стилей к неклиентской области
         SetWindowPos(_hwnd, IntPtr.Zero, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED);
 
-        // Win32 DWM BlurBehind & Glassmorphism: полная прозрачность клиентской области
-        var bb = new DWM_BLURBEHIND
-        {
-            dwFlags = DWM_BLURBEHIND.DWM_BB_ENABLE,
-            fEnable = true,
-            hRgnBlur = IntPtr.Zero
-        };
-        DwmEnableBlurBehindWindow(_hwnd, ref bb);
-
+        // Win32 DWM Glassmorphism: полная прозрачность клиентской области (DwmExtendFrameIntoClientArea с margins -1)
         var margins = new MARGINS { cxLeftWidth = -1, cxRightWidth = -1, cyTopHeight = -1, cyBottomHeight = -1 };
         DwmExtendFrameIntoClientArea(_hwnd, ref margins);
     }
