@@ -73,4 +73,10 @@
 - **Finding:** In WinUI 3 (Windows App SDK), setting `Window.SystemBackdrop = null` and `Grid.Background = "Transparent"` alone leaves an opaque black backing canvas rendered by `DesktopWindowXamlSource`. To achieve 100% true alpha transparency where the Windows desktop wallpaper is visible through card margins, one must combine Win32 `DwmExtendFrameIntoClientArea(margins = -1)` and `DwmEnableBlurBehindWindow` with WinRT `window.As<ICompositionSupportsSystemBackdrop>()`, assigning an alpha-zero `CompositionColorBrush` (`Color.FromArgb(0, 0, 0, 0)`).
 - **Rule:** Always assign an explicit alpha-zero `CompositionColorBrush` to `ICompositionSupportsSystemBackdrop.SystemBackdrop` and invoke `DwmEnableBlurBehindWindow` for true glassmorphic transparent windows in WinUI 3.
 
+### 2026-11-01 — Constant Window Size with TranslateTransform Slide Animation (Eliminating Black Screen Resizing Artifacts)
+- **Context:** Eliminating black screen flashes, DWM surface re-allocation lags, and mouse dragging jitter in top-anchored Rainmeter-style desktop widgets.
+- **Finding:** Resizing a WinUI 3 `AppWindow` dynamically between compact (e.g. 180×36) and expanded (420×280) via `MoveAndResize` forces Windows DWM to destroy and re-create the backing DirectX swapchain and composition visual surfaces, producing visible black frames. Keeping the window size strictly constant (420×280) anchored at the top-center edge ($Y=0$, $X=(\text{WorkArea.Width} - \text{Width})/2$) and animating the widget canvas via `TranslateTransform.Y` ($0 \leftrightarrow -244$) moves the cards off-screen with zero window reallocation and instantaneous 60fps GPU smoothness, while positioning a tactile bottom tab at $Y=0..36$ when collapsed.
+- **Rule:** Never dynamically resize a transparent frameless window for expand/collapse transitions; use a fixed top-anchored window bounds and slide content vertically via `RenderTransform` KeySpline animations.
+
+
 

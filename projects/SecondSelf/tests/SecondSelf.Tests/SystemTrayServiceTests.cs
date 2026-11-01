@@ -29,11 +29,13 @@ public class SystemTrayServiceTests
         bool widgetFired = false;
         bool quickAddFired = false;
         bool exitFired = false;
+        bool openLogsFired = false;
 
         trayService.ShowDashboardRequested += () => dashboardFired = true;
         trayService.ToggleWidgetRequested += () => widgetFired = true;
         trayService.QuickAddTaskRequested += () => quickAddFired = true;
         trayService.ExitRequested += () => exitFired = true;
+        trayService.OpenLogsRequested += () => openLogsFired = true;
 
         trayService.TriggerCommand(SystemTrayService.CMD_OPEN_DASHBOARD);
         Assert.True(dashboardFired);
@@ -43,6 +45,9 @@ public class SystemTrayServiceTests
 
         trayService.TriggerCommand(SystemTrayService.CMD_QUICK_ADD_TASK);
         Assert.True(quickAddFired);
+
+        trayService.TriggerCommand(SystemTrayService.CMD_OPEN_LOGS);
+        Assert.True(openLogsFired);
 
         trayService.TriggerCommand(SystemTrayService.CMD_EXIT);
         Assert.True(exitFired);

@@ -13,6 +13,7 @@ public sealed class SystemTrayService : ISystemTrayService
     public const uint CMD_TOGGLE_WIDGET = 1002;
     public const uint CMD_QUICK_ADD_TASK = 1003;
     public const uint CMD_EXIT = 1004;
+    public const uint CMD_OPEN_LOGS = 1005;
 
     public const int HOTKEY_ADD_TASK_ID = 2001;
     public const int HOTKEY_TOGGLE_WIDGET_ID = 2002;
@@ -60,6 +61,7 @@ public sealed class SystemTrayService : ISystemTrayService
     public event Action? ToggleWidgetRequested;
     public event Action? QuickAddTaskRequested;
     public event Action? ExitRequested;
+    public event Action? OpenLogsRequested;
 
     private IntPtr _hwnd = IntPtr.Zero;
     private bool _createdOwnWindow;
@@ -165,6 +167,9 @@ public sealed class SystemTrayService : ISystemTrayService
                 break;
             case CMD_QUICK_ADD_TASK:
                 QuickAddTaskRequested?.Invoke();
+                break;
+            case CMD_OPEN_LOGS:
+                OpenLogsRequested?.Invoke();
                 break;
             case CMD_EXIT:
                 ExitRequested?.Invoke();
@@ -296,6 +301,12 @@ public sealed class SystemTrayService : ISystemTrayService
 
                 // 3. «Быстрое добавление задачи (Alt+Shift+N)»
                 AppendMenuW(hMenu, MF_STRING, (nuint)CMD_QUICK_ADD_TASK, "Быстрое добавление задачи (Alt+Shift+N)");
+
+                // Разделитель
+                AppendMenuW(hMenu, MF_SEPARATOR, 0, string.Empty);
+
+                // «Открыть папку с логами»
+                AppendMenuW(hMenu, MF_STRING, (nuint)CMD_OPEN_LOGS, "Открыть папку с логами");
 
                 // Разделитель
                 AppendMenuW(hMenu, MF_SEPARATOR, 0, string.Empty);

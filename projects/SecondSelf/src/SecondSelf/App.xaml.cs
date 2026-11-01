@@ -1,4 +1,6 @@
 using System;
+using System.Diagnostics;
+using System.IO;
 using CommunityToolkit.Mvvm.Messaging;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -59,6 +61,11 @@ public partial class App : Application
 
     public App(bool isStartupBackground = false)
     {
+        this.UnhandledException += (sender, e) =>
+        {
+            AppLogger.Fatal(e.Exception, $"Microsoft.UI.Xaml.Application.Current.UnhandledException: {e.Message}");
+        };
+
         _isStartupBackground = isStartupBackground;
         this.InitializeComponent();
 
@@ -173,8 +180,29 @@ public partial class App : Application
                 WidgetWindow.Activate();
             }
         };
+        trayService.OpenLogsRequested += () =>
+        {
+            try
+            {
+                if (!Directory.Exists(AppLogger.LogDirectoryPath))
+                {
+                    Directory.CreateDirectory(AppLogger.LogDirectoryPath);
+                }
+
+                Process.Start(new ProcessStartInfo
+                {
+                    FileName = AppLogger.LogDirectoryPath,
+                    UseShellExecute = true
+                });
+            }
+            catch (Exception ex)
+            {
+                AppLogger.Error(ex, "Failed to open logs directory");
+            }
+        };
         trayService.ExitRequested += () =>
         {
+            AppLogger.Info("SecondSelf application stopping via tray exit...");
             trayService.Dispose();
             Exit();
         };

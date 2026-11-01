@@ -28,6 +28,11 @@ public interface ISystemTrayService : IDisposable
     event Action? ExitRequested;
 
     /// <summary>
+    /// Запрос открытия папки с логами.
+    /// </summary>
+    event Action? OpenLogsRequested;
+
+    /// <summary>
     /// Флаг успешной инициализации системного трея.
     /// </summary>
     bool IsInitialized { get; }

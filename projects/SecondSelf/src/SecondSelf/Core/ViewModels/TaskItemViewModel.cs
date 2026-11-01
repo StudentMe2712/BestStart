@@ -52,6 +52,9 @@ public partial class TaskItemViewModel : ObservableObject
     [ObservableProperty]
     private double _rowHeight = 44.0;
 
+    [ObservableProperty]
+    private bool _isHovered;
+
     public TaskItemViewModel()
     {
     }
@@ -91,5 +94,6 @@ public partial class TaskItemViewModel : ObservableObject
         RowHeight = 44.0;
         IsActionPanelOpen = false;
         IsEditing = false;
+        IsHovered = false;
     }
 }

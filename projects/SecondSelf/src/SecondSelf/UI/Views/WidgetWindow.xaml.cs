@@ -22,7 +22,8 @@ namespace SecondSelf.UI.Views;
 
 /// <summary>
 /// Безрамочное плавающее окно виджета рабочего стола с поддержкой Warm Glassmorphism,
-/// Win32 P/Invoke стилей, IVirtualDesktopManager и аппаратных анимаций Composition.
+/// Win32 P/Invoke стилей, фиксации по верхней кромке экрана (Rainmeter Top-Center),
+/// плавной анимации TranslateTransform (0 <-> -244) и инлайн-управления задачами дня.
 /// </summary>
 public sealed partial class WidgetWindow : Window
 {
@@ -44,10 +45,6 @@ public sealed partial class WidgetWindow : Window
     private const uint SWP_NOMOVE = 0x0002;
     private const uint SWP_NOZORDER = 0x0004;
     private const uint SWP_FRAMECHANGED = 0x0020;
-    private const uint SWP_SHOWWINDOW = 0x0040;
-
-    private const uint WM_NCLBUTTONDOWN = 0x00A1;
-    private const int HTCAPTION = 0x0002;
 
     [StructLayout(LayoutKind.Sequential)]
     public struct MARGINS
@@ -65,24 +62,6 @@ public sealed partial class WidgetWindow : Window
             cyBottomHeight = margin;
         }
     }
-
-    [StructLayout(LayoutKind.Sequential)]
-    public struct DWM_BLURBEHIND
-    {
-        public const uint DWM_BB_ENABLE = 0x00000001;
-        public const uint DWM_BB_BLURREGION = 0x00000002;
-        public const uint DWM_BB_TRANSITIONONMAXIMIZED = 0x00000004;
-
-        public uint dwFlags;
-        [MarshalAs(UnmanagedType.Bool)]
-        public bool fEnable;
-        public IntPtr hRgnBlur;
-        [MarshalAs(UnmanagedType.Bool)]
-        public bool fTransitionOnMaximized;
-    }
-
-    [DllImport("dwmapi.dll")]
-    private static extern int DwmEnableBlurBehindWindow(IntPtr hWnd, ref DWM_BLURBEHIND pBlurBehind);
 
     [DllImport("dwmapi.dll")]
     private static extern int DwmExtendFrameIntoClientArea(IntPtr hWnd, ref MARGINS pMarInset);
@@ -111,12 +90,6 @@ public sealed partial class WidgetWindow : Window
 
     [DllImport("user32.dll", SetLastError = true)]
     private static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int X, int Y, int cx, int cy, uint uFlags);
-
-    [DllImport("user32.dll")]
-    private static extern bool ReleaseCapture();
-
-    [DllImport("user32.dll")]
-    private static extern IntPtr SendMessage(IntPtr hWnd, uint Msg, IntPtr wParam, IntPtr lParam);
 
     [DllImport("user32.dll")]
     private static extern uint GetDpiForWindow(IntPtr hWnd);
@@ -153,6 +126,7 @@ public sealed partial class WidgetWindow : Window
     private readonly SubclassProc _subclassProcDelegate;
     private Windows.Media.Playback.MediaPlayer? _mediaPlayer;
     private bool _isTransitioning;
+    private bool _isNavigating;
 
     public WidgetViewModel ViewModel { get; }
 
@@ -167,18 +141,25 @@ public sealed partial class WidgetWindow : Window
 
         this.InitializeComponent();
 
-        // 1. Прозрачный фон
-        this.SystemBackdrop = null;
+        // 1. Честный Windows BackdropBlur через DesktopAcrylicBackdrop
+        try
+        {
+            this.SystemBackdrop = new DesktopAcrylicBackdrop();
+        }
+        catch (Exception ex)
+        {
+            AppLogger.Warn($"DesktopAcrylicBackdrop initialization fallback: {ex.Message}");
+        }
 
         // 2. Получение дескриптора HWND и AppWindow
         _hwnd = WindowNative.GetWindowHandle(this);
         var windowId = Win32Interop.GetWindowIdFromWindow(_hwnd);
         _appWindow = AppWindow.GetFromWindowId(windowId);
 
-        // 3. Настройка безрамочных P/Invoke стилей
+        // 3. Настройка безрамочных P/Invoke стилей и DwmExtendFrameIntoClientArea
         ConfigureWindowStyles();
 
-        // 4. Попытка закрепления на всех виртуальных рабочих столах (PinWindow)
+        // 4. Закрепление на всех виртуальных рабочих столах (PinWindow)
         TryPinToAllVirtualDesktops();
 
         // 4.1. Подписка на системные оконные сообщения (WM_DISPLAYCHANGE)
@@ -195,13 +176,13 @@ public sealed partial class WidgetWindow : Window
         ViewModel.Player.RequestResumeMedia += OnRequestResumeMedia;
         ViewModel.Player.PropertyChanged += OnPlayerPropertyChanged;
 
-        // 7. Подписка на деактивацию окна (автосворачивание при потере фокуса)
+        // 7. Деактивация окна — автосворачивание УДАЛЕНО: окно не закрывается при клике мимо
         this.Activated += OnWindowActivated;
 
-        // 8. Подписка на горячие клавиши (Space = Play/Pause, Esc = Close)
+        // 8. Подписка на горячие клавиши (Space = Play/Pause, Esc = Close/Collapse)
         RootGrid.KeyDown += OnRootGridKeyDown;
 
-        // 8.1. Подписка на автоматическое сворачивание при открытии Personal Space (DEFECT 4)
+        // 8.1. Подписка на автоматическое сворачивание при открытии Personal Space
         WeakReferenceMessenger.Default.Register<CollapseWidgetMessage>(this, (r, m) =>
         {
             DispatcherQueue.TryEnqueue(() =>
@@ -218,7 +199,7 @@ public sealed partial class WidgetWindow : Window
         {
             if (e.PropertyName == nameof(WidgetViewModel.IsAddingTask) && ViewModel.IsAddingTask)
             {
-                FocusInlineInput();
+                FocusCompactInlineInput();
             }
             else if (e.PropertyName == nameof(WidgetViewModel.IsShowingTasks))
             {
@@ -226,7 +207,7 @@ public sealed partial class WidgetWindow : Window
             }
         };
 
-        // 9.1. Инициализация аппаратных теней WinUI Composition DropShadow (DEFECT 1)
+        // 9.1. Инициализация аппаратных теней WinUI Composition DropShadow
         if (this.Content is FrameworkElement fe)
         {
             fe.Loaded += (s, e) => ApplyAllShadows();
@@ -238,7 +219,7 @@ public sealed partial class WidgetWindow : Window
             _systemMonitorService.IsFullscreenRunningChanged += OnFullscreenRunningChanged;
         }
 
-        // 11. Начальное позиционирование и загрузка данных
+        // 11. Начальное позиционирование (Top-Center, Width=420, Height=280) и загрузка данных
         this.DispatcherQueue.TryEnqueue(async () =>
         {
             await InitializeWindowStateAsync();
@@ -277,32 +258,9 @@ public sealed partial class WidgetWindow : Window
         // Применение изменений стилей к неклиентской области
         SetWindowPos(_hwnd, IntPtr.Zero, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED);
 
-        // Включение прозрачности DWM для всего окна
-        var blurBehind = new DWM_BLURBEHIND
-        {
-            dwFlags = 0x1,
-            fEnable = true,
-            hRgnBlur = IntPtr.Zero,
-            fTransitionOnMaximized = false
-        };
-        DwmEnableBlurBehindWindow(_hwnd, ref blurBehind);
-
-        var margins = new MARGINS(-1);
+        // Win32 DWM Glassmorphism: расширение рамки на всю клиентскую область
+        var margins = new MARGINS { cxLeftWidth = -1, cxRightWidth = -1, cyTopHeight = -1, cyBottomHeight = -1 };
         DwmExtendFrameIntoClientArea(_hwnd, ref margins);
-
-        try
-        {
-            var backdropHolder = this.As<Microsoft.UI.Composition.ICompositionSupportsSystemBackdrop>();
-            if (backdropHolder != null)
-            {
-                var compositor = new Windows.UI.Composition.Compositor();
-                backdropHolder.SystemBackdrop = compositor.CreateColorBrush(Windows.UI.Color.FromArgb(0, 0, 0, 0));
-            }
-        }
-        catch
-        {
-            // Подавляем в headless/mock средах
-        }
     }
 
     private void TryPinToAllVirtualDesktops()
@@ -330,60 +288,43 @@ public sealed partial class WidgetWindow : Window
         var state = await _windowStateService.LoadStateAsync();
         var dpiScale = GetDpiScale();
 
-        int targetWidthDip = state.IsExpanded ? 400 : 180;
-        int targetHeightDip = state.IsExpanded ? 260 : 36;
+        // Окно имеет ПОСТОЯННЫЙ размер в режиме виджета: Width = 420, Height = 280
+        int targetWidthDip = 420;
+        int targetHeightDip = 280;
 
         int physicalWidth = (int)Math.Round(targetWidthDip * dpiScale);
         int physicalHeight = (int)Math.Round(targetHeightDip * dpiScale);
 
-        // Получаем рабочую область активного монитора (Top-Center Island)
+        // Получаем рабочую область активного монитора (Rainmeter Top-Center: Y = 0, X = центр)
         var displayArea = DisplayArea.GetFromWindowId(Win32Interop.GetWindowIdFromWindow(_hwnd), DisplayAreaFallback.Primary);
         var workArea = displayArea.WorkArea;
 
         int targetX = workArea.X + (workArea.Width - physicalWidth) / 2;
         int targetY = workArea.Y;
 
-        try
-        {
-            var monitors = DisplayArea.FindAll();
-            if (monitors != null && monitors.Count > 0)
-            {
-                var safePos = _windowStateService.EnsureSafePosition(
-                    new WindowPosition(targetX, targetY, physicalWidth, physicalHeight),
-                    monitors);
-                targetX = safePos.X;
-                targetY = workArea.Y;
-            }
-        }
-        catch
-        {
-            // Безопасный фоллбэк при недоступности API мониторов
-        }
-
         _appWindow.MoveAndResize(new RectInt32(targetX, targetY, physicalWidth, physicalHeight));
+
+        WidgetCanvas.Width = 420;
+        WidgetCanvas.Height = 280;
+        WidgetCanvas.Visibility = Visibility.Visible;
+
+        CompactView.Opacity = 1.0;
+        CompactView.Visibility = Visibility.Visible;
+        if (ExpandedRoot != null) ExpandedRoot.Visibility = Visibility.Collapsed;
+        if (PlayerRoot != null) PlayerRoot.Visibility = Visibility.Collapsed;
 
         if (state.IsExpanded)
         {
-            WidgetCanvas.Width = 400;
-            WidgetCanvas.Height = 260;
-            CompactTrigger.Visibility = Visibility.Collapsed;
-            CompactTriggerShadowHost.Visibility = Visibility.Collapsed;
-            WidgetCanvas.Visibility = Visibility.Visible;
-            CompactView.Opacity = 1.0;
-            CompactView.Visibility = Visibility.Visible;
-            ExpandedRoot.Visibility = Visibility.Collapsed;
-            PlayerRoot.Visibility = Visibility.Collapsed;
+            CanvasTranslate.Y = 0;
+            ViewModel.IsExpanded = true;
         }
         else
         {
-            CompactTrigger.Visibility = Visibility.Visible;
-            CompactTriggerShadowHost.Visibility = Visibility.Visible;
-            WidgetCanvas.Visibility = Visibility.Collapsed;
-            CompactView.Opacity = 1.0;
-            CompactView.Visibility = Visibility.Visible;
-            ExpandedRoot.Visibility = Visibility.Collapsed;
-            PlayerRoot.Visibility = Visibility.Collapsed;
+            CanvasTranslate.Y = -244;
+            ViewModel.IsExpanded = false;
         }
+
+        SaveCurrentWindowState();
     }
 
     private double GetDpiScale()
@@ -398,68 +339,50 @@ public sealed partial class WidgetWindow : Window
         {
             HandleDisplayChange();
         }
+
         return DefSubclassProc(hWnd, uMsg, wParam, lParam);
     }
 
     /// <summary>
     /// Обрабатывает изменение конфигурации дисплеев (WM_DISPLAYCHANGE или отключение монитора).
-    /// Гарантирует, что виджет не останется за пределами экрана на отключенном дисплее.
+    /// Гарантирует центрирование виджета по верхней кромке активного монитора.
     /// </summary>
     public void HandleDisplayChange()
     {
         try
         {
-            var monitors = DisplayArea.FindAll();
-            if (monitors != null && monitors.Count > 0)
+            var displayArea = DisplayArea.GetFromWindowId(Win32Interop.GetWindowIdFromWindow(_hwnd), DisplayAreaFallback.Primary);
+            if (displayArea != null)
             {
-                var curPos = _appWindow.Position;
-                var curSize = _appWindow.Size;
-                var currentPos = new WindowPosition(curPos.X, curPos.Y, curSize.Width, curSize.Height);
-                var safePos = _windowStateService.EnsureSafePosition(currentPos, monitors);
-                if (safePos.X != curPos.X || safePos.Y != curPos.Y)
-                {
-                    _appWindow.Move(new PointInt32(safePos.X, safePos.Y));
-                    SaveCurrentWindowPosition();
-                }
+                var workArea = displayArea.WorkArea;
+                var dpiScale = GetDpiScale();
+                int physicalWidth = (int)Math.Round(420.0 * dpiScale);
+                int physicalHeight = (int)Math.Round(280.0 * dpiScale);
+
+                int targetX = workArea.X + (workArea.Width - physicalWidth) / 2;
+                int targetY = workArea.Y;
+
+                _appWindow.MoveAndResize(new RectInt32(targetX, targetY, physicalWidth, physicalHeight));
+                SaveCurrentWindowState();
             }
         }
-        catch
+        catch (Exception ex)
         {
-            // Безопасная обработка в тестовых и безголовых средах
+            AppLogger.Error(ex, "Error handling display change");
         }
     }
 
     #endregion
 
-    #region Mouse Dragging & Focus Loss Handling
+    #region Window State & Drag Removal
 
-    public void DragWindow()
-    {
-        ReleaseCapture();
-        SendMessage(_hwnd, WM_NCLBUTTONDOWN, (IntPtr)HTCAPTION, IntPtr.Zero);
-        SaveCurrentWindowPosition();
-    }
-
+    // Drag & Drop полностью удален: окно зафиксировано по верхней кромке экрана
     private void OnWindowPointerPressed(object sender, PointerRoutedEventArgs e)
     {
-        var point = e.GetCurrentPoint(RootGrid);
-        if (point.Properties.IsLeftButtonPressed)
-        {
-            DragWindow();
-            e.Handled = true;
-        }
     }
 
     private void OnCardPointerPressed(object sender, PointerRoutedEventArgs e)
     {
-        var point = e.GetCurrentPoint(sender as UIElement);
-        if (point.Properties.IsLeftButtonPressed)
-        {
-            ReleaseCapture();
-            SendMessage(_hwnd, WM_NCLBUTTONDOWN, (IntPtr)HTCAPTION, IntPtr.Zero);
-            SaveCurrentWindowPosition();
-            e.Handled = true;
-        }
     }
 
     private void OnInteractivePointerPressed(object sender, PointerRoutedEventArgs e)
@@ -467,46 +390,33 @@ public sealed partial class WidgetWindow : Window
         e.Handled = true;
     }
 
-    private void OnCompactCapsulePointerPressed(object sender, PointerRoutedEventArgs e)
+    private void OnWindowActivated(object sender, WindowActivatedEventArgs args)
     {
-        ViewModel.OpenTasks();
-        e.Handled = true;
+        // Автоматическое сворачивание на Deactivated УДАЛЕНО!
+        // Окно НЕ закрывается при клике мимо, сворачивание только по шеврону, Esc, Win+Ctrl+S.
     }
 
-    private void OnCompactExpandButtonClick(object sender, RoutedEventArgs e)
+    private void SaveCurrentWindowState()
     {
-        ViewModel.OpenTasks();
-    }
-
-    private void OnBackToHomeClick(object sender, RoutedEventArgs e)
-    {
-        ViewModel.BackToHome();
-    }
-
-    private void OnTriggerPointerPressed(object sender, PointerRoutedEventArgs e)
-    {
-        var point = e.GetCurrentPoint(sender as UIElement);
-        if (point.Properties.IsLeftButtonPressed)
+        _ = Task.Run(async () =>
         {
-            ViewModel.Expand();
-            e.Handled = true;
-        }
-    }
-
-    private void OnTriggerPointerEntered(object sender, PointerRoutedEventArgs e)
-    {
-        if (CompactTrigger != null)
-        {
-            CompactTrigger.Opacity = 0.85;
-        }
-    }
-
-    private void OnTriggerPointerExited(object sender, PointerRoutedEventArgs e)
-    {
-        if (CompactTrigger != null)
-        {
-            CompactTrigger.Opacity = 1.0;
-        }
+            try
+            {
+                var currentState = await _windowStateService.LoadStateAsync();
+                var updated = currentState with
+                {
+                    NormalizedX = 0.5,
+                    NormalizedY = 0.0,
+                    DpiScale = GetDpiScale(),
+                    IsExpanded = ViewModel.IsExpanded
+                };
+                await _windowStateService.SaveStateAsync(updated);
+            }
+            catch
+            {
+                // Игнорируем фоновые ошибки сохранения
+            }
+        });
     }
 
     private void ApplyCardShadow(FrameworkElement? hostElement)
@@ -518,9 +428,9 @@ public sealed partial class WidgetWindow : Window
             var compositor = visual.Compositor;
 
             var dropShadow = compositor.CreateDropShadow();
-            dropShadow.BlurRadius = 40.0f;
-            dropShadow.Offset = new System.Numerics.Vector3(0f, 16f, 0f);
-            dropShadow.Color = Windows.UI.Color.FromArgb(128, 0, 0, 0); // rgba(0,0,0,0.5)
+            dropShadow.BlurRadius = 36.0f;
+            dropShadow.Offset = new System.Numerics.Vector3(0f, 12f, 0f);
+            dropShadow.Color = Windows.UI.Color.FromArgb(100, 0, 0, 0); // rgba(0,0,0,0.4)
 
             var spriteVisual = compositor.CreateSpriteVisual();
             spriteVisual.Shadow = dropShadow;
@@ -544,117 +454,34 @@ public sealed partial class WidgetWindow : Window
         ApplyCardShadow(QuickHubShadowHost);
         ApplyCardShadow(ExpandedShadowHost);
         ApplyCardShadow(PlayerShadowHost);
-        ApplyCardShadow(CompactTriggerShadowHost);
-    }
-
-    private void OnWindowActivated(object sender, WindowActivatedEventArgs args)
-    {
-        if (args.WindowActivationState == WindowActivationState.Deactivated)
-        {
-            if (ViewModel.IsExpanded)
-            {
-                ViewModel.Collapse();
-            }
-        }
-    }
-
-    private void SaveCurrentWindowPosition()
-    {
-        var pos = _appWindow.Position;
-        var size = _appWindow.Size;
-        var displayArea = DisplayArea.GetFromWindowId(Win32Interop.GetWindowIdFromWindow(_hwnd), DisplayAreaFallback.Primary);
-        var workArea = displayArea.WorkArea;
-
-        var (normX, normY) = _windowStateService.CalculateNormalizedCoordinates(
-            pos.X,
-            pos.Y,
-            size.Width,
-            size.Height,
-            workArea.X,
-            workArea.Y,
-            workArea.Width,
-            workArea.Height);
-
-        _ = Task.Run(async () =>
-        {
-            try
-            {
-                var currentState = await _windowStateService.LoadStateAsync();
-                var updated = currentState with
-                {
-                    NormalizedX = normX,
-                    NormalizedY = normY,
-                    DpiScale = GetDpiScale(),
-                    IsExpanded = ViewModel.IsExpanded
-                };
-                await _windowStateService.SaveStateAsync(updated);
-            }
-            catch
-            {
-                // Игнорируем ошибки фонового сохранения позиции
-            }
-        });
     }
 
     #endregion
 
-    #region Composition Transition Animations (Spring Out 280ms / 240ms)
+    #region Composition Slide Animations (TranslateTransform 0 <-> -244)
 
     private void OnExpandedStateChanged(bool isExpanded)
     {
         if (_isTransitioning) return;
         _isTransitioning = true;
 
-        var dpiScale = GetDpiScale();
-        var currentPos = _appWindow.Position;
-
         if (isExpanded)
         {
-            // ПРАВИЛО ЧИСТОГО СТАРТА (Home Screen Always):
-            // ВСЕГДА гарантируем, что пользователь видит Главный экран с 3 карточками
+            // Чистый старт: гарантируем возврат на экран 3 карточек
             ViewModel.IsShowingTasks = false;
             ViewModel.IsPlayerOpen = false;
             ViewModel.IsAddingTask = false;
 
-            int triggerWidthPhysical = (int)Math.Round(180.0 * dpiScale);
-            int newPhysicalWidth = (int)Math.Round(400.0 * dpiScale);
-            int newPhysicalHeight = (int)Math.Round(260.0 * dpiScale);
-
-            int deltaX = (newPhysicalWidth - triggerWidthPhysical) / 2;
-            int newX = currentPos.X - deltaX;
-
-            var displayArea = DisplayArea.GetFromWindowId(Win32Interop.GetWindowIdFromWindow(_hwnd), DisplayAreaFallback.Primary);
-            int topY = displayArea?.WorkArea.Y ?? 0;
-            if (displayArea != null)
-            {
-                if (newX < displayArea.WorkArea.X)
-                {
-                    newX = displayArea.WorkArea.X;
-                }
-                else if (newX + newPhysicalWidth > displayArea.WorkArea.X + displayArea.WorkArea.Width)
-                {
-                    newX = displayArea.WorkArea.X + displayArea.WorkArea.Width - newPhysicalWidth;
-                }
-            }
-
-            _appWindow.MoveAndResize(new RectInt32(newX, topY, newPhysicalWidth, newPhysicalHeight));
-
-            CompactTrigger.Visibility = Visibility.Collapsed;
-            CompactTriggerShadowHost.Visibility = Visibility.Collapsed;
-
-            WidgetCanvas.Width = 400;
-            WidgetCanvas.Height = 260;
             CompactView.Opacity = 1.0;
             CompactView.Visibility = Visibility.Visible;
-            ExpandedRoot.Visibility = Visibility.Collapsed;
-            PlayerRoot.Visibility = Visibility.Collapsed;
-            WidgetCanvas.Visibility = Visibility.Visible;
+            if (ExpandedRoot != null) ExpandedRoot.Visibility = Visibility.Collapsed;
+            if (PlayerRoot != null) PlayerRoot.Visibility = Visibility.Collapsed;
 
             ExpandStoryboard.Begin();
         }
         else
         {
-            StopAndCleanupMediaPlayer();
+            ExitPlayer();
             CollapseStoryboard.Begin();
         }
     }
@@ -662,39 +489,16 @@ public sealed partial class WidgetWindow : Window
     private void OnExpandStoryboardCompleted(object? sender, object e)
     {
         _isTransitioning = false;
-        SaveCurrentWindowPosition();
+        CanvasTranslate.Y = 0;
+        SaveCurrentWindowState();
         App.TrimWorkingSet();
     }
 
     private void OnCollapseStoryboardCompleted(object? sender, object e)
     {
-        WidgetCanvas.Visibility = Visibility.Collapsed;
-        CompactTrigger.Visibility = Visibility.Visible;
-        CompactTriggerShadowHost.Visibility = Visibility.Visible;
-
-        CompactView.Visibility = Visibility.Visible;
-        CompactView.Opacity = 1.0;
-        ExpandedRoot.Visibility = Visibility.Collapsed;
-        ExpandedRoot.Opacity = 0.0;
-        PlayerRoot.Visibility = Visibility.Collapsed;
-        PlayerRoot.Opacity = 0.0;
-
-        var dpiScale = GetDpiScale();
-        var currentPos = _appWindow.Position;
-        int currentPhysicalWidth = _appWindow.Size.Width;
-        int triggerWidthPhysical = (int)Math.Round(180.0 * dpiScale);
-        int triggerHeight = (int)Math.Round(36.0 * dpiScale);
-
-        int deltaX = (currentPhysicalWidth - triggerWidthPhysical) / 2;
-        int newX = currentPos.X + deltaX;
-
-        var displayArea = DisplayArea.GetFromWindowId(Win32Interop.GetWindowIdFromWindow(_hwnd), DisplayAreaFallback.Primary);
-        int topY = displayArea?.WorkArea.Y ?? 0;
-
-        _appWindow.MoveAndResize(new RectInt32(newX, topY, triggerWidthPhysical, triggerHeight));
-
         _isTransitioning = false;
-        SaveCurrentWindowPosition();
+        CanvasTranslate.Y = -244;
+        SaveCurrentWindowState();
         App.TrimWorkingSet();
     }
 
@@ -703,113 +507,62 @@ public sealed partial class WidgetWindow : Window
         if (_isTransitioning) return;
         _isTransitioning = true;
 
-        var dpiScale = GetDpiScale();
-        var currentPos = _appWindow.Position;
-
         if (isShowing)
         {
-            int deltaWidthPhysical = (int)Math.Round(10.0 * dpiScale);
-            int newPhysicalWidth = (int)Math.Round(380.0 * dpiScale);
-            int newPhysicalHeight = (int)Math.Round(680.0 * dpiScale);
-            int newX = currentPos.X + deltaWidthPhysical;
-
-            var displayArea = DisplayArea.GetFromWindowId(Win32Interop.GetWindowIdFromWindow(_hwnd), DisplayAreaFallback.Primary);
-            int topY = displayArea?.WorkArea.Y ?? 0;
-
-            _appWindow.MoveAndResize(new RectInt32(newX, topY, newPhysicalWidth, newPhysicalHeight));
-
-            WidgetCanvas.Width = 380;
-            WidgetCanvas.Height = 680;
-            ExpandedRoot.Visibility = Visibility.Visible;
-            CompactView.Visibility = Visibility.Visible;
-
+            if (ExpandedRoot != null) ExpandedRoot.Visibility = Visibility.Visible;
             OpenTasksStoryboard.Begin();
         }
         else
         {
-            CompactView.Visibility = Visibility.Visible;
+            if (CompactView != null) CompactView.Visibility = Visibility.Visible;
             CloseTasksStoryboard.Begin();
         }
     }
 
     private void OnOpenTasksStoryboardCompleted(object? sender, object e)
     {
-        CompactView.Visibility = Visibility.Collapsed;
+        if (CompactView != null) CompactView.Visibility = Visibility.Collapsed;
         _isTransitioning = false;
-        SaveCurrentWindowPosition();
-        App.TrimWorkingSet();
     }
 
     private void OnCloseTasksStoryboardCompleted(object? sender, object e)
     {
-        ExpandedRoot.Visibility = Visibility.Collapsed;
-        var dpiScale = GetDpiScale();
-        var currentPos = _appWindow.Position;
-
-        int deltaWidthPhysical = (int)Math.Round(10.0 * dpiScale);
-        int newPhysicalWidth = (int)Math.Round(400.0 * dpiScale);
-        int newPhysicalHeight = (int)Math.Round(260.0 * dpiScale);
-        int newX = currentPos.X - deltaWidthPhysical;
-
-        var displayArea = DisplayArea.GetFromWindowId(Win32Interop.GetWindowIdFromWindow(_hwnd), DisplayAreaFallback.Primary);
-        int topY = displayArea?.WorkArea.Y ?? 0;
-
-        _appWindow.MoveAndResize(new RectInt32(newX, topY, newPhysicalWidth, newPhysicalHeight));
-
-        WidgetCanvas.Width = 400;
-        WidgetCanvas.Height = 260;
-
+        if (ExpandedRoot != null) ExpandedRoot.Visibility = Visibility.Collapsed;
         _isTransitioning = false;
-        SaveCurrentWindowPosition();
-        App.TrimWorkingSet();
     }
 
     #endregion
 
-    #region UI Event Handlers & Interactions
+    #region Today's Focus Compact View Task Interactions
 
-    private void OnCardClicked(object sender, RoutedEventArgs e)
+    private void OnCompactCapsulePointerPressed(object sender, PointerRoutedEventArgs e)
     {
-        ViewModel.Expand();
+        // Клик по строке задачи НЕ проваливает во вложенный экран Today's Focus Detail!
+        e.Handled = true;
     }
 
     private void OnCompactAddButtonClick(object sender, RoutedEventArgs e)
     {
-        ViewModel.Expand();
-        ViewModel.StartAddingTask();
-        FocusInlineInput();
+        if (ViewModel.IsAddingTask)
+        {
+            ViewModel.CancelAddingTask();
+        }
+        else
+        {
+            ViewModel.IsAddingTask = true;
+            FocusCompactInlineInput();
+        }
     }
 
-    private void OnOpenDashboardClick(object sender, RoutedEventArgs e)
-    {
-        App.OpenDashboard();
-    }
-
-    private void OnExpandedAddButtonClick(object sender, RoutedEventArgs e)
-    {
-        ViewModel.StartAddingTask();
-        FocusInlineInput();
-    }
-
-    private void FocusInlineInput()
+    private void FocusCompactInlineInput()
     {
         DispatcherQueue.TryEnqueue(() =>
         {
-            InlineTaskInputBox?.Focus(FocusState.Programmatic);
+            CompactInlineTaskBox?.Focus(FocusState.Programmatic);
         });
     }
 
-    private async void OnSubmitNewTaskClick(object sender, RoutedEventArgs e)
-    {
-        await ViewModel.AddTaskAsync();
-    }
-
-    private void OnCancelNewTaskClick(object sender, RoutedEventArgs e)
-    {
-        ViewModel.CancelAddingTask();
-    }
-
-    private async void OnInlineTaskTextBoxKeyDown(object sender, KeyRoutedEventArgs e)
+    private async void OnCompactInlineTaskKeyDown(object sender, KeyRoutedEventArgs e)
     {
         if (e.Key == Windows.System.VirtualKey.Enter)
         {
@@ -823,7 +576,17 @@ public sealed partial class WidgetWindow : Window
         }
     }
 
-    private async void OnTaskCheckboxClick(object sender, RoutedEventArgs e)
+    private async void OnCompactSubmitTaskClick(object sender, RoutedEventArgs e)
+    {
+        await ViewModel.AddTaskAsync();
+    }
+
+    private void OnCompactCancelTaskClick(object sender, RoutedEventArgs e)
+    {
+        ViewModel.CancelAddingTask();
+    }
+
+    private async void OnCompactTaskCheckboxClick(object sender, RoutedEventArgs e)
     {
         if (sender is FrameworkElement fe && fe.Tag is TaskItemViewModel item)
         {
@@ -831,32 +594,32 @@ public sealed partial class WidgetWindow : Window
         }
     }
 
-    private void OnTaskRowTextPointerPressed(object sender, PointerRoutedEventArgs e)
+    private void OnCompactTaskTextPointerPressed(object sender, PointerRoutedEventArgs e)
     {
         if (sender is FrameworkElement fe && fe.Tag is TaskItemViewModel item)
         {
-            ViewModel.ToggleTaskActionPanel(item);
+            ViewModel.StartEditTask(item);
             e.Handled = true;
         }
     }
 
-    private void OnTaskMoreClick(object sender, RoutedEventArgs e)
+    private void OnCompactTaskRowPointerEntered(object sender, PointerRoutedEventArgs e)
     {
-        if (sender is FrameworkElement fe && fe.Tag is TaskItemViewModel item)
+        if (sender is FrameworkElement fe && fe.DataContext is TaskItemViewModel item)
         {
-            ViewModel.ToggleTaskActionPanel(item);
+            item.IsHovered = true;
         }
     }
 
-    private async void OnTaskActionCheckClick(object sender, RoutedEventArgs e)
+    private void OnCompactTaskRowPointerExited(object sender, PointerRoutedEventArgs e)
     {
-        if (sender is FrameworkElement fe && fe.Tag is TaskItemViewModel item)
+        if (sender is FrameworkElement fe && fe.DataContext is TaskItemViewModel item)
         {
-            await ViewModel.CompleteTaskAsync(item);
+            item.IsHovered = false;
         }
     }
 
-    private void OnTaskActionEditClick(object sender, RoutedEventArgs e)
+    private void OnCompactTaskEditClick(object sender, RoutedEventArgs e)
     {
         if (sender is FrameworkElement fe && fe.Tag is TaskItemViewModel item)
         {
@@ -864,7 +627,7 @@ public sealed partial class WidgetWindow : Window
         }
     }
 
-    private async void OnTaskActionTrashClick(object sender, RoutedEventArgs e)
+    private async void OnCompactTaskDeleteClick(object sender, RoutedEventArgs e)
     {
         if (sender is FrameworkElement fe && fe.Tag is TaskItemViewModel item)
         {
@@ -889,55 +652,199 @@ public sealed partial class WidgetWindow : Window
         }
     }
 
-    private void OnTrashPointerEntered(object sender, PointerRoutedEventArgs e)
-    {
-        if (sender is Button btn)
-        {
-            btn.Background = new SolidColorBrush(Windows.UI.Color.FromArgb(0x40, 0xF8, 0x71, 0x71));
-        }
-    }
-
-    private void OnTrashPointerExited(object sender, PointerRoutedEventArgs e)
-    {
-        if (sender is Button btn)
-        {
-            btn.Background = new SolidColorBrush(Windows.UI.Color.FromArgb(0x1E, 0xFF, 0xFF, 0xFF));
-        }
-    }
-
     private void OnUndoToastClick(object sender, RoutedEventArgs e)
     {
         ViewModel.UndoLastTaskCompletion();
     }
 
-    private void OnFullscreenRunningChanged(bool isFullscreen)
+    private void OnBackToHomeClick(object sender, RoutedEventArgs e)
+    {
+        NavigateToHome();
+    }
+
+    private void OnOpenDashboardClick(object sender, RoutedEventArgs e)
+    {
+        App.OpenDashboard();
+    }
+
+    private async void OnTaskCheckboxClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is FrameworkElement fe && fe.Tag is TaskItemViewModel item)
+        {
+            await ViewModel.CompleteTaskAsync(item);
+        }
+    }
+
+    #endregion
+
+    #region Daily Reset Player Lifecycle & Safe Exit
+
+    /// <summary>
+    /// Безопасный метод остановки и очистки медиаплеера с гарантированным возвратом на экран 3 карточек.
+    /// </summary>
+    public void ExitPlayer()
+    {
+        try
+        {
+            if (DailyResetMediaPlayerElement?.MediaPlayer != null)
+            {
+                DailyResetMediaPlayerElement.MediaPlayer.Pause();
+                DailyResetMediaPlayerElement.MediaPlayer.Source = null;
+                DailyResetMediaPlayerElement.SetMediaPlayer(null);
+            }
+            if (_mediaPlayer != null)
+            {
+                _mediaPlayer.Pause();
+                _mediaPlayer.Source = null;
+                _mediaPlayer.Dispose();
+                _mediaPlayer = null;
+            }
+            AppLogger.Info("Media player cleanly stopped and disposed.");
+        }
+        catch (Exception ex)
+        {
+            AppLogger.Error(ex, "Error stopping media playback");
+        }
+        finally
+        {
+            NavigateToHome(); // Всегда гарантированный возврат на экран 3 карточек!
+        }
+    }
+
+    /// <summary>
+    /// Гарантированно возвращает на главный экран 3 карточек.
+    /// </summary>
+    public void NavigateToHome()
     {
         DispatcherQueue.TryEnqueue(() =>
         {
-            if (isFullscreen)
+            try
             {
-                // Скрываем виджет при переходе в Fullscreen
-                WidgetCanvas.Opacity = 0.0;
-                if (_appWindow.Presenter is OverlappedPresenter presenter)
+                if (PlayerRoot != null)
                 {
-                    presenter.IsAlwaysOnTop = false;
+                    PlayerRoot.Visibility = Visibility.Collapsed;
+                    PlayerRoot.Opacity = 0.0;
                 }
+                if (ExpandedRoot != null)
+                {
+                    ExpandedRoot.Visibility = Visibility.Collapsed;
+                    ExpandedRoot.Opacity = 0.0;
+                }
+                if (CompactView != null)
+                {
+                    CompactView.Visibility = Visibility.Visible;
+                    CompactView.Opacity = 1.0;
+                }
+                ViewModel.IsPlayerOpen = false;
+                ViewModel.IsShowingTasks = false;
+                AppLogger.Info("Navigated to Home (3 cards view).");
             }
-            else
+            catch (Exception ex)
             {
-                // Плавно восстанавливаем виджет за 300 мс при выходе из Fullscreen
-                if (_appWindow.Presenter is OverlappedPresenter presenter)
-                {
-                    presenter.IsAlwaysOnTop = true;
-                }
-                FullscreenRestoreStoryboard.Begin();
+                AppLogger.Error(ex, "Error navigating to Home");
             }
         });
     }
 
-    private void OnCollapseChevronClick(object sender, RoutedEventArgs e)
+    private async void OnOpenPlayerClicked(object sender, RoutedEventArgs e)
     {
-        ViewModel.Collapse();
+        if (_isNavigating) return;
+        _isNavigating = true;
+
+        try
+        {
+            AppLogger.Info("Opening Daily Reset player...");
+            await ViewModel.OpenPlayerAsync();
+        }
+        catch (Exception ex)
+        {
+            AppLogger.Error(ex, "Error opening Daily Reset player");
+            ExitPlayer();
+        }
+        finally
+        {
+            _isNavigating = false;
+        }
+    }
+
+    private async void OnDailyResetCardPointerPressed(object sender, PointerRoutedEventArgs e)
+    {
+        var point = e.GetCurrentPoint(sender as UIElement);
+        if (point.Properties.IsLeftButtonPressed)
+        {
+            e.Handled = true;
+            if (_isNavigating) return;
+            _isNavigating = true;
+
+            try
+            {
+                AppLogger.Info("Daily Reset card clicked, opening player...");
+                await ViewModel.OpenPlayerAsync();
+            }
+            catch (Exception ex)
+            {
+                AppLogger.Error(ex, "Error opening Daily Reset player from card click");
+                ExitPlayer();
+            }
+            finally
+            {
+                _isNavigating = false;
+            }
+        }
+    }
+
+    private void OnPlayerCloseClick(object sender, RoutedEventArgs e)
+    {
+        if (_isNavigating) return;
+        _isNavigating = true;
+
+        try
+        {
+            AppLogger.Info("Player close button clicked.");
+            ExitPlayer();
+        }
+        finally
+        {
+            _isNavigating = false;
+        }
+    }
+
+    private void OnPlayerStateChanged(bool isOpen)
+    {
+        if (isOpen)
+        {
+            AppLogger.Info("Opening player view...");
+            if (PlayerRoot != null)
+            {
+                PlayerRoot.Visibility = Visibility.Visible;
+            }
+            OpenPlayerStoryboard.Begin();
+        }
+        else
+        {
+            AppLogger.Info("Closing player view...");
+            ExitPlayer();
+        }
+    }
+
+    private void OnOpenPlayerStoryboardCompleted(object? sender, object e)
+    {
+        if (CompactView != null) CompactView.Visibility = Visibility.Collapsed;
+        if (ExpandedRoot != null) ExpandedRoot.Visibility = Visibility.Collapsed;
+        _isTransitioning = false;
+    }
+
+    private void OnClosePlayerStoryboardCompleted(object? sender, object e)
+    {
+        if (PlayerRoot != null) PlayerRoot.Visibility = Visibility.Collapsed;
+        StopAndCleanupMediaPlayer();
+        if (CompactView != null)
+        {
+            CompactView.Visibility = Visibility.Visible;
+            CompactView.Opacity = 1.0;
+        }
+        _isTransitioning = false;
+        App.TrimWorkingSet();
     }
 
     private void ShowFallbackAtmosphereView()
@@ -961,6 +868,7 @@ public sealed partial class WidgetWindow : Window
     {
         DispatcherQueue.TryEnqueue(() =>
         {
+            AppLogger.Info($"OnRequestStartMedia invoked with file: '{filePath}', pos: {startPositionMs}ms");
             string? targetFilePath = null;
             if (!string.IsNullOrWhiteSpace(filePath) && System.IO.File.Exists(filePath))
             {
@@ -977,7 +885,7 @@ public sealed partial class WidgetWindow : Window
 
             if (targetFilePath == null)
             {
-                // Если ни одного файла нет: НИКОГДА не инициализируй плеер с битым URI! Мгновенно вызови ShowFallbackAtmosphereView()
+                AppLogger.Warn("No valid media file found, falling back to atmosphere view.");
                 ShowFallbackAtmosphereView();
                 _ = ViewModel.Player.OnMediaFailedAsync();
                 return;
@@ -998,6 +906,7 @@ public sealed partial class WidgetWindow : Window
                     {
                         DispatcherQueue.TryEnqueue(async () =>
                         {
+                            AppLogger.Info("Media playback ended.");
                             await ViewModel.Player.OnMediaEndedAsync();
                         });
                     };
@@ -1006,6 +915,7 @@ public sealed partial class WidgetWindow : Window
                     {
                         DispatcherQueue.TryEnqueue(() =>
                         {
+                            AppLogger.Error("Media playback failed in MediaPlayer.");
                             ShowPlaybackErrorState();
                             _ = ViewModel.Player.OnMediaFailedAsync();
                         });
@@ -1036,9 +946,11 @@ public sealed partial class WidgetWindow : Window
                 FallbackAtmosphereBorder.Visibility = Visibility.Collapsed;
 
                 _mediaPlayer.Play();
+                AppLogger.Info($"Media playback started successfully: {targetFilePath}");
             }
-            catch
+            catch (Exception ex)
             {
+                AppLogger.Error(ex, "Exception while starting media playback");
                 ShowPlaybackErrorState();
                 _ = ViewModel.Player.OnMediaFailedAsync();
             }
@@ -1053,7 +965,7 @@ public sealed partial class WidgetWindow : Window
             {
                 _mediaPlayer.Pause();
                 _mediaPlayer.Source = null;
-                DailyResetMediaPlayerElement.SetMediaPlayer(null);
+                DailyResetMediaPlayerElement?.SetMediaPlayer(null);
                 _mediaPlayer.Dispose();
             }
             catch { }
@@ -1062,14 +974,15 @@ public sealed partial class WidgetWindow : Window
                 _mediaPlayer = null;
             }
         }
-        DailyResetMediaPlayerElement.Visibility = Visibility.Collapsed;
-        FallbackAtmosphereBorder.Visibility = Visibility.Visible;
+        if (DailyResetMediaPlayerElement != null) DailyResetMediaPlayerElement.Visibility = Visibility.Collapsed;
+        if (FallbackAtmosphereBorder != null) FallbackAtmosphereBorder.Visibility = Visibility.Visible;
     }
 
     private void OnRequestPauseMedia()
     {
         DispatcherQueue.TryEnqueue(() =>
         {
+            AppLogger.Info("Pausing media playback.");
             _mediaPlayer?.Pause();
         });
     }
@@ -1078,122 +991,9 @@ public sealed partial class WidgetWindow : Window
     {
         DispatcherQueue.TryEnqueue(() =>
         {
+            AppLogger.Info("Resuming media playback.");
             _mediaPlayer?.Play();
         });
-    }
-
-    private void OnRootGridKeyDown(object sender, KeyRoutedEventArgs e)
-    {
-        if (e.Key == Windows.System.VirtualKey.Escape)
-        {
-            if (ViewModel.IsExpanded)
-            {
-                ViewModel.Collapse();
-                e.Handled = true;
-            }
-        }
-        else if (e.Key == Windows.System.VirtualKey.Space && ViewModel.IsPlayerOpen)
-        {
-            _ = ViewModel.Player.PlayPauseAsync();
-            e.Handled = true;
-        }
-    }
-
-    private void OnPlayerStateChanged(bool isOpen)
-    {
-        if (isOpen)
-        {
-            var dpiScale = GetDpiScale();
-            var currentPos = _appWindow.Position;
-
-            // Если виджет был в компактном режиме (400x260), центрируем и расширяем окно до 380x680
-            if (WidgetCanvas.Width != 380 || WidgetCanvas.Height != 680)
-            {
-                int deltaWidthPhysical = (int)Math.Round(10.0 * dpiScale);
-                int newPhysicalWidth = (int)Math.Round(380.0 * dpiScale);
-                int newPhysicalHeight = (int)Math.Round(680.0 * dpiScale);
-                int newX = currentPos.X + deltaWidthPhysical;
-
-                var displayArea = DisplayArea.GetFromWindowId(Win32Interop.GetWindowIdFromWindow(_hwnd), DisplayAreaFallback.Primary);
-                int topY = displayArea?.WorkArea.Y ?? 0;
-
-                _appWindow.MoveAndResize(new RectInt32(newX, topY, newPhysicalWidth, newPhysicalHeight));
-                WidgetCanvas.Width = 380;
-                WidgetCanvas.Height = 680;
-            }
-
-            PlayerRoot.Visibility = Visibility.Visible;
-            OpenPlayerStoryboard.Begin();
-        }
-        else
-        {
-            StopAndCleanupMediaPlayer();
-            CompactView.Visibility = Visibility.Visible;
-            ClosePlayerStoryboard.Begin();
-        }
-    }
-
-    private void OnPlayerPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
-    {
-        if (e.PropertyName == nameof(VideoPlayerViewModel.IsCountButtonVisible) && ViewModel.Player.IsCountButtonVisible)
-        {
-            AnimateCountButtonReveal();
-        }
-    }
-
-    private void AnimateCountButtonReveal()
-    {
-        DispatcherQueue.TryEnqueue(() =>
-        {
-            CountButtonTransform.Y = 12;
-            CountRitualButton.Opacity = 0.0;
-
-            var sb = new Microsoft.UI.Xaml.Media.Animation.Storyboard();
-
-            var translateYAnim = new Microsoft.UI.Xaml.Media.Animation.DoubleAnimationUsingKeyFrames();
-            Microsoft.UI.Xaml.Media.Animation.Storyboard.SetTarget(translateYAnim, CountButtonTransform);
-            Microsoft.UI.Xaml.Media.Animation.Storyboard.SetTargetProperty(translateYAnim, "Y");
-            translateYAnim.KeyFrames.Add(new Microsoft.UI.Xaml.Media.Animation.SplineDoubleKeyFrame
-            {
-                KeyTime = Microsoft.UI.Xaml.Media.Animation.KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(320)),
-                Value = 0,
-                KeySpline = new Microsoft.UI.Xaml.Media.Animation.KeySpline { ControlPoint1 = new Windows.Foundation.Point(0.16, 1.0), ControlPoint2 = new Windows.Foundation.Point(0.3, 1.0) }
-            });
-
-            var opacityAnim = new Microsoft.UI.Xaml.Media.Animation.DoubleAnimationUsingKeyFrames();
-            Microsoft.UI.Xaml.Media.Animation.Storyboard.SetTarget(opacityAnim, CountRitualButton);
-            Microsoft.UI.Xaml.Media.Animation.Storyboard.SetTargetProperty(opacityAnim, "Opacity");
-            opacityAnim.KeyFrames.Add(new Microsoft.UI.Xaml.Media.Animation.SplineDoubleKeyFrame
-            {
-                KeyTime = Microsoft.UI.Xaml.Media.Animation.KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(320)),
-                Value = 1.0,
-                KeySpline = new Microsoft.UI.Xaml.Media.Animation.KeySpline { ControlPoint1 = new Windows.Foundation.Point(0.16, 1.0), ControlPoint2 = new Windows.Foundation.Point(0.3, 1.0) }
-            });
-
-            sb.Children.Add(translateYAnim);
-            sb.Children.Add(opacityAnim);
-            sb.Begin();
-        });
-    }
-
-    private async void OnDailyResetCardPointerPressed(object sender, PointerRoutedEventArgs e)
-    {
-        var point = e.GetCurrentPoint(sender as UIElement);
-        if (point.Properties.IsLeftButtonPressed)
-        {
-            await ViewModel.OpenPlayerAsync();
-            e.Handled = true;
-        }
-    }
-
-    private async void OnOpenPlayerClicked(object sender, RoutedEventArgs e)
-    {
-        await ViewModel.OpenPlayerAsync();
-    }
-
-    private void OnPlayerCloseClick(object sender, RoutedEventArgs e)
-    {
-        ViewModel.ClosePlayer();
     }
 
     private async void OnVideoViewportPointerPressed(object sender, PointerRoutedEventArgs e)
@@ -1229,89 +1029,136 @@ public sealed partial class WidgetWindow : Window
         await ViewModel.Player.CountRitualAsync();
     }
 
-    private void OnOpenPlayerStoryboardCompleted(object? sender, object e)
+    private void OnPlayerPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
-        ExpandedRoot.Visibility = Visibility.Collapsed;
-        CompactView.Visibility = Visibility.Collapsed;
-        _isTransitioning = false;
-    }
-
-    private void OnClosePlayerStoryboardCompleted(object? sender, object e)
-    {
-        PlayerRoot.Visibility = Visibility.Collapsed;
-        StopAndCleanupMediaPlayer();
-
-        var dpiScale = GetDpiScale();
-        var currentPos = _appWindow.Position;
-
-        if (!ViewModel.IsShowingTasks)
+        if (e.PropertyName == nameof(VideoPlayerViewModel.IsCountButtonVisible) && ViewModel.Player.IsCountButtonVisible)
         {
-            int deltaWidthPhysical = (int)Math.Round(10.0 * dpiScale);
-            int newPhysicalWidth = (int)Math.Round(400.0 * dpiScale);
-            int newPhysicalHeight = (int)Math.Round(260.0 * dpiScale);
-            int newX = currentPos.X - deltaWidthPhysical;
-
-            var displayArea = DisplayArea.GetFromWindowId(Win32Interop.GetWindowIdFromWindow(_hwnd), DisplayAreaFallback.Primary);
-            int topY = displayArea?.WorkArea.Y ?? 0;
-
-            _appWindow.MoveAndResize(new RectInt32(newX, topY, newPhysicalWidth, newPhysicalHeight));
-            WidgetCanvas.Width = 400;
-            WidgetCanvas.Height = 260;
-            CompactView.Visibility = Visibility.Visible;
-            CompactView.Opacity = 1.0;
-        }
-
-        _isTransitioning = false;
-        App.TrimWorkingSet();
-    }
-
-    private void OnPlayButtonClick(object sender, RoutedEventArgs e)
-    {
-        _ = ViewModel.OpenPlayerAsync();
-    }
-
-    private void OnCapsulePointerEntered(object sender, PointerRoutedEventArgs e)
-    {
-        if (sender is Border border)
-        {
-            border.Background = new SolidColorBrush(Windows.UI.Color.FromArgb(0x26, 0xFF, 0xFF, 0xFF));
+            AnimateCountButtonReveal();
         }
     }
 
-    private void OnCapsulePointerExited(object sender, PointerRoutedEventArgs e)
+    private void AnimateCountButtonReveal()
     {
-        if (sender is Border border)
+        DispatcherQueue.TryEnqueue(() =>
         {
-            border.Background = new SolidColorBrush(Windows.UI.Color.FromArgb(0x14, 0xFF, 0xFF, 0xFF));
+            if (CountButtonTransform == null || CountRitualButton == null) return;
+            CountButtonTransform.Y = 8;
+            CountRitualButton.Opacity = 0.0;
+
+            var sb = new Microsoft.UI.Xaml.Media.Animation.Storyboard();
+
+            var translateYAnim = new Microsoft.UI.Xaml.Media.Animation.DoubleAnimationUsingKeyFrames();
+            Microsoft.UI.Xaml.Media.Animation.Storyboard.SetTarget(translateYAnim, CountButtonTransform);
+            Microsoft.UI.Xaml.Media.Animation.Storyboard.SetTargetProperty(translateYAnim, "Y");
+            translateYAnim.KeyFrames.Add(new Microsoft.UI.Xaml.Media.Animation.SplineDoubleKeyFrame
+            {
+                KeyTime = Microsoft.UI.Xaml.Media.Animation.KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(280)),
+                Value = 0,
+                KeySpline = new Microsoft.UI.Xaml.Media.Animation.KeySpline { ControlPoint1 = new Windows.Foundation.Point(0.16, 1.0), ControlPoint2 = new Windows.Foundation.Point(0.3, 1.0) }
+            });
+
+            var opacityAnim = new Microsoft.UI.Xaml.Media.Animation.DoubleAnimationUsingKeyFrames();
+            Microsoft.UI.Xaml.Media.Animation.Storyboard.SetTarget(opacityAnim, CountRitualButton);
+            Microsoft.UI.Xaml.Media.Animation.Storyboard.SetTargetProperty(opacityAnim, "Opacity");
+            opacityAnim.KeyFrames.Add(new Microsoft.UI.Xaml.Media.Animation.SplineDoubleKeyFrame
+            {
+                KeyTime = Microsoft.UI.Xaml.Media.Animation.KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(280)),
+                Value = 1.0,
+                KeySpline = new Microsoft.UI.Xaml.Media.Animation.KeySpline { ControlPoint1 = new Windows.Foundation.Point(0.16, 1.0), ControlPoint2 = new Windows.Foundation.Point(0.3, 1.0) }
+            });
+
+            sb.Children.Add(translateYAnim);
+            sb.Children.Add(opacityAnim);
+            sb.Begin();
+        });
+    }
+
+    #endregion
+
+    #region Bottom Tab Chevron Trigger & Keyboard Shortcuts
+
+    public string GetChevronGlyph(bool isExpanded) => isExpanded ? "\uE70E" : "\uE70D";
+
+    public string GetChevronToolTip(bool isExpanded) => isExpanded ? "Свернуть виджет (Esc)" : "Развернуть виджет (Win+Ctrl+S)";
+
+    private void OnBottomTabPointerPressed(object sender, PointerRoutedEventArgs e)
+    {
+        var point = e.GetCurrentPoint(sender as UIElement);
+        if (point.Properties.IsLeftButtonPressed)
+        {
+            ViewModel.ToggleExpanded();
+            e.Handled = true;
         }
     }
 
-    private void OnTaskRowPointerEntered(object sender, PointerRoutedEventArgs e)
+    private void OnBottomTabPointerEntered(object sender, PointerRoutedEventArgs e)
     {
-        if (sender is Border border)
+        if (BottomTabTrigger != null)
         {
-            border.Background = new SolidColorBrush(Windows.UI.Color.FromArgb(0x1A, 0xFF, 0xFF, 0xFF));
+            BottomTabTrigger.Opacity = 0.85;
         }
     }
 
-    private void OnTaskRowPointerExited(object sender, PointerRoutedEventArgs e)
+    private void OnBottomTabPointerExited(object sender, PointerRoutedEventArgs e)
     {
-        if (sender is Border border)
+        if (BottomTabTrigger != null)
         {
-            border.Background = new SolidColorBrush(Windows.UI.Color.FromArgb(0x0A, 0xFF, 0xFF, 0xFF));
+            BottomTabTrigger.Opacity = 1.0;
         }
     }
 
-    public string FormatPercent(int score) => $"{score}%";
+    private void OnRootGridKeyDown(object sender, KeyRoutedEventArgs e)
+    {
+        if (e.Key == Windows.System.VirtualKey.Escape)
+        {
+            if (ViewModel.IsPlayerOpen)
+            {
+                ExitPlayer();
+                e.Handled = true;
+            }
+            else if (ViewModel.IsExpanded)
+            {
+                ViewModel.Collapse();
+                e.Handled = true;
+            }
+        }
+        else if (e.Key == Windows.System.VirtualKey.Space && ViewModel.IsPlayerOpen)
+        {
+            _ = ViewModel.Player.PlayPauseAsync();
+            e.Handled = true;
+        }
+    }
+
+    private void OnFullscreenRunningChanged(bool isFullscreen)
+    {
+        DispatcherQueue.TryEnqueue(() =>
+        {
+            if (isFullscreen)
+            {
+                WidgetCanvas.Opacity = 0.0;
+                if (_appWindow.Presenter is OverlappedPresenter presenter)
+                {
+                    presenter.IsAlwaysOnTop = false;
+                }
+            }
+            else
+            {
+                if (_appWindow.Presenter is OverlappedPresenter presenter)
+                {
+                    presenter.IsAlwaysOnTop = true;
+                }
+                FullscreenRestoreStoryboard.Begin();
+            }
+        });
+    }
+
+    #endregion
+
+    #region XAML Binding Helpers & Converters
 
     public Visibility BoolToVisibility(bool value) => value ? Visibility.Visible : Visibility.Collapsed;
 
     public Visibility InvertBoolToVisibility(bool value) => value ? Visibility.Collapsed : Visibility.Visible;
-
-    public Windows.UI.Text.TextDecorations StrikethroughToDecoration(bool isStrikethrough) =>
-        isStrikethrough ? Windows.UI.Text.TextDecorations.Strikethrough : Windows.UI.Text.TextDecorations.None;
-
-    public Visibility CheckboxCheckedToVisibility(bool isChecked) => isChecked ? Visibility.Visible : Visibility.Collapsed;
 
     public SolidColorBrush GetStatusBackground(string status) =>
         status == "Paused"
