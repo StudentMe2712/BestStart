@@ -38,6 +38,11 @@ public interface IVideoLibraryService
     Task UpdateMissingStatusAsync(string id, bool isMissing, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Получает список физически доступных файлов видеотеки для ротации и воспроизведения.
+    /// </summary>
+    IReadOnlyList<VideoLibraryItem> GetAvailableVideos();
+
+    /// <summary>
     /// Удаляет видео из видеотеки и с диска.
     /// </summary>
     Task DeleteVideoAsync(string id, CancellationToken cancellationToken = default);

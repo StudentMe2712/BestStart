@@ -218,6 +218,64 @@ WHERE Id = @Id;";
         }
     }
 
+    public IReadOnlyList<VideoLibraryItem> GetAvailableVideos()
+    {
+        var list = new List<VideoLibraryItem>();
+        try
+        {
+            using var connection = _connectionFactory.OpenConnection();
+            using var cmd = connection.CreateCommand();
+            cmd.CommandText = @"
+SELECT Id, FilePath, FileName, DurationSeconds, ThumbnailCachePath, PlaybackCount, IsMissing, LastVerifiedAt
+FROM VideoLibrary
+WHERE IsMissing = 0
+ORDER BY FileName ASC;";
+
+            using var reader = cmd.ExecuteReader();
+            while (reader.Read())
+            {
+                var item = ReadVideoLibraryItem(reader);
+                if (!string.IsNullOrWhiteSpace(item.FilePath) && File.Exists(item.FilePath))
+                {
+                    list.Add(item);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            AppLogger.Error(ex, "Error getting available videos from database");
+        }
+
+        // Если в базе пусто, но на диске в VideosDirectory есть файлы
+        if (list.Count == 0 && Directory.Exists(VideosDirectory))
+        {
+            try
+            {
+                var diskFiles = Directory.GetFiles(VideosDirectory, "*.*", SearchOption.TopDirectoryOnly)
+                    .Where(f => SupportedExtensions.Contains(Path.GetExtension(f)))
+                    .ToList();
+
+                foreach (var file in diskFiles)
+                {
+                    list.Add(new VideoLibraryItem
+                    {
+                        Id = file,
+                        FilePath = file,
+                        FileName = Path.GetFileName(file),
+                        DurationSeconds = 0,
+                        IsMissing = false
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                AppLogger.Error(ex, "Error reading available videos from disk");
+            }
+        }
+
+        return list;
+    }
+
     private static VideoLibraryItem ReadVideoLibraryItem(DbDataReader reader)
     {
         return new VideoLibraryItem

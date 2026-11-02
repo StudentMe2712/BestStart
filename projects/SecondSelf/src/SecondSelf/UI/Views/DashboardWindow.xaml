@@ -95,7 +95,7 @@
                                     Visibility="{x:Bind GetTabMarkerVisibility(ViewModel.CurrentTab, 'Goals'), Mode=OneWay}" />
                             <FontIcon Grid.Column="1" Glyph="&#xE707;" FontSize="15" Margin="14,0,12,0"
                                       Foreground="{x:Bind GetTabForeground(ViewModel.CurrentTab, 'Goals'), Mode=OneWay}" />
-                            <TextBlock Grid.Column="2" Text="Цели" VerticalAlignment="Center" FontSize="13"
+                            <TextBlock Grid.Column="2" Text="Большие цели" VerticalAlignment="Center" FontSize="13"
                                        Foreground="{x:Bind GetTabForeground(ViewModel.CurrentTab, 'Goals'), Mode=OneWay}"
                                        FontWeight="{x:Bind GetTabFontWeight(ViewModel.CurrentTab, 'Goals'), Mode=OneWay}" />
                         </Grid>
@@ -224,7 +224,7 @@
                             <StackPanel Spacing="8">
                                 <Grid>
                                     <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                                        <TextBlock Text="WEEKLY GOAL" FontSize="11" FontWeight="Bold" Foreground="#CE824C" CharacterSpacing="100" />
+                                        <TextBlock Text="ЦЕЛЬ НЕДЕЛИ" FontSize="11" FontWeight="Bold" Foreground="#CE824C" CharacterSpacing="100" />
                                         <TextBlock Text="{x:Bind ViewModel.TodayViewModel.WeeklyGoalTag, Mode=OneWay}"
                                                    FontSize="11" Foreground="#A1A1AA"
                                                    Visibility="{x:Bind conv:XamlConverters.StringNotEmptyToVisibility(ViewModel.TodayViewModel.WeeklyGoalTag), Mode=OneWay}" />
@@ -392,7 +392,7 @@
                                     <StackPanel Grid.Column="1" Spacing="2">
                                         <TextBlock Text="{x:Bind conv:XamlConverters.ToPercentString(ViewModel.TodayViewModel.CurrentMonthScore), Mode=OneWay}"
                                                    FontSize="26" FontWeight="Bold" Foreground="#CE824C" Typography.NumeralAlignment="Tabular" />
-                                        <TextBlock Text="счёт за месяц" FontSize="11" Foreground="#71717A" TextWrapping="Wrap" />
+                                        <TextBlock Text="Итог месяца" FontSize="11" Foreground="#71717A" TextWrapping="Wrap" />
                                     </StackPanel>
                                 </Grid>
 
@@ -404,12 +404,12 @@
                                         <ColumnDefinition Width="*" />
                                     </Grid.ColumnDefinitions>
                                     <StackPanel Grid.Column="0" Spacing="2">
-                                        <TextBlock Text="Daily Ratio" FontSize="10" Foreground="#71717A" />
+                                        <TextBlock Text="Ритуалы дня" FontSize="10" Foreground="#71717A" />
                                         <TextBlock Text="{x:Bind ViewModel.TodayViewModel.CurrentMonthDailyRatio, Mode=OneWay}"
                                                    FontSize="13" FontWeight="SemiBold" Foreground="#36D399" Typography.NumeralAlignment="Tabular" />
                                     </StackPanel>
                                     <StackPanel Grid.Column="1" Spacing="2">
-                                        <TextBlock Text="Weekly Ratio" FontSize="10" Foreground="#71717A" />
+                                        <TextBlock Text="Цели недели" FontSize="10" Foreground="#71717A" />
                                         <TextBlock Text="{x:Bind ViewModel.TodayViewModel.CurrentMonthWeeklyRatio, Mode=OneWay}"
                                                    FontSize="13" FontWeight="SemiBold" Foreground="#CE824C" Typography.NumeralAlignment="Tabular" />
                                     </StackPanel>
@@ -617,7 +617,7 @@
                                            FontSize="13" FontWeight="SemiBold" Foreground="#A1A1AA" CharacterSpacing="100" />
                                 <TextBlock Text="{x:Bind conv:XamlConverters.ToPercentString(ViewModel.ProgressViewModel.ScorePercentage), Mode=OneWay}"
                                            FontSize="46" FontWeight="Bold" Foreground="#CE824C" Typography.NumeralAlignment="Tabular" />
-                                <TextBlock Text="Индекс результативности" FontSize="11" Foreground="#71717A" />
+                                <TextBlock Text="Итог месяца" FontSize="11" Foreground="#71717A" />
                             </StackPanel>
 
                             <!-- Разделитель -->
@@ -630,13 +630,13 @@
                                     <ColumnDefinition Width="*" />
                                 </Grid.ColumnDefinitions>
                                 <StackPanel Grid.Column="0" Spacing="4">
-                                    <TextBlock Text="ДНЕВНЫЕ РИТУАЛЫ (30%)" FontSize="11" FontWeight="SemiBold" Foreground="#36D399" CharacterSpacing="100" />
+                                    <TextBlock Text="РИТУАЛЫ ДНЯ (30%)" FontSize="11" FontWeight="SemiBold" Foreground="#36D399" CharacterSpacing="100" />
                                     <TextBlock Text="{x:Bind ViewModel.ProgressViewModel.DailyFraction, Mode=OneWay}"
                                                FontSize="24" FontWeight="Bold" Foreground="#F4F4F5" Typography.NumeralAlignment="Tabular" />
                                     <TextBlock Text="дней выполнения ритуала" FontSize="11" Foreground="#71717A" />
                                 </StackPanel>
                                 <StackPanel Grid.Column="1" Spacing="4">
-                                    <TextBlock Text="НЕДЕЛЬНЫЕ ЦЕЛИ (70%)" FontSize="11" FontWeight="SemiBold" Foreground="#CE824C" CharacterSpacing="100" />
+                                    <TextBlock Text="ЦЕЛИ НЕДЕЛИ (70%)" FontSize="11" FontWeight="SemiBold" Foreground="#CE824C" CharacterSpacing="100" />
                                     <TextBlock Text="{x:Bind ViewModel.ProgressViewModel.WeeklyFraction, Mode=OneWay}"
                                                FontSize="24" FontWeight="Bold" Foreground="#F4F4F5" Typography.NumeralAlignment="Tabular" />
                                     <TextBlock Text="недель выполнения цели" FontSize="11" Foreground="#71717A" />
@@ -647,7 +647,7 @@
 
                     <!-- Календарная сетка месяца (Daily Rituals) -->
                     <StackPanel Spacing="10">
-                        <TextBlock Text="КАЛЕНДАРЬ РИТУАЛОВ МЕСЯЦА" FontSize="11" FontWeight="SemiBold" Foreground="#A1A1AA" CharacterSpacing="120" />
+                        <TextBlock Text="КАЛЕНДАРЬ РИТУАЛОВ" FontSize="11" FontWeight="SemiBold" Foreground="#A1A1AA" CharacterSpacing="120" />
                         <GridView ItemsSource="{x:Bind ViewModel.ProgressViewModel.CalendarDays, Mode=OneWay}" SelectionMode="None">
                             <GridView.ItemTemplate>
                                 <DataTemplate x:DataType="vm:CalendarDayViewModel">
@@ -669,7 +669,7 @@
 
                     <!-- Недельные цели месяца (ISO-8601 Weeks) -->
                     <StackPanel Spacing="10">
-                        <TextBlock Text="НЕДЕЛЬНЫЕ ЦЕЛИ МЕСЯЦА (ISO-8601)" FontSize="11" FontWeight="SemiBold" Foreground="#A1A1AA" CharacterSpacing="120" />
+                        <TextBlock Text="ЦЕЛИ НЕДЕЛИ (ISO-8601)" FontSize="11" FontWeight="SemiBold" Foreground="#A1A1AA" CharacterSpacing="120" />
                         <ItemsControl ItemsSource="{x:Bind ViewModel.ProgressViewModel.WeekCards, Mode=OneWay}">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate x:DataType="vm:WeekCardViewModel">
@@ -817,7 +817,7 @@
                         <StackPanel Spacing="14">
                             <Grid>
                                 <StackPanel Spacing="2">
-                                    <TextBlock Text="ВИДЕОТЕКА DAILY RESET" FontSize="11" FontWeight="SemiBold" Foreground="#A1A1AA" CharacterSpacing="120" />
+                                    <TextBlock Text="ВИДЕОТЕКА ПЕРЕЗАГРУЗКИ" FontSize="11" FontWeight="SemiBold" Foreground="#A1A1AA" CharacterSpacing="120" />
                                     <TextBlock Text="{x:Bind ViewModel.SettingsViewModel.TotalVideosText, Mode=OneWay}" FontSize="13" Foreground="#F4F4F5" />
                                 </StackPanel>
                                 <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
@@ -833,36 +833,69 @@
                                             <TextBlock Text="Перетасовать" FontSize="11" Foreground="#F4F4F5" />
                                         </StackPanel>
                                     </Button>
-                                    <Button Click="OnAddVideoFileClick" Background="#CE824C" Foreground="#FFFFFF" CornerRadius="6" Padding="12, 6">
+                                    <Button Click="OnSelectVideoFolderClick" Background="#1C1C20" BorderBrush="#27272A" BorderThickness="1" CornerRadius="6" Padding="12, 6">
+                                        <StackPanel Orientation="Horizontal" Spacing="6">
+                                            <FontIcon Glyph="&#xED25;" FontSize="12" Foreground="#CE824C" />
+                                            <TextBlock Text="📁 Выбрать папку с видео" FontSize="11" FontWeight="SemiBold" Foreground="#F4F4F5" />
+                                        </StackPanel>
+                                    </Button>
+                                    <Button Click="OnAddVideoFilesClick" Background="#CE824C" Foreground="#FFFFFF" CornerRadius="6" Padding="12, 6">
                                         <StackPanel Orientation="Horizontal" Spacing="6">
                                             <FontIcon Glyph="&#xE710;" FontSize="11" />
-                                            <TextBlock Text="Добавить файл" FontSize="11" FontWeight="SemiBold" />
+                                            <TextBlock Text="+ Добавить видеофайлы" FontSize="11" FontWeight="SemiBold" />
                                         </StackPanel>
                                     </Button>
                                 </StackPanel>
                             </Grid>
 
-                            <!-- Таблица видеофайлов -->
+                            <!-- Таблица видеофайлов с большими превью 160×90px -->
                             <ItemsControl ItemsSource="{x:Bind ViewModel.SettingsViewModel.Videos, Mode=OneWay}">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate x:DataType="vm:VideoLibraryItemViewModel">
-                                        <Border Background="#18181B" BorderBrush="#27272A" BorderThickness="1" CornerRadius="6" Padding="12, 8" Margin="0, 0, 0, 6">
+                                        <Border Background="#18181B" BorderBrush="#27272A" BorderThickness="1" CornerRadius="8" Padding="12" Margin="0, 0, 0, 8">
                                             <Grid>
                                                 <Grid.ColumnDefinitions>
+                                                    <!-- Превью 160x90 -->
+                                                    <ColumnDefinition Width="Auto" />
+                                                    <!-- Инфо о файле -->
                                                     <ColumnDefinition Width="*" />
-                                                    <ColumnDefinition Width="80" />
+                                                    <!-- Длительность -->
                                                     <ColumnDefinition Width="90" />
+                                                    <!-- Показов -->
                                                     <ColumnDefinition Width="100" />
+                                                    <!-- Статус -->
+                                                    <ColumnDefinition Width="120" />
                                                 </Grid.ColumnDefinitions>
-                                                <TextBlock Grid.Column="0" Text="{x:Bind FileName, Mode=OneWay}"
-                                                           FontSize="13" Foreground="#F4F4F5" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
-                                                <TextBlock Grid.Column="1" Text="{x:Bind FormattedDuration, Mode=OneWay}"
+
+                                                <Grid Grid.Column="0" Width="160" Height="90" CornerRadius="8" Margin="0,0,16,0">
+                                                    <Border CornerRadius="8" Background="#27272A">
+                                                        <FontIcon Glyph="&#xE714;" FontSize="28" Foreground="#80A1A1AA" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                                    </Border>
+                                                    <Image Source="{x:Bind ThumbnailCachePath, Mode=OneWay}"
+                                                           Stretch="UniformToFill"
+                                                           Visibility="{x:Bind conv:XamlConverters.StringNotEmptyToVisibility(ThumbnailCachePath), Mode=OneWay}" />
+                                                </Grid>
+
+                                                <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="4">
+                                                    <TextBlock Text="{x:Bind FileName, Mode=OneWay}"
+                                                               FontSize="14" FontWeight="SemiBold" Foreground="#F4F4F5" TextTrimming="CharacterEllipsis" />
+                                                    <TextBlock Text="{x:Bind FilePath, Mode=OneWay}"
+                                                               FontSize="11" Foreground="#71717A" TextTrimming="CharacterEllipsis" />
+                                                </StackPanel>
+
+                                                <TextBlock Grid.Column="2" Text="{x:Bind FormattedDuration, Mode=OneWay}"
                                                            FontSize="12" Foreground="#A1A1AA" VerticalAlignment="Center" Typography.NumeralAlignment="Tabular" />
-                                                <TextBlock Grid.Column="2" Text="{x:Bind PlaybackCountText, Mode=OneWay}"
+
+                                                <TextBlock Grid.Column="3" Text="{x:Bind PlaybackCountText, Mode=OneWay}"
                                                            FontSize="11" Foreground="#71717A" VerticalAlignment="Center" Typography.NumeralAlignment="Tabular" />
-                                                <TextBlock Grid.Column="3" Text="{x:Bind StatusText, Mode=OneWay}"
-                                                           FontSize="11" Foreground="{x:Bind conv:XamlConverters.ToStatusForegroundBrush(StatusText), Mode=OneWay}"
-                                                           VerticalAlignment="Center" HorizontalAlignment="Right" />
+
+                                                <Border Grid.Column="4" HorizontalAlignment="Right" VerticalAlignment="Center"
+                                                        CornerRadius="4" Padding="8, 3"
+                                                        Background="{x:Bind conv:XamlConverters.ToStatusBackgroundBrush(StatusText), Mode=OneWay}">
+                                                    <TextBlock Text="{x:Bind StatusText, Mode=OneWay}"
+                                                               FontSize="11" FontWeight="Medium"
+                                                               Foreground="{x:Bind conv:XamlConverters.ToStatusForegroundBrush(StatusText), Mode=OneWay}" />
+                                                </Border>
                                             </Grid>
                                         </Border>
                                     </DataTemplate>
@@ -893,7 +926,7 @@
                         <StackPanel Spacing="14">
                             <TextBlock Text="ПАРАМЕТРЫ ВИДЖЕТА И СИСТЕМЫ" FontSize="11" FontWeight="SemiBold" Foreground="#A1A1AA" CharacterSpacing="120" />
 
-                            <CheckBox Content="Всегда поверх всех окон (Always on top)"
+                            <CheckBox Content="Всегда поверх всех окон"
                                       IsChecked="{x:Bind ViewModel.SettingsViewModel.AlwaysOnTop, Mode=TwoWay}" />
                             <CheckBox Content="Автоматически сворачивать виджет при бездействии"
                                       IsChecked="{x:Bind ViewModel.SettingsViewModel.AutoCollapse, Mode=TwoWay}" />
@@ -1000,7 +1033,7 @@
                     <!-- Состояние: Заблокировано (Commitment Lock) -->
                     <StackPanel Spacing="12" Visibility="{x:Bind conv:XamlConverters.ToVisibility(ViewModel.WeeklyGoalModalViewModel.IsLocked), Mode=OneWay}">
                         <Border Background="#261E16" BorderBrush="#CE824C" BorderThickness="1" CornerRadius="6" Padding="12, 8">
-                            <TextBlock Text="Цель зафиксирована (Commitment Lock). Редактирование текста недоступно. Доступны только явные действия с указанием причины."
+                            <TextBlock Text="Цель зафиксирована. Редактирование текста недоступно. Доступны только явные действия с указанием причины."
                                        FontSize="11" Foreground="#E5A158" TextWrapping="Wrap" />
                         </Border>
 
@@ -1095,9 +1128,9 @@
                         <ComboBoxItem Content="Brain" />
                     </ComboBox>
 
-                    <!-- Добавление этапов (Milestones) -->
+                    <!-- Добавление этапов -->
                     <StackPanel Spacing="6">
-                        <TextBlock Text="Начальные этапы (Milestones):" FontSize="12" Foreground="#A1A1AA" />
+                        <TextBlock Text="Начальные этапы:" FontSize="12" Foreground="#A1A1AA" />
                         <ItemsControl ItemsSource="{x:Bind ViewModel.GoalsViewModel.NewGoalInitialMilestones, Mode=OneWay}">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>

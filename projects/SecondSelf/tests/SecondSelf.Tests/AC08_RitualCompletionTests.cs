@@ -105,8 +105,8 @@ public sealed class AC08_RitualCompletionTests : IDisposable
         // When: видео доигрывает до конца (120000 / 120000)
         playbackService.UpdatePosition(120000, 120000);
 
-        // Then 1: Статус меняется на Completed playback
-        Assert.Equal("Completed playback", playbackService.StatusText);
+        // Then 1: Статус меняется на Просмотр завершён
+        Assert.Equal("Просмотр завершён", playbackService.StatusText);
         Assert.Equal(PlaybackState.Completed, playbackService.State);
 
         // Then 2: Кнопка «Засчитать выполнение» становится видимой
@@ -167,7 +167,7 @@ public sealed class AC08_RitualCompletionTests : IDisposable
         Assert.True(counted);
         Assert.True(playbackService.IsRitualCounted);
         Assert.False(playbackService.IsCountButtonVisible);
-        Assert.Equal("Done for Today", playbackService.StatusText);
+        Assert.Equal("Выполнено", playbackService.StatusText);
 
         // Then 2: В SQLite записано IsCompleted = 1 и точный штамп времени
         var log = await _dailyRitualRepository.GetDailyRitualLogAsync("2026-11-01");

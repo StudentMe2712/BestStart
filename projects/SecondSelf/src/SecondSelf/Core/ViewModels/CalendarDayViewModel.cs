@@ -33,6 +33,16 @@ public partial class CalendarDayViewModel : ObservableObject
         Date = date;
         IsCompleted = isCompleted;
         IsToday = isToday;
-        DayOfWeekShort = date.DayOfWeek.ToString().Substring(0, 3);
+        DayOfWeekShort = date.DayOfWeek switch
+        {
+            DayOfWeek.Monday => "Пн",
+            DayOfWeek.Tuesday => "Вт",
+            DayOfWeek.Wednesday => "Ср",
+            DayOfWeek.Thursday => "Чт",
+            DayOfWeek.Friday => "Пт",
+            DayOfWeek.Saturday => "Сб",
+            DayOfWeek.Sunday => "Вс",
+            _ => string.Empty
+        };
     }
 }

@@ -11,7 +11,7 @@ public partial class WeekCardViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(WeekDisplayNumber))]
     private int _weekNumber;
 
-    public string WeekDisplayNumber => $"W{WeekNumber}";
+    public string WeekDisplayNumber => $"Н{WeekNumber}";
 
     [ObservableProperty]
     private int _isoYear;

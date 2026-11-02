@@ -139,7 +139,7 @@ public sealed class AC07_PlaybackNoSeekAndAutoSaveTests : IDisposable
         Assert.NotNull(log);
         Assert.Equal(45000, log.LastPositionMs);
         Assert.Equal(PlaybackState.Paused, playbackService.State);
-        Assert.Equal("Paused", playbackService.StatusText);
+        Assert.Equal("Пауза", playbackService.StatusText);
 
         playbackService.Dispose();
     }

@@ -16,6 +16,8 @@ public static class XamlConverters
     private static readonly SolidColorBrush EmeraldFgBrush = new(Color.FromArgb(0xFF, 0x36, 0xD3, 0x99));
     private static readonly SolidColorBrush AmberBgBrush = new(Color.FromArgb(0x2E, 0xF5, 0x9E, 0x0B));
     private static readonly SolidColorBrush AmberFgBrush = new(Color.FromArgb(0xFF, 0xF5, 0x9E, 0x0B));
+    private static readonly SolidColorBrush RedBgBrush = new(Color.FromArgb(0x2E, 0xEF, 0x44, 0x44));
+    private static readonly SolidColorBrush RedFgBrush = new(Color.FromArgb(0xFF, 0xF8, 0x71, 0x71));
     private static readonly SolidColorBrush GrayBgBrush = new(Color.FromArgb(0x1F, 0x71, 0x71, 0x7A));
     private static readonly SolidColorBrush GrayFgBrush = new(Color.FromArgb(0xFF, 0x71, 0x71, 0x7A));
     private static readonly SolidColorBrush DarkCalendarBgBrush = new(Color.FromArgb(0xFF, 0x14, 0x14, 0x16));
@@ -43,10 +45,20 @@ public static class XamlConverters
         value ? TextDecorations.Strikethrough : TextDecorations.None;
 
     public static SolidColorBrush ToStatusBackgroundBrush(string status) =>
-        status == "Paused" ? AmberBgBrush : EmeraldBgBrush;
+        status switch
+        {
+            "Пауза" or "Paused" => AmberBgBrush,
+            "Файл не найден" or "Missing" => RedBgBrush,
+            _ => EmeraldBgBrush
+        };
 
     public static SolidColorBrush ToStatusForegroundBrush(string status) =>
-        status == "Paused" ? AmberFgBrush : EmeraldFgBrush;
+        status switch
+        {
+            "Пауза" or "Paused" => AmberFgBrush,
+            "Файл не найден" or "Missing" => RedFgBrush,
+            _ => EmeraldFgBrush
+        };
 
     public static string ToPlayPauseGlyph(bool isPlaying) =>
         isPlaying ? "\uE769" : "\uE768";

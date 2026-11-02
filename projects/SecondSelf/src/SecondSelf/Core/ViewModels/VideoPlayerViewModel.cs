@@ -219,7 +219,7 @@ public partial class VideoPlayerViewModel : ObservableObject
 
         FormattedTimecode = _playbackService.FormattedTimecode;
         PlaybackProgressRatio = _playbackService.ProgressRatio;
-        ProgressBarWidth = Math.Round(548.0 * PlaybackProgressRatio, 1);
+        ProgressBarWidth = Math.Round(760.0 * PlaybackProgressRatio, 1);
         IsCountButtonVisible = _playbackService.IsCountButtonVisible;
         IsCompleted = _playbackService.IsRitualCounted;
         IsPlaying = _playbackService.State == PlaybackState.Playing;

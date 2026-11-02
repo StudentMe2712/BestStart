@@ -19,9 +19,9 @@ namespace SecondSelf.Core.ViewModels;
 /// </summary>
 public partial class GoalsTabViewModel : ObservableObject
 {
-    public const string HeaderCategoryText = "THE BIG PICTURE · 2026—2028";
-    public const string HeaderTitleText = "Build the life you want.";
-    public const string HeaderSubtitleText = "Small decisions. Meaningful progress. One step at a time.";
+    public const string HeaderCategoryText = "БОЛЬШИЕ ЦЕЛИ · 2026—2028";
+    public const string HeaderTitleText = "Создавай жизнь, которой хочешь жить.";
+    public const string HeaderSubtitleText = "Маленькие решения. Значимый прогресс. Шаг за шагом.";
     public const string MaxGoalsWarningMessage = "Одновременно можно вести до 4 Больших целей для удержания фокуса. Завершите или архивируйте одну из текущих целей.";
 
     private readonly IBigGoalRepository _bigGoalRepository;
@@ -46,7 +46,7 @@ public partial class GoalsTabViewModel : ObservableObject
     private string _nextMilestoneTitle = string.Empty;
 
     [ObservableProperty]
-    private string _nextMilestoneLabel = "Your next milestone · 01 / 04";
+    private string _nextMilestoneLabel = "Следующий этап · 01 / 04";
 
     [ObservableProperty]
     private bool _hasNextMilestone;
@@ -128,14 +128,14 @@ public partial class GoalsTabViewModel : ObservableObject
             if (upcomingMs != null)
             {
                 NextMilestoneTitle = upcomingMs.Title;
-                NextMilestoneLabel = $"Your next milestone · {upcomingMs.OrderIndex:D2} / {goal.Milestones.Count:D2}";
+                NextMilestoneLabel = $"Следующий этап · {upcomingMs.OrderIndex:D2} / {goal.Milestones.Count:D2}";
                 HasNextMilestone = true;
                 return;
             }
         }
 
         NextMilestoneTitle = "Все вехи текущих целей достигнуты";
-        NextMilestoneLabel = "Next milestone";
+        NextMilestoneLabel = "Следующий этап";
         HasNextMilestone = false;
     }
 

@@ -10,10 +10,12 @@ using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using CommunityToolkit.Mvvm.Messaging;
 using SecondSelf.Core.Messages;
+using SecondSelf.Core.Services;
 using SecondSelf.Core.ViewModels;
 using SecondSelf.Data.Entities;
 using Windows.Graphics;
 using WinRT.Interop;
+using DisplayArea = Microsoft.UI.Windowing.DisplayArea;
 
 namespace SecondSelf.UI.Views;
 
@@ -127,8 +129,10 @@ public sealed partial class DashboardWindow : Window
         if (displayArea != null)
         {
             var workArea = displayArea.WorkArea;
-            int width = (int)Math.Min(1540, Math.Round(workArea.Width * 0.88));
-            int height = (int)Math.Min(920, Math.Round(workArea.Height * 0.88));
+            int width = Math.Max(1440, (int)Math.Round(workArea.Width * 0.85));
+            int height = Math.Max(900, (int)Math.Round(workArea.Height * 0.85));
+            width = Math.Min(width, (int)(workArea.Width * 0.95));
+            height = Math.Min(height, (int)(workArea.Height * 0.95));
             _appWindow.Resize(new SizeInt32(width, height));
 
             int posX = Math.Max(0, workArea.X + (workArea.Width - width) / 2);
@@ -137,7 +141,7 @@ public sealed partial class DashboardWindow : Window
         }
         else
         {
-            _appWindow.Resize(new SizeInt32(1280, 820));
+            _appWindow.Resize(new SizeInt32(1440, 900));
         }
     }
 
@@ -346,6 +350,70 @@ public sealed partial class DashboardWindow : Window
     private async void OnShuffleQueueClick(object sender, RoutedEventArgs e)
     {
         await ViewModel.SettingsViewModel.ShuffleQueueAsync();
+    }
+
+    private async void OnSelectVideoFolderClick(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            var folderPicker = new Windows.Storage.Pickers.FolderPicker();
+            folderPicker.SuggestedStartLocation = Windows.Storage.Pickers.PickerLocationId.VideosLibrary;
+            folderPicker.FileTypeFilter.Add("*");
+            InitializeWithWindow.Initialize(folderPicker, _hwnd);
+
+            var folder = await folderPicker.PickSingleFolderAsync();
+            if (folder != null)
+            {
+                var supported = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { ".mp4", ".mkv", ".webm", ".mov" };
+                var destinationFolder = Path.Combine(AppContext.BaseDirectory, "Videos");
+                Directory.CreateDirectory(destinationFolder);
+
+                var files = Directory.GetFiles(folder.Path, "*.*", SearchOption.TopDirectoryOnly)
+                    .Where(f => supported.Contains(Path.GetExtension(f)));
+
+                foreach (var file in files)
+                {
+                    var destPath = Path.Combine(destinationFolder, Path.GetFileName(file));
+                    if (!string.Equals(Path.GetFullPath(file), Path.GetFullPath(destPath), StringComparison.OrdinalIgnoreCase))
+                    {
+                        File.Copy(file, destPath, overwrite: true);
+                    }
+                }
+
+                await ViewModel.SettingsViewModel.RescanLibraryAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            AppLogger.Error(ex, "Error picking video folder in Dashboard");
+        }
+    }
+
+    private async void OnAddVideoFilesClick(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            var picker = new Windows.Storage.Pickers.FileOpenPicker();
+            InitializeWithWindow.Initialize(picker, _hwnd);
+            picker.SuggestedStartLocation = Windows.Storage.Pickers.PickerLocationId.VideosLibrary;
+            picker.FileTypeFilter.Add(".mp4");
+            picker.FileTypeFilter.Add(".mkv");
+            picker.FileTypeFilter.Add(".webm");
+            picker.FileTypeFilter.Add(".mov");
+
+            var files = await picker.PickMultipleFilesAsync();
+            if (files != null && files.Count > 0)
+            {
+                foreach (var file in files)
+                {
+                    await ViewModel.SettingsViewModel.AddVideoFileAsync(file.Path);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            AppLogger.Error(ex, "Error picking video files in Dashboard");
+        }
     }
 
     private async void OnAddVideoFileClick(object sender, RoutedEventArgs e)

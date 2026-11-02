@@ -80,7 +80,7 @@ public partial class ProgressTabViewModel : ObservableObject
         Month = targetMonth ?? now.Month;
 
         var dt = new DateTime(Year, Month, 1);
-        MonthName = dt.ToString("MMMM yyyy", CultureInfo.InvariantCulture).ToUpperInvariant();
+        MonthName = dt.ToString("MMMM yyyy", new CultureInfo("ru-RU")).ToUpper();
 
         // 1. Загрузка весов
         if (_appSettingsService != null)
@@ -152,8 +152,8 @@ public partial class ProgressTabViewModel : ObservableObject
                 }
             }
 
-            var startStr = isoWeek.StartDateMonday.ToString("MMM d", CultureInfo.InvariantCulture);
-            var endStr = isoWeek.EndDateSunday.ToString("MMM d", CultureInfo.InvariantCulture);
+            var startStr = isoWeek.StartDateMonday.ToString("d MMM", new CultureInfo("ru-RU"));
+            var endStr = isoWeek.EndDateSunday.ToString("d MMM", new CultureInfo("ru-RU"));
 
             WeekCards.Add(new WeekCardViewModel
             {

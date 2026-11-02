@@ -77,7 +77,7 @@ public partial class TodayTabViewModel : ObservableObject
 
     // --- Daily Reset Widget ---
     [ObservableProperty]
-    private string _todayVideoTitle = "Your daily video";
+    private string _todayVideoTitle = "Видео дня";
 
     [ObservableProperty]
     private string _todayVideoDuration = "02:00";
@@ -89,7 +89,7 @@ public partial class TodayTabViewModel : ObservableObject
     private bool _isRitualCompleted;
 
     [ObservableProperty]
-    private string _ritualStatus = "Ready";
+    private string _ritualStatus = "Готово к просмотру";
 
     // --- Mini-summary ---
     [ObservableProperty]
@@ -384,12 +384,12 @@ public partial class TodayTabViewModel : ObservableObject
         if (ritual != null && ritual.IsCompleted)
         {
             IsRitualCompleted = true;
-            RitualStatus = "Completed";
+            RitualStatus = "Просмотр завершён";
         }
         else
         {
             IsRitualCompleted = false;
-            RitualStatus = "Ready";
+            RitualStatus = "Готово к просмотру";
         }
     }
 

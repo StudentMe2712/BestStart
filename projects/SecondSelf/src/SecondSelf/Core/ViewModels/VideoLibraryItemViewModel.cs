@@ -34,7 +34,7 @@ public partial class VideoLibraryItemViewModel : ObservableObject
     [ObservableProperty]
     private string _lastVerifiedAt = string.Empty;
 
-    public string StatusText => IsMissing ? "Файл не найден" : "OK";
+    public string StatusText => IsMissing ? "Файл не найден" : "Доступен";
 
     public string PlaybackCountText => $"Показов: {PlaybackCount}";
 

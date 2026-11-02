@@ -22,10 +22,11 @@ public sealed class VideoPlaybackService : IVideoPlaybackService
 
     private readonly Timer? _autoSaveTimer;
     private readonly object _stateLock = new();
+    private string? _lastPlayedVideoId;
     private bool _disposed;
 
     public PlaybackState State { get; private set; } = PlaybackState.Idle;
-    public string StatusText { get; private set; } = "Ready";
+    public string StatusText { get; private set; } = "Готово к просмотру";
     public VideoLibraryItem? CurrentVideo { get; private set; }
     public DailyRitualLog? CurrentLog { get; private set; }
     public int CurrentPositionMs { get; private set; }
@@ -84,11 +85,29 @@ public sealed class VideoPlaybackService : IVideoPlaybackService
 
         if (log == null)
         {
-            SetState(PlaybackState.Idle, "No video available");
+            SetState(PlaybackState.Idle, "Видео недоступно");
             return false;
         }
 
-        var video = await _videoLibraryService.GetVideoByIdAsync(log.VideoId, cancellationToken).ConfigureAwait(false);
+        var availableVideos = _videoLibraryService.GetAvailableVideos();
+        VideoLibraryItem? video = null;
+
+        if (availableVideos.Count > 0)
+        {
+            var candidates = availableVideos.Where(v => v.Id != _lastPlayedVideoId).ToList();
+            var randomVideo = (candidates.Count > 0 ? candidates : availableVideos).OrderBy(_ => Guid.NewGuid()).FirstOrDefault();
+            if (randomVideo != null)
+            {
+                _lastPlayedVideoId = randomVideo.Id;
+                video = randomVideo;
+                log.VideoId = randomVideo.Id;
+            }
+        }
+
+        if (video == null)
+        {
+            video = await _videoLibraryService.GetVideoByIdAsync(log.VideoId, cancellationToken).ConfigureAwait(false);
+        }
 
         bool wasReplaced = false;
 
@@ -99,14 +118,14 @@ public sealed class VideoPlaybackService : IVideoPlaybackService
             log = await _dayTransitionService.ReplaceCorruptedVideoAsync(log.VideoId, time, cancellationToken).ConfigureAwait(false);
             if (log == null)
             {
-                SetState(PlaybackState.Idle, "No video available");
+                SetState(PlaybackState.Idle, "Видео недоступно");
                 return false;
             }
 
             video = await _videoLibraryService.GetVideoByIdAsync(log.VideoId, cancellationToken).ConfigureAwait(false);
             if (video == null || !File.Exists(video.FilePath))
             {
-                SetState(PlaybackState.Idle, "No video available");
+                SetState(PlaybackState.Idle, "Видео недоступно");
                 return false;
             }
 
@@ -123,14 +142,16 @@ public sealed class VideoPlaybackService : IVideoPlaybackService
             IsRitualCounted = log.IsCompleted;
 
             // Возобновление с позиции LastPositionMs - 1000 мс (1 секунда контекста)
-            int resumePos = Math.Max(0, log.LastPositionMs - 1000);
+            int resumePos = (video.Id == log.VideoId)
+                ? Math.Max(0, log.LastPositionMs - 1000)
+                : 0;
             CurrentPositionMs = resumePos;
 
             if (log.IsCompleted)
             {
                 IsCompletedPlayback = true;
                 IsCountButtonVisible = false;
-                SetState(PlaybackState.Completed, "Done for Today");
+                SetState(PlaybackState.Completed, "Выполнено");
             }
             else if (wasReplaced)
             {
@@ -142,13 +163,13 @@ public sealed class VideoPlaybackService : IVideoPlaybackService
             {
                 IsCompletedPlayback = false;
                 IsCountButtonVisible = false;
-                SetState(PlaybackState.Paused, "Paused");
+                SetState(PlaybackState.Paused, "Пауза");
             }
             else
             {
                 IsCompletedPlayback = false;
                 IsCountButtonVisible = false;
-                SetState(PlaybackState.Ready, "Ready");
+                SetState(PlaybackState.Ready, "Готово к просмотру");
             }
         }
 
@@ -163,11 +184,11 @@ public sealed class VideoPlaybackService : IVideoPlaybackService
             if (State == PlaybackState.Completed && IsCompletedPlayback)
             {
                 // Повторный просмотр завершенного видео
-                SetState(PlaybackState.Playing, IsRitualCounted ? "Done for Today" : "Playing");
+                SetState(PlaybackState.Playing, IsRitualCounted ? "Выполнено" : "Воспроизведение");
             }
             else
             {
-                SetState(PlaybackState.Playing, "Playing");
+                SetState(PlaybackState.Playing, "Воспроизведение");
             }
 
             StartAutoSaveTimer();
@@ -183,7 +204,7 @@ public sealed class VideoPlaybackService : IVideoPlaybackService
             StopAutoSaveTimer();
             if (State != PlaybackState.Completed)
             {
-                SetState(PlaybackState.Paused, "Paused");
+                SetState(PlaybackState.Paused, "Пауза");
             }
         }
 
@@ -198,7 +219,7 @@ public sealed class VideoPlaybackService : IVideoPlaybackService
             StopAutoSaveTimer();
             if (State != PlaybackState.Completed)
             {
-                SetState(PlaybackState.Paused, "Paused");
+                SetState(PlaybackState.Paused, "Пауза");
             }
         }
 
@@ -270,7 +291,7 @@ public sealed class VideoPlaybackService : IVideoPlaybackService
                 CurrentPositionMs = DurationMs;
             }
 
-            SetState(PlaybackState.Completed, IsRitualCounted ? "Done for Today" : "Completed playback");
+            SetState(PlaybackState.Completed, IsRitualCounted ? "Выполнено" : "Просмотр завершён");
 
             // Кнопка фиксации ритуала появляется ТОЛЬКО если ритуал еще не был засчитан за эти сутки
             IsCountButtonVisible = !IsRitualCounted;
@@ -309,7 +330,7 @@ public sealed class VideoPlaybackService : IVideoPlaybackService
             {
                 CurrentVideo = null;
                 CurrentLog = null;
-                SetState(PlaybackState.Idle, "No video available");
+                SetState(PlaybackState.Idle, "Видео недоступно");
             }
             return false;
         }
@@ -321,7 +342,7 @@ public sealed class VideoPlaybackService : IVideoPlaybackService
             {
                 CurrentVideo = null;
                 CurrentLog = null;
-                SetState(PlaybackState.Idle, "No video available");
+                SetState(PlaybackState.Idle, "Видео недоступно");
             }
             return false;
         }
@@ -370,7 +391,7 @@ public sealed class VideoPlaybackService : IVideoPlaybackService
             {
                 IsRitualCounted = true;
                 IsCountButtonVisible = false;
-                SetState(PlaybackState.Completed, "Done for Today");
+                SetState(PlaybackState.Completed, "Выполнено");
             }
             return false;
         }
@@ -391,7 +412,7 @@ public sealed class VideoPlaybackService : IVideoPlaybackService
 
             IsRitualCounted = true;
             IsCountButtonVisible = false;
-            SetState(PlaybackState.Completed, "Done for Today");
+            SetState(PlaybackState.Completed, "Выполнено");
         }
 
         // 2. Публикация сообщения в INotificationBus
@@ -456,7 +477,7 @@ public sealed class VideoPlaybackService : IVideoPlaybackService
 public sealed class NullVideoPlaybackService : IVideoPlaybackService
 {
     public PlaybackState State => PlaybackState.Idle;
-    public string StatusText => "Ready";
+    public string StatusText => "Готово к просмотру";
     public VideoLibraryItem? CurrentVideo => null;
     public DailyRitualLog? CurrentLog => null;
     public int CurrentPositionMs => 0;

@@ -159,23 +159,13 @@ public sealed partial class WidgetWindow : Window
 
         this.InitializeComponent();
 
-        // 1. Полная прозрачность окна (отключение системного фона)
+        // 1. Полная прозрачность окна (отключение системного фона и DWM расширение фрейма)
         this.SystemBackdrop = null;
-        try
-        {
-            var visual = Microsoft.UI.Xaml.Hosting.ElementCompositionPreview.GetElementVisual(this.Content);
-            var compositor = visual.Compositor;
-            var transparentBrush = compositor.CreateColorBrush(Windows.UI.Color.FromArgb(0, 0, 0, 0));
-            var backdropHolder = this.As<Microsoft.UI.Composition.ICompositionSupportsSystemBackdrop>();
-            if (backdropHolder != null)
-            {
-                backdropHolder.SystemBackdrop = (Windows.UI.Composition.CompositionBrush)(object)transparentBrush;
-            }
-        }
-        catch { }
-
-        // 2. Получение дескриптора HWND и AppWindow
         _hwnd = WindowNative.GetWindowHandle(this);
+        var margins = new MARGINS { cxLeftWidth = -1, cxRightWidth = -1, cyTopHeight = -1, cyBottomHeight = -1 };
+        DwmExtendFrameIntoClientArea(_hwnd, ref margins);
+
+        // 2. Получение дескриптора AppWindow
         var windowId = Win32Interop.GetWindowIdFromWindow(_hwnd);
         _appWindow = AppWindow.GetFromWindowId(windowId);
 
@@ -335,7 +325,7 @@ public sealed partial class WidgetWindow : Window
         return dpi == 0 ? 1.0 : dpi / 96.0;
     }
 
-    private void ResizeWidgetWindow(int widthDip, int heightDip)
+    private void ResizeWidgetWindow(int widthDip, int heightDip, bool centerScreen = false)
     {
         try
         {
@@ -346,8 +336,12 @@ public sealed partial class WidgetWindow : Window
             var displayArea = DisplayArea.GetFromWindowId(Win32Interop.GetWindowIdFromWindow(_hwnd), DisplayAreaFallback.Primary);
             var workArea = displayArea != null ? displayArea.WorkArea : new RectInt32(0, 0, 1920, 1080);
 
-            int targetX = workArea.X + (workArea.Width - physW) / 2;
-            int targetY = workArea.Y;
+            int targetX = centerScreen
+                ? workArea.X + (workArea.Width - physW) / 2
+                : workArea.X + (workArea.Width - physW) / 2;
+            int targetY = centerScreen
+                ? workArea.Y + (workArea.Height - physH) / 2
+                : workArea.Y;
 
             _appWindow.MoveAndResize(new RectInt32(targetX, targetY, physW, physH));
         }
@@ -366,7 +360,9 @@ public sealed partial class WidgetWindow : Window
             BottomTabTrigger.Width = 260;
             BottomTabTrigger.Height = 42;
         }
-        ResizeWidgetWindow(260, 42);
+        ResizeWidgetWindow(260, 42, centerScreen: false);
+        var margins = new MARGINS { cxLeftWidth = -1, cxRightWidth = -1, cyTopHeight = -1, cyBottomHeight = -1 };
+        DwmExtendFrameIntoClientArea(_hwnd, ref margins);
         CanvasTranslate.Y = 0;
         SaveCurrentWindowState();
         App.TrimWorkingSet();
@@ -401,7 +397,9 @@ public sealed partial class WidgetWindow : Window
             BottomTabTrigger.Width = 260;
             BottomTabTrigger.Height = 42;
         }
-        ResizeWidgetWindow(440, 300);
+        ResizeWidgetWindow(440, 300, centerScreen: false);
+        var margins = new MARGINS { cxLeftWidth = -1, cxRightWidth = -1, cyTopHeight = -1, cyBottomHeight = -1 };
+        DwmExtendFrameIntoClientArea(_hwnd, ref margins);
         CanvasTranslate.Y = 0;
         SaveCurrentWindowState();
         App.TrimWorkingSet();
@@ -419,7 +417,9 @@ public sealed partial class WidgetWindow : Window
             PlayerRoot.Visibility = Visibility.Visible;
             PlayerRoot.Opacity = 1.0;
         }
-        ResizeWidgetWindow(580, 440);
+        ResizeWidgetWindow(800, 600, centerScreen: true);
+        var margins = new MARGINS { cxLeftWidth = -1, cxRightWidth = -1, cyTopHeight = -1, cyBottomHeight = -1 };
+        DwmExtendFrameIntoClientArea(_hwnd, ref margins);
         CanvasTranslate.Y = 0;
     }
 
@@ -443,15 +443,19 @@ public sealed partial class WidgetWindow : Window
         {
             if (ViewModel.IsPlayerOpen)
             {
-                ResizeWidgetWindow(580, 440);
+                ResizeWidgetWindow(800, 600, centerScreen: true);
+            }
+            else if (ViewModel.IsSettingsOpen)
+            {
+                ResizeWidgetWindow(840, 620, centerScreen: true);
             }
             else if (ViewModel.IsExpanded)
             {
-                ResizeWidgetWindow(440, 300);
+                ResizeWidgetWindow(440, 300, centerScreen: false);
             }
             else
             {
-                ResizeWidgetWindow(260, 42);
+                ResizeWidgetWindow(260, 42, centerScreen: false);
             }
             SaveCurrentWindowState();
         }
@@ -1280,17 +1284,22 @@ public sealed partial class WidgetWindow : Window
             if (CompactView != null) CompactView.Visibility = Visibility.Collapsed;
             if (PlayerRoot != null) PlayerRoot.Visibility = Visibility.Collapsed;
             if (ExpandedRoot != null) ExpandedRoot.Visibility = Visibility.Collapsed;
+            if (BottomTabTrigger != null) BottomTabTrigger.Visibility = Visibility.Collapsed;
             if (SettingsRoot != null)
             {
                 SettingsRoot.Visibility = Visibility.Visible;
                 SettingsRoot.Opacity = 1.0;
             }
+            ResizeWidgetWindow(840, 620, centerScreen: true);
+            var margins = new MARGINS { cxLeftWidth = -1, cxRightWidth = -1, cyTopHeight = -1, cyBottomHeight = -1 };
+            DwmExtendFrameIntoClientArea(_hwnd, ref margins);
             ViewModel.OpenSettings();
         });
     }
 
     private void OnSettingsBackClick(object sender, RoutedEventArgs e)
     {
+        ResizeWidgetWindow(440, 300, centerScreen: false);
         NavigateToHome();
     }
 

@@ -37,13 +37,13 @@ public partial class SettingsTabViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(DailyWeightText))]
     private double _dailyWeight = 30.0; // в процентах (10..50)
 
-    public string DailyWeightText => $"Daily Rituals: {DailyWeight:F0}%";
+    public string DailyWeightText => $"Ритуалы дня: {DailyWeight:F0}%";
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(WeeklyWeightText))]
     private double _weeklyWeight = 70.0; // в процентах (100 - dailyWeight)
 
-    public string WeeklyWeightText => $"Weekly Goals: {WeeklyWeight:F0}%";
+    public string WeeklyWeightText => $"Цели недели: {WeeklyWeight:F0}%";
 
     // --- Widget Settings ---
     [ObservableProperty]
@@ -56,7 +56,7 @@ public partial class SettingsTabViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(GlassOpacityText))]
     private double _glassOpacity = 85.0; // в процентах (30..80)
 
-    public string GlassOpacityText => $"Прозрачность тёплого стекла (Glass Opacity): {GlassOpacity:F0}%";
+    public string GlassOpacityText => $"Прозрачность тёплого стекла: {GlassOpacity:F0}%";
 
     [ObservableProperty]
     private string _preferredMonitor = "Primary";
