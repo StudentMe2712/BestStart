@@ -93,5 +93,11 @@
 - **Finding:** In Windows 11 DWM, invoking the legacy `DwmEnableBlurBehindWindow` API forces DWM to generate a dark blur region behind the window client area. Furthermore, attempting to instantiate `new Windows.UI.Composition.Compositor()` throws in WinUI 3 desktop apps, silently preventing `ICompositionSupportsSystemBackdrop.SystemBackdrop` from being assigned. Using `ElementCompositionPreview.GetElementVisual(this.Content).Compositor` to create an alpha-zero `CompositionColorBrush` and removing `DwmEnableBlurBehindWindow` (relying strictly on `DwmExtendFrameIntoClientArea(margins = -1)`) produces true, flawless wallpaper transparency across card gaps.
 - **Rule:** Never call `DwmEnableBlurBehindWindow` in modern WinUI 3 desktop apps; obtain the `Compositor` from `ElementCompositionPreview` of the root content element and apply `DwmExtendFrameIntoClientArea` with margins -1.
 
+### 2026-11-02 — True Glassmorphism Desktop Transparency vs DesktopAcrylic and GDI SetWindowRgn
+- **Context:** Eliminating gray translucent backing film, outer rectangular borders, and opaque card fills in desktop widget window.
+- **Finding:** In WinUI 3, attaching `DesktopAcrylicController` creates an opaque or tinted acrylic sheet across the entire window bounds regardless of zero tint opacity, while GDI `SetWindowRgn` causes DWM to render rectangular boundary outlines. Setting `<Grid x:Name="RootGrid" Background="{x:Null}">` in XAML, removing `DesktopAcrylicController` and `SetWindowRgn`, preserving DWM frame extension (`margins = -1`) and applying per-card translucent alpha brushes (`#40C26828`, `#403A2010`, `#4020150A`) with thin specular rim borders (`#50FFFFFF`, `#40FFFFFF`, `#35FFFFFF`, `BorderThickness="1"`) produces 100% desktop wallpaper transparency in gaps between cards with pure glassmorphism.
+- **Rule:** Never attach `DesktopAcrylicController` or GDI `SetWindowRgn` to frameless multi-card desktop widgets in WinUI 3; set the root container background to `{x:Null}` and apply alpha colors directly to floating card borders.
+
+
 
 
