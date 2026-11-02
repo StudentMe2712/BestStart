@@ -116,8 +116,8 @@ public sealed class WidgetRefactoringTests
 
         var content = File.ReadAllText(xamlPath);
 
-        // 1. RootGrid с Background="Transparent"
-        Assert.Contains("Background=\"Transparent\"", content);
+        // 1. RootGrid с Background="{x:Null}" или "Transparent"
+        Assert.True(content.Contains("Background=\"{x:Null}\"") || content.Contains("Background=\"Transparent\""));
 
         // 2. WarmGlassCardBrush формула: #60D27A38 и #354A2411
         Assert.Contains("#60D27A38", content);

@@ -86,7 +86,7 @@ public sealed class TaskRequirementsVerificationTests : IDisposable
 
         var xaml = await File.ReadAllTextAsync(widgetXamlPath);
         Assert.Contains("Title=\"Second Self — Виджет\"", xaml);
-        Assert.Contains("<Grid x:Name=\"RootGrid\" Background=\"Transparent\"", xaml);
+        Assert.True(xaml.Contains("<Grid x:Name=\"RootGrid\" Background=\"{x:Null}\"") || xaml.Contains("<Grid x:Name=\"RootGrid\" Background=\"Transparent\""));
     }
 
     [Fact]

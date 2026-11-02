@@ -10,7 +10,7 @@
     Title="Second Self — Виджет">
 
     <!-- Корневой контейнер с прозрачным фоном для эффекта Rainmeter Glassmorphism -->
-    <Grid x:Name="RootGrid" Background="Transparent" >
+    <Grid x:Name="RootGrid" Background="{x:Null}">
         <Grid.Resources>
             <FontFamily x:Key="ContentControlThemeFontFamily">Segoe UI Variable Display, Segoe UI Variable Text, Inter, sans-serif</FontFamily>
             <Style TargetType="TextBlock">
@@ -152,9 +152,9 @@
                                 Width="192"
                                 Height="244"
                                 CornerRadius="24"
-                                Background="{StaticResource WarmGlassCardBrush}"
-                                BorderBrush="{StaticResource SpecularRimBrush}"
-                                BorderThickness="1.5"
+                                Background="#40C26828"
+                                BorderBrush="#50FFFFFF"
+                                BorderThickness="1"
                                 Padding="12,10,12,10">
                             <Grid>
                                 <Grid.RowDefinitions>
@@ -401,9 +401,9 @@
                                     Width="196"
                                     Height="136"
                                     CornerRadius="24"
-                                    Background="{StaticResource DailyResetPreviewBrush}"
-                                    BorderBrush="{StaticResource SpecularRimBrush}"
-                                    BorderThickness="1.5"
+                                    Background="#403A2010"
+                                    BorderBrush="#40FFFFFF"
+                                    BorderThickness="1"
                                     Padding="14"
                                     PointerPressed="OnDailyResetCardPointerPressed">
                                 <Grid>
@@ -461,9 +461,9 @@
                                     Width="196"
                                     Height="96"
                                     CornerRadius="24"
-                                    Background="{StaticResource QuickHubGlassBrush}"
-                                    BorderBrush="{StaticResource SpecularRimBrush}"
-                                    BorderThickness="1.5"
+                                    Background="#4020150A"
+                                    BorderBrush="#35FFFFFF"
+                                    BorderThickness="1"
                                     Padding="14,10"
                                     PointerPressed="OnCardPointerPressed">
                                 <Grid VerticalAlignment="Center">
