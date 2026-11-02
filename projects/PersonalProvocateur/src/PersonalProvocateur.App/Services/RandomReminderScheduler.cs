@@ -148,10 +148,11 @@ public class RandomReminderScheduler : IDisposable
     /// </summary>
     /// <param name="random">Optional custom Random instance for deterministic testing.</param>
     /// <param name="timerScheduler">Optional custom scheduler delegate for mocking timer execution in tests.</param>
-    public RandomReminderScheduler(Random? random = null, Action<Action, TimeSpan>? timerScheduler = null)
+    public RandomReminderScheduler(Random? random = null, Action<Action, TimeSpan>? timerScheduler = null, bool initialPaused = false)
     {
         _random = random ?? new Random();
         _timerScheduler = timerScheduler;
+        _isPaused = initialPaused;
 
         if (_timerScheduler == null)
         {

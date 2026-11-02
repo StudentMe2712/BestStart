@@ -7,6 +7,13 @@ Add entries with the `/lesson` command, or by hand. Newest on top.
 
 ## Log
 
+### 2026-11-02 — Scheduler pause synchronization, on-the-fly interval updates & overlay auto-play fallback
+- **Problem:** 1) Application loaded with `IsPaused: true` in `settings.json` caused a desynchronization where `RandomReminderScheduler` was unstarted but its internal `_isPaused` was false, displaying "Ожидание запуска сессии..." and disabling the timer indefinitely. 2) Updating min/max interval in Settings while the scheduler was running did not reschedule the countdown, forcing the user to wait out the old interval. 3) If `TriggerProvocation` was rejected (e.g. state was not BackgroundIdle), the one-shot timer was dropped without rescheduling (Dead Timer). 4) Full-screen dimming on multi-monitor setups left users stranded if the mascot appeared on an inactive secondary display.
+- **Root cause:** 1) `RandomReminderScheduler` did not accept initial paused state in constructor and relied solely on runtime events. 2) `OverlayCoordinator.OnSettingsChanged` guarded on `!_scheduler.IsRunning`, ignoring updates while active. 3) `OnTimerElapsed` set `_isRunning = false` before `TriggerProvocation`, which had no retry/reschedule fallback on rejection. 4) `OverlayWindow` lacked a timeout or full-dimming click handler to transition to video playback.
+- **Fix:** 1) Added `initialPaused` to `RandomReminderScheduler` constructor and synchronized pause state on `App.xaml.cs` startup. 2) Called `_scheduler.UpdateIntervals` during `OnSettingsChanged` and `ExecuteAutoSave()`. 3) Added automatic rescheduling in `TriggerProvocation` when rejected. 4) Added a 12-second auto-play timer and full-screen dimmer click handler in `OverlayWindow` to guarantee immediate video playback.
+- **Rule:** Background schedulers with persistent settings must synchronize paused state on startup, support dynamic interval re-anchoring on the fly, guarantee reschedule on suppressed triggers, and provide idle/click fallbacks for user-facing overlays.
+- **Scope:** this-project
+
 ### 2026-10-29 — Windows PE ApplicationIcon embedding & multi-resolution ICO generation
 - **Problem:** Compiled `.exe` binary showed the generic Windows blank executable icon in File Explorer and Windows Shell because `<ApplicationIcon>` was not declared in `.csproj`, and tray icon was only dynamically created in memory.
 - **Root cause:** Windows PE executable file icons must be embedded at compile-time as Win32 resources (`RT_GROUP_ICON`) via MSBuild `<ApplicationIcon>Assets\app.ico</ApplicationIcon>`. Windows requires standard ICO packaging (DIB headers for 16..128, PNG for 256) with alpha channel preservation.

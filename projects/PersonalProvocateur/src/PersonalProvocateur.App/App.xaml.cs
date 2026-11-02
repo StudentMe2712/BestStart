@@ -40,7 +40,7 @@ public partial class App : System.Windows.Application
         // 2. Core Stores and Services
         _settingsStore = new SettingsStore();
         _videoLibraryService = new VideoLibraryService(_settingsStore);
-        _scheduler = new RandomReminderScheduler();
+        _scheduler = new RandomReminderScheduler(initialPaused: _settingsStore.CurrentSettings.IsPaused);
         _overlayCoordinator = new OverlayCoordinator(_scheduler, _videoLibraryService, _settingsStore);
         _smartTriggerService = new SmartTriggerService(_settingsStore, _overlayCoordinator);
 
@@ -68,11 +68,15 @@ public partial class App : System.Windows.Application
         // 6. System Power & Session Event Watcher
         _powerWatcher = new SystemPowerWatcher(_scheduler, _settingsStore);
 
-        // 7. Initial cycle start
-        if (!_settingsStore.CurrentSettings.IsPaused && _settingsStore.CurrentSettings.TriggerMode != "SmartOnly")
+        // 7. Initial cycle start or pause synchronization
+        var min = _settingsStore.CurrentSettings.MinIntervalMinutes;
+        var max = _settingsStore.CurrentSettings.MaxIntervalMinutes;
+        if (_settingsStore.CurrentSettings.IsPaused)
         {
-            var min = _settingsStore.CurrentSettings.MinIntervalMinutes;
-            var max = _settingsStore.CurrentSettings.MaxIntervalMinutes;
+            _scheduler.SetPaused(true, min, max);
+        }
+        else if (_settingsStore.CurrentSettings.TriggerMode != "SmartOnly")
+        {
             _scheduler.StartNextCycle(min, max);
         }
 

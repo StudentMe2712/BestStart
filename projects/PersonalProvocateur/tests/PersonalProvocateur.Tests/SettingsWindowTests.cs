@@ -730,4 +730,32 @@ public class SettingsWindowTests : IDisposable
             window.Close();
         });
     }
+
+    [Fact]
+    public void SettingsWindow_ExecuteAutoSave_UpdatesSchedulerIntervals()
+    {
+        RunInSta(() =>
+        {
+            var store = new SettingsStore(_settingsPath);
+            var videoLib = new VideoLibraryService(store, fileExistsChecker: _ => false);
+            var cyclesStarted = 0;
+            var scheduler = new RandomReminderScheduler(
+                timerScheduler: (_, _) => cyclesStarted++);
+            using var coordinator = new OverlayCoordinator(scheduler, videoLib, store);
+
+            var window = new SettingsWindow(store, videoLib, coordinator, scheduler);
+            window.Show();
+
+            window.MinIntervalTextBox.Text = "3";
+            window.MaxIntervalTextBox.Text = "8";
+            window.TriggerAutoSave(immediate: true);
+
+            Assert.Equal(3, store.CurrentSettings.MinIntervalMinutes);
+            Assert.Equal(8, store.CurrentSettings.MaxIntervalMinutes);
+            Assert.True(scheduler.IsRunning);
+            Assert.True(cyclesStarted > 0);
+
+            window.Close();
+        });
+    }
 }

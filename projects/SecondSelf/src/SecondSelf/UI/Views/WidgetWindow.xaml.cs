@@ -113,6 +113,21 @@ public sealed partial class WidgetWindow : Window
     [DllImport("user32.dll")]
     private static extern uint GetDpiForWindow(IntPtr hWnd);
 
+    [DllImport("gdi32.dll")]
+    private static extern IntPtr CreateRoundRectRgn(int x1, int y1, int x2, int y2, int cx, int cy);
+
+    [DllImport("gdi32.dll")]
+    private static extern int CombineRgn(IntPtr hrgnDest, IntPtr hrgnSrc1, IntPtr hrgnSrc2, int fnCombineMode);
+
+    [DllImport("user32.dll")]
+    private static extern int SetWindowRgn(IntPtr hWnd, IntPtr hRgn, bool bRedraw);
+
+    [DllImport("gdi32.dll")]
+    private static extern bool DeleteObject(IntPtr hObject);
+
+    private const int RGN_OR = 2;
+    private const int RGN_COPY = 5;
+
 
     private const uint WM_DISPLAYCHANGE = 0x007E;
 
@@ -162,7 +177,7 @@ public sealed partial class WidgetWindow : Window
         this.InitializeComponent();
 
         // 1. Полная прозрачность окна (DWM расширение фрейма)
-        this.SystemBackdrop = null;
+        this.SystemBackdrop = new Microsoft.UI.Xaml.Media.DesktopAcrylicBackdrop();
         _hwnd = WindowNative.GetWindowHandle(this);
         var margins = new MARGINS { cxLeftWidth = -1, cxRightWidth = -1, cyTopHeight = -1, cyBottomHeight = -1 };
         DwmExtendFrameIntoClientArea(_hwnd, ref margins);
@@ -495,22 +510,145 @@ public sealed partial class WidgetWindow : Window
 
     public void ApplyExpandedWindowRegion()
     {
+        try
+        {
+            double dpi = GetDpiScale();
+            int leftCardW = (int)Math.Round(192 * dpi);
+            int cardH = (int)Math.Round(244 * dpi);
+            int gap = (int)Math.Round(12 * dpi);
+            int rightCardW = (int)Math.Round(196 * dpi);
+            int rTopH = (int)Math.Round(140 * dpi);
+            int rBottomH = (int)Math.Round(92 * dpi);
+            int radius = (int)Math.Round(48 * dpi); // 24px * 2
+
+            int startX = (int)Math.Round(20 * dpi); // отступ от края окна (440 - 400) / 2
+            int startY = 0;
+
+            // 1. Карточка "Фокус дня" (левая)
+            IntPtr rgnLeft = CreateRoundRectRgn(startX, startY, startX + leftCardW, startY + cardH, radius, radius);
+
+            // 2. Карточка "Перезагрузка" (правая верхняя)
+            int rightX = startX + leftCardW + gap;
+            IntPtr rgnRightTop = CreateRoundRectRgn(rightX, startY, rightX + rightCardW, startY + rTopH, radius, radius);
+
+            // 3. Карточка "Итог месяца" (правая нижняя)
+            int rightBottomY = startY + rTopH + gap;
+            IntPtr rgnRightBottom = CreateRoundRectRgn(rightX, rightBottomY, rightX + rightCardW, rightBottomY + rBottomH, radius, radius);
+
+            // 4. Нижняя плашка Second Self
+            int pillW = (int)Math.Round(260 * dpi);
+            int pillH = (int)Math.Round(42 * dpi);
+            int pillX = (int)Math.Round((440 * dpi - pillW) / 2);
+            int pillY = cardH; // прямо под карточками
+            int pillRadius = (int)Math.Round(42 * dpi);
+            IntPtr rgnPill = CreateRoundRectRgn(pillX, pillY - 10, pillX + pillW, pillY + pillH, pillRadius, pillRadius);
+
+            // Объединяем все 4 региона в один:
+            IntPtr finalRgn = CreateRoundRectRgn(0, 0, 0, 0, 0, 0);
+            CombineRgn(finalRgn, rgnLeft, rgnRightTop, RGN_OR);
+            CombineRgn(finalRgn, finalRgn, rgnRightBottom, RGN_OR);
+            CombineRgn(finalRgn, finalRgn, rgnPill, RGN_OR);
+
+            // Применяем к окну:
+            SetWindowRgn(_hwnd, finalRgn, true);
+
+            // Освобождаем промежуточные дескрипторы GDI
+            DeleteObject(rgnLeft);
+            DeleteObject(rgnRightTop);
+            DeleteObject(rgnRightBottom);
+            DeleteObject(rgnPill);
+        }
+        catch (Exception ex)
+        {
+            AppLogger.Error(ex, "Error applying expanded window region");
+        }
     }
 
     public void ApplyCollapsedWindowRegion()
     {
+        try
+        {
+            double dpi = GetDpiScale();
+            int pillW = (int)Math.Round(260 * dpi);
+            int pillH = (int)Math.Round(42 * dpi);
+            int radius = (int)Math.Round(42 * dpi);
+
+            IntPtr rgn = CreateRoundRectRgn(0, 0, pillW, pillH, radius, radius);
+            SetWindowRgn(_hwnd, rgn, true);
+        }
+        catch (Exception ex)
+        {
+            AppLogger.Error(ex, "Error applying collapsed window region");
+        }
     }
 
     public void ApplyPlayerWindowRegion()
     {
+        try
+        {
+            double dpi = GetDpiScale();
+            int w = (int)Math.Round(800 * dpi);
+            int h = (int)Math.Round(600 * dpi);
+            int radius = (int)Math.Round(48 * dpi);
+
+            IntPtr rgn = CreateRoundRectRgn(0, 0, w, h, radius, radius);
+            SetWindowRgn(_hwnd, rgn, true);
+        }
+        catch (Exception ex)
+        {
+            AppLogger.Error(ex, "Error applying player window region");
+        }
     }
 
     public void ApplySettingsWindowRegion()
     {
+        try
+        {
+            double dpi = GetDpiScale();
+            int w = (int)Math.Round(840 * dpi);
+            int h = (int)Math.Round(620 * dpi);
+            int radius = (int)Math.Round(48 * dpi);
+
+            IntPtr rgn = CreateRoundRectRgn(0, 0, w, h, radius, radius);
+            SetWindowRgn(_hwnd, rgn, true);
+        }
+        catch (Exception ex)
+        {
+            AppLogger.Error(ex, "Error applying settings window region");
+        }
     }
 
     public void ApplyTasksWindowRegion()
     {
+        try
+        {
+            double dpi = GetDpiScale();
+            int startX = (int)Math.Round(20 * dpi);
+            int cardW = (int)Math.Round(400 * dpi);
+            int cardH = (int)Math.Round(244 * dpi);
+            int radius = (int)Math.Round(48 * dpi);
+
+            IntPtr rgnCard = CreateRoundRectRgn(startX, 0, startX + cardW, cardH, radius, radius);
+
+            int pillW = (int)Math.Round(260 * dpi);
+            int pillH = (int)Math.Round(42 * dpi);
+            int pillX = (int)Math.Round((440 * dpi - pillW) / 2);
+            int pillY = cardH;
+            int pillRadius = (int)Math.Round(42 * dpi);
+            IntPtr rgnPill = CreateRoundRectRgn(pillX, pillY - 10, pillX + pillW, pillY + pillH, pillRadius, pillRadius);
+
+            IntPtr finalRgn = CreateRoundRectRgn(0, 0, 0, 0, 0, 0);
+            CombineRgn(finalRgn, rgnCard, rgnPill, RGN_OR);
+
+            SetWindowRgn(_hwnd, finalRgn, true);
+
+            DeleteObject(rgnCard);
+            DeleteObject(rgnPill);
+        }
+        catch (Exception ex)
+        {
+            AppLogger.Error(ex, "Error applying tasks window region");
+        }
     }
 
     #endregion

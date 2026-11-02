@@ -165,4 +165,22 @@ public class RandomReminderSchedulerTests
         Assert.False(scheduler.IsRunning);
         Assert.Null(scheduler.NextTriggerTimeLocal);
     }
+
+    [Fact]
+    public void Constructor_WithInitialPaused_SetsIsPausedTrueAndDoesNotSchedule()
+    {
+        var cyclesStarted = 0;
+        using var scheduler = new RandomReminderScheduler(
+            timerScheduler: (_, _) => cyclesStarted++,
+            initialPaused: true);
+
+        Assert.True(scheduler.IsPaused);
+        Assert.False(scheduler.IsRunning);
+        Assert.Null(scheduler.NextTriggerTimeLocal);
+
+        scheduler.StartNextCycle(10, 20);
+
+        Assert.Equal(0, cyclesStarted);
+        Assert.False(scheduler.IsRunning);
+    }
 }

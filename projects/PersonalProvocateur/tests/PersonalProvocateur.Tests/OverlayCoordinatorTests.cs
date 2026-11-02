@@ -846,4 +846,69 @@ public class OverlayCoordinatorTests : IDisposable
             Assert.True(scheduler.IsRunning);
         });
     }
+
+    [Fact]
+    public void OnSettingsChanged_WhenRunning_UpdatesIntervals()
+    {
+        var store = CreateTestSettingsStore(isPaused: false);
+        var cyclesStarted = 0;
+        var scheduler = new RandomReminderScheduler(
+            timerScheduler: (_, _) => cyclesStarted++);
+        var videoLib = new VideoLibraryService(store);
+
+        using var coordinator = new OverlayCoordinator(
+            scheduler,
+            videoLib,
+            store,
+            overlayWindowFactory: _ => null,
+            videoWindowFactory: _ => null,
+            dispatcherInvoker: a => a());
+
+        scheduler.StartNextCycle(15, 45);
+        Assert.Equal(1, cyclesStarted);
+        Assert.True(scheduler.IsRunning);
+
+        // Settings change while running in BackgroundIdle should update intervals on the fly
+        store.Update(s =>
+        {
+            s.MinIntervalMinutes = 2;
+            s.MaxIntervalMinutes = 5;
+        });
+
+        Assert.Equal(2, cyclesStarted);
+        Assert.True(scheduler.IsRunning);
+    }
+
+    [Fact]
+    public void TriggerProvocation_WhenRejected_RestartsNextCycle()
+    {
+        var store = CreateTestSettingsStore(isPaused: false);
+        var cyclesStarted = 0;
+        var scheduler = new RandomReminderScheduler(
+            timerScheduler: (_, _) => cyclesStarted++);
+        var videoLib = new VideoLibraryService(store);
+
+        using var coordinator = new OverlayCoordinator(
+            scheduler,
+            videoLib,
+            store,
+            overlayWindowFactory: _ => null,
+            videoWindowFactory: _ => null,
+            dispatcherInvoker: a => a());
+
+        // First trigger transitions to MascotOverlayActive
+        coordinator.TriggerProvocation(isManualTest: false);
+        Assert.Equal(SessionState.MascotOverlayActive, coordinator.CurrentState);
+
+        // Suppose scheduler session active flag was somehow reset or scheduler timer fired while duplicate
+        scheduler.IsSessionActive = false;
+        Assert.False(scheduler.IsRunning);
+
+        // Next normal trigger attempt will be rejected because already in MascotOverlayActive
+        coordinator.TriggerProvocation(isManualTest: false);
+
+        // Because it was rejected and scheduler was not active/running, next cycle should be restarted
+        Assert.True(scheduler.IsRunning);
+        Assert.Equal(1, cyclesStarted);
+    }
 }

@@ -19,6 +19,7 @@ public partial class OverlayWindow : Window
 {
     private readonly OverlayCoordinator? _coordinator;
     private readonly SettingsStore? _settingsStore;
+    private System.Windows.Threading.DispatcherTimer? _autoTriggerTimer;
     private bool _isClickHandled;
     private System.Windows.Forms.Screen? _assignedScreen;
 
@@ -101,6 +102,27 @@ public partial class OverlayWindow : Window
 
         // Reset click handling flag
         _isClickHandled = false;
+
+        if (!IsSecondaryDimmerOnly)
+        {
+            _autoTriggerTimer?.Stop();
+            _autoTriggerTimer = new System.Windows.Threading.DispatcherTimer
+            {
+                Interval = TimeSpan.FromSeconds(12)
+            };
+            _autoTriggerTimer.Tick += (s, args) =>
+            {
+                _autoTriggerTimer.Stop();
+                if (!_isClickHandled &&
+                    (EmptyLibraryNotice == null || EmptyLibraryNotice.Visibility != Visibility.Visible) &&
+                    (SpotlightContainer == null || SpotlightContainer.Visibility != Visibility.Visible) &&
+                    _coordinator?.CurrentState == PersonalProvocateur.App.Models.SessionState.MascotOverlayActive)
+                {
+                    HandleMascotClick();
+                }
+            };
+            _autoTriggerTimer.Start();
+        }
 
         if (IsSecondaryDimmerOnly)
         {
@@ -234,6 +256,7 @@ public partial class OverlayWindow : Window
     /// <param name="text">The reminder text to display.</param>
     public void ShowSpotlightText(string text)
     {
+        _autoTriggerTimer?.Stop();
         Mascot?.StopAllAnimations();
         if (Mascot != null)
         {
@@ -316,6 +339,8 @@ public partial class OverlayWindow : Window
         }
     }
 
+    private void DimmingRectangle_MouseLeftButtonDown(object sender, MouseButtonEventArgs e) => DimmingLayer_MouseLeftButtonDown(sender, e);
+
     private void DimmingLayer_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
         if (SpotlightContainer != null && SpotlightContainer.Visibility == Visibility.Visible)
@@ -336,11 +361,26 @@ public partial class OverlayWindow : Window
             return;
         }
 
-        if (IsSecondaryDimmerOnly)
+        if (EmptyLibraryNotice != null && EmptyLibraryNotice.Visibility == Visibility.Visible)
         {
-            e.Handled = true;
             return;
         }
+
+        e.Handled = true;
+        if (IsSecondaryDimmerOnly)
+        {
+            if (_coordinator?.ActiveOverlayWindow != null)
+            {
+                _coordinator.ActiveOverlayWindow.HandleMascotClick();
+            }
+            else
+            {
+                _coordinator?.OnMascotClicked();
+            }
+            return;
+        }
+
+        HandleMascotClick();
     }
 
     /// <summary>
@@ -348,13 +388,36 @@ public partial class OverlayWindow : Window
     /// </summary>
     public void HandleMascotClick()
     {
+        _autoTriggerTimer?.Stop();
+
         if (_isClickHandled)
         {
             return;
         }
 
         _isClickHandled = true;
-        Mascot.PlayClickAnimation(() => _coordinator?.OnMascotClicked());
+        if (Mascot != null && Mascot.Visibility == Visibility.Visible)
+        {
+            Mascot.PlayClickAnimation(() => _coordinator?.OnMascotClicked());
+        }
+        else
+        {
+            _coordinator?.OnMascotClicked();
+        }
+    }
+
+    /// <summary>
+    /// Triggers the mascot auto-click action programmatically (used for testing or simulating idle timeout).
+    /// </summary>
+    public void TriggerAutoPlayForTesting()
+    {
+        _autoTriggerTimer?.Stop();
+        if (!_isClickHandled &&
+            (EmptyLibraryNotice == null || EmptyLibraryNotice.Visibility != Visibility.Visible) &&
+            (SpotlightContainer == null || SpotlightContainer.Visibility != Visibility.Visible))
+        {
+            HandleMascotClick();
+        }
     }
 
     private void Mascot_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
@@ -368,6 +431,7 @@ public partial class OverlayWindow : Window
     /// </summary>
     public void SafeClose()
     {
+        _autoTriggerTimer?.Stop();
         CanClose = true;
         Mascot?.StopAllAnimations();
         Close();
@@ -378,6 +442,7 @@ public partial class OverlayWindow : Window
     /// </summary>
     public void ShowEmptyLibraryNotice()
     {
+        _autoTriggerTimer?.Stop();
         Mascot?.StopAllAnimations();
         if (Mascot != null)
         {
@@ -452,6 +517,7 @@ public partial class OverlayWindow : Window
 
     protected override void OnClosed(EventArgs e)
     {
+        _autoTriggerTimer?.Stop();
         Microsoft.Win32.SystemEvents.DisplaySettingsChanged -= OnDisplaySettingsChanged;
         PreviewKeyDown -= OverlayWindow_PreviewKeyDown;
         Mascot?.StopAllAnimations();

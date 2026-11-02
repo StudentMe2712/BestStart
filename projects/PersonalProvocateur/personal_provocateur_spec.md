@@ -222,3 +222,4 @@ projects/PersonalProvocateur/
 | **Спринт 9** | `[x]` Завершен | `AppSettings.cs`, `VideoItem.cs`, `NativeMethods.cs`, `SmartTriggerService.cs`, `VideoThumbnailService.cs`, `VideoLibraryService.cs`, `OverlayCoordinator.cs`, `App.xaml.cs`, `SettingsWindow.xaml/.cs`, `DarkTheme.xaml`, тесты | Release: 0 ошибок, 0 предупреждений. 229 тестов пройдено (100%) |
 
 
+| **Спринт 10** | `[x]` Завершен | `RandomReminderScheduler.cs`, `OverlayCoordinator.cs`, `App.xaml.cs`, `OverlayWindow.xaml/.cs`, `SettingsWindow.xaml.cs`, тесты | Release: 0 ошибок, 0 предупреждений. 241 тест пройден (100%). Устранены дефекты планировщика случайного видео, автосинхронизация паузы и автоплей при бездействии |

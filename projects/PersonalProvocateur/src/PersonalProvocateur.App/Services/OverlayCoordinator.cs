@@ -151,11 +151,18 @@ public class OverlayCoordinator : IDisposable
             {
                 _scheduler.Stop();
             }
-            else if (!settings.IsPaused && !_scheduler.IsRunning && !_scheduler.IsSessionActive && CurrentState == SessionState.BackgroundIdle)
+            else if (!settings.IsPaused && !_scheduler.IsSessionActive && CurrentState == SessionState.BackgroundIdle)
             {
                 var min = settings.MinIntervalMinutes;
                 var max = settings.MaxIntervalMinutes;
-                _scheduler.StartNextCycle(min, max);
+                if (_scheduler.IsRunning)
+                {
+                    _scheduler.UpdateIntervals(min, max);
+                }
+                else
+                {
+                    _scheduler.StartNextCycle(min, max);
+                }
             }
         }
     }
@@ -174,17 +181,34 @@ public class OverlayCoordinator : IDisposable
                 // Prevent duplicate active sessions
                 if (CurrentState == SessionState.MascotOverlayActive || CurrentState == SessionState.VideoPlaying)
                 {
+                    if (!isManualTest && !_scheduler.IsSessionActive && !_settingsStore.CurrentSettings.IsPaused && _settingsStore.CurrentSettings.TriggerMode != "SmartOnly")
+                    {
+                        var min = _settingsStore.CurrentSettings.MinIntervalMinutes;
+                        var max = _settingsStore.CurrentSettings.MaxIntervalMinutes;
+                        _scheduler.StartNextCycle(min, max);
+                    }
+                    return;
+                }
+
+                if (!isManualTest && _settingsStore.CurrentSettings.TriggerMode == "SmartOnly")
+                {
+                    return;
+                }
+
+                if ((CurrentState == SessionState.Paused || _settingsStore.CurrentSettings.IsPaused) && !isManualTest)
+                {
                     return;
                 }
 
                 // If not manual test, must be in BackgroundIdle
-                if (CurrentState != SessionState.BackgroundIdle && CurrentState != SessionState.Paused && !isManualTest)
+                if (CurrentState != SessionState.BackgroundIdle && !isManualTest)
                 {
-                    return;
-                }
-
-                if (CurrentState == SessionState.Paused && !isManualTest)
-                {
+                    if (!_settingsStore.CurrentSettings.IsPaused && _settingsStore.CurrentSettings.TriggerMode != "SmartOnly")
+                    {
+                        var min = _settingsStore.CurrentSettings.MinIntervalMinutes;
+                        var max = _settingsStore.CurrentSettings.MaxIntervalMinutes;
+                        _scheduler.StartNextCycle(min, max);
+                    }
                     return;
                 }
 

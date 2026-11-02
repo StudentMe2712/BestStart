@@ -396,6 +396,15 @@ public partial class SettingsWindow : Window
             s.IdleThresholdMinutes = idleThreshold;
         });
 
+        if (!_isPaused && triggerMode != "SmartOnly")
+        {
+            _scheduler?.UpdateIntervals(min, max);
+        }
+        else if (triggerMode == "SmartOnly")
+        {
+            _scheduler?.Stop();
+        }
+
         try
         {
             StartupManager.SetRunOnStartup(runOnStartup);

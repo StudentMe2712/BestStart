@@ -536,4 +536,101 @@ public class OverlayWindowTests : IDisposable
             window.SafeClose();
         });
     }
+
+    [Fact]
+    public void OverlayWindow_DimmingRectangleClick_TriggersMascotClick()
+    {
+        RunInSta(() =>
+        {
+            var store = CreateTestSettingsStore();
+            var scheduler = new RandomReminderScheduler();
+            var videoLib = new VideoLibraryService(store, fileExistsChecker: _ => true);
+            videoLib.AddVideo("test.mp4", "Test Video");
+
+            using var coordinator = new OverlayCoordinator(scheduler, videoLib, store, dispatcherInvoker: a => a(), fileExistsChecker: _ => true);
+            coordinator.TriggerProvocation(isManualTest: false);
+
+            var window = new OverlayWindow(coordinator, store);
+            Assert.False(window.IsClickHandled);
+
+            // Simulate clicking on the dimming rectangle
+            var args = new System.Windows.Input.MouseButtonEventArgs(
+                System.Windows.Input.Mouse.PrimaryDevice,
+                0,
+                System.Windows.Input.MouseButton.Left)
+            {
+                RoutedEvent = System.Windows.UIElement.MouseLeftButtonDownEvent
+            };
+            window.DimmingRectangle.RaiseEvent(args);
+
+            Assert.True(window.IsClickHandled);
+            window.SafeClose();
+        });
+    }
+
+    [Fact]
+    public void OverlayWindow_SecondaryDimmerClick_DelegatesToActiveOverlayMascotClick()
+    {
+        RunInSta(() =>
+        {
+            var store = CreateTestSettingsStore();
+            var scheduler = new RandomReminderScheduler();
+            var videoLib = new VideoLibraryService(store, fileExistsChecker: _ => true);
+            videoLib.AddVideo("test.mp4", "Test Video");
+
+            OverlayWindow? primary = null;
+            using var coordinator = new OverlayCoordinator(
+                scheduler,
+                videoLib,
+                store,
+                overlayWindowFactory: coord => primary = new OverlayWindow(coord, store, false),
+                dispatcherInvoker: a => a(),
+                fileExistsChecker: _ => true);
+
+            coordinator.TriggerProvocation(isManualTest: false);
+            Assert.NotNull(primary);
+            Assert.False(primary.IsClickHandled);
+
+            // Create secondary dimmer window
+            var secondary = new OverlayWindow(coordinator, store, isSecondaryDimmerOnly: true);
+
+            var args = new System.Windows.Input.MouseButtonEventArgs(
+                System.Windows.Input.Mouse.PrimaryDevice,
+                0,
+                System.Windows.Input.MouseButton.Left)
+            {
+                RoutedEvent = System.Windows.UIElement.MouseLeftButtonDownEvent
+            };
+            secondary.DimmingRectangle.RaiseEvent(args);
+
+            // Must have delegated to primary
+            Assert.True(primary.IsClickHandled);
+
+            primary.SafeClose();
+            secondary.SafeClose();
+        });
+    }
+
+    [Fact]
+    public void OverlayWindow_TriggerAutoPlayForTesting_TriggersMascotClick()
+    {
+        RunInSta(() =>
+        {
+            var store = CreateTestSettingsStore();
+            var scheduler = new RandomReminderScheduler();
+            var videoLib = new VideoLibraryService(store, fileExistsChecker: _ => true);
+            videoLib.AddVideo("test.mp4", "Test Video");
+
+            using var coordinator = new OverlayCoordinator(scheduler, videoLib, store, dispatcherInvoker: a => a(), fileExistsChecker: _ => true);
+            coordinator.TriggerProvocation(isManualTest: false);
+
+            var window = new OverlayWindow(coordinator, store);
+            Assert.False(window.IsClickHandled);
+
+            window.TriggerAutoPlayForTesting();
+
+            Assert.True(window.IsClickHandled);
+            window.SafeClose();
+        });
+    }
 }
