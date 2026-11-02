@@ -113,6 +113,20 @@ public sealed partial class WidgetWindow : Window
     [DllImport("user32.dll")]
     private static extern uint GetDpiForWindow(IntPtr hWnd);
 
+    [DllImport("gdi32.dll", EntryPoint = "CreateRoundRectRgn")]
+    private static extern IntPtr CreateRoundRectRgn(int x1, int y1, int x2, int y2, int cx, int cy);
+
+    [DllImport("gdi32.dll", EntryPoint = "CombineRgn")]
+    private static extern int CombineRgn(IntPtr hrgnDest, IntPtr hrgnSrc1, IntPtr hrgnSrc2, int fnCombineMode);
+
+    [DllImport("user32.dll", EntryPoint = "SetWindowRgn")]
+    private static extern int SetWindowRgn(IntPtr hWnd, IntPtr hRgn, bool bRedraw);
+
+    [DllImport("gdi32.dll", EntryPoint = "DeleteObject")]
+    private static extern bool DeleteObject(IntPtr hObject);
+
+    private const int RGN_OR = 2;
+
     private const uint WM_DISPLAYCHANGE = 0x007E;
 
     private delegate IntPtr SubclassProc(IntPtr hWnd, uint uMsg, IntPtr wParam, IntPtr lParam, UIntPtr uIdSubclass, IntPtr dwRefData);
@@ -143,6 +157,8 @@ public sealed partial class WidgetWindow : Window
     private readonly IWindowStateService _windowStateService;
     private readonly ISystemMonitorService? _systemMonitorService;
     private readonly SubclassProc _subclassProcDelegate;
+    private Microsoft.UI.Composition.SystemBackdrops.DesktopAcrylicController? _backdropController;
+    private Microsoft.UI.Composition.SystemBackdrops.SystemBackdropConfiguration? _configurationSource;
     private Windows.Media.Playback.MediaPlayer? _mediaPlayer;
     private bool _isTransitioning;
     private bool _isNavigating;
@@ -160,8 +176,9 @@ public sealed partial class WidgetWindow : Window
 
         this.InitializeComponent();
 
-        // 1. Полная прозрачность окна (отключение системного фона и DWM расширение фрейма)
+        // 1. Полная прозрачность окна (DesktopAcrylicController с нулевой прозрачностью и DWM расширение фрейма)
         this.SystemBackdrop = null;
+        InitializeBackdrop();
         _hwnd = WindowNative.GetWindowHandle(this);
         var margins = new MARGINS { cxLeftWidth = -1, cxRightWidth = -1, cyTopHeight = -1, cyBottomHeight = -1 };
         DwmExtendFrameIntoClientArea(_hwnd, ref margins);
@@ -249,6 +266,26 @@ public sealed partial class WidgetWindow : Window
     }
 
     #region Window Initialization & P/Invoke Styling
+
+    private void InitializeBackdrop()
+    {
+        try
+        {
+            _backdropController = new Microsoft.UI.Composition.SystemBackdrops.DesktopAcrylicController();
+            _backdropController.TintColor = Windows.UI.Color.FromArgb(0, 0, 0, 0); // 100% Transparent
+            _backdropController.FallbackColor = Windows.UI.Color.FromArgb(0, 0, 0, 0);
+            _backdropController.LuminosityOpacity = 0.0f;
+            _backdropController.TintOpacity = 0.0f;
+
+            _configurationSource = new Microsoft.UI.Composition.SystemBackdrops.SystemBackdropConfiguration();
+            _backdropController.AddSystemBackdropTarget(this.As<Microsoft.UI.Composition.ICompositionSupportsSystemBackdrop>());
+            _backdropController.SetSystemBackdropConfiguration(_configurationSource);
+        }
+        catch (Exception ex)
+        {
+            AppLogger.Warn($"DesktopAcrylicController init: {ex.Message}");
+        }
+    }
 
     private void ConfigureWindowStyles()
     {
@@ -371,6 +408,7 @@ public sealed partial class WidgetWindow : Window
         ResizeWidgetWindow(260, 42, centerScreen: false);
         var margins = new MARGINS { cxLeftWidth = -1, cxRightWidth = -1, cyTopHeight = -1, cyBottomHeight = -1 };
         DwmExtendFrameIntoClientArea(_hwnd, ref margins);
+        ApplyCollapsedWindowRegion();
         CanvasTranslate.Y = 0;
         SaveCurrentWindowState();
         App.TrimWorkingSet();
@@ -408,6 +446,7 @@ public sealed partial class WidgetWindow : Window
         ResizeWidgetWindow(440, 300, centerScreen: false);
         var margins = new MARGINS { cxLeftWidth = -1, cxRightWidth = -1, cyTopHeight = -1, cyBottomHeight = -1 };
         DwmExtendFrameIntoClientArea(_hwnd, ref margins);
+        ApplyExpandedWindowRegion();
         CanvasTranslate.Y = 0;
         SaveCurrentWindowState();
         App.TrimWorkingSet();
@@ -428,6 +467,7 @@ public sealed partial class WidgetWindow : Window
         ResizeWidgetWindow(800, 600, centerScreen: true);
         var margins = new MARGINS { cxLeftWidth = -1, cxRightWidth = -1, cyTopHeight = -1, cyBottomHeight = -1 };
         DwmExtendFrameIntoClientArea(_hwnd, ref margins);
+        ApplyPlayerWindowRegion();
         CanvasTranslate.Y = 0;
     }
 
@@ -452,24 +492,150 @@ public sealed partial class WidgetWindow : Window
             if (ViewModel.IsPlayerOpen)
             {
                 ResizeWidgetWindow(800, 600, centerScreen: true);
+                ApplyPlayerWindowRegion();
             }
             else if (ViewModel.IsSettingsOpen)
             {
                 ResizeWidgetWindow(840, 620, centerScreen: true);
+                ApplySettingsWindowRegion();
             }
             else if (ViewModel.IsExpanded)
             {
                 ResizeWidgetWindow(440, 300, centerScreen: false);
+                if (ViewModel.IsShowingTasks)
+                {
+                    ApplyTasksWindowRegion();
+                }
+                else
+                {
+                    ApplyExpandedWindowRegion();
+                }
             }
             else
             {
                 ResizeWidgetWindow(260, 42, centerScreen: false);
+                ApplyCollapsedWindowRegion();
             }
             SaveCurrentWindowState();
         }
         catch (Exception ex)
         {
             AppLogger.Error(ex, "Error handling display change");
+        }
+    }
+
+    #endregion
+
+    #region Win32 Window Regions
+
+    public void ApplyExpandedWindowRegion()
+    {
+        try
+        {
+            double dpi = GetDpiScale();
+            int S(double val) => (int)Math.Round(val * dpi);
+
+            // В окне 440x300 DIP карточки расположены по центру:
+            // TodaysFocus: left: 20, top: 0, width: 192, height: 244, radius: 24
+            IntPtr rgn1 = CreateRoundRectRgn(S(20), S(0), S(212), S(244), S(48), S(48));
+
+            // DailyReset: left: 224, top: 0, width: 196, height: 136, radius: 24
+            IntPtr rgn2 = CreateRoundRectRgn(S(224), S(0), S(420), S(136), S(48), S(48));
+
+            // QuickHub: left: 224, top: 148, width: 196, height: 96, radius: 24
+            IntPtr rgn3 = CreateRoundRectRgn(S(224), S(148), S(420), S(244), S(48), S(48));
+
+            // Bottom Pill: left: 90, top: 244, width: 260, height: 42, radius: 21
+            IntPtr rgn4 = CreateRoundRectRgn(S(90), S(244), S(350), S(286), S(42), S(42));
+
+            CombineRgn(rgn1, rgn1, rgn2, RGN_OR);
+            CombineRgn(rgn1, rgn1, rgn3, RGN_OR);
+            CombineRgn(rgn1, rgn1, rgn4, RGN_OR);
+
+            DeleteObject(rgn2);
+            DeleteObject(rgn3);
+            DeleteObject(rgn4);
+
+            SetWindowRgn(_hwnd, rgn1, true);
+        }
+        catch (Exception ex)
+        {
+            AppLogger.Warn($"ApplyExpandedWindowRegion warning: {ex.Message}");
+        }
+    }
+
+    public void ApplyCollapsedWindowRegion()
+    {
+        try
+        {
+            double dpi = GetDpiScale();
+            int S(double val) => (int)Math.Round(val * dpi);
+
+            // В свернутом состоянии окно 260x42:
+            IntPtr rgn = CreateRoundRectRgn(S(0), S(0), S(260), S(42), S(42), S(42));
+            SetWindowRgn(_hwnd, rgn, true);
+        }
+        catch (Exception ex)
+        {
+            AppLogger.Warn($"ApplyCollapsedWindowRegion warning: {ex.Message}");
+        }
+    }
+
+    public void ApplyPlayerWindowRegion()
+    {
+        try
+        {
+            double dpi = GetDpiScale();
+            int S(double val) => (int)Math.Round(val * dpi);
+
+            // Плеер 800x600:
+            IntPtr rgn = CreateRoundRectRgn(S(0), S(0), S(800), S(600), S(48), S(48));
+            SetWindowRgn(_hwnd, rgn, true);
+        }
+        catch (Exception ex)
+        {
+            AppLogger.Warn($"ApplyPlayerWindowRegion warning: {ex.Message}");
+        }
+    }
+
+    public void ApplySettingsWindowRegion()
+    {
+        try
+        {
+            double dpi = GetDpiScale();
+            int S(double val) => (int)Math.Round(val * dpi);
+
+            // Настройки 840x620:
+            IntPtr rgn = CreateRoundRectRgn(S(0), S(0), S(840), S(620), S(48), S(48));
+            SetWindowRgn(_hwnd, rgn, true);
+        }
+        catch (Exception ex)
+        {
+            AppLogger.Warn($"ApplySettingsWindowRegion warning: {ex.Message}");
+        }
+    }
+
+    public void ApplyTasksWindowRegion()
+    {
+        try
+        {
+            double dpi = GetDpiScale();
+            int S(double val) => (int)Math.Round(val * dpi);
+
+            // В детальном списке задач ExpandedRoot 400x244: left: 20, top: 0, width: 400, height: 244, radius: 24
+            IntPtr rgn1 = CreateRoundRectRgn(S(20), S(0), S(420), S(244), S(48), S(48));
+
+            // Bottom Pill: left: 90, top: 244, width: 260, height: 42, radius: 21
+            IntPtr rgn2 = CreateRoundRectRgn(S(90), S(244), S(350), S(286), S(42), S(42));
+
+            CombineRgn(rgn1, rgn1, rgn2, RGN_OR);
+            DeleteObject(rgn2);
+
+            SetWindowRgn(_hwnd, rgn1, true);
+        }
+        catch (Exception ex)
+        {
+            AppLogger.Warn($"ApplyTasksWindowRegion warning: {ex.Message}");
         }
     }
 
@@ -622,6 +788,7 @@ public sealed partial class WidgetWindow : Window
                     ExpandedRoot.Visibility = Visibility.Visible;
                     ExpandedRoot.Opacity = 1.0;
                 }
+                ApplyTasksWindowRegion();
             }
             else
             {
@@ -631,6 +798,7 @@ public sealed partial class WidgetWindow : Window
                     CompactView.Visibility = Visibility.Visible;
                     CompactView.Opacity = 1.0;
                 }
+                ApplyExpandedWindowRegion();
             }
         }
         finally
@@ -642,12 +810,14 @@ public sealed partial class WidgetWindow : Window
     private void OnOpenTasksStoryboardCompleted(object? sender, object e)
     {
         if (CompactView != null) CompactView.Visibility = Visibility.Collapsed;
+        ApplyTasksWindowRegion();
         _isTransitioning = false;
     }
 
     private void OnCloseTasksStoryboardCompleted(object? sender, object e)
     {
         if (ExpandedRoot != null) ExpandedRoot.Visibility = Visibility.Collapsed;
+        ApplyExpandedWindowRegion();
         _isTransitioning = false;
     }
 
@@ -1358,6 +1528,7 @@ public sealed partial class WidgetWindow : Window
             ResizeWidgetWindow(840, 620, centerScreen: true);
             var margins = new MARGINS { cxLeftWidth = -1, cxRightWidth = -1, cyTopHeight = -1, cyBottomHeight = -1 };
             DwmExtendFrameIntoClientArea(_hwnd, ref margins);
+            ApplySettingsWindowRegion();
             ViewModel.OpenSettings();
         });
     }
