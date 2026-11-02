@@ -40,6 +40,7 @@ public sealed partial class WidgetWindow : Window
 
     private const long WS_EX_TOOLWINDOW = 0x00000080L;
     private const long WS_EX_TOPMOST = 0x00000008L;
+    private const long WS_EX_LAYERED = 0x00080000L;
 
     private const uint SWP_NOSIZE = 0x0001;
     private const uint SWP_NOMOVE = 0x0002;
@@ -251,12 +252,21 @@ public sealed partial class WidgetWindow : Window
 
     private void ConfigureWindowStyles()
     {
-        if (_appWindow.Presenter is OverlappedPresenter presenter)
+        // 1. Убираем стандартный TitleBar и настраиваем кнопки
+        var appWindow = this.AppWindow ?? _appWindow;
+        if (appWindow.TitleBar != null)
         {
+            appWindow.TitleBar.ExtendsContentIntoTitleBar = true;
+            appWindow.TitleBar.ButtonBackgroundColor = Windows.UI.Color.FromArgb(0, 0, 0, 0);
+            appWindow.TitleBar.ButtonInactiveBackgroundColor = Windows.UI.Color.FromArgb(0, 0, 0, 0);
+        }
+
+        if (appWindow.Presenter is OverlappedPresenter presenter)
+        {
+            presenter.SetBorderAndTitleBar(false, false);
             presenter.IsResizable = false;
             presenter.IsMaximizable = false;
             presenter.IsMinimizable = false;
-            presenter.SetBorderAndTitleBar(false, false);
             presenter.IsAlwaysOnTop = true;
         }
 
@@ -269,16 +279,14 @@ public sealed partial class WidgetWindow : Window
         style |= WS_POPUP;
         SetWindowLongPtr(_hwnd, GWL_STYLE, new IntPtr(style));
 
-        // Добавление WS_EX_TOOLWINDOW (исключение из Alt+Tab) и WS_EX_TOPMOST
+        // 2. Включаем прозрачность окна через Win32 P/Invoke стили (WS_EX_LAYERED | WS_EX_TOOLWINDOW | WS_EX_TOPMOST)
         long exStyle = GetWindowLongPtr(_hwnd, GWL_EXSTYLE).ToInt64();
-        exStyle |= WS_EX_TOOLWINDOW;
-        exStyle |= WS_EX_TOPMOST;
+        exStyle |= WS_EX_LAYERED | WS_EX_TOOLWINDOW | WS_EX_TOPMOST;
         SetWindowLongPtr(_hwnd, GWL_EXSTYLE, new IntPtr(exStyle));
 
-        // Применение изменений стилей к неклиентской области
         SetWindowPos(_hwnd, IntPtr.Zero, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED);
 
-        // Win32 DWM Glassmorphism: полная прозрачность клиентской области (DwmExtendFrameIntoClientArea с margins -1)
+        // 3. Настраиваем DWM Frame
         var margins = new MARGINS { cxLeftWidth = -1, cxRightWidth = -1, cyTopHeight = -1, cyBottomHeight = -1 };
         DwmExtendFrameIntoClientArea(_hwnd, ref margins);
     }
@@ -798,19 +806,41 @@ public sealed partial class WidgetWindow : Window
     {
         try
         {
-            if (DailyResetMediaPlayerElement?.MediaPlayer != null)
+            if (DailyResetMediaPlayerElement != null)
             {
-                DailyResetMediaPlayerElement.MediaPlayer.Pause();
-                DailyResetMediaPlayerElement.MediaPlayer.Source = null;
-                DailyResetMediaPlayerElement.SetMediaPlayer(null);
+                try
+                {
+                    if (DailyResetMediaPlayerElement.MediaPlayer != null)
+                    {
+                        DailyResetMediaPlayerElement.MediaPlayer.Pause();
+                        DailyResetMediaPlayerElement.MediaPlayer.Source = null;
+                    }
+                    DailyResetMediaPlayerElement.SetMediaPlayer(null);
+                }
+                catch (Exception ex)
+                {
+                    AppLogger.Warn($"DailyResetMediaPlayerElement cleanup warning: {ex.Message}");
+                }
             }
+
             if (_mediaPlayer != null)
             {
-                _mediaPlayer.Pause();
-                _mediaPlayer.Source = null;
-                _mediaPlayer.Dispose();
-                _mediaPlayer = null;
+                try
+                {
+                    _mediaPlayer.Pause();
+                    _mediaPlayer.Source = null;
+                    _mediaPlayer.Dispose();
+                }
+                catch (Exception ex)
+                {
+                    AppLogger.Warn($"_mediaPlayer dispose warning: {ex.Message}");
+                }
+                finally
+                {
+                    _mediaPlayer = null;
+                }
             }
+
             AppLogger.Info("Media player cleanly stopped and disposed.");
         }
         catch (Exception ex)
@@ -1130,43 +1160,78 @@ public sealed partial class WidgetWindow : Window
         }
     }
 
+    private bool _isProcessingCompletion;
+
     private async void OnCountRitualButtonClick(object sender, RoutedEventArgs e)
     {
+        if (_isProcessingCompletion) return;
+        _isProcessingCompletion = true;
+
         try
         {
-            // 1. Асинхронно фиксируем ритуал в БД
-            await ViewModel.Player.CountRitualAsync();
+            AppLogger.Info("Нажата кнопка 'Засчитать выполнение'");
 
-            // 2. Глушим плеер безопасно
-            try
+            // 1. Сначала плавно глушим звук и останавливаем воспроизведение БЕЗ немедленного Dispose
+            if (_mediaPlayer != null)
             {
-                _mediaPlayer?.Pause();
+                try
+                {
+                    _mediaPlayer.Pause();
+                }
+                catch (Exception ex)
+                {
+                    AppLogger.Warn($"Ошибка при паузе плеера: {ex.Message}");
+                }
             }
-            catch { }
 
-            // 3. Показываем плавающее Toast-уведомление поверх экрана
+            // 2. АСИНХРОННО пишем в базу данных в фоновом пуле потоков (Task.Run), НЕ блокируя UI!
+            await Task.Run(async () =>
+            {
+                await ViewModel.Player.CountRitualAsync();
+                await ViewModel.RefreshMonthlyProgressAsync();
+            });
+
+            // 3. Показываем красивое Toast-уведомление поверх карточки (в UI-потоке)
             if (RitualCompletedToast != null)
             {
                 RitualCompletedToast.Visibility = Visibility.Visible;
             }
 
-            // 4. Через 1.2 секунды плавно возвращаемся на экран 3 карточек (440x300)
-            await Task.Delay(1200);
+            AppLogger.Info("Ритуал успешно сохранён в БД, обновляем UI");
+
+            // 4. Даём пользователю 1 секунду насладиться результатом
+            await Task.Delay(1000);
 
             if (RitualCompletedToast != null)
             {
                 RitualCompletedToast.Visibility = Visibility.Collapsed;
             }
 
-            ExitPlayer();
+            // 5. Безопасно очищаем источник плеера
+            if (DailyResetMediaPlayerElement?.MediaPlayer != null)
+            {
+                DailyResetMediaPlayerElement.MediaPlayer.Source = null;
+            }
+            if (_mediaPlayer != null)
+            {
+                _mediaPlayer.Source = null;
+            }
 
-            // 5. Обновляем процент месяца
-            await ViewModel.RefreshMonthlyProgressAsync();
+            // 6. Плавно возвращаемся на главный экран 3 карточек
+            NavigateToHome();
         }
         catch (Exception ex)
         {
-            AppLogger.Error(ex, "Error counting daily ritual");
-            ExitPlayer();
+            AppLogger.Fatal(ex, "КРИТИЧЕСКИЙ СБОЙ при зачёте ритуала!");
+            if (RitualCompletedToast != null)
+            {
+                RitualCompletedToast.Visibility = Visibility.Visible;
+            }
+            NavigateToHome();
+        }
+        finally
+        {
+            _isProcessingCompletion = false;
         }
     }
 

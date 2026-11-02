@@ -123,8 +123,28 @@ public partial class TodayTabViewModel : ObservableObject
         _notificationBus = notificationBus;
         _dayTransitionService = dayTransitionService;
 
-        _notificationBus?.Subscribe<DailyRitualCountedMessage>(this, async _ => await RefreshDailyRitualStatusAsync());
-        _notificationBus?.Subscribe<TaskCompletedMessage>(this, async _ => await RefreshSummaryAsync());
+        _notificationBus?.Subscribe<DailyRitualCountedMessage>(this, async _ =>
+        {
+            try
+            {
+                await RefreshDailyRitualStatusAsync();
+            }
+            catch (Exception ex)
+            {
+                AppLogger.Warn($"Handling warning: {ex.Message}");
+            }
+        });
+        _notificationBus?.Subscribe<TaskCompletedMessage>(this, async _ =>
+        {
+            try
+            {
+                await RefreshSummaryAsync();
+            }
+            catch (Exception ex)
+            {
+                AppLogger.Warn($"Handling warning: {ex.Message}");
+            }
+        });
     }
 
     [RelayCommand]

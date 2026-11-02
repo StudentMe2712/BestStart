@@ -176,26 +176,40 @@ public partial class WidgetViewModel : ObservableObject
         {
             _notificationBus.Subscribe<DailyRitualCountedMessage>(this, async msg =>
             {
-                DateTime? msgTime = null;
-                if (DateOnly.TryParse(msg.LogicalDate, out var date))
+                try
                 {
-                    msgTime = date.ToDateTime(new TimeOnly(12, 0));
-                }
+                    DateTime? msgTime = null;
+                    if (DateOnly.TryParse(msg.LogicalDate, out var date))
+                    {
+                        msgTime = date.ToDateTime(new TimeOnly(12, 0));
+                    }
 
-                await RefreshMonthlyProgressAsync(msgTime).ConfigureAwait(false);
-                ResetStatus = "Выполнено";
+                    await RefreshMonthlyProgressAsync(msgTime).ConfigureAwait(false);
+                    ResetStatus = "Выполнено";
+                }
+                catch (Exception ex)
+                {
+                    AppLogger.Warn($"Handling warning: {ex.Message}");
+                }
             });
 
             _notificationBus.Subscribe<DayChangedMessage>(this, async msg =>
             {
-                DateTime? msgTime = null;
-                if (DateOnly.TryParse(msg.NewLogicalDate, out var date))
+                try
                 {
-                    msgTime = date.ToDateTime(new TimeOnly(12, 0));
-                }
+                    DateTime? msgTime = null;
+                    if (DateOnly.TryParse(msg.NewLogicalDate, out var date))
+                    {
+                        msgTime = date.ToDateTime(new TimeOnly(12, 0));
+                    }
 
-                await RefreshMonthlyProgressAsync(msgTime).ConfigureAwait(false);
-                ResetStatus = "Готово к просмотру";
+                    await RefreshMonthlyProgressAsync(msgTime).ConfigureAwait(false);
+                    ResetStatus = "Готово к просмотру";
+                }
+                catch (Exception ex)
+                {
+                    AppLogger.Warn($"Handling warning: {ex.Message}");
+                }
             });
         }
     }

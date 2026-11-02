@@ -13,6 +13,8 @@ using SecondSelf.Data.Repositories;
 using Xunit;
 using Xunit.Abstractions;
 
+[assembly: CollectionBehavior(DisableTestParallelization = true)]
+
 namespace SecondSelf.Tests;
 
 /// <summary>
