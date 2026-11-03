@@ -7,8 +7,10 @@ public class AppSettings
 {
     private int _minIntervalMinutes = 5;
     private int _maxIntervalMinutes = 20;
+    private int _postponeMinutes = 10;
     private double _dimmingOpacity = 0.60;
     private double _videoVolume = 0.85;
+    private double _duckVolumeLevel = 0.15;
 
     /// <summary>
     /// Minimum interval in minutes before random provocation (>= 1 and <= MaxIntervalMinutes).
@@ -26,6 +28,15 @@ public class AppSettings
     {
         get => _maxIntervalMinutes;
         set => _maxIntervalMinutes = value;
+    }
+
+    /// <summary>
+    /// Postpone/snooze duration in minutes when provocation is deferred (1..120, default 10).
+    /// </summary>
+    public int PostponeMinutes
+    {
+        get => _postponeMinutes;
+        set => _postponeMinutes = value;
     }
 
     /// <summary>
@@ -69,6 +80,24 @@ public class AppSettings
     /// <summary>
     /// Visual mascot skin ("DynamicOrb", "CyberVisor", "CustomImage"). Default: "DynamicOrb".
     /// </summary>
+    /// <summary>
+    /// Mode for handling background audio while video is playing:
+    /// "Mute" (default, mutes all other background sounds),
+    /// "Duck" (lowers other sounds to DuckVolumeLevel),
+    /// "PauseMedia" (mutes other sounds and triggers media pause key),
+    /// "Disabled" (leaves other audio unchanged).
+    /// </summary>
+    public string AudioDuckingMode { get; set; } = "Mute";
+
+    /// <summary>
+    /// Volume level (0.0 to 1.0) when AudioDuckingMode is "Duck" (default: 0.15).
+    /// </summary>
+    public double DuckVolumeLevel
+    {
+        get => _duckVolumeLevel;
+        set => _duckVolumeLevel = double.IsNaN(value) ? 0.15 : Math.Clamp(value, 0.0, 1.0);
+    }
+
     public string MascotSkin { get; set; } = "DynamicOrb";
 
     /// <summary>
@@ -156,6 +185,7 @@ public class AppSettings
         }
 
         DimmingOpacity = double.IsNaN(DimmingOpacity) ? 0.60 : Math.Clamp(DimmingOpacity, 0.10, 0.95);
+        PostponeMinutes = Math.Clamp(PostponeMinutes, 1, 120);
         VideoVolume = double.IsNaN(VideoVolume) ? 0.85 : Math.Clamp(VideoVolume, 0.0, 1.0);
 
         if (string.IsNullOrWhiteSpace(TriggerHotkey))
@@ -184,6 +214,12 @@ public class AppSettings
         EntertainmentKeywords ??= new() { "YouTube", "TikTok", "Twitch", "Reddit", "VK", "Shorts", "Reels", "Netflix", "Steam" };
         IdleThresholdMinutes = Math.Clamp(IdleThresholdMinutes, 1, 120);
         SmartCooldownMinutes = Math.Clamp(SmartCooldownMinutes, 1, 120);
+
+        if (AudioDuckingMode != "Mute" && AudioDuckingMode != "Duck" && AudioDuckingMode != "PauseMedia" && AudioDuckingMode != "Disabled")
+        {
+            AudioDuckingMode = "Mute";
+        }
+        DuckVolumeLevel = double.IsNaN(DuckVolumeLevel) ? 0.15 : Math.Clamp(DuckVolumeLevel, 0.0, 1.0);
 
         Videos ??= new List<VideoItem>();
     }

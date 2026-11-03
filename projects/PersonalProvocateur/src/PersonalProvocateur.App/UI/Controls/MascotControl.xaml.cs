@@ -46,6 +46,7 @@ public partial class MascotControl : UserControl
     private readonly DispatcherTimer _attentionTimer;
     private Storyboard? _activeStoryboard;
     private Storyboard? _skinStoryboard;
+    private Action? _clickAnimationCallback;
 
     /// <summary>
     /// Gets or sets the asset service providing mascot sprites.
@@ -404,6 +405,7 @@ public partial class MascotControl : UserControl
     {
         StopAllAnimations();
 
+        _clickAnimationCallback = onCompleted;
         SetState(MascotState.Clicked);
         SetRandomSpeech(MascotState.Clicked);
 
@@ -463,11 +465,24 @@ public partial class MascotControl : UserControl
         sb.Completed += (s, e) =>
         {
             _activeStoryboard = null;
-            onCompleted?.Invoke();
+            var cb = _clickAnimationCallback;
+            _clickAnimationCallback = null;
+            cb?.Invoke();
         };
 
         _activeStoryboard = sb;
         sb.Begin();
+    }
+
+    /// <summary>
+    /// Completes the click animation callback immediately for deterministic unit testing.
+    /// </summary>
+    public void CompleteClickAnimationForTesting()
+    {
+        var cb = _clickAnimationCallback;
+        _clickAnimationCallback = null;
+        StopAllAnimations();
+        cb?.Invoke();
     }
 
     private void StartSkinIdleAnimation()

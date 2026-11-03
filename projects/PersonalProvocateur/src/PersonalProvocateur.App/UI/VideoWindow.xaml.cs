@@ -20,6 +20,7 @@ public partial class VideoWindow : Window
 {
     private readonly OverlayCoordinator? _coordinator;
     private readonly SettingsStore? _settingsStore;
+    private readonly IAudioDuckingService? _audioDuckingService;
     private readonly DispatcherTimer _playbackWatchdogTimer;
     private bool _hasCompleted;
 
@@ -45,16 +46,25 @@ public partial class VideoWindow : Window
     public DispatcherTimer PlaybackWatchdogTimer => _playbackWatchdogTimer;
 
     /// <summary>
+    /// Gets the audio ducking service instance, if configured.
+    /// </summary>
+    public IAudioDuckingService? AudioDucking => _audioDuckingService;
+
+    /// <summary>
     /// Initializes a new instance of <see cref="VideoWindow"/>.
     /// </summary>
     /// <param name="coordinator">The coordinator orchestrating sessions.</param>
     /// <param name="settingsStore">Application settings store.</param>
-    public VideoWindow(OverlayCoordinator coordinator, SettingsStore settingsStore)
+    /// <param name="coordinator">The coordinator orchestrating sessions.</param>
+    /// <param name="settingsStore">Application settings store.</param>
+    /// <param name="audioDuckingService">Optional service for ducking background audio during playback.</param>
+    public VideoWindow(OverlayCoordinator coordinator, SettingsStore settingsStore, IAudioDuckingService? audioDuckingService = null)
     {
         InitializeComponent();
 
         _coordinator = coordinator;
         _settingsStore = settingsStore;
+        _audioDuckingService = audioDuckingService;
 
         _playbackWatchdogTimer = new DispatcherTimer
         {
@@ -129,10 +139,18 @@ public partial class VideoWindow : Window
             var absolutePath = Path.GetFullPath(filePath);
             Player.Source = new Uri(absolutePath, UriKind.Absolute);
             Player.Play();
+
+            if (_settingsStore?.CurrentSettings != null)
+            {
+                var mode = _settingsStore.CurrentSettings.AudioDuckingMode;
+                var duckLevel = (float)_settingsStore.CurrentSettings.DuckVolumeLevel;
+                _audioDuckingService?.DuckOtherApplications(mode, duckLevel);
+            }
         }
         catch
         {
             _playbackWatchdogTimer.Stop();
+        _audioDuckingService?.RestoreOtherApplications();
             // If URI creation or initial play fails, complete session gracefully
             _coordinator?.OnVideoPlaybackFailed(filePath);
         }
@@ -261,6 +279,7 @@ public partial class VideoWindow : Window
 
         _hasCompleted = true;
         _playbackWatchdogTimer.Stop();
+        _audioDuckingService?.RestoreOtherApplications();
 
         if (immediate || !IsLoaded)
         {
@@ -308,6 +327,7 @@ public partial class VideoWindow : Window
     private void Player_MediaFailed(object? sender, ExceptionRoutedEventArgs e)
     {
         _playbackWatchdogTimer.Stop();
+        _audioDuckingService?.RestoreOtherApplications();
         // Automatically switch to next video or cleanly complete without crashing
         string failedPath = Player.Source?.LocalPath ?? string.Empty;
         if (_coordinator != null)
@@ -357,6 +377,7 @@ public partial class VideoWindow : Window
         }
 
         _playbackWatchdogTimer.Stop();
+        _audioDuckingService?.RestoreOtherApplications();
         try
         {
             Player.Stop();
@@ -373,6 +394,7 @@ public partial class VideoWindow : Window
     protected override void OnClosed(EventArgs e)
     {
         _playbackWatchdogTimer.Stop();
+        _audioDuckingService?.RestoreOtherApplications();
         Microsoft.Win32.SystemEvents.DisplaySettingsChanged -= OnDisplaySettingsChanged;
         base.OnClosed(e);
     }

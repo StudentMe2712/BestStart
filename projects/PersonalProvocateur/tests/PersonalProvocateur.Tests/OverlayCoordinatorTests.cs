@@ -450,6 +450,52 @@ public class OverlayCoordinatorTests : IDisposable
     }
 
     [Fact]
+    public void PostponeSession_DismissesOverlay_ReturnsToIdle_AndSchedulesPostponeCycle()
+    {
+        var store = CreateTestSettingsStore(isPaused: false);
+        store.Update(s => s.PostponeMinutes = 15);
+
+        TimeSpan scheduledInterval = TimeSpan.Zero;
+        var scheduler = new RandomReminderScheduler(
+            timerScheduler: (_, interval) => scheduledInterval = interval);
+
+        var videoLib = new VideoLibraryService(store);
+        int memoryTrims = 0;
+
+        using var coordinator = new OverlayCoordinator(
+            scheduler,
+            videoLib,
+            store,
+            overlayWindowFactory: _ => null,
+            videoWindowFactory: _ => null,
+            dispatcherInvoker: a => a(),
+            memoryTrimmer: () => memoryTrims++);
+
+        // Trigger session
+        coordinator.TriggerProvocation(isManualTest: false);
+        Assert.Equal(SessionState.MascotOverlayActive, coordinator.CurrentState);
+        Assert.True(scheduler.IsSessionActive);
+
+        // Postpone session with default settings value (15 min)
+        coordinator.PostponeSession();
+
+        Assert.Equal(SessionState.BackgroundIdle, coordinator.CurrentState);
+        Assert.False(scheduler.IsSessionActive);
+        Assert.True(scheduler.IsRunning);
+        Assert.Equal(TimeSpan.FromMinutes(15), scheduledInterval);
+        Assert.Equal(1, memoryTrims);
+
+        // Trigger again and postpone with custom value
+        coordinator.TriggerProvocation(isManualTest: false);
+        Assert.Equal(SessionState.MascotOverlayActive, coordinator.CurrentState);
+
+        coordinator.PostponeSession(25);
+        Assert.Equal(SessionState.BackgroundIdle, coordinator.CurrentState);
+        Assert.Equal(TimeSpan.FromMinutes(25), scheduledInterval);
+        Assert.Equal(2, memoryTrims);
+    }
+
+    [Fact]
     public void OverlayCoordinator_SettingsChanged_UpdatesPausedStateAutomatically()
     {
         var store = CreateTestSettingsStore(isPaused: false);
@@ -910,5 +956,47 @@ public class OverlayCoordinatorTests : IDisposable
         // Because it was rejected and scheduler was not active/running, next cycle should be restarted
         Assert.True(scheduler.IsRunning);
         Assert.Equal(1, cyclesStarted);
+    }
+    [Fact]
+    public void OverlayCoordinator_EmergencyDismissAndCompleteSession_RestoresAudioDucking()
+    {
+        var store = CreateTestSettingsStore(isPaused: false);
+        var scheduler = new RandomReminderScheduler();
+        var videoLib = new VideoLibraryService(store);
+
+        var otherSession = new MockAudioSessionItem { ProcessId = 9999, Volume = 0.8f, Muted = false };
+        using var duckingService = new AudioDuckingService(
+            sessionProvider: () => new[] { otherSession },
+            currentProcessId: 1000);
+
+        using var coordinator = new OverlayCoordinator(
+            scheduler,
+            videoLib,
+            store,
+            overlayWindowFactory: _ => null,
+            videoWindowFactory: _ => null,
+            dispatcherInvoker: a => a(),
+            audioDuckingService: duckingService);
+
+        Assert.Same(duckingService, coordinator.AudioDucking);
+
+        // Manually duck
+        duckingService.DuckOtherApplications("Mute");
+        Assert.True(duckingService.IsDucked);
+        Assert.True(otherSession.Muted);
+
+        // Emergency dismiss restores ducking
+        coordinator.EmergencyDismiss();
+        Assert.False(duckingService.IsDucked);
+        Assert.False(otherSession.Muted);
+
+        // Duck again and test CompleteSession restores ducking
+        duckingService.DuckOtherApplications("Duck", duckLevel: 0.20f);
+        Assert.True(duckingService.IsDucked);
+        Assert.Equal(0.20f, otherSession.Volume, 2);
+
+        coordinator.CompleteSession();
+        Assert.False(duckingService.IsDucked);
+        Assert.Equal(0.80f, otherSession.Volume, 2);
     }
 }

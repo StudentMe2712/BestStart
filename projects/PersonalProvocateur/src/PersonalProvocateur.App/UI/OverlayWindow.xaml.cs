@@ -5,6 +5,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
+using Button = System.Windows.Controls.Button;
 using Color = System.Windows.Media.Color;
 using KeyEventArgs = System.Windows.Input.KeyEventArgs;
 using PersonalProvocateur.App.Services;
@@ -40,6 +41,35 @@ public partial class OverlayWindow : Window
     public bool IsClickHandled => _isClickHandled;
 
     /// <summary>
+    /// Gets the choice card container control.
+    /// </summary>
+    public Border? ChoiceCardControl => ChoiceCard;
+
+    /// <summary>
+    /// Gets the launch provocation button control.
+    /// </summary>
+    public Button? LaunchButtonControl => LaunchButton;
+
+    /// <summary>
+    /// Gets the postpone reminder button control.
+    /// </summary>
+    public Button? PostponeButtonControl => PostponeButton;
+
+    /// <summary>
+    /// Triggers the launch action for testing purposes.
+    /// </summary>
+    public void TriggerLaunchForTesting()
+    {
+        LaunchButton_Click(this, new RoutedEventArgs());
+        Mascot?.CompleteClickAnimationForTesting();
+    }
+
+    /// <summary>
+    /// Triggers the postpone action for testing purposes.
+    /// </summary>
+    public void TriggerPostponeForTesting() => PostponeButton_Click(this, new RoutedEventArgs());
+
+    /// <summary>
     /// Initializes a new instance of <see cref="OverlayWindow"/>.
     /// </summary>
     /// <param name="coordinator">The overlay coordinator orchestrating sessions.</param>
@@ -58,6 +88,10 @@ public partial class OverlayWindow : Window
             if (Mascot != null)
             {
                 Mascot.Visibility = Visibility.Collapsed;
+            }
+            if (ChoiceCard != null)
+            {
+                ChoiceCard.Visibility = Visibility.Collapsed;
             }
             if (EmptyLibraryNotice != null)
             {
@@ -114,6 +148,7 @@ public partial class OverlayWindow : Window
             {
                 _autoTriggerTimer.Stop();
                 if (!_isClickHandled &&
+                    (ChoiceCard == null || ChoiceCard.Visibility != Visibility.Visible) &&
                     (EmptyLibraryNotice == null || EmptyLibraryNotice.Visibility != Visibility.Visible) &&
                     (SpotlightContainer == null || SpotlightContainer.Visibility != Visibility.Visible) &&
                     _coordinator?.CurrentState == PersonalProvocateur.App.Models.SessionState.MascotOverlayActive)
@@ -129,6 +164,10 @@ public partial class OverlayWindow : Window
             if (Mascot != null)
             {
                 Mascot.Visibility = Visibility.Collapsed;
+            }
+            if (ChoiceCard != null)
+            {
+                ChoiceCard.Visibility = Visibility.Collapsed;
             }
             if (EmptyLibraryNotice != null)
             {
@@ -152,6 +191,58 @@ public partial class OverlayWindow : Window
 
         // Start entrance peek animation
         Mascot.PlayPeekAnimation();
+    }
+
+    /// <summary>
+    /// Displays the interactive choice card ("Запустить" vs "Отложить") with smooth fade-in animation.
+    /// </summary>
+    public void ShowChoiceCard()
+    {
+        _autoTriggerTimer?.Stop();
+        if (ChoiceCard != null && ChoiceCard.Visibility != Visibility.Visible)
+        {
+            ChoiceCard.Opacity = 0.0;
+            ChoiceCard.Visibility = Visibility.Visible;
+            var fadeIn = new DoubleAnimation
+            {
+                From = 0.0,
+                To = 1.0,
+                Duration = TimeSpan.FromMilliseconds(200),
+                EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
+            };
+            ChoiceCard.BeginAnimation(UIElement.OpacityProperty, fadeIn);
+            Focusable = true;
+            LaunchButton?.Focus();
+        }
+    }
+
+    private void LaunchButton_Click(object sender, RoutedEventArgs e)
+    {
+        _autoTriggerTimer?.Stop();
+        _isClickHandled = true;
+        if (ChoiceCard != null)
+        {
+            ChoiceCard.Visibility = Visibility.Collapsed;
+        }
+        if (Mascot != null && Mascot.Visibility == Visibility.Visible)
+        {
+            Mascot.PlayClickAnimation(() => _coordinator?.OnMascotClicked());
+        }
+        else
+        {
+            _coordinator?.OnMascotClicked();
+        }
+    }
+
+    private void PostponeButton_Click(object sender, RoutedEventArgs e)
+    {
+        _autoTriggerTimer?.Stop();
+        _isClickHandled = true;
+        if (ChoiceCard != null)
+        {
+            ChoiceCard.Visibility = Visibility.Collapsed;
+        }
+        _coordinator?.PostponeSession();
     }
 
     /// <summary>
@@ -263,6 +354,11 @@ public partial class OverlayWindow : Window
             Mascot.Visibility = Visibility.Collapsed;
         }
 
+        if (ChoiceCard != null)
+        {
+            ChoiceCard.Visibility = Visibility.Collapsed;
+        }
+
         if (EmptyLibraryNotice != null)
         {
             EmptyLibraryNotice.Visibility = Visibility.Collapsed;
@@ -309,6 +405,22 @@ public partial class OverlayWindow : Window
 
     private void OverlayWindow_PreviewKeyDown(object sender, KeyEventArgs e)
     {
+        if (ChoiceCard != null && ChoiceCard.Visibility == Visibility.Visible)
+        {
+            if (e.Key == Key.Enter)
+            {
+                e.Handled = true;
+                LaunchButton_Click(this, new RoutedEventArgs());
+                return;
+            }
+            if (e.Key == Key.Escape)
+            {
+                e.Handled = true;
+                PostponeButton_Click(this, new RoutedEventArgs());
+                return;
+            }
+        }
+
         if (SpotlightContainer != null && SpotlightContainer.Visibility == Visibility.Visible && e.Key == Key.Enter)
         {
             e.Handled = true;
@@ -366,6 +478,12 @@ public partial class OverlayWindow : Window
             return;
         }
 
+        if (ChoiceCard != null && ChoiceCard.Visibility == Visibility.Visible)
+        {
+            e.Handled = true;
+            return;
+        }
+
         e.Handled = true;
         if (IsSecondaryDimmerOnly)
         {
@@ -385,25 +503,24 @@ public partial class OverlayWindow : Window
 
     /// <summary>
     /// Handles user click on the mascot control with debounce protection.
+    /// Shows the choice card to launch or postpone.
     /// </summary>
     public void HandleMascotClick()
     {
         _autoTriggerTimer?.Stop();
 
-        if (_isClickHandled)
+        if (EmptyLibraryNotice != null && EmptyLibraryNotice.Visibility == Visibility.Visible)
+        {
+            return;
+        }
+
+        if (SpotlightContainer != null && SpotlightContainer.Visibility == Visibility.Visible)
         {
             return;
         }
 
         _isClickHandled = true;
-        if (Mascot != null && Mascot.Visibility == Visibility.Visible)
-        {
-            Mascot.PlayClickAnimation(() => _coordinator?.OnMascotClicked());
-        }
-        else
-        {
-            _coordinator?.OnMascotClicked();
-        }
+        ShowChoiceCard();
     }
 
     /// <summary>
@@ -412,11 +529,11 @@ public partial class OverlayWindow : Window
     public void TriggerAutoPlayForTesting()
     {
         _autoTriggerTimer?.Stop();
-        if (!_isClickHandled &&
-            (EmptyLibraryNotice == null || EmptyLibraryNotice.Visibility != Visibility.Visible) &&
+        if ((EmptyLibraryNotice == null || EmptyLibraryNotice.Visibility != Visibility.Visible) &&
             (SpotlightContainer == null || SpotlightContainer.Visibility != Visibility.Visible))
         {
-            HandleMascotClick();
+            _isClickHandled = true;
+            ShowChoiceCard();
         }
     }
 
@@ -434,6 +551,10 @@ public partial class OverlayWindow : Window
         _autoTriggerTimer?.Stop();
         CanClose = true;
         Mascot?.StopAllAnimations();
+        if (ChoiceCard != null)
+        {
+            ChoiceCard.Visibility = Visibility.Collapsed;
+        }
         Close();
     }
 
@@ -447,6 +568,10 @@ public partial class OverlayWindow : Window
         if (Mascot != null)
         {
             Mascot.Visibility = Visibility.Collapsed;
+        }
+        if (ChoiceCard != null)
+        {
+            ChoiceCard.Visibility = Visibility.Collapsed;
         }
         if (SpotlightContainer != null)
         {

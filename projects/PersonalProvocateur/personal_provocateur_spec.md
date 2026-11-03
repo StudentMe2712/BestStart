@@ -1,6 +1,6 @@
 # СПЕЦИФИКАЦИЯ ПРОЕКТА: Provocateur (`personal_provocateur_spec.md`)
 
-> **СТАТУС ДОКУМЕНТА:** Спринты 1–9 завершены (229/229 тестов пройдено). Все майлстоуны СПРИНТА 9 выполнены (1180×780 Production Studio UI, YouTube-Style Video Thumbnails, Smart Procrastination/Idle Detector & Save/Plus Button Fixes).
+> **СТАТУС ДОКУМЕНТА:** Спринты 1–12 завершены (260/260 тестов пройдено). Все майлстоуны СПРИНТА 12 выполнены (Интерактивный выбор провокатора — «Запустить» или «Отложить»).
 > **ЛОКАЦИЯ ПРОЕКТА:** `projects/PersonalProvocateur/` (внутри репозитория `BestStart`).
 > **СТЕК:** C# 13 | .NET 10 LTS (`net10.0-windows`) | WPF + XAML | Win32 P/Invoke | JSON Storage | xUnit.
 
@@ -167,6 +167,30 @@ projects/PersonalProvocateur/
   2. Удалить закрытие (`Close()`) и сворачивание из обработчика `SaveButton_Click`. При сохранении окно остается открытым, плавно выезжает Toast-баннер `✓ Настройки успешно сохранены` и затухает через 2.2 с.
   3. В разделе «Образ и таймер» реализовать: 3 селектор-карточки режимов работы, визуальный коридор времени с быстрыми пресетами-капсулами (`5–15м`, `15–35м`, `30–60м`, `60–120м`), виджет умных триггеров с интерактивными тегами сайтов (добавление и удаление).
 
+### ADR-027 (СПРИНТ 11): Фоновое приглушение и остановка сторонних аудиосессий (Audio Ducking & Muting via WASAPI CoreAudio COM)
+* **Контекст:** При воспроизведении мотивационного видео фоновые звуки системы (музыка в Spotify, видео в браузере, игры, уведомления мессенджеров, системные звуки) перебивают звук видеоролика. Требуется автоматически приглушать или заглушать/останавливать все остальные звуки системы при старте видео и надежно восстанавливать их при завершении.
+* **Решение:**
+  1. Реализован `AudioDuckingService` с нулевыми внешними зависимостями (Zero Third-Party Dependencies) через нативные COM-интерфейсы Windows Core Audio WASAPI (`IMMDeviceEnumerator`, `IMMDevice`, `IAudioSessionManager2`, `IAudioSessionEnumerator`, `IAudioSessionControl2`, `ISimpleAudioVolume`).
+  2. Поддерживаются 4 режима (`AudioDuckingMode`):
+     - `Mute` (по умолчанию) — полное мгновенное заглушение всех остальных приложений (`ISimpleAudioVolume.SetMute(true)`);
+     - `Duck` — приглушение громкости сторонних приложений до заданного уровня (`15%`);
+     - `PauseMedia` — отправка глобального сигнала медиа-паузы `VK_MEDIA_PLAY_PAUSE` и заглушение;
+     - `Disabled` — отключено.
+  3. Сессии нашего собственного процесса (`ProcessId == Environment.ProcessId`) исключаются из заглушения, обеспечивая чистое воспроизведение видео.
+  4. При завершении воспроизведения (естественный конец, ручное закрытие, паника `PanicHotkey`, сбой видео или закрытие окна) все измененные аудиосессии мгновенно и идемпотентно восстанавливают свои оригинальные уровни громкости и статус Mute.
+  5. В раздел настроек «Внешний вид и воспроизведение» добавлен темный `ComboBox` с выбором режима приглушения и автоматическим персистентным сохранением.
+
+### ADR-028 (СПРИНТ 12): Интерактивный выбор провокатора — «Запустить» или «Отложить» (Interactive Choice Card: Launch vs Postpone)
+* **Контекст:** Пользователь может быть глубоко погружен в важную работу или звонок в момент срабатывания провокатора. Ранее клик по маскоту сразу запускал воспроизведение контента, блокируя работу без возможности отложить сессию на короткое время.
+* **Решение:**
+  1. При клике на выдвинувшийся маскот (или клике на область затемнения) вместо немедленного старта видео плавно открывается интерактивная карточка выбора `ChoiceCard` ("Время сделать паузу") с двумя кнопками:
+     - `▶ Запустить` (Launch): скрывает карточку, воспроизводит анимацию маскота и запускает мотивационное видео или Spotlight-задачу (`OnMascotClicked()`).
+     - `⏰ Отложить` (Postpone): мгновенно закрывает все окна оверлея, восстанавливает фоновые звуки, очищает рабочую память процесса, переводит состояние в `BackgroundIdle` и откладывает следующий показ на `PostponeMinutes` минут (по умолчанию 10 минут, настраивается в диапазоне 1..120 минут).
+  2. Поддержка горячих клавиш: нажатие `Enter` при открытой карточке выбора запускает сессию (`▶ Запустить`), а нажатие `Esc` откладывает её (`⏰ Отложить`).
+  3. В `AppSettings.cs` добавлено свойство `PostponeMinutes` (1..120 минут, default 10).
+  4. В `RandomReminderScheduler.cs` добавлен метод `Postpone(int minutes)`, сбрасывающий активное состояние и запускающий таймер на отложенный интервал.
+  5. В `OverlayCoordinator.cs` добавлен метод `PostponeSession(int? postponeMinutes = null)`, выполняющий полный цикл закрытия и перезапуска таймера.
+
 ## 4. Чеклист майлстоунов
 
 ### СПРИНТЫ 1 – 7
@@ -212,6 +236,38 @@ projects/PersonalProvocateur/
   * Успешное прохождение `dotnet build -c Release --warnaserror` и `dotnet test -c Release`.
   * Синхронизация изменений через `./sync.sh`.
 
+### СПРИНТ 11: Фоновое приглушение и остановка сторонних звуков (WASAPI Audio Ducking)
+- [x] **11.1. COM-интерфейсы Windows Core Audio WASAPI (ADR-027):**
+  * Добавить `CoreAudioInterop.cs` (`IMMDeviceEnumerator`, `IMMDevice`, `IAudioSessionManager2`, `IAudioSessionEnumerator`, `IAudioSessionControl2`, `ISimpleAudioVolume`).
+  * Добавить `VK_MEDIA_PLAY_PAUSE` и `keybd_event` в `NativeMethods.cs`.
+- [x] **11.2. Сервис `AudioDuckingService` и интерфейс `IAudioDuckingService` (ADR-027):**
+  * Реализовать `AudioDuckingService` с поддержкой режимов `Mute`, `Duck`, `PauseMedia`, `Disabled`, фильтрацией собственного PID и надежным сохранением/восстановлением состояний сессий.
+  * Обеспечить изоляцию через `IAudioSessionItem` для 100% покрытия детерминированными юнит-тестами без привязки к звуковой карте.
+- [x] **11.3. Интеграция с плеером `VideoWindow` и `OverlayCoordinator` (ADR-027):**
+  * Подключить активацию приглушения в `VideoWindow.PlayVideo` и гарантированное восстановление в `CompleteVideoPlayback`, `Player_MediaFailed`, `OnClosing`, `OnClosed`.
+  * Добавить гарантированное восстановление звука в `OverlayCoordinator.CompleteSession` и `EmergencyDismiss`.
+- [x] **11.4. Настройки и UI в `SettingsWindow` (ADR-027):**
+  * Добавить свойства `AudioDuckingMode` и `DuckVolumeLevel` в `AppSettings.cs` с санитайзером.
+  * Добавить выпадающий список `AudioDuckingModeComboBox` в `SettingsWindow.xaml` под ползунком громкости с автосохранением.
+- [x] **11.5. Юнит-тестирование и Верификация (ADR-027):**
+  * Создать `AudioDuckingServiceTests.cs` (7 тестов режимов, идемпотентности, восстановления).
+  * Добавить тесты интеграции в `VideoWindowTests.cs`, `OverlayCoordinatorTests.cs`, `SettingsWindowTests.cs`, `AppSettingsTests.cs`.
+  * Успешное выполнение 250/250 тестов (`dotnet test`).
+
+### СПРИНТ 12: Интерактивный выбор провокатора — «Запустить» или «Отложить» (Choice Card: Launch vs Postpone)
+- [x] **12.1. Модель настроек и интервал откладывания (ADR-028):**
+  * Добавить свойство `PostponeMinutes` (default 10) с валидацией и санитизацией `1..120` в `AppSettings.cs`.
+- [x] **12.2. Метод `Postpone(minutes)` в планировщике `RandomReminderScheduler` (ADR-028):**
+  * Реализовать `Postpone(int minutes)` с поддержкой детерминированных тестовых делегатов таймера, сбросом `_isSessionActive` и установкой точного интервала откладывания.
+- [x] **12.3. Метод `PostponeSession()` в координаторе `OverlayCoordinator` (ADR-028):**
+  * Реализовать `PostponeSession(int? postponeMinutes = null)` с закрытием окон, восстановлением звука, очисткой памяти `TrimProcessMemory` и запуском отложенного интервала.
+- [x] **12.4. Интерактивная карточка выбора `ChoiceCard` в `OverlayWindow.xaml` и XAML-логика (ADR-028):**
+  * Сверстать карточку выбора `ChoiceCard` под маскотом с текстом «Время сделать паузу» и кнопками «▶ Запустить» и «⏰ Отложить».
+  * Подключить плавное появление `ShowChoiceCard()` по клику на маскот или затемнение, обработку кнопок и горячих клавиш `Enter` / `Esc`.
+- [x] **12.5. Юнит-тестирование и Верификация (ADR-028):**
+  * Покрыть тестами `AppSettingsTests.cs`, `RandomReminderSchedulerTests.cs`, `OverlayCoordinatorTests.cs`, `OverlayWindowTests.cs`.
+  * Достигнуто 260/260 пройденных тестов (100% success).
+
 ## 5. Сводка изменений по спринтам (Заполняется Оркестратором)
 
 | Спринт | Статус | Ключевые созданные / измененные файлы | Результат `dotnet build` & `dotnet test` |
@@ -223,3 +279,5 @@ projects/PersonalProvocateur/
 
 
 | **Спринт 10** | `[x]` Завершен | `RandomReminderScheduler.cs`, `OverlayCoordinator.cs`, `App.xaml.cs`, `OverlayWindow.xaml/.cs`, `SettingsWindow.xaml.cs`, тесты | Release: 0 ошибок, 0 предупреждений. 241 тест пройден (100%). Устранены дефекты планировщика случайного видео, автосинхронизация паузы и автоплей при бездействии |
+| **Спринт 11** | `[x]` Завершен | `CoreAudioInterop.cs`, `IAudioDuckingService.cs`, `AudioDuckingService.cs`, `AppSettings.cs`, `VideoWindow.xaml.cs`, `OverlayCoordinator.cs`, `SettingsWindow.xaml/.cs`, `NativeMethods.cs`, тесты | Release: 0 ошибок, 0 предупреждений. 250 тестов пройдено (100%). Автоматическое приглушение/заглушение остальных звуков Windows при показе видео с восстановлением |
+| **Спринт 12** | `[x]` Завершен | `AppSettings.cs`, `RandomReminderScheduler.cs`, `OverlayCoordinator.cs`, `OverlayWindow.xaml/.cs`, `MascotControl.xaml.cs`, тесты | Release: 0 ошибок, 0 предупреждений. 260 тестов пройдено (100%). Интерактивная карточка выбора «Запустить» / «Отложить» с поддержкой Enter/Esc |

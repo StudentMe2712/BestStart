@@ -167,6 +167,58 @@ public class RandomReminderSchedulerTests
     }
 
     [Fact]
+    public void Postpone_SchedulesExactDurationAndResetsSessionActive()
+    {
+        TimeSpan scheduledInterval = TimeSpan.Zero;
+        Action? scheduledAction = null;
+        using var scheduler = new RandomReminderScheduler(
+            timerScheduler: (action, interval) =>
+            {
+                scheduledAction = action;
+                scheduledInterval = interval;
+            });
+
+        scheduler.IsSessionActive = true;
+        scheduler.Postpone(10);
+
+        Assert.False(scheduler.IsSessionActive);
+        Assert.True(scheduler.IsRunning);
+        Assert.Equal(TimeSpan.FromMinutes(10), scheduledInterval);
+        Assert.Equal(TimeSpan.FromMinutes(10), scheduler.CurrentScheduledInterval);
+        Assert.NotNull(scheduler.NextTriggerTimeLocal);
+        Assert.NotNull(scheduledAction);
+    }
+
+    [Fact]
+    public void Postpone_ClampsDurationBetween1And120()
+    {
+        TimeSpan lastInterval = TimeSpan.Zero;
+        using var scheduler = new RandomReminderScheduler(
+            timerScheduler: (_, interval) => lastInterval = interval);
+
+        scheduler.Postpone(-5);
+        Assert.Equal(TimeSpan.FromMinutes(1), lastInterval);
+
+        scheduler.Postpone(300);
+        Assert.Equal(TimeSpan.FromMinutes(120), lastInterval);
+    }
+
+    [Fact]
+    public void Postpone_WhenPaused_DoesNotSchedule()
+    {
+        var scheduledCount = 0;
+        using var scheduler = new RandomReminderScheduler(
+            timerScheduler: (_, _) => scheduledCount++,
+            initialPaused: true);
+
+        scheduler.Postpone(10);
+
+        Assert.Equal(0, scheduledCount);
+        Assert.False(scheduler.IsRunning);
+        Assert.Null(scheduler.NextTriggerTimeLocal);
+    }
+
+    [Fact]
     public void Constructor_WithInitialPaused_SetsIsPausedTrueAndDoesNotSchedule()
     {
         var cyclesStarted = 0;

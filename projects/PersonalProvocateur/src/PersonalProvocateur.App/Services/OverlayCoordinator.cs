@@ -22,6 +22,7 @@ public class OverlayCoordinator : IDisposable
     private readonly Func<OverlayCoordinator, VideoWindow?> _videoWindowFactory;
     private readonly Action<Action> _dispatcherInvoker;
     private readonly Action _memoryTrimmer;
+    private readonly IAudioDuckingService _audioDuckingService;
     private readonly List<OverlayWindow> _activeOverlayWindows = new();
     private readonly object _lock = new();
     private bool _isManualTestSession;
@@ -35,6 +36,11 @@ public class OverlayCoordinator : IDisposable
     /// Gets the scheduler instance.
     /// </summary>
     public RandomReminderScheduler Scheduler => _scheduler;
+
+    /// <summary>
+    /// Gets the audio ducking service instance.
+    /// </summary>
+    public IAudioDuckingService AudioDucking => _audioDuckingService;
 
     /// <summary>
     /// Gets the video library service.
@@ -89,7 +95,8 @@ public class OverlayCoordinator : IDisposable
         Func<string, bool>? fileExistsChecker = null,
         Func<System.Windows.Forms.Screen[]>? screensProvider = null,
         Func<OverlayCoordinator, bool, OverlayWindow?>? multiOverlayWindowFactory = null,
-        Action? memoryTrimmer = null)
+        Action? memoryTrimmer = null,
+        IAudioDuckingService? audioDuckingService = null)
     {
         _scheduler = scheduler ?? throw new ArgumentNullException(nameof(scheduler));
         _videoLibrary = videoLibrary ?? throw new ArgumentNullException(nameof(videoLibrary));
@@ -97,6 +104,7 @@ public class OverlayCoordinator : IDisposable
         _fileExistsChecker = fileExistsChecker ?? File.Exists;
         _screensProvider = screensProvider ?? (() => System.Windows.Forms.Screen.AllScreens);
         _memoryTrimmer = memoryTrimmer ?? MemoryOptimizer.TrimProcessMemory;
+        _audioDuckingService = audioDuckingService ?? new AudioDuckingService();
 
         if (multiOverlayWindowFactory != null)
         {
@@ -112,7 +120,7 @@ public class OverlayCoordinator : IDisposable
             _overlayWindowFactory = (coord, isDimmerOnly) => new OverlayWindow(coord, _settingsStore, isDimmerOnly);
         }
 
-        _videoWindowFactory = videoWindowFactory ?? (coord => new VideoWindow(coord, _settingsStore));
+        _videoWindowFactory = videoWindowFactory ?? (coord => new VideoWindow(coord, _settingsStore, _audioDuckingService));
 
         _dispatcherInvoker = dispatcherInvoker ?? new Action<Action>(action =>
         {
@@ -438,6 +446,7 @@ public class OverlayCoordinator : IDisposable
             lock (_lock)
             {
                 CloseAllWindows();
+                _audioDuckingService.RestoreOtherApplications();
                 _memoryTrimmer();
 
                 _scheduler.IsSessionActive = false;
@@ -454,6 +463,33 @@ public class OverlayCoordinator : IDisposable
     }
 
     /// <summary>
+    /// Postpones the current provocation session without playing content.
+    /// Closes all active overlay windows, restores audio, trims memory,
+    /// returns state to BackgroundIdle, and schedules a postponed reminder cycle.
+    /// </summary>
+    /// <param name="postponeMinutes">Optional snooze duration in minutes; if omitted, uses AppSettings.PostponeMinutes.</param>
+    public void PostponeSession(int? postponeMinutes = null)
+    {
+        _dispatcherInvoker(() =>
+        {
+            lock (_lock)
+            {
+                CloseAllWindows();
+                _audioDuckingService.RestoreOtherApplications();
+                _memoryTrimmer();
+
+                _scheduler.IsSessionActive = false;
+                TransitionTo(SessionState.BackgroundIdle);
+
+                if (_settingsStore.CurrentSettings.TriggerMode != "SmartOnly")
+                {
+                    int minutes = postponeMinutes ?? _settingsStore.CurrentSettings.PostponeMinutes;
+                    _scheduler.Postpone(minutes);
+                }
+            }
+        });
+    }
+    /// <summary>
     /// Instantly dismisses all active provocation windows on emergency panic hotkey,
     /// trims process memory, returns state to BackgroundIdle, and schedules a fresh cycle.
     /// </summary>
@@ -464,6 +500,7 @@ public class OverlayCoordinator : IDisposable
             lock (_lock)
             {
                 CloseAllWindows();
+                _audioDuckingService.RestoreOtherApplications();
                 _memoryTrimmer();
 
                 _scheduler.IsSessionActive = false;
@@ -574,6 +611,7 @@ public class OverlayCoordinator : IDisposable
     {
         _settingsStore.SettingsChanged -= OnSettingsChanged;
         EmergencyDismiss();
+        _audioDuckingService.Dispose();
         GC.SuppressFinalize(this);
     }
 }

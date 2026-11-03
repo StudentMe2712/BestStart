@@ -7,6 +7,20 @@ Add entries with the `/lesson` command, or by hand. Newest on top.
 
 ## Log
 
+### 2026-11-03 — Interactive provocation deferral and non-disruptive snooze workflow
+- **Problem:** When provocation triggered while the user was deeply focused or in urgent meetings, the mascot forced unclosable video playback after an auto-play timer or on mascot click, interrupting active work.
+- **Root cause:** Overlay workflow previously had a single transition path from `MascotOverlayActive` directly to `VideoPlaying`, lacking an intermediate user confirmation step or snooze/postpone mechanism.
+- **Fix:** 1) Introduced `ChoiceCard` in `OverlayWindow` with "Запустить" (`Enter`) and "Отложить" (`Esc`). 2) Mascot click and dimmer click reveal the choice card instead of immediately forcing video playback. 3) Implemented `OverlayCoordinator.PostponeSession()` and `RandomReminderScheduler.Postpone(minutes)` which cleanly dismisses overlay windows, restores audio/memory, and reschedules the provocation after a configurable postponement interval (`PostponeMinutes`, default 10 minutes).
+- **Rule:** For proactive interruption software, always provide a zero-friction postponement/snooze path with keyboard shortcuts (`Esc`) so users in critical focus states can defer interruptions without killing the application.
+- **Scope:** this-project
+
+### 2026-11-02 — Windows Core Audio WASAPI COM interop GUID precision & [ComImport] requirement
+- **Problem:** When implementing system-wide audio ducking/muting without third-party dependencies, calling `IMMDevice.Activate` or casting RCW objects threw `InvalidCastException` / `E_NOINTERFACE (0x80004002)`.
+- **Root cause:** 1) In C# COM interop, COM interfaces must be decorated with both `[ComImport]` and `[InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]` so the CLR runtime issues proper QueryInterface calls. 2) WASAPI interface GUIDs must strictly match the official Windows SDK headers (`IAudioSessionManager2`: `77AA99A0-1BD6-484F-8BC7-2C654C9A9B6F`, `IAudioSessionEnumerator`: `E2F5BB11-0570-40CA-ACDD-3AA01277DEE8`, `ISimpleAudioVolume`: `87CE5498-68D6-44E5-9215-6DA47EF883D8`).
+- **Fix:** Used exact SDK GUIDs and `[ComImport]` attributes for WASAPI interfaces in `CoreAudioInterop.cs`, isolated sessions behind an `IAudioSessionItem` interface for in-memory mock testing without sound card hardware, and added idempotent restore in `CompleteVideoPlayback`, `CompleteSession`, and `EmergencyDismiss`.
+- **Rule:** For native COM Interop in .NET, always declare `[ComImport]` on all interface definitions, double-check GUIDs against official SDK headers (`audiopolicy.h`), and abstract COM wrappers behind testable interfaces to allow headless CI execution.
+- **Scope:** this-project
+
 ### 2026-11-02 — Scheduler pause synchronization, on-the-fly interval updates & overlay auto-play fallback
 - **Problem:** 1) Application loaded with `IsPaused: true` in `settings.json` caused a desynchronization where `RandomReminderScheduler` was unstarted but its internal `_isPaused` was false, displaying "Ожидание запуска сессии..." and disabling the timer indefinitely. 2) Updating min/max interval in Settings while the scheduler was running did not reschedule the countdown, forcing the user to wait out the old interval. 3) If `TriggerProvocation` was rejected (e.g. state was not BackgroundIdle), the one-shot timer was dropped without rescheduling (Dead Timer). 4) Full-screen dimming on multi-monitor setups left users stranded if the mascot appeared on an inactive secondary display.
 - **Root cause:** 1) `RandomReminderScheduler` did not accept initial paused state in constructor and relied solely on runtime events. 2) `OverlayCoordinator.OnSettingsChanged` guarded on `!_scheduler.IsRunning`, ignoring updates while active. 3) `OnTimerElapsed` set `_isRunning = false` before `TriggerProvocation`, which had no retry/reschedule fallback on rejection. 4) `OverlayWindow` lacked a timeout or full-dimming click handler to transition to video playback.

@@ -69,4 +69,11 @@ public static class NativeMethods
 
     [DllImport("kernel32.dll", SetLastError = true)]
     internal static extern bool SetProcessWorkingSetSize(IntPtr hProcess, IntPtr dwMinimumWorkingSetSize, IntPtr dwMaximumWorkingSetSize);
+
+    // Media keyboard control constants and API
+    public const byte VK_MEDIA_PLAY_PAUSE = 0xB3;
+    public const uint KEYEVENTF_KEYUP = 0x0002;
+
+    [DllImport("user32.dll")]
+    public static extern void keybd_event(byte bVk, byte bScan, uint dwFlags, UIntPtr dwExtraInfo);
 }

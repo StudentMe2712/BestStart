@@ -132,6 +132,49 @@ public class VideoWindowTests : IDisposable
     }
 
     [Fact]
+    public void VideoWindow_PlayVideo_DucksBackgroundAudioAndRestoresOnComplete()
+    {
+        RunInSta(() =>
+        {
+            var store = CreateTestSettingsStore();
+            store.Update(s =>
+            {
+                s.AudioDuckingMode = "Mute";
+            });
+
+            var scheduler = new RandomReminderScheduler();
+            var videoLib = new VideoLibraryService(store);
+
+            var otherSession = new MockAudioSessionItem { ProcessId = 5555, Muted = false };
+            using var duckingService = new AudioDuckingService(
+                sessionProvider: () => new[] { otherSession },
+                currentProcessId: 1111);
+
+            using var coordinator = new OverlayCoordinator(scheduler, videoLib, store, audioDuckingService: duckingService);
+            var window = new VideoWindow(coordinator, store, duckingService);
+
+            string dummyMp4 = Path.Combine(_tempDir, "video.mp4");
+            File.WriteAllBytes(dummyMp4, new byte[] { 0x00, 0x01 });
+
+            window.PlayVideo(dummyMp4, "Test Clip");
+
+            // Verify background session got muted
+            Assert.True(duckingService.IsDucked);
+            Assert.True(otherSession.Muted);
+
+            // Complete playback
+            window.CompleteVideoPlayback(immediate: true);
+
+            // Verify restored
+            Assert.False(duckingService.IsDucked);
+            Assert.False(otherSession.Muted);
+
+            window.AllowClose = true;
+            window.Close();
+        });
+    }
+
+    [Fact]
     public void VideoWindow_CloseButton_InManualTest_CallsCompleteSession()
     {
         RunInSta(() =>

@@ -42,6 +42,70 @@
                                 Focusable="False"
                                 MouseLeftButtonUp="Mascot_MouseLeftButtonUp" />
 
+        <!-- Interactive Choice Card: Launch vs Postpone (ADR-028) -->
+        <Border x:Name="ChoiceCard"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Top"
+                Margin="0,120,0,0"
+                Background="#E60D0F18"
+                BorderBrush="#808B5CF6"
+                BorderThickness="1.5"
+                CornerRadius="20"
+                Padding="24,16"
+                Visibility="Collapsed"
+                Focusable="False">
+            <Border.Effect>
+                <DropShadowEffect Color="#000000" BlurRadius="28" ShadowDepth="6" Opacity="0.6" />
+            </Border.Effect>
+            <StackPanel Orientation="Vertical" HorizontalAlignment="Center">
+                <TextBlock Text="Время сделать паузу"
+                           FontSize="14"
+                           FontWeight="SemiBold"
+                           Foreground="#E2E8F0"
+                           HorizontalAlignment="Center"
+                           Margin="0,0,0,12" />
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                    <!-- Launch Button -->
+                    <Button x:Name="LaunchButton"
+                            Content="▶  Запустить"
+                            Padding="20,9"
+                            FontSize="14"
+                            FontWeight="SemiBold"
+                            Background="#8B5CF6"
+                            Foreground="#FFFFFF"
+                            BorderThickness="0"
+                            Cursor="Hand"
+                            Margin="0,0,10,0"
+                            Click="LaunchButton_Click">
+                        <Button.Resources>
+                            <Style TargetType="Border">
+                                <Setter Property="CornerRadius" Value="12" />
+                            </Style>
+                        </Button.Resources>
+                    </Button>
+
+                    <!-- Postpone Button -->
+                    <Button x:Name="PostponeButton"
+                            Content="⏰  Отложить"
+                            Padding="18,9"
+                            FontSize="14"
+                            FontWeight="SemiBold"
+                            Background="#222638"
+                            Foreground="#CBD5E1"
+                            BorderBrush="#3D4566"
+                            BorderThickness="1"
+                            Cursor="Hand"
+                            Click="PostponeButton_Click">
+                        <Button.Resources>
+                            <Style TargetType="Border">
+                                <Setter Property="CornerRadius" Value="12" />
+                            </Style>
+                        </Button.Resources>
+                    </Button>
+                </StackPanel>
+            </StackPanel>
+        </Border>
+
         <!-- macOS Spotlight / Raycast Style Text Card (ADR-014) -->
         <Border x:Name="SpotlightContainer"
                 HorizontalAlignment="Center"

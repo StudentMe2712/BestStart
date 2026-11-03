@@ -275,6 +275,38 @@ public class RandomReminderScheduler : IDisposable
     }
 
     /// <summary>
+    /// Postpones the reminder by a specific duration in minutes.
+    /// Resets active session state and begins countdown for the snooze interval.
+    /// </summary>
+    /// <param name="minutes">Duration in minutes to postpone.</param>
+    public void Postpone(int minutes)
+    {
+        lock (_lock)
+        {
+            if (_isPaused)
+            {
+                return;
+            }
+
+            _isSessionActive = false;
+            int clampedMinutes = Math.Clamp(minutes, 1, 120);
+            var interval = TimeSpan.FromMinutes(clampedMinutes);
+
+            _currentScheduledInterval = interval;
+            _nextTriggerTimeLocal = DateTime.Now.Add(interval);
+            _isRunning = true;
+
+            if (_timerScheduler != null)
+            {
+                _timerScheduler(OnTimerElapsed, interval);
+            }
+            else
+            {
+                _timer?.Change(interval, Timeout.InfiniteTimeSpan);
+            }
+        }
+    }
+    /// <summary>
     /// Instantly triggers the timer event for testing purposes.
     /// </summary>
     public void TriggerNowForTesting()

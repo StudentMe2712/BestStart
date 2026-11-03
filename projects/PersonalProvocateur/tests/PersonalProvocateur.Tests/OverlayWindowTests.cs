@@ -305,7 +305,8 @@ public class OverlayWindowTests : IDisposable
 
             window.HandleMascotClick();
             Assert.True(window.IsClickHandled);
-            Assert.Equal(MascotState.Clicked, window.Mascot.CurrentState);
+            Assert.NotNull(window.ChoiceCardControl);
+            Assert.Equal(Visibility.Visible, window.ChoiceCardControl.Visibility);
 
             // Second click should be safely ignored
             window.HandleMascotClick();
@@ -608,6 +609,170 @@ public class OverlayWindowTests : IDisposable
 
             primary.SafeClose();
             secondary.SafeClose();
+        });
+    }
+
+    [Fact]
+    public void OverlayWindow_MascotClick_RevealsChoiceCard()
+    {
+        RunInSta(() =>
+        {
+            var store = CreateTestSettingsStore();
+            var scheduler = new RandomReminderScheduler();
+            var videoLib = new VideoLibraryService(store);
+            using var coordinator = new OverlayCoordinator(scheduler, videoLib, store);
+
+            var window = new OverlayWindow(coordinator, store);
+            Assert.NotNull(window.ChoiceCardControl);
+            Assert.Equal(Visibility.Collapsed, window.ChoiceCardControl.Visibility);
+
+            window.HandleMascotClick();
+
+            Assert.Equal(Visibility.Visible, window.ChoiceCardControl.Visibility);
+            Assert.True(window.IsClickHandled);
+
+            window.SafeClose();
+        });
+    }
+
+    [Fact]
+    public void OverlayWindow_LaunchButtonClick_DelegatesToOnMascotClicked()
+    {
+        RunInSta(() =>
+        {
+            var store = CreateTestSettingsStore();
+            var scheduler = new RandomReminderScheduler();
+            var videoLib = new VideoLibraryService(store, fileExistsChecker: _ => true);
+            videoLib.AddVideo("test.mp4", "Test Video");
+
+            OverlayWindow? overlay = null;
+            using var coordinator = new OverlayCoordinator(
+                scheduler,
+                videoLib,
+                store,
+                overlayWindowFactory: coord => overlay = new OverlayWindow(coord, store),
+                videoWindowFactory: _ => null,
+                dispatcherInvoker: a => a(),
+                fileExistsChecker: _ => true);
+
+            coordinator.TriggerProvocation(isManualTest: false);
+            Assert.NotNull(overlay);
+            Assert.Equal(SessionState.MascotOverlayActive, coordinator.CurrentState);
+
+            // Mascot click reveals ChoiceCard
+            overlay.HandleMascotClick();
+            Assert.Equal(Visibility.Visible, overlay.ChoiceCardControl?.Visibility);
+
+            // Click Launch Button
+            overlay.TriggerLaunchForTesting();
+
+            Assert.Equal(Visibility.Collapsed, overlay.ChoiceCardControl?.Visibility);
+            Assert.Equal(SessionState.VideoPlaying, coordinator.CurrentState);
+
+            overlay.SafeClose();
+        });
+    }
+
+    [Fact]
+    public void OverlayWindow_PostponeButtonClick_CallsPostponeSession()
+    {
+        RunInSta(() =>
+        {
+            var store = CreateTestSettingsStore();
+            store.Update(s => s.PostponeMinutes = 12);
+            TimeSpan scheduledInterval = TimeSpan.Zero;
+            var scheduler = new RandomReminderScheduler(
+                timerScheduler: (_, interval) => scheduledInterval = interval);
+            var videoLib = new VideoLibraryService(store);
+
+            OverlayWindow? overlay = null;
+            using var coordinator = new OverlayCoordinator(
+                scheduler,
+                videoLib,
+                store,
+                overlayWindowFactory: coord => overlay = new OverlayWindow(coord, store),
+                videoWindowFactory: _ => null,
+                dispatcherInvoker: a => a());
+
+            coordinator.TriggerProvocation(isManualTest: false);
+            Assert.NotNull(overlay);
+            Assert.Equal(SessionState.MascotOverlayActive, coordinator.CurrentState);
+
+            // Click Postpone Button
+            overlay.TriggerPostponeForTesting();
+
+            Assert.Equal(SessionState.BackgroundIdle, coordinator.CurrentState);
+            Assert.True(scheduler.IsRunning);
+            Assert.Equal(TimeSpan.FromMinutes(12), scheduledInterval);
+
+            overlay.SafeClose();
+        });
+    }
+
+    [Fact]
+    public void OverlayWindow_PreviewKeyDown_EnterKeyLaunches_EscapeKeyPostpones()
+    {
+        RunInSta(() =>
+        {
+            var store = CreateTestSettingsStore();
+            var scheduler = new RandomReminderScheduler();
+            var videoLib = new VideoLibraryService(store, fileExistsChecker: _ => true);
+            videoLib.AddVideo("test.mp4", "Test Video");
+
+            OverlayWindow? overlay = null;
+            using var coordinator = new OverlayCoordinator(
+                scheduler,
+                videoLib,
+                store,
+                overlayWindowFactory: coord => overlay = new OverlayWindow(coord, store),
+                videoWindowFactory: _ => null,
+                dispatcherInvoker: a => a(),
+                fileExistsChecker: _ => true);
+
+            coordinator.TriggerProvocation(isManualTest: false);
+            Assert.NotNull(overlay);
+
+            // Show ChoiceCard
+            overlay.ShowChoiceCard();
+            Assert.Equal(Visibility.Visible, overlay.ChoiceCardControl?.Visibility);
+
+            // Press Enter -> Launches
+            var enterKeyArgs = new System.Windows.Input.KeyEventArgs(
+                System.Windows.Input.Keyboard.PrimaryDevice,
+                new System.Windows.Interop.HwndSource(0, 0, 0, 0, 0, "", IntPtr.Zero),
+                0,
+                System.Windows.Input.Key.Enter)
+            {
+                RoutedEvent = UIElement.PreviewKeyDownEvent
+            };
+            overlay.RaiseEvent(enterKeyArgs);
+
+            Assert.True(enterKeyArgs.Handled);
+            overlay.Mascot?.CompleteClickAnimationForTesting();
+            Assert.Equal(SessionState.VideoPlaying, coordinator.CurrentState);
+
+            coordinator.CompleteSession();
+            Assert.Equal(SessionState.BackgroundIdle, coordinator.CurrentState);
+
+            // Now test Escape key postpones
+            coordinator.TriggerProvocation(isManualTest: false);
+            overlay.ShowChoiceCard();
+            Assert.Equal(Visibility.Visible, overlay.ChoiceCardControl?.Visibility);
+
+            var escapeKeyArgs = new System.Windows.Input.KeyEventArgs(
+                System.Windows.Input.Keyboard.PrimaryDevice,
+                new System.Windows.Interop.HwndSource(0, 0, 0, 0, 0, "", IntPtr.Zero),
+                0,
+                System.Windows.Input.Key.Escape)
+            {
+                RoutedEvent = UIElement.PreviewKeyDownEvent
+            };
+            overlay.RaiseEvent(escapeKeyArgs);
+
+            Assert.True(escapeKeyArgs.Handled);
+            Assert.Equal(SessionState.BackgroundIdle, coordinator.CurrentState);
+
+            overlay.SafeClose();
         });
     }
 

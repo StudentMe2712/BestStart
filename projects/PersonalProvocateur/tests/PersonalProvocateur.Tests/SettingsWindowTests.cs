@@ -194,6 +194,8 @@ public class SettingsWindowTests : IDisposable
             Assert.Equal(60, window.OpacitySlider.Value);
             Assert.Equal(85, window.VolumeSlider.Value);
             Assert.NotNull(window.TargetMonitorComboBox);
+            Assert.NotNull(window.AudioDuckingModeComboBox);
+            Assert.Equal(0, window.AudioDuckingModeComboBox.SelectedIndex);
             Assert.NotNull(window.SaveButton);
 
             window.Close();
