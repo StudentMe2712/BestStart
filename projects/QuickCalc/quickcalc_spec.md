@@ -7,14 +7,16 @@ QuickCalc is a sleek, ultra-fast floating calculator widget for Windows built wi
 ## 🚀 Features
 
 - **Global Hotkey Toggle**: `Alt + Q` summons or dismisses the calculator from anywhere in Windows.
-- **Floating Spotlight-Style UI**: Borderless, semi-transparent window with rounded corners, dark theme (`#252526`), and ambient drop shadow.
+- **Floating Spotlight-Style UI**: Borderless, semi-transparent window with rounded corners (`CornerRadius="12"`), dark theme (`#252526`), ambient drop shadow, and compact dimensions (`480 × 170`).
+- **Calculator Quick Operation Buttons**:
+  - Interactive row of 8 quick operation buttons: `[+]`, `[-]`, `[×]`, `[÷]`, `[%]`, `[^]`, `[( )]`, and `[C]`.
+  - Dark calculator theme styling (`#333337` background, `CornerRadius="6"`, hover highlights `#007ACC` / red `#C42B1C` for Clear, Segoe UI typography, tooltips).
+  - Smart insertion: caret position insertion, selection replacement / parenthesizing, leading space deduplication, and automatic focus restoration (`InputTextBox.Focus()`) for continuous keyboard typing.
 - **Complete Russian Localization**:
-  - Placeholder: `Введите математическое выражение, напр. 2 * (15 + 7)...`
-  - Bottom hint: `Нажмите Enter, чтобы скопировать | Esc — закрыть`
+  - Placeholder: `Введите выражение...` (short and concise)
+  - Bottom hint: `Enter — скопировать | Esc — закрыть`
   - Close button tooltip: `Закрыть (Esc)`
   - Error indicator on division by zero or invalid expressions: `= Ошибка`
-  - Quick example navigation via `Up` / `Down` arrows in `InputTextBox`:
-    `276 939.0765 + 1 000`, `1 000 000 - 250 000`, `12 * 12`, `100 / 4`, `100 + 20%`, `20% от 150`.
 - **Space Thousands Grouping (Separators)**:
   - Clean separation of thousands, millions, and billions with spaces while preserving dot for decimal fractions.
   - Examples: `276939.0765` ➔ `276 939.0765`, `-276939.0765` ➔ `-276 939.0765`, `1000000` ➔ `1 000 000`, `0` ➔ `0`.
@@ -43,10 +45,10 @@ QuickCalc is a sleek, ultra-fast floating calculator widget for Windows built wi
   - Complex unused functions (`sin`, `cos`, `tan`, `log`, `ln`, `ceil`, `floor`) removed for instant evaluation speed.
   - Clean floating-point formatting removing IEEE 754 precision artifacts (`0.1 + 0.2` = `0.3`).
   - Simple utilities retained: `sqrt(...)`, `abs(...)`, `round(...)`, and constants `pi`, `e`.
-- **Keyboard Shortcuts**:
+- **Keyboard & Mouse Shortcuts**:
   - `Enter`: Copies the current result to clipboard and hides the widget.
   - `Esc`: Hides the widget.
-  - `Up` / `Down`: Cycles through popular operation sample expressions.
+  - Calculator buttons: Click to insert `+`, `-`, `×`, `÷`, `%`, `^`, `()`, or clear `C` with auto-focus return.
   - Mouse Drag: Move the floating widget anywhere on screen.
   - `✕` Close Button: Minimizes / hides widget back to hotkey listening state.
 - **Standalone Single-File Executable (.exe)**:
@@ -112,11 +114,12 @@ projects/
 - [x] Configure `App.xaml` and `App.xaml.cs` with custom styles and resources.
 - [x] Design `MainWindow.xaml`:
   - [x] Borderless window (`WindowStyle="None"`, `AllowsTransparency="True"`, `Topmost="True"`, `ShowInTaskbar="False"`).
-  - [x] Dark rounded border (`CornerRadius="12"`, `#252526` background, `#3E3E42` border brush, drop shadow).
-  - [x] Input row: Large `TextBox` (FontSize 22), placeholder text, custom caret, and minimalist close button.
+  - [x] Dark rounded border (`CornerRadius="12"`, `#252526` background, `#3E3E42` border brush, drop shadow, `480 × 170`).
+  - [x] Input row: Large `TextBox` (FontSize 22), concise placeholder (`Введите выражение...`), custom caret, and minimalist close button.
+  - [x] Calculator buttons row: UniformGrid with 8 operation buttons `[+]`, `[-]`, `[×]`, `[÷]`, `[%]`, `[^]`, `[( )]`, `[C]`.
   - [x] Result row: Real-time formatted result `TextBlock` (FontSize 18, `#4EC9B0`) and hotkey tips.
   - [x] Full Russian localization for placeholder, hints, close button tooltip, and error status (`= Ошибка`).
-  - [x] Arrow Up/Down navigation for sample expressions.
+  - [x] Focus preservation: Clicking buttons immediately returns focus to `InputTextBox`.
 - [x] Implement `MathEvaluator.cs`:
   - [x] Everyday percentage semantics: postfix `50%`, additive `100 + 20% = 120`, subtractive `100 - 20% = 80`, multiplicative `100 * 20% = 20`, division `100 / 20% = 500`, chained `100 + 20% - 10% = 108`, parenthesized `(100 + 50) + 10% = 165`.
   - [x] Natural language percentage aliases: `20% of 150 = 30`, `20% от 150 = 30`.
@@ -135,7 +138,7 @@ projects/
   - [x] Constructor dependency injection.
   - [x] WinAPI global hotkey registration (`Alt + Q`) on `OnSourceInitialized` via `HwndSource.AddHook`.
   - [x] Real-time calculation on `InputTextBox.TextChanged`.
-  - [x] Up/Down sample switching.
+  - [x] Calculator operation buttons event handling (`InsertOperator`, selection handling, focus restoration).
   - [x] Enter key to copy result to clipboard and hide window (ignores "Error" and "Ошибка").
   - [x] Escape key and Close button to hide window.
   - [x] Border left-click dragging support via `DragMove()`.
@@ -208,14 +211,11 @@ Launch the application:
 dotnet run --project projects/QuickCalc/QuickCalc.csproj
 ```
 1. Press `Alt + Q` to summon the widget.
-2. Note the Russian placeholder: `Введите математическое выражение, напр. 2 * (15 + 7)...`
-3. Press `Down` or `Up` arrows to cycle through popular operation sample expressions:
-   - `276 939.0765 + 1 000` ➔ Instant `= 277 939.0765`
-   - `1 000 000 - 250 000` ➔ Instant `= 750 000`
-   - `12 * 12` ➔ Instant `= 144`
-   - `100 / 4` ➔ Instant `= 25`
-   - `100 + 20%` ➔ Instant `= 120`
-   - `20% от 150` ➔ Instant `= 30`
+2. Note the concise Russian placeholder: `Введите выражение...`
+3. Click calculator buttons `[+]`, `[-]`, `[×]`, `[÷]`, `[%]`, `[^]`, `[( )]`, or `[C]`:
+   - Click `[+]` ➔ Inserts `+ ` or ` + ` with automatic focus restoration to the input box.
+   - Click `[( )]` ➔ Inserts `()` with caret set inside the parentheses.
+   - Click `[C]` ➔ Clears the input field and resets display to `= 0`.
 4. Type `10 / 0` ➔ Instant `= Ошибка`.
 5. Press `Enter` on a valid result ➔ Window closes, formatted result is copied to clipboard.
 

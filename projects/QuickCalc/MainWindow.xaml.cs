@@ -1,5 +1,4 @@
 using System;
-using System.Globalization;
 using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls;
@@ -30,17 +29,6 @@ public partial class MainWindow : Window
     private HwndSource? _hwndSource;
     private string? _currentResult = "0";
     private readonly IMathEvaluator _evaluator;
-
-    private static readonly string[] SampleExpressions = new[]
-    {
-        "276 939.0765 + 1 000",
-        "1 000 000 - 250 000",
-        "12 * 12",
-        "100 / 4",
-        "100 + 20%",
-        "20% от 150"
-    };
-    private int _sampleIndex = -1;
 
     private readonly SolidColorBrush _placeholderColor = new((Color)ColorConverter.ConvertFromString("#999999"));
     private readonly SolidColorBrush _validResultColor = new((Color)ColorConverter.ConvertFromString("#4EC9B0"));
@@ -90,7 +78,6 @@ public partial class MainWindow : Window
         }
         else
         {
-            _sampleIndex = -1;
             Show();
             WindowState = WindowState.Normal;
             Activate();
@@ -117,42 +104,6 @@ public partial class MainWindow : Window
         Hide();
     }
 
-    private void InputTextBox_PreviewKeyDown(object sender, KeyEventArgs e)
-    {
-        if (e.Key == Key.Up)
-        {
-            NavigateSample(-1);
-            e.Handled = true;
-        }
-        else if (e.Key == Key.Down)
-        {
-            NavigateSample(1);
-            e.Handled = true;
-        }
-    }
-
-    private void NavigateSample(int direction)
-    {
-        if (SampleExpressions.Length == 0) return;
-
-        if (_sampleIndex == -1)
-        {
-            _sampleIndex = direction > 0 ? 0 : SampleExpressions.Length - 1;
-        }
-        else
-        {
-            _sampleIndex = (_sampleIndex + direction) % SampleExpressions.Length;
-            if (_sampleIndex < 0)
-            {
-                _sampleIndex += SampleExpressions.Length;
-            }
-        }
-
-        InputTextBox.Text = SampleExpressions[_sampleIndex];
-        InputTextBox.CaretIndex = InputTextBox.Text.Length;
-        InputTextBox.SelectAll();
-    }
-
     private void Window_KeyDown(object sender, KeyEventArgs e)
     {
         if (e.Key == Key.Escape)
@@ -176,6 +127,62 @@ public partial class MainWindow : Window
                 e.Handled = true;
             }
         }
+    }
+
+    private void OperatorButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button btn && btn.Tag is string op)
+        {
+            if (op == "CLEAR")
+            {
+                InputTextBox.Clear();
+                InputTextBox.Focus();
+                return;
+            }
+
+            InsertOperator(op);
+        }
+    }
+
+    private void InsertOperator(string op)
+    {
+        string text = InputTextBox.Text ?? string.Empty;
+        int start = InputTextBox.SelectionStart;
+        int length = InputTextBox.SelectionLength;
+
+        if (start < 0 || start > text.Length)
+        {
+            start = text.Length;
+            length = 0;
+        }
+
+        if (op == "()")
+        {
+            if (length > 0)
+            {
+                string selected = text.Substring(start, length);
+                string wrapped = $"({selected})";
+                InputTextBox.Text = text.Remove(start, length).Insert(start, wrapped);
+                InputTextBox.CaretIndex = start + wrapped.Length;
+            }
+            else
+            {
+                InputTextBox.Text = text.Insert(start, "()");
+                InputTextBox.CaretIndex = start + 1;
+            }
+            InputTextBox.Focus();
+            return;
+        }
+
+        string toInsert = op;
+        if (toInsert.StartsWith(" ") && (start == 0 || (start > 0 && text[start - 1] == ' ')))
+        {
+            toInsert = toInsert.TrimStart();
+        }
+
+        InputTextBox.Text = text.Remove(start, length).Insert(start, toInsert);
+        InputTextBox.CaretIndex = start + toInsert.Length;
+        InputTextBox.Focus();
     }
 
     private void InputTextBox_TextChanged(object sender, TextChangedEventArgs e)
