@@ -49,6 +49,11 @@ QuickCalc is a sleek, ultra-fast floating calculator widget for Windows built wi
   - `Up` / `Down`: Cycles through popular operation sample expressions.
   - Mouse Drag: Move the floating widget anywhere on screen.
   - `✕` Close Button: Minimizes / hides widget back to hotkey listening state.
+- **Standalone Single-File Executable (.exe)**:
+  - Completely self-contained distribution for Windows x64.
+  - Zero external dependencies: does not require .NET 8 Runtime or SDK to be installed on user's machine.
+  - Compact single-file packaging with compressed native WPF assemblies.
+  - Automated one-click build via `publish.ps1` and `publish.bat`.
 
 ---
 
@@ -79,6 +84,10 @@ QuickCalc is a sleek, ultra-fast floating calculator widget for Windows built wi
 projects/
 ├── QuickCalc/
 │   ├── QuickCalc.csproj          # .NET 8 WPF Project Configuration
+│   ├── publish.ps1               # PowerShell automated single-file Release build script
+│   ├── publish.bat               # CMD batch wrapper for one-click publishing
+│   ├── dist/
+│   │   └── QuickCalc.exe         # Standalone self-contained single-file executable (~68 MB)
 │   ├── App.xaml                  # Global styles and resources
 │   ├── App.xaml.cs               # Application entry point
 │   ├── MainWindow.xaml           # Borderless floating UI layout (Russian localized)
@@ -134,6 +143,12 @@ projects/
   - [x] 122 tests in `MathEvaluatorTests.cs`.
   - [x] 59 tests in `PopularMathOperationsTests.cs`.
   - [x] 100% Green test execution (181 passed, 0 failed, 0 skipped, 0 warnings).
+- [x] Standalone Executable (.exe) Distribution:
+  - [x] Create PowerShell automated publish script (`projects/QuickCalc/publish.ps1`).
+  - [x] Create Batch launcher script (`projects/QuickCalc/publish.bat`).
+  - [x] Process safety: auto-terminates running QuickCalc instances to prevent file lock before publishing.
+  - [x] Configure self-contained single-file Win-x64 compilation with embedded native libraries and compression.
+  - [x] Build and verify `projects/QuickCalc/dist/QuickCalc.exe` (68.27 MB, verified 0 errors).
 
 ---
 
@@ -203,3 +218,45 @@ dotnet run --project projects/QuickCalc/QuickCalc.csproj
    - `20% от 150` ➔ Instant `= 30`
 4. Type `10 / 0` ➔ Instant `= Ошибка`.
 5. Press `Enter` on a valid result ➔ Window closes, formatted result is copied to clipboard.
+
+---
+
+## 📦 Standalone Executable (.exe) Build & Distribution
+
+QuickCalc includes automated scripts to produce a completely self-contained, single-file Windows x64 executable that can run on any Windows machine without requiring .NET 8 or any external runtimes to be pre-installed.
+
+### Build Commands
+
+#### Option A: PowerShell Script (Recommended)
+```powershell
+powershell -ExecutionPolicy Bypass -File projects/QuickCalc/publish.ps1
+```
+
+#### Option B: CMD Batch Script
+```cmd
+projects\QuickCalc\publish.bat
+```
+
+#### Option C: Direct .NET CLI Command
+```bash
+dotnet publish "projects/QuickCalc/QuickCalc.csproj" \
+  -c Release \
+  -r win-x64 \
+  --self-contained true \
+  -p:PublishSingleFile=true \
+  -p:IncludeNativeLibrariesForSelfExtract=true \
+  -p:EnableCompressionInSingleFile=true \
+  -o "projects/QuickCalc/dist"
+```
+
+### Build Artifact Details
+
+- **Output File**: `projects/QuickCalc/dist/QuickCalc.exe`
+- **Architecture**: `win-x64`
+- **Configuration**: `Release`
+- **Self-Contained**: Yes (all .NET runtime libraries bundled)
+- **Single-File**: Yes (`PublishSingleFile=true`, `IncludeNativeLibrariesForSelfExtract=true`)
+- **Compression**: Yes (`EnableCompressionInSingleFile=true`)
+- **Approximate Size**: `~68 MB` (71,587,669 bytes)
+- **Zero-Dependency**: Can be freely copied, moved to desktop, or launched on any 64-bit Windows machine.
+
