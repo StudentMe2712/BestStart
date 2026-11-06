@@ -78,8 +78,15 @@ public static class MathEvaluator
         return null;
     }
 
+    private static readonly NumberFormatInfo ResultNumberFormat = new()
+    {
+        NumberGroupSeparator = " ",
+        NumberDecimalSeparator = ".",
+        NumberGroupSizes = new[] { 3 }
+    };
+
     /// <summary>
-    /// Formats a double value cleanly using CultureInfo.InvariantCulture without trailing zeros.
+    /// Formats a double value cleanly with space thousands grouping and dot decimal separator without trailing zeros.
     /// Eliminates minor floating-point precision artifacts (e.g. 0.1 + 0.2 => 0.3).
     /// </summary>
     public static string FormatResult(double value)
@@ -107,7 +114,7 @@ public static class MathEvaluator
             return value.ToString("G12", CultureInfo.InvariantCulture);
         }
 
-        return value.ToString("0.############", CultureInfo.InvariantCulture);
+        return value.ToString("#,##0.############", ResultNumberFormat);
     }
 
     #region Lexer & Parser Implementation

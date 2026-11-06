@@ -29,13 +29,30 @@ public partial class MainWindow : Window
 
     private HwndSource? _hwndSource;
     private string? _currentResult = "0";
+    private readonly IMathEvaluator _evaluator;
+
+    private static readonly string[] SampleExpressions = new[]
+    {
+        "276 939.0765 + 1 000",
+        "1 000 000 - 250 000",
+        "12 * 12",
+        "100 / 4",
+        "100 + 20%",
+        "20% от 150"
+    };
+    private int _sampleIndex = -1;
 
     private readonly SolidColorBrush _placeholderColor = new((Color)ColorConverter.ConvertFromString("#999999"));
     private readonly SolidColorBrush _validResultColor = new((Color)ColorConverter.ConvertFromString("#4EC9B0"));
     private readonly SolidColorBrush _pendingResultColor = new((Color)ColorConverter.ConvertFromString("#666666"));
 
-    public MainWindow()
+    public MainWindow() : this(DefaultMathEvaluator.Instance)
     {
+    }
+
+    public MainWindow(IMathEvaluator evaluator)
+    {
+        _evaluator = evaluator ?? DefaultMathEvaluator.Instance;
         InitializeComponent();
     }
 
@@ -73,6 +90,7 @@ public partial class MainWindow : Window
         }
         else
         {
+            _sampleIndex = -1;
             Show();
             WindowState = WindowState.Normal;
             Activate();
@@ -99,6 +117,42 @@ public partial class MainWindow : Window
         Hide();
     }
 
+    private void InputTextBox_PreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Up)
+        {
+            NavigateSample(-1);
+            e.Handled = true;
+        }
+        else if (e.Key == Key.Down)
+        {
+            NavigateSample(1);
+            e.Handled = true;
+        }
+    }
+
+    private void NavigateSample(int direction)
+    {
+        if (SampleExpressions.Length == 0) return;
+
+        if (_sampleIndex == -1)
+        {
+            _sampleIndex = direction > 0 ? 0 : SampleExpressions.Length - 1;
+        }
+        else
+        {
+            _sampleIndex = (_sampleIndex + direction) % SampleExpressions.Length;
+            if (_sampleIndex < 0)
+            {
+                _sampleIndex += SampleExpressions.Length;
+            }
+        }
+
+        InputTextBox.Text = SampleExpressions[_sampleIndex];
+        InputTextBox.CaretIndex = InputTextBox.Text.Length;
+        InputTextBox.SelectAll();
+    }
+
     private void Window_KeyDown(object sender, KeyEventArgs e)
     {
         if (e.Key == Key.Escape)
@@ -108,7 +162,7 @@ public partial class MainWindow : Window
         }
         else if (e.Key == Key.Enter)
         {
-            if (!string.IsNullOrWhiteSpace(_currentResult) && _currentResult != "Error")
+            if (!string.IsNullOrWhiteSpace(_currentResult) && _currentResult != "Error" && _currentResult != "Ошибка")
             {
                 try
                 {
@@ -145,21 +199,30 @@ public partial class MainWindow : Window
     {
         try
         {
-            if (MathEvaluator.TryEvaluate(input, out double _, out string? formatted) && formatted != null)
+            if (_evaluator.TryEvaluate(input, out double val, out string? formatted) && formatted != null && formatted != "Error" && formatted != "Ошибка")
             {
-                ResultTextBlock.Text = $"= {formatted}";
-                ResultTextBlock.Foreground = _validResultColor;
-                _currentResult = formatted;
+                if (double.IsInfinity(val) || double.IsNaN(val))
+                {
+                    ResultTextBlock.Text = "= Ошибка";
+                    ResultTextBlock.Foreground = _pendingResultColor;
+                    _currentResult = null;
+                }
+                else
+                {
+                    ResultTextBlock.Text = $"= {formatted}";
+                    ResultTextBlock.Foreground = _validResultColor;
+                    _currentResult = formatted;
+                }
             }
             else
             {
                 // Check if it's an explicit division by zero or NaN error vs typing in progress
                 try
                 {
-                    double val = MathEvaluator.Evaluate(input);
-                    if (double.IsInfinity(val) || double.IsNaN(val))
+                    double directVal = _evaluator.Evaluate(input);
+                    if (double.IsInfinity(directVal) || double.IsNaN(directVal))
                     {
-                        ResultTextBlock.Text = "= Error";
+                        ResultTextBlock.Text = "= Ошибка";
                         ResultTextBlock.Foreground = _pendingResultColor;
                         _currentResult = null;
                         return;
