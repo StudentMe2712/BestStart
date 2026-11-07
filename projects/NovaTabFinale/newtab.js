@@ -3173,6 +3173,63 @@ function exportUserData() {
   a.click();
   URL.revokeObjectURL(a.href);
 }
+
+function triggerImportUserData() {
+  const input = document.getElementById('settingsImportInput');
+  if (input) {
+    input.value = '';
+    input.click();
+  }
+}
+
+function handleSettingsFileImport(e) {
+  const file = e.target.files && e.target.files[0];
+  e.target.value = '';
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const data = JSON.parse(reader.result);
+      if (!data || typeof data !== 'object') {
+        alert(T('import.jsonFailed'));
+        return;
+      }
+
+      // Simplified boards format support
+      if (Array.isArray(data.boards) && data.boards.some(b => b && Array.isArray(b.bookmarks))) {
+        if (typeof importBoardsFromJson === 'function' && importBoardsFromJson(data)) {
+          closeSettingsModal();
+          return;
+        }
+      }
+
+      // Full state export format (from "Скачать данные")
+      if (data.boards || data.pages || data.bookmarks || data.themeStyle) {
+        S = Object.assign({}, DEFAULTS, data);
+        if (typeof _normalizeState === 'function') _normalizeState();
+        S._writer = _tabId;
+        chrome.storage.local.set({ appState: S }, () => {
+          if (typeof applyThemeStyle === 'function') applyThemeStyle(S.themeStyle);
+          if (typeof applySidebarMode === 'function') applySidebarMode();
+          if (typeof applyDescriptionsMode === 'function') applyDescriptionsMode();
+          if (typeof renderAll === 'function') renderAll();
+          if (typeof syncNavSearchCard === 'function') syncNavSearchCard();
+          if (typeof syncClockCard === 'function') syncClockCard();
+          if (typeof renderWeatherWidget === 'function') renderWeatherWidget();
+          if (typeof renderSettingsNav === 'function') renderSettingsNav();
+          if (typeof renderSettingsTabContent === 'function') renderSettingsTabContent();
+        });
+      } else {
+        alert(T('import.jsonFailed'));
+      }
+    } catch (err) {
+      console.error('Import parse error:', err);
+      alert(T('import.jsonFailed'));
+    }
+  };
+  reader.readAsText(file);
+}
 document.getElementById('mpTrash').addEventListener('click', () => { closeSidebar(); openTrash(); });
 
 document.addEventListener('click', e => {
@@ -4534,6 +4591,7 @@ const ICON_APPEARANCE = '<svg width="16" height="16" viewBox="0 0 24 24" fill="n
 const ICON_LANGUAGE = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><line x1="3" y1="12" x2="21" y2="12"/><path d="M12 3a14 14 0 0 1 0 18 14 14 0 0 1 0-18z"/></svg>';
 const ICON_ACCOUNT = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg>';
 const ICON_SUPPORT = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><line x1="12" y1="16" x2="12" y2="11"/><line x1="12" y1="7.5" x2="12" y2="7.51"/></svg>';
+const ICON_IMPORT = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>';
 const ICON_EXPORT = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>';
 
 const SETTINGS_TABS = [
@@ -4561,6 +4619,12 @@ function renderSettingsNav() {
     });
     nav.appendChild(btn);
   });
+  const importBtn = document.createElement('button');
+  importBtn.className = 'settings-nav-item settings-nav-import';
+  importBtn.innerHTML = `${ICON_IMPORT}<span>${T('st.upload')}</span>`;
+  importBtn.addEventListener('click', triggerImportUserData);
+  nav.appendChild(importBtn);
+
   const exportBtn = document.createElement('button');
   exportBtn.className = 'settings-nav-item settings-nav-export';
   exportBtn.innerHTML = `${ICON_EXPORT}<span>${T('st.download')}</span>`;
@@ -5121,6 +5185,7 @@ function applyDescriptionsMode() {
 }
 
 document.getElementById('settingsCloseBtn').addEventListener('click', closeSettingsModal);
+document.getElementById('settingsImportInput')?.addEventListener('change', handleSettingsFileImport);
 document.getElementById('settingsSideBtn').addEventListener('click', e => {
   e.stopPropagation();
   if (_settingsOpen) {

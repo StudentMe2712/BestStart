@@ -2191,7 +2191,7 @@ body.show-descriptions .link-desc { display: -webkit-box; }
 .settings-nav-item svg { flex-shrink: 0; width: 16px; height: 16px; }
 .settings-nav-item:hover { background: var(--ui-fill); color: var(--ui-text); }
 .settings-nav-item.active { background: var(--accent-tab-bg, rgba(108,108,255,0.16)); color: var(--ui-text); }
-.settings-nav-export {
+.settings-nav-import {
   margin-top: auto;
   padding-top: 10px;
   border-top: 1px solid var(--ui-border-subtle);
